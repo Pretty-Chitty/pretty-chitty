@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2016",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "noEmit": false,
+    "jsx": "react-jsx",
+    "inlineSourceMap": true,
+    "inlineSources": true,
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "declaration": true,
+    "outDir": "./build",
+    "stripInternal": true
+  },
+  "include": ["./src/library/index.ts", "./globals.d.ts"]
+}
