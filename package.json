@@ -4,7 +4,7 @@
   "license": "MIT",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/library/index.ts"
+    ".": "./dist/pretty-chitty.js"
   },
   "devDependencies": {
     "@babel/core": "^7.23.3",
@@ -44,7 +44,8 @@
     "vitest-mock-extended": "^1.3.1",
     "webpack": "^5.90.3",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1"
+    "webpack-dev-server": "^4.15.1",
+    "webpack-node-externals": "^3.0.0"
   },
   "prettier": {
     "printWidth": 120
@@ -58,11 +59,15 @@
     "@material-ui/icons": "^4.11.3",
     "@mui/icons-material": "^5.15.6",
     "@mui/material": "^5.15.6",
+    "@multiavatar/multiavatar": "^1.0.7",
     "@react-hook/debounce": "^4.0.0",
     "@react-hook/hover": "^4.0.0",
     "@react-hook/size": "^2.1.2",
     "@tweenjs/tween.js": "^23.1.1",
+    "@types/base-64": "^1.0.2",
     "@types/color": "^3.0.6",
+    "@types/wheel": "^0.0.3",
+    "base-64": "^1.0.0",
     "color": "^4.2.3",
     "css-loader": "^6.9.1",
     "extrude-polyline": "^1.0.6",
@@ -79,17 +84,17 @@
     "three-csg-ts": "^3.1.13",
     "typedoc": "^0.25.12",
     "use-local-storage-state": "^19.1.0",
-    "use-long-press": "^3.2.0"
+    "use-long-press": "^3.2.0",
+    "wheel": "^1.0.0"
   },
   "scripts": {
     "start": "webpack serve",
-    "build:webpack": "webpack --node-env=production",
+    "build": "yarn && yarn docs && webpack --node-env=production && tsc --project tsconfig.build.json --emitDeclarationOnly && rm -rf node_modules",
     "test": "vitest",
     "compile:check": "tsc",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "coverage": "vitest run --coverage",
-    "docs": "typedoc ./src/library/index.ts --excludeInternal --excludePrivate",
-    "build": "tsc --project tsconfig.build.json"
+    "docs": "typedoc ./src/library/index.ts --excludeInternal --excludePrivate"
   }
 }

@@ -21,7 +21,7 @@
     "inlineSources": true,
     "typeRoots": ["./node_modules/@types", "./types"],
     "declaration": true,
-    "outDir": "./build",
+    "outDir": "./dist",
     "stripInternal": true
   },
   "include": ["./src/library/index.ts", "./globals.d.ts"]

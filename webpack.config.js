@@ -2,11 +2,12 @@ const path = require("path");
 const webpack = require("webpack");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
+const nodeExternals = require("webpack-node-externals"); // You might need to install this
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 module.exports = {
-  mode: isDevelopment ? "development" : "production",
+  mode: 'development',// isDevelopment ? "development" : "production",
 
   entry: isDevelopment ? "./src/index.tsx" : "./src/library/index.ts",
   output: {
@@ -36,6 +37,8 @@ module.exports = {
     allowedHosts: "all",
     compress: true,
   },
+  externals: isDevelopment ? undefined : [nodeExternals()], // Use this to exclude all node_modules
+  externalsPresets: isDevelopment ? undefined : { node: true }, // in case you're targeting Node environment
   module: {
     rules: [
       {
