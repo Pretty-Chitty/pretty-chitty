@@ -2,11 +2,20 @@
   "name": "pretty-chitty",
   "version": "1.0.0",
   "license": "MIT",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/pretty-chitty.js"
+    ".": "./src/library/index.ts",
+    "./ReactCanvas": "./src/library/utilities/CanvasStack/ReactCanvas.tsx"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "three": "^0.158.0"
   },
   "devDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "three": "^0.158.0",
+
     "@babel/core": "^7.23.3",
     "@babel/plugin-proposal-class-properties": "^7.18.6",
     "@babel/plugin-proposal-decorators": "^7.23.5",
@@ -74,13 +83,10 @@
     "mui-modal-provider": "^2.4.2",
     "next-tick": "^1.1.0",
     "quick-lru": "^7.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
     "react-interval-hook": "^1.1.4",
     "react-markdown": "^9.0.1",
     "react-random-avatars": "^1.3.1",
     "style-loader": "^3.3.4",
-    "three": "^0.158.0",
     "three-csg-ts": "^3.1.13",
     "typedoc": "^0.25.12",
     "use-local-storage-state": "^19.1.0",
@@ -89,7 +95,7 @@
   },
   "scripts": {
     "start": "webpack serve",
-    "build": "yarn && yarn docs && webpack --node-env=production && tsc --project tsconfig.build.json --emitDeclarationOnly && rm -rf node_modules",
+    "build": "rm -rf dist && yarn && yarn docs && webpack --node-env=production && tsc --project tsconfig.build.json --emitDeclarationOnly && rm -rf node_modules",
     "test": "vitest",
     "compile:check": "tsc",
     "lint": "eslint .",

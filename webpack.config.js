@@ -7,16 +7,16 @@ const nodeExternals = require("webpack-node-externals"); // You might need to in
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 module.exports = {
-  mode: 'development',// isDevelopment ? "development" : "production",
+  mode: "development", // isDevelopment ? "development" : "production",
 
   entry: isDevelopment ? "./src/index.tsx" : "./src/library/index.ts",
   output: {
     path: path.resolve(__dirname, "dist"),
     umdNamedDefine: true,
-    library: "pretty-chitty",
     libraryTarget: "umd",
     filename: "pretty-chitty.js",
   },
+  
   plugins: [
     ...[
       isDevelopment && new ReactRefreshWebpackPlugin(),
@@ -26,7 +26,6 @@ module.exports = {
           template: "./src/index.html", // Path to your index.html file
         }),
     ].filter(Boolean),
-    ,
   ],
   devtool: "source-map",
   devServer: {
@@ -37,8 +36,6 @@ module.exports = {
     allowedHosts: "all",
     compress: true,
   },
-  externals: isDevelopment ? undefined : [nodeExternals()], // Use this to exclude all node_modules
-  externalsPresets: isDevelopment ? undefined : { node: true }, // in case you're targeting Node environment
   module: {
     rules: [
       {

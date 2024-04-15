@@ -10,6 +10,7 @@ class WebGLRendererWrapper {
   public referenceCount = 0;
   constructor(public renderer: WebGLRenderer) {
     this.renderer.setPixelRatio(Math.max(1.5, window.devicePixelRatio));
+    this.renderer.shadowMap.enabled = true;
   }
 }
 
