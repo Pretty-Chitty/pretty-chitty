@@ -68,9 +68,14 @@ export class ClientTime extends ConnectionObject {
 
   public async newMaxClock(newMaxClock: ClockDetails) {
     const oldClock = this.maxClock.value;
-    this.maxClock.value = newMaxClock;
+    const isSamePass = samePasses(oldClock, newMaxClock);
+    
+    if (isSamePass && oldClock.clock === newMaxClock.clock) {
+      return;
+    }
 
-    if (this.clientTimeState.live.value || !samePasses(oldClock, newMaxClock)) {
+    this.maxClock.value = newMaxClock;
+    if (this.clientTimeState.live.value || !isSamePass) {
       if (
         !this.clientTimeState.isWaitingOnAnimations.value &&
         this.clientTimeState.targetClock.value < this.maxClock.value.clock

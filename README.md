@@ -8,7 +8,8 @@ notes:
   - seems to be missing a flush? When chits are raised (which is moving to a different outlet on the same chit)?
 - add vs push?
 - addAll on outlet?
-  X - ordered outlet annotation to automatically name it correctly
+X - ordered outlet annotation to automatically name it correctly
 - designer fails if a chit type has been removed
-- seems to "start" playback at random spots
+X - seems to "start" playback at random spots
 - intersections with "plane geometry" dont' work correctly
+- why is chrome running at visible frame rate?

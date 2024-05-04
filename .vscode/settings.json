@@ -1,0 +1,9 @@
+{
+    "files.exclude": {
+        "**/.vscode": true,
+        "**/dist": true,
+        "**/node_modules": true,
+        "yarn.lock": true
+    },
+    "editor.tabSize": 2
+}

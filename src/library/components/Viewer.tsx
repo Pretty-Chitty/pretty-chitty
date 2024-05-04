@@ -8,6 +8,7 @@ import { useEventChannelState } from "../hooks/useEventChannelState";
 import Hammer from "@egjs/hammerjs";
 import { addWheelListener, removeWheelListener } from "wheel";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
+import { requestSharedAnimationFrame } from "../utilities/RequestSharedAnimationFrame";
 
 let ID_COUNTER = 1;
 
@@ -132,7 +133,7 @@ export default function Viewer({
       if (!cancelled) {
         try {
           // console.log(renderNextFrame);
-          requestAnimationFrame(animate);
+          requestSharedAnimationFrame(animate);
           if (chitRenderInstance && (renderNextFrame === undefined || renderNextFrame || chitRenderInstance.dirty)) {
             renderer.render(scene, chitRenderInstance.camera);
             context.drawImage(renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
