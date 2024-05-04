@@ -1,7 +1,7 @@
 import { ChitRenderInstance } from "../rendering/ChitRenderInstance";
 import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
 import { Turn } from "./Turn";
-import { FixChildOutlets, NonEditable } from "../utilities/Annotations";
+import { FixChildOutlets, NonEditable, Ordered } from "../utilities/Annotations";
 import { ObjectWithProps } from "../utilities/ObjectWithProps";
 import { Match } from "./Match";
 import { ChitPick } from "./Pick";
@@ -23,7 +23,8 @@ export class Chit extends ObjectWithProps {
     FixChildOutlets(this);
   }
 
-  public orderedChildren = new OrderedOutlet<Chit>(ORDERED_CHILDREN, this);
+  @Ordered
+  public orderedChildren = new OrderedOutlet<Chit>();
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public render(spec: ChitRenderSpec) {}
@@ -47,7 +48,7 @@ export class Chit extends ObjectWithProps {
   }
 
   public add<T extends Chit>(chit: T): T {
-    this.orderedChildren.push(chit);
+    this.orderedChildren.add(chit);
     return chit;
   }
 
@@ -297,7 +298,7 @@ export class Chit extends ObjectWithProps {
         return value;
       }
     };
-    
+
     this.props.forEach((key) => {
       const value = j[key];
 

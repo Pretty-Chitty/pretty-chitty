@@ -26,7 +26,7 @@ export class ChitRenderSpec {
   public rotateZ: number = 0;
   public zLiftRotationMultiplier = 1;
 
-  public ownerOrigin: OwnerOriginPosition = OwnerOriginPosition.MiddleCenter;
+  public ownerOrigin: OwnerOriginPosition = OwnerOriginPosition.Default;
   public outletPositions: { [key: string]: Vector3 } = {};
 
   public object: Object3D = new Group();

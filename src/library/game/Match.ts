@@ -73,7 +73,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         const players = this.players.map((p) => {
           const player = this.game.generatePlayer(p);
           player.promptStatus.latestPrompt.on(() => this.notify(), false);
-          rootChit.players.push(player);
+          rootChit.players.add(player);
           return player;
         });
 
@@ -94,6 +94,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         this.turn.value.fixPass();
         this.notify();
         this.result = await this.turn.value.execute();
+        break;
       } catch (e) {
         if (e instanceof RerunError) {
           continue;

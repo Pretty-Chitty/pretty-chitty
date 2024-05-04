@@ -23,7 +23,7 @@ export interface ICanvasLibrary {
 }
 
 function Editor({ size, ClassDef }: { size: Size; ClassDef: new () => ParameterizedCanvas }) {
-  const instance = useMemo(() => new ClassDef(), [ClassDef]);
+  const instance = useMemo(() => ClassDef && new ClassDef(), [ClassDef]);
   const [canvas, setCanvas] = useState<IUpdatingCanvas | null>(null);
 
   useEffect(() => {

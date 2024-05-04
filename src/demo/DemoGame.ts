@@ -76,9 +76,21 @@ export class DemoGame implements Game<MyPlayer, Root> {
 
     // set up a goofy chit
     const rng = await setup.takeRng(2);
+    const index = 1; //Math.floor(rng() * pieces.length);
     const c2 = new Card2().set((c) => {
-      pieces[Math.floor(rng() * pieces.length)].add(c);
+      pieces[index].tokenList.add(c);
+      setup.flush();
     });
+
+    await setup.createTurn([rootChit], players[0], async (turn) => {
+      await turn.select(pieces);
+    });
+
+    pieces[index].tokenList2.add(c2);
+    setup.flush();
+    pieces[index + 1].tokenList.add(c2);
+    setup.flush();
+    pieces[index + 2].tokenList2.add(c2);
     setup.flush();
 
     const c3 = new Card2().set((c) => {

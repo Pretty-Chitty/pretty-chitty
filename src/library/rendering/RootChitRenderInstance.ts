@@ -60,6 +60,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
       if (Number.isFinite(bbox.max.x)) {
         this.cameraWrapper.adjust(bbox);
         this.lightWrapper.adjust(bbox);
+        this.markDirty();
       }
     }, 0);
   }

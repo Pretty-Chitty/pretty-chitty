@@ -12,12 +12,12 @@ import {
   Chit,
   OwnerOriginPosition,
   ChitRenderSpec,
+  OrderedOutlet,
 } from "../library";
 
 import { TestStack } from "./TestStack";
 import { TestStack2 } from "./TestStack2";
 import { PlayerAid } from "./PlayerAid";
-import { QuestionMark, SmsFailed } from "@mui/icons-material";
 import { cityscape, cityscape2 } from "./assets/network_overload";
 
 export * from "../library/utilities/BaseTable";
@@ -63,6 +63,9 @@ export class Card extends Chit {
   @ChildOutlet public token2?: Card2;
   @ChildOutlet public subCard?: Card;
 
+  public tokenList = new OrderedOutlet("tokenList", this);
+  public tokenList2 = new OrderedOutlet("tokenList2", this);
+
   public override render(spec: ChitRenderSpec): void {
     const boxGeometry = new BoxGeometry(1, 2, 0.1);
 
@@ -98,7 +101,9 @@ export class Card extends Chit {
     spec.zLiftRotationMultiplier = 3;
 
     spec.setOutletPosition("token", 0.5, 0);
-    spec.setOutletPosition("token2", -0.5, 0);
+    spec.setOutletPosition("token2", -0.5, 0, 1);
+    spec.setOutletPosition("tokenList", 0.5, 0);
+    spec.setOutletPosition("tokenList2", -0.5, 0, 1);
   }
 }
 

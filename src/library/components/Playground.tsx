@@ -151,7 +151,7 @@ function Editor({
     const LAST_NAMES = ["Johnson", "Dennis", "Green"];
     const storage = new LocalMatchStorage(matchInformation);
     const players = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 2; i++) {
       players.push(new PlayerInfo(`p${i}`, `${FIRST_NAMES[i % 3]} ${LAST_NAMES[i % 3]}`));
     }
     const match = new Match(game, players, storage);

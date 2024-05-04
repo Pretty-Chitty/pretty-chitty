@@ -26,8 +26,14 @@ export class OrderedOutlet<C extends Chit> {
     this.chits = chits;
   }
 
-  public push(c: C) {
+  public add(c: C) {
     this.chits.push(c);
+    this.fixSort();
+    this.fixOrder();
+  }
+
+  public addAll(c: C[]) {
+    c.forEach((c) => this.chits.push(c));
     this.fixSort();
     this.fixOrder();
   }

@@ -60,11 +60,11 @@ export class GameDeck<T extends Chit> extends Chit {
 
   discard(chit: T | T[]) {
     if (Array.isArray(chit)) {
-      chit.forEach((chit) => this.orderedChildren.push(chit));
+      chit.forEach((chit) => this.orderedChildren.add(chit));
       const stage = this.findDiscardStage();
       stage.chits = stage.chits.concat(chit);
     } else {
-      this.orderedChildren.push(chit);
+      this.orderedChildren.add(chit);
       this.findDiscardStage().chits.push(chit);
     }
   }

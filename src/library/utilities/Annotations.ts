@@ -1,4 +1,5 @@
 import { Chit } from "../game/Chit";
+import { OrderedOutlet } from "../game/OrderedOutlet";
 
 const NON_EDITABLE = "NonEditable";
 
@@ -19,6 +20,18 @@ export function checkAnnotation(obj: any, key: string, annotation: any): boolean
 }
 
 export const NonEditable = Annotation(NON_EDITABLE);
+
+export function Ordered(...args: any): any {
+  const [cls, key] = args;
+  if (!cls.__orderedOutlets) {
+    Object.defineProperty(cls, "__orderedOutlets", {
+      enumerable: false,
+      value: {},
+    });
+  }
+  cls.__orderedOutlets[key] = true;
+  return {};
+}
 
 //
 // Defines an "outlet" on a chit.  This can have an initializer
@@ -77,6 +90,17 @@ export function FixChildOutlets(instance: Chit) {
             enumerable: true,
             get,
             set,
+          });
+        }
+      });
+    }
+
+    if (obj?.__orderedOutlets) {
+      Object.keys(obj.__orderedOutlets).forEach((key: string) => {
+        if (!(instance as any)[key]) {
+          Object.defineProperty(instance, key, {
+            enumerable: true,
+            value: new OrderedOutlet(key, instance),
           });
         }
       });
