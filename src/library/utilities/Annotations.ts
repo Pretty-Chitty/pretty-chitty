@@ -1,3 +1,4 @@
+import { Vector3 } from "three";
 import { Chit } from "../game/Chit";
 import { OrderedOutlet } from "../game/OrderedOutlet";
 
@@ -21,16 +22,39 @@ export function checkAnnotation(obj: any, key: string, annotation: any): boolean
 
 export const NonEditable = Annotation(NON_EDITABLE);
 
-export function Ordered(...args: any): any {
-  const [cls, key] = args;
-  if (!cls.__orderedOutlets) {
-    Object.defineProperty(cls, "__orderedOutlets", {
+function addOutletDefinition(outletKey: string, cls: any, key: string, prop: any) {
+  if (!cls[outletKey]) {
+    Object.defineProperty(cls, outletKey, {
       enumerable: false,
       value: {},
     });
   }
-  cls.__orderedOutlets[key] = true;
+  cls[outletKey][key] = prop;
   return {};
+}
+function addOutletPosition(cls: any, key: string, vector: Vector3) {
+  const OUTLET_POSITION = "__outletPosition";
+  if (!cls[OUTLET_POSITION]) {
+    Object.defineProperty(cls, OUTLET_POSITION, {
+      enumerable: false,
+      value: {},
+    });
+  }
+  cls[OUTLET_POSITION][key] = vector;
+}
+
+export function Ordered(...args: any): any {
+  if (args.length === 1) {
+    const v3 = args[0] as Vector3;
+    return function (...args: any): any {
+      const [cls, key, prop] = args;
+      addOutletPosition(cls, key, v3);
+      return addOutletDefinition("__orderedOutlets", cls, key, prop);
+    };
+  }
+
+  const [cls, key, prop] = args;
+  return addOutletDefinition("__orderedOutlets", cls, key, prop);
 }
 
 //
@@ -41,15 +65,17 @@ export function Ordered(...args: any): any {
 // that it was previously assigned to)
 //
 export function ChildOutlet(...args: any): any {
-  const [cls, key, prop] = args;
-  if (!cls.__childOutlets) {
-    Object.defineProperty(cls, "__childOutlets", {
-      enumerable: false,
-      value: {},
-    });
+  if (args.length === 1) {
+    const v3 = args[0] as Vector3;
+    return function (...args: any): any {
+      const [cls, key, prop] = args;
+      addOutletPosition(cls, key, v3);
+      return addOutletDefinition("__childOutlets", cls, key, prop);
+    };
   }
-  cls.__childOutlets[key] = prop;
-  return {};
+
+  const [cls, key, prop] = args;
+  return addOutletDefinition("__childOutlets", cls, key, prop);
 }
 
 export function isChildOutlet(obj: any, key: string) {
@@ -96,11 +122,16 @@ export function FixChildOutlets(instance: Chit) {
     }
 
     if (obj?.__orderedOutlets) {
-      Object.keys(obj.__orderedOutlets).forEach((key: string) => {
+      Object.entries(obj.__orderedOutlets).forEach(([key, prop]: [key: any, prop: any]) => {
         if (!(instance as any)[key]) {
+          const v = prop?.initializer?.apply(instance, []);
+          if (v) {
+            v.outletName = key;
+            v.parent = instance;
+          }
           Object.defineProperty(instance, key, {
             enumerable: true,
-            value: new OrderedOutlet(key, instance),
+            value: v,
           });
         }
       });

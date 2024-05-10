@@ -82,20 +82,27 @@ export class DemoGame implements Game<MyPlayer, Root> {
       setup.flush();
     });
 
-    await setup.createTurn([rootChit], players[0], async (turn) => {
-      await turn.select(pieces);
-    });
-
-    pieces[index].tokenList2.add(c2);
-    setup.flush();
-    pieces[index + 1].tokenList.add(c2);
-    setup.flush();
-    pieces[index + 2].tokenList2.add(c2);
-    setup.flush();
+    // await setup.createTurn([rootChit], players[0], async (turn) => {
+    //   await turn.select(pieces);
+    // });
 
     const c3 = new Card2().set((c) => {
       pieces[Math.floor(rng() * pieces.length)].add(c);
     });
+
+    pieces[index].tokenList2.add(c2);
+    setup.flush();
+    pieces[index].tokenList.add(c2);
+    setup.flush();
+    pieces[index].tokenList2.add(c2);
+    pieces[index].tokenList2.add(c3);
+    setup.flush();
+    for (let i = 0; i < 10; i++) {
+      pieces[index].tokenList2.add(new Card2());
+      setup.flush();
+    }
+
+    const tokenCopies = pieces[index].tokenList2.copy();
 
     // now do 100 turns
     for (let i = 0; i < 100; i++) {
@@ -112,17 +119,17 @@ export class DemoGame implements Game<MyPlayer, Root> {
           //const counter2 = (await turn.rng()) * 3 + 3;
           // const counter3 = (await turn.rng()) * 3 + 3;
 
-          await turn.pick([
-            Chit.pick(rows, async (row) => {
-              console.log(row);
-            }),
-          ]);
+          // await turn.pick([
+          //   Chit.pick(rows, async (row) => {
+          //     console.log(row);
+          //   }),
+          // ]);
 
-          await turn.pick([
-            Chit.pick([pieces[0]], async (chit) => {
-              console.log(chit);
-            }).message("Hey whats up"),
-          ]);
+          // await turn.pick([
+          //   Chit.pick([pieces[0]], async (chit) => {
+          //     console.log(chit);
+          //   }).message("Hey whats up"),
+          // ]);
 
           for (let i = 0; i < counter; i++) {
             await turn.pick([

@@ -98,6 +98,7 @@ export class ChitRenderInstance {
     // handle refreshes.
     const cb1 = chit.onChange("deserialized parent", () => {
       try {
+        console.log(this);
         this.refresh();
         this.rootRenderInstance.markHasPendingChange();
       } catch (e) {
@@ -217,7 +218,7 @@ export class ChitRenderInstance {
   }
 
   protected updateGroupPosition(group: Group, position: OwnerOriginPosition | string) {
-    const z = this.sizeZ;
+    const z = this.sizeZ + (this.renderSpec?.childrenOffsetZ ?? 0);
     switch (position) {
       case OwnerOriginPosition.TopLeft: {
         group.position.set(-this.sizeX / 2, this.sizeY / 2, z);
@@ -314,10 +315,10 @@ export class ChitRenderInstance {
 
     this.handleHierarchy();
 
+    this.updateBoundingBox();
+
     // update position and rotation
     this.handlePositionAndRotation();
-
-    this.updateBoundingBox();
 
     if (this.chit.onClick) {
       this.createHighlight();
@@ -661,6 +662,18 @@ export class ChitRenderInstance {
     const targetOffset = { x: this.renderSpec.offsetX, y: this.renderSpec.offsetY, z: this.renderSpec.offsetZ };
     const targetRotation = { x: this.renderSpec.rotateX, y: this.renderSpec.rotateY, z: this.renderSpec.rotateZ };
 
+    if (this.chit.parentOutlet && this.chit.parentOutletIndex !== undefined && this.renderSpec.splay.enabled) {
+      const splay = this.renderSpec.splay.processSplay(
+        this.chit.parentOutletIndex,
+        this.sizeX,
+        this.sizeY,
+        this.sizeZ + this.renderSpec.childrenOffsetZ,
+      );
+      targetOffset.x += splay.x * Math.sin(this.renderSpec.rotateZ) + splay.y * Math.cos(this.renderSpec.rotateZ);
+      targetOffset.y += splay.y * Math.sin(this.renderSpec.rotateZ) - splay.x * Math.cos(this.renderSpec.rotateZ);
+      targetOffset.z += splay.z;
+    }
+
     let duration = 0;
     let distanceMoved = 0;
     let nonZRotations = 0;
@@ -730,7 +743,7 @@ export class ChitRenderInstance {
       const zLiftRatio = this.renderSpec.zLiftRatio;
       const peak = {
         z:
-          (targetOffset.z + position.z) / 2 +
+          Math.max(targetOffset.z, position.z) +
           Math.max(distanceMoved * zLiftRatio, nonZRotations * this.renderSpec.zLiftRotationMultiplier),
       };
       this.zOffsetTween = this.createTween({ z: position.z }, (tween) =>

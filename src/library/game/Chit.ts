@@ -270,6 +270,22 @@ export class Chit extends ObjectWithProps {
   }
 
   /** @internal */
+  @NonEditable public isDeserializing = false;
+
+  /** @internal */
+  public doneDeserializing() {
+    if (this.isDeserializing) {
+      this.isDeserializing = false;
+      this.notifyChange("deserialized");
+    }
+  }
+
+  /** @internal */
+  public beginDeserializing() {
+    this.isDeserializing = true;
+  }
+
+  /** @internal */
   public deserialize(serialized: string, findChit: (id: string) => Chit) {
     this._version++;
     const j = JSON.parse(serialized);
@@ -311,8 +327,6 @@ export class Chit extends ObjectWithProps {
 
     this.id = j.id;
     this.setParent(inflateValue(j._parent), j._parentOutlet, j._parentOutletIndex);
-
-    this.notifyChange("deserialized");
   }
 
   /** @internal */

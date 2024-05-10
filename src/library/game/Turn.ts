@@ -762,28 +762,21 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private restartExecution() {
     this.activeSubTurns.forEach((t) => t.destroy());
 
-    const chitParentPairs: [Chit, Chit | undefined][] = [];
+    const chits = Object.values(this.chitLookup).filter((chit) => chit.id);
 
-    Object.values(this.chitLookup).forEach((chit) => {
-      if (chit.id) {
-        chit.lock(this);
-        const lockedState = this.lockedChitStates[chit.id];
-        if (lockedState) {
-          chit.deserialize(lockedState, this.findChit);
-          chitParentPairs.push([chit, chit.parent]);
-        } else {
-          chit.removeFromParent(); // effectively "deletes" it.  In practice, the `fn` will recreate a new chit which will have the new ID, which replaces this one.
-        }
+    chits.forEach((chit) => chit.beginDeserializing());
+
+    chits.forEach((chit) => {
+      chit.lock(this);
+      const lockedState = this.lockedChitStates[chit.id ?? ""];
+      if (lockedState) {
+        chit.deserialize(lockedState, this.findChit);
+      } else {
+        chit.removeFromParent(); // effectively "deletes" it.  In practice, the `fn` will recreate a new chit which will have the new ID, which replaces this one.
       }
     });
 
-    // This fixes a goofy bug where a Chit A is parent to Chit B.
-    // Chit B gets set as an outlet to Chit A during a turn.  When it's reset,
-    // the order of serialization suddenly matters *A LOT*.  It's possible
-    // for Chit B to set its parent to Chit A and then Chit A's outlet gets
-    // cleared, which removes the parent from Chit B
-
-    // chitParentPairs.forEach(([chit, parent]) => (chit.parent = parent));
+    chits.forEach((chit) => chit.doneDeserializing());
 
     if (this.player) {
       this.player.promptStatus.latestPrompt.value = undefined;

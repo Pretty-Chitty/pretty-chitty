@@ -36,30 +36,13 @@ export default function Viewer({
   const [chitRenderInstance, setChitRenderInstance] = useState<RootChitRenderInstance | null>(null);
 
   if (chitRenderInstance) {
-    chitRenderInstance.animationSpeedMultiplier = animationSpeedMultiplier;
+    if (chitRenderInstance.animationSpeedMultiplier !== animationSpeedMultiplier) {
+      chitRenderInstance.animationSpeedMultiplier = animationSpeedMultiplier;
+    }
   }
-
-  // // build DOM for renderer
-  // useEffect(() => {
-  //   if (refContainer.current) {
-  //     const renderer = new WebGLRenderer();
-  //     renderer.shadowMap.enabled = true;
-  //     const el = refContainer.current as HTMLElement;
-  //     [...el.children].forEach((child) => child.remove());
-  //     el.appendChild(renderer.domElement);
-  //     renderer.setPixelRatio(window.devicePixelRatio * 2);
-  //     setRenderer(renderer);
-
-  //     return () => {
-  //       renderer.dispose();
-  //     };
-  //   }
-  // }, [refContainer, scene]);
 
   // handle sizing and aspect ratio on camera
   useEffect(() => {
-    // renderer?.setPixelRatio(window.devicePixelRatio * 2);
-    // renderer?.setSize(w, h);
     chitRenderInstance?.setSize(w, h);
   }, [chitRenderInstance, w, h]);
 
@@ -133,7 +116,7 @@ export default function Viewer({
       if (!cancelled) {
         try {
           // console.log(renderNextFrame);
-          requestSharedAnimationFrame(animate);
+          requestAnimationFrame(animate);
           if (chitRenderInstance && (renderNextFrame === undefined || renderNextFrame || chitRenderInstance.dirty)) {
             renderer.render(scene, chitRenderInstance.camera);
             context.drawImage(renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);

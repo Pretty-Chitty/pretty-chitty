@@ -1,5 +1,5 @@
 import React from "react";
-import { BoxGeometry, Mesh, MeshPhongMaterial } from "three";
+import { BoxGeometry, Mesh, MeshPhongMaterial, Vector3 } from "three";
 import {
   BagSparkChit,
   PanelChit,
@@ -19,6 +19,7 @@ import { TestStack } from "./TestStack";
 import { TestStack2 } from "./TestStack2";
 import { PlayerAid } from "./PlayerAid";
 import { cityscape, cityscape2 } from "./assets/network_overload";
+import { Ordered } from "../library/utilities/Annotations";
 
 export * from "../library/utilities/BaseTable";
 
@@ -59,11 +60,13 @@ export class Card extends Chit {
   public x = 0;
   public y = 0;
 
-  @ChildOutlet public token?: Card2;
-  @ChildOutlet public token2?: Card2;
+  @ChildOutlet(new Vector3(0.5, 0, 0)) public token?: Card2;
+  @ChildOutlet(new Vector3(-0.5, 0, 1)) public token2?: Card2;
   @ChildOutlet public subCard?: Card;
 
-  public tokenList = new OrderedOutlet("tokenList", this);
+  @Ordered(new Vector3(0.5, 0, 0))
+  public tokenList = new OrderedOutlet();
+  @Ordered(new Vector3(-0.5, 0, 1))
   public tokenList2 = new OrderedOutlet("tokenList2", this);
 
   public override render(spec: ChitRenderSpec): void {
@@ -99,11 +102,7 @@ export class Card extends Chit {
     spec.offsetY = this.y * 2.5;
     spec.offsetZ = this.tapped ? 0.25 : 0 + (this.flipped ? 3.1 : 0);
     spec.zLiftRotationMultiplier = 3;
-
-    spec.setOutletPosition("token", 0.5, 0);
-    spec.setOutletPosition("token2", -0.5, 0, 1);
-    spec.setOutletPosition("tokenList", 0.5, 0);
-    spec.setOutletPosition("tokenList2", -0.5, 0, 1);
+    spec.splay.enabled = false;
   }
 }
 
@@ -140,7 +139,10 @@ export class Card2 extends Chit {
     spec.ownerOrigin = this.thingy ? OwnerOriginPosition.BottomRight : OwnerOriginPosition.Default;
     // spec.offsetX = !this.thingy ? 0.6 : 0;
 
-    spec.rotateZ = (this.something / 360) * (Math.PI * 2) + (this.thingy ? Math.PI : 0);
+    spec.rotateZ = Math.PI / 2.5 + (this.something / 360) * (Math.PI * 2) + (this.thingy ? Math.PI : 0);
+    spec.splay.enabled = true;
+    spec.splay.rows = 3;
+    spec.splay.columns = 3;
   }
 }
 

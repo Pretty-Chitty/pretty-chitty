@@ -69,7 +69,7 @@ export class ClientTime extends ConnectionObject {
   public async newMaxClock(newMaxClock: ClockDetails) {
     const oldClock = this.maxClock.value;
     const isSamePass = samePasses(oldClock, newMaxClock);
-    
+
     if (isSamePass && oldClock.clock === newMaxClock.clock) {
       return;
     }
@@ -125,12 +125,19 @@ export class ClientTime extends ConnectionObject {
       }
 
       // now actually load the new state
+      const chits = Object.entries(result.chits)
+        .filter(([id, value]) => this.lastSerializedState[id] !== value)
+        .map(([id]) => this.chitLookup[id]);
+
+      chits.forEach((chit) => chit.beginDeserializing());
+
       Object.entries(result.chits).forEach(([id, value]) => {
-        if (this.lastSerializedState[id] !== value) {
-          this.chitLookup[id].deserialize(value, this.findChit);
-          this.lastSerializedState[id] = value;
-        }
+        const chit = this.chitLookup[id];
+        chit.deserialize(value, this.findChit);
+        this.lastSerializedState[id] = value;
       });
+
+      chits.forEach((chit) => chit.doneDeserializing());
 
       this.rootChit.value = this.findChit("root");
 
@@ -149,6 +156,13 @@ export class ClientTime extends ConnectionObject {
           if (!this.clientTimeState.isWaitingOnAnimations.value) {
             this.clientTimeState.animationSpeedMultiplier.value =
               this.clientTimeState.targetAnimationSpeedMultiplier.value;
+          } else if (this.currentClock.value.clock >= this.clientTimeState.targetClock.value) {
+            setTimeout(
+              () =>
+                (this.clientTimeState.animationSpeedMultiplier.value =
+                  this.clientTimeState.targetAnimationSpeedMultiplier.value),
+              100,
+            );
           } else {
             setTimeout(checkForAnimationEnd, 100);
           }

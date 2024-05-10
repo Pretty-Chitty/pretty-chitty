@@ -2,7 +2,7 @@ import { Chit } from "./Chit";
 
 export class OrderedOutlet<C extends Chit> {
   /** @internal */
-  public parent: Chit;
+  public parent?: Chit;
 
   /** @internal */
   public outletName: string;
@@ -11,7 +11,7 @@ export class OrderedOutlet<C extends Chit> {
 
   constructor(outletName?: string, parent?: Chit) {
     this.outletName = outletName ?? "no_name_set";
-    this.parent = parent ?? new Chit();
+    this.parent = parent;
   }
 
   /** @internal */
@@ -27,13 +27,25 @@ export class OrderedOutlet<C extends Chit> {
   }
 
   public add(c: C) {
+    if (this.parent?.isDeserializing) {
+      return;
+    }
+
     this.chits.push(c);
     this.fixSort();
     this.fixOrder();
   }
 
-  public addAll(c: C[]) {
-    c.forEach((c) => this.chits.push(c));
+  public addAll(c: OrderedOutlet<C> | C[]) {
+    if (this.parent?.isDeserializing) {
+      return;
+    }
+
+    if (c instanceof OrderedOutlet) {
+      c.chits.forEach((c) => this.chits.push(c));
+    } else {
+      c.forEach((c) => this.chits.push(c));
+    }
     this.fixSort();
     this.fixOrder();
   }
@@ -66,10 +78,37 @@ export class OrderedOutlet<C extends Chit> {
     return result;
   }
 
-  public remove(c: C) {
-    this.chits = this.chits.filter((chit) => chit !== c);
-    c.setParent();
-    this.fixOrder();
+  public remove(c: C | C[]) {
+    if (this.parent?.isDeserializing) {
+      return;
+    }
+
+    const removedChits: C[] = [];
+    if (Array.isArray(c)) {
+      const s = new Set(c);
+      this.chits = this.chits.filter((chit) => {
+        const found = s.has(chit);
+        if (found) {
+          removedChits.push(chit);
+        }
+        return !found;
+      });
+    } else {
+      this.chits = this.chits.filter((chit) => {
+        if (chit !== c) {
+          return true;
+        }
+        removedChits.push(chit);
+        return false;
+      });
+    }
+
+    if (removedChits.length > 0) {
+      removedChits.forEach((c) => c.setParent());
+
+      // TODO: depending on order of deserialization this might be misbehaving
+      this.fixOrder();
+    }
   }
 
   public get length() {
@@ -78,7 +117,9 @@ export class OrderedOutlet<C extends Chit> {
 
   public pop() {
     const result = this.chits.pop();
-    this.fixOrder();
+    if (result) {
+      this.remove(result);
+    }
     return result;
   }
 

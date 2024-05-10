@@ -3,6 +3,7 @@ import { CameraSpec } from "./CameraSpec";
 import { Chit } from "../game/Chit";
 import { LightSpec } from "./LightSpec";
 import { HighlightSpec } from "./HighlightSpec";
+import { Splay } from "./Splay";
 
 // prettier-ignore
 export enum OwnerOriginPosition {
@@ -18,7 +19,9 @@ export class ChitRenderSpec {
   public offsetX: number = 0;
   public offsetY: number = 0;
   public offsetZ: number = 0;
-  public zLiftRatio: number = 0.1;
+  public zLiftRatio: number = 0.01;
+
+  public childrenOffsetZ: number = 0.025;
 
   public rotationSpeed: number = 2000; // time it takes to do a 360 degree spin
   public rotateX: number = 0;
@@ -26,7 +29,7 @@ export class ChitRenderSpec {
   public rotateZ: number = 0;
   public zLiftRotationMultiplier = 1;
 
-  public ownerOrigin: OwnerOriginPosition = OwnerOriginPosition.Default;
+  public ownerOrigin: string | OwnerOriginPosition = OwnerOriginPosition.Default;
   public outletPositions: { [key: string]: Vector3 } = {};
 
   public object: Object3D = new Group();
@@ -34,10 +37,15 @@ export class ChitRenderSpec {
   public camera?: CameraSpec = undefined;
   public lightSpec?: LightSpec = undefined;
   public highlight = new HighlightSpec();
+  public splay = new Splay();
 
   constructor(public readonly chit: Chit) {
     this.object.visible = false;
     this.ornament.visible = false;
+
+    if ((chit as any).__outletPosition) {
+      this.outletPositions = { ...(chit as any).__outletPosition };
+    }
   }
 
   public offset(x: number, y: number, z: number | undefined): ChitRenderSpec {

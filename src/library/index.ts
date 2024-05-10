@@ -44,3 +44,4 @@ export { CameraSpec } from "./rendering/CameraSpec";
 export { ChitRenderSpec, OwnerOriginPosition } from "./rendering/ChitRenderSpec";
 export { HighlightSpec } from "./rendering/HighlightSpec";
 export { LightSpec, Light } from "./rendering/LightSpec";
+export { Splay } from "./rendering/Splay";
