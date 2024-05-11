@@ -1,4 +1,4 @@
-import { Texture, UVMapping, ClampToEdgeWrapping, LinearFilter } from "three";
+import { Texture, UVMapping, ClampToEdgeWrapping, LinearFilter, MeshPhongMaterial, Material } from "three";
 import { IUpdatingCanvas } from "../IUpdatingCanvas";
 import { CanvasOperation } from "./CanvasOperations";
 import { ImageResult, ImageCache } from "./ImageCache";
@@ -81,6 +81,12 @@ export class CanvasStack implements IUpdatingCanvas {
     this.context = context;
 
     this.render();
+  }
+
+  get material(): Material {
+    return new MeshPhongMaterial({
+      map: this.texture,
+    });
   }
 
   get texture(): Texture {

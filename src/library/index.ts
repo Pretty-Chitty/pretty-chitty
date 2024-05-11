@@ -39,6 +39,7 @@ export type {
 } from "./utilities/CanvasStack/CanvasOperations";
 export type { IUpdatingCanvas } from "./utilities/IUpdatingCanvas";
 export { ImageResult, ImageCache } from "./utilities/CanvasStack/ImageCache";
+export { CardMesh } from "./utilities/CardMesh";
 
 export { CameraSpec } from "./rendering/CameraSpec";
 export { ChitRenderSpec, OwnerOriginPosition } from "./rendering/ChitRenderSpec";

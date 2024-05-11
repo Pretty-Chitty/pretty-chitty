@@ -1,4 +1,4 @@
-import { Texture } from "three";
+import { Material, Texture } from "three";
 
 export interface IUpdatingCanvas {
   get width(): number;
@@ -6,4 +6,5 @@ export interface IUpdatingCanvas {
   get canvas(): HTMLCanvasElement;
   onUpdate(cb: () => void): () => void;
   get texture(): Texture;
+  get material(): Material;
 }

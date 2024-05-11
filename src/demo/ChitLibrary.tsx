@@ -1,5 +1,15 @@
 import React from "react";
-import { BoxGeometry, Mesh, MeshPhongMaterial, PlaneGeometry, Vector3 } from "three";
+import {
+  BackSide,
+  BoxGeometry,
+  DoubleSide,
+  FrontSide,
+  Group,
+  Mesh,
+  MeshPhongMaterial,
+  PlaneGeometry,
+  Vector3,
+} from "three";
 import {
   BagSparkChit,
   PanelChit,
@@ -21,6 +31,7 @@ import { PlayerAid } from "./PlayerAid";
 import { cityscape, cityscape2 } from "./assets/network_overload";
 import { Ordered } from "../library/utilities/Annotations";
 import { CounterStack } from "./CanvasLibrary";
+import { CardGeometry, CardMesh } from "../library/utilities/CardMesh";
 
 export * from "../library/utilities/BaseTable";
 
@@ -71,32 +82,17 @@ export class Card extends Chit {
   public tokenList2 = new OrderedOutlet("tokenList2", this);
 
   public override render(spec: ChitRenderSpec): void {
-    const boxGeometry = new PlaneGeometry(1, 2);
-
     const ts = new TestStack().set((obj) => {
       obj.subTitle = "This is a ...";
       obj.title = "and a bottle" + this.something * 2;
       obj.subTitle2 = this.something;
     });
 
-    const face = new MeshPhongMaterial({
-      bumpMap: ts.get().texture,
-      bumpScale: 1,
-      map: ts.get().texture,
+    spec.object = new CardMesh(1, 2, ts.material, ts.material, {
+      castShadow: true,
+      receiveShadow: true,
     });
 
-    const side = new MeshPhongMaterial({
-      color: 0xbbbbbb,
-    });
-
-    const mesh = new Mesh(boxGeometry, face); //[face, side]);
-    spec.object = mesh;
-    spec.object.receiveShadow = true;
-    spec.object.castShadow = true;
-
-    // if (!(this.parent instanceof Card)) {
-    // spec.offsetX = this.something / 900;
-    // }
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0; // (this.something / 90) % (Math.PI * 2);
     spec.rotateY = this.flipped ? Math.PI : 0;
     spec.offsetZ = this.flipped ? 0.1 : 0;

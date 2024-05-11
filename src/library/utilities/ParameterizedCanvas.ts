@@ -46,5 +46,9 @@ export abstract class ParameterizedCanvas extends ObjectWithProps {
     });
   }
 
+  get material() {
+    return this.get().material;
+  }
+
   protected abstract render(): ReactNode;
 }
