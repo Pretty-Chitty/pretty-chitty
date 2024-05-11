@@ -194,11 +194,8 @@ export class Chit extends ObjectWithProps {
 
   /** @internal */
   public setParent(newValue?: Chit, parentOutlet?: string, parentOutletIndex?: number) {
-    if (
-      this._parent === newValue &&
-      this._parentOutlet === parentOutlet &&
-      this._parentOutletIndex === parentOutletIndex
-    ) {
+    if (this._parent === newValue && this._parentOutlet === parentOutlet) {
+      this._parentOutletIndex = parentOutletIndex;
       return;
     }
 

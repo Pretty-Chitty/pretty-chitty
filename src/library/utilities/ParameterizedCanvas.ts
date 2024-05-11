@@ -27,7 +27,15 @@ export abstract class ParameterizedCanvas extends ObjectWithProps {
     }
 
     const keySpace = constructor.name;
-    return `${keySpace}___${proto.counter}___${this.width}___${this.height}___${this.props.map((prop) => (this as any)[prop]).join("___")}`;
+    return `${keySpace}___${proto.counter}___${this.width}___${this.height}___${this.props
+      .map((prop) => {
+        const v = (this as any)[prop];
+        if (v instanceof Object) {
+          return JSON.stringify(v);
+        }
+        return v;
+      })
+      .join("___")}`;
   }
 
   get(): IUpdatingCanvas {

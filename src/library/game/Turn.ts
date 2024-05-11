@@ -769,6 +769,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     chits.forEach((chit) => {
       chit.lock(this);
       const lockedState = this.lockedChitStates[chit.id ?? ""];
+
       if (lockedState) {
         chit.deserialize(lockedState, this.findChit);
       } else {

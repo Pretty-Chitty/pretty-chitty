@@ -21,6 +21,7 @@ import { Easing, Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { RootChitRenderInstance } from "./RootChitRenderInstance";
 import { OutlineCanvas } from "../utilities/OutlineCanvas";
 import { outlineGeometry } from "../utilities/OutlineGeometry";
+import { fixBbox } from "../utilities/BboxUtils";
 
 const LINE_COLOR = new MeshBasicMaterial({ color: 0xff0000, wireframe: true, wireframeLinewidth: 2 });
 const CLICK_LINE_COLOR = new MeshBasicMaterial({ color: 0xffff00, wireframe: true, wireframeLinewidth: 2 });
@@ -56,7 +57,7 @@ export class ChitRenderInstance {
   protected centerZ = 0;
 
   protected innateObjectZ = 0;
-  protected innateOrnamentZ = 0;
+  protected innateOrnamentZs: number[] = [];
 
   protected bboxGroup = new Group(); // group storing bounding boxes.  Will not tween.  Usually not visible.
   protected bboxAnchorPoints = new Map<OwnerOriginPosition | string, Group>();
@@ -98,7 +99,6 @@ export class ChitRenderInstance {
     // handle refreshes.
     const cb1 = chit.onChange("deserialized parent", () => {
       try {
-        console.log(this);
         this.refresh();
         this.rootRenderInstance.markHasPendingChange();
       } catch (e) {
@@ -299,7 +299,7 @@ export class ChitRenderInstance {
 
     if (isVisible && this.renderSpec) {
       this.group.remove(this.renderSpec.object);
-      this.group.remove(this.renderSpec.ornament);
+      this.renderSpec.ornaments.forEach((ornament) => this.group.remove(ornament));
     }
 
     // execute the render
@@ -311,7 +311,7 @@ export class ChitRenderInstance {
     }
     this.renderSpec = renderSpec;
     this.innateObjectZ = this.renderSpec.object?.position?.z ?? 0;
-    this.innateOrnamentZ = this.renderSpec.ornament?.position?.z ?? 0;
+    this.innateOrnamentZs = this.renderSpec.ornaments.map((o) => o.position?.z ?? 0);
 
     this.handleHierarchy();
 
@@ -327,7 +327,7 @@ export class ChitRenderInstance {
     // now update ourselves
     if (isVisible) {
       this.group.add(this.renderSpec.object);
-      this.group.add(this.renderSpec.ornament);
+      this.renderSpec.ornaments.forEach((ornament) => this.group.add(ornament));
     }
 
     this.fixObjectPosition();
@@ -458,11 +458,7 @@ export class ChitRenderInstance {
       group.add(m);
     }
 
-    if (this.renderSpec.ornament.visible) {
-      this.renderSpec.ornament.add(group);
-    } else {
-      this.renderSpec.ornament = group;
-    }
+    this.renderSpec.ornaments.push(group);
   }
 
   protected createRenderSpec() {
@@ -515,6 +511,7 @@ export class ChitRenderInstance {
 
     const box3 = new Box3();
     box3.expandByObject(this.renderSpec.object);
+    fixBbox(box3);
     const clickBox3 = box3.clone();
 
     // goofy circumstances where the thing being clicked doesn't have anything to actually highlight - we
@@ -524,17 +521,6 @@ export class ChitRenderInstance {
       this.childrenRenderInstances.forEach((child) => clickBox3.expandByObject(child.bbox));
     } else {
       this.isUsingSyntheticBbox = false;
-    }
-
-    // this is stupid
-    if (!Number.isFinite(box3.max.x)) {
-      box3.max.set(0, 0, 0);
-      box3.min.set(0, 0, 0);
-    }
-
-    if (!Number.isFinite(clickBox3.max.x)) {
-      clickBox3.max.set(0, 0, 0);
-      clickBox3.min.set(0, 0, 0);
     }
 
     this.bbox.renderOrder = 5;
@@ -583,9 +569,12 @@ export class ChitRenderInstance {
     if (this.renderSpec?.object) {
       this.renderSpec.object.position.z = this.sizeZ / 2 + this.innateObjectZ;
     }
-    if (this.renderSpec?.ornament) {
-      this.renderSpec.ornament.position.z = this.sizeZ / 2 + this.innateOrnamentZ;
-    }
+
+    // this.renderSpec?.ornaments.forEach(
+    //   (ornament, index) =>
+    //     (ornament.position.z =
+    //       this.sizeZ / 2 + (Number.isFinite(this.innateOrnamentZs[index]) ? this.innateOrnamentZs[index] : 0)),
+    // );
   }
 
   protected addChild(child: ChitRenderInstance) {
@@ -669,8 +658,8 @@ export class ChitRenderInstance {
         this.sizeY,
         this.sizeZ + this.renderSpec.childrenOffsetZ,
       );
-      targetOffset.x += splay.x * Math.sin(this.renderSpec.rotateZ) + splay.y * Math.cos(this.renderSpec.rotateZ);
-      targetOffset.y += splay.y * Math.sin(this.renderSpec.rotateZ) - splay.x * Math.cos(this.renderSpec.rotateZ);
+      targetOffset.x += splay.x;
+      targetOffset.y -= splay.y;
       targetOffset.z += splay.z;
     }
 

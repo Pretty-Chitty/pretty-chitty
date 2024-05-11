@@ -97,12 +97,10 @@ export class DemoGame implements Game<MyPlayer, Root> {
     pieces[index].tokenList2.add(c2);
     pieces[index].tokenList2.add(c3);
     setup.flush();
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 30; i++) {
       pieces[index].tokenList2.add(new Card2());
       setup.flush();
     }
-
-    const tokenCopies = pieces[index].tokenList2.copy();
 
     // now do 100 turns
     for (let i = 0; i < 100; i++) {
@@ -116,6 +114,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
           let lastPiece: Card | undefined;
 
           const counter = (await turn.rng()) * 3 + 3;
+
           //const counter2 = (await turn.rng()) * 3 + 3;
           // const counter3 = (await turn.rng()) * 3 + 3;
 
@@ -190,13 +189,14 @@ export class DemoGame implements Game<MyPlayer, Root> {
 
   renderDefaultRootChit(spec: ChitRenderSpec): void {
     const scale = { rx: 25, ry: 25 };
-    spec.ornament = new Mesh(
+    const m = new Mesh(
       new PlaneGeometry(100, 100),
       new MeshPhongMaterial({
         map: StaticImage.from(table, scale),
       }),
     );
-    spec.ornament.position.z = -0.02;
+    m.position.z = -0.02;
+    spec.ornaments.push(m);
 
     spec.camera = new CameraSpec();
     spec.camera.padding = 0.1;

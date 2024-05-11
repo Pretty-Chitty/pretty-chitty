@@ -35,13 +35,15 @@ export class BaseTable extends Chit {
     texture.wrapS = RepeatWrapping;
     texture.wrapT = RepeatWrapping;
 
-    spec.ornament = new Mesh(
+    const m = new Mesh(
       new PlaneGeometry(100, 100),
       new MeshPhongMaterial({
         map: texture,
       }),
     );
-    spec.ornament.position.z = -0.02;
+    m.position.z = -0.02;
+
+    spec.ornaments.push(m);
 
     spec.camera = new CameraSpec();
     spec.camera.padding = 0.1;

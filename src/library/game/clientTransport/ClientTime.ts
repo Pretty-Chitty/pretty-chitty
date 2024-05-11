@@ -104,9 +104,6 @@ export class ClientTime extends ConnectionObject {
 
     // make sure nothing changed while we were waiting...
     if (this.clientTimeState.targetClock.value === newTargetClock && currentClock === this.currentClock.value) {
-      this.currentClock.value = result.clockDetails;
-      // console.log(this.currentClock.value);
-
       // first make sure all chits exist (because they may link to each other)
       Object.entries(result.chits).forEach(([id, value]) => {
         let chit = this.chitLookup[id];
@@ -123,6 +120,8 @@ export class ClientTime extends ConnectionObject {
           }
         });
       }
+
+      this.currentClock.value = result.clockDetails;
 
       // now actually load the new state
       const chits = Object.entries(result.chits)

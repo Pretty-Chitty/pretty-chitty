@@ -178,6 +178,8 @@ export function Text({
   font,
   offsetX,
   offsetY,
+  shadowBlur,
+  shadowColor,
   before,
   after,
 }: {
@@ -186,6 +188,8 @@ export function Text({
   fill?: string;
   stroke?: string;
   font?: string;
+  shadowBlur?: number;
+  shadowColor?: string;
   offsetX?: number;
   offsetY?: number;
   before?: ReactNode;
@@ -200,7 +204,7 @@ export function Text({
           after: after ? unwrapCanvasNode(after) : undefined,
           offsetX,
           offsetY,
-          contextOptions: { fillStyle: fill, strokeStyle: stroke, font },
+          contextOptions: { fillStyle: fill, strokeStyle: stroke, font, shadowBlur, shadowColor },
         })
       }
     />

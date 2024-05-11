@@ -10,13 +10,13 @@ function getSplayOrder(key: string, rows: number, columns: number): SplayResults
   const order: SplayResults[] = [];
   for (let row = 0; row < rows; row++) {
     for (let column = 0; column < columns; column++) {
-      order.push({ x: column, y: row, z: row * rows + column });
+      order.push({ x: column - midX, y: row - midY, z: row * rows + column });
     }
   }
 
   order.sort((a, b) => {
-    const d1 = Math.abs(a.x - midX) + Math.abs(a.y - midY);
-    const d2 = Math.abs(b.x - midX) + Math.abs(b.y - midY);
+    const d1 = Math.abs(a.x) + Math.abs(a.y);
+    const d2 = Math.abs(b.x) + Math.abs(b.y);
     if (d1 == d2) {
       return a.z - b.z;
     }
@@ -29,9 +29,11 @@ function getSplayOrder(key: string, rows: number, columns: number): SplayResults
 export class Splay {
   public rows: number = 1;
   public columns: number = 1;
-  public angle: number = 0;
   public enabled: boolean = false;
+  public zSpacingMultiplier: number = 1;
   public spacingMultiplier: number = 1;
+  public itemWidth?: number = undefined;
+  public itemHeight?: number = undefined;
 
   processSplay(childIndex: number, sizeX: number, sizeY: number, sizeZ: number): SplayResults {
     const order = getSplayOrder(`${this.rows}_${this.columns}`, this.rows, this.columns);
@@ -41,7 +43,7 @@ export class Splay {
     return {
       x: sizeX * this.spacingMultiplier * orderItem.x,
       y: sizeY * this.spacingMultiplier * orderItem.y,
-      z: sizeZ * this.spacingMultiplier * zIndex,
+      z: sizeZ * this.zSpacingMultiplier * zIndex,
     };
   }
 }
