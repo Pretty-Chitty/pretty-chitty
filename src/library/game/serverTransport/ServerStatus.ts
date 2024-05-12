@@ -21,5 +21,11 @@ export class ServerStatus<P extends PlayerChit, R extends RootChit<P>> extends C
         this.clientStatus.setErrorMessage(errorMessage);
       }),
     );
+
+    this.register(
+      this.match.result.on((result) => {
+        this.clientStatus.setMatchResult(result?.winners?.map((winner) => winner.id ?? ""));
+      }),
+    );
   }
 }

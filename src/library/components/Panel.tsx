@@ -13,6 +13,7 @@ import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import PanelSpark from "./PanelSpark";
 import { useChit } from "../hooks/useChits";
+import { ZINDEX_PANEL_CUTOUTS, ZINDEX_SPARKS } from "../utilities/zIndex";
 
 const Cutout = `data:image/svg+xml;base64,${base64.encode(
   `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -58,7 +59,7 @@ function ViewerWrapper({
 
   return (
     <>
-      <Stack direction={"row-reverse"} sx={{ position: "absolute", zIndex: 10 }}>
+      <Stack direction={"row-reverse"} sx={{ position: "absolute", zIndex: ZINDEX_SPARKS }}>
         {sparks
           .concat()
           .reverse()
@@ -215,7 +216,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
               onClick={() => setSelectedIndex(index)}
               key={chit.id}
               sx={{
-                zIndex: 3,
+                zIndex: ZINDEX_PANEL_CUTOUTS,
                 cursor: "pointer",
                 height: CUTOUT_HEIGHT,
                 width: CUTOUT_WIDTH,

@@ -15,9 +15,9 @@ import { ServerStatus } from "./serverTransport/ServerStatus";
 import { PlayerChit } from "./PlayerChit";
 
 export class Match<P extends PlayerChit, R extends RootChit<P>> {
-  public result?: GameResult<any>;
   public state: TurnState = new TurnState();
-  public turn = new EventChannel<undefined | Turn<GameResult<any>, P, R>>(undefined);
+  public result = new EventChannel<undefined | GameResult<P>>(undefined);
+  public turn = new EventChannel<undefined | Turn<GameResult<P>, P, R>>(undefined);
   public errorState = new EventChannel<undefined | string>(undefined);
   private onChangeCallbacks: (() => void)[] = [];
 
@@ -65,6 +65,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
+        this.result.value = undefined;
         this.errorState.value = undefined;
         const rootChit = this.game.generateRootChit();
         rootChit.id = "root";
@@ -84,7 +85,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
           }
         });
 
-        this.turn.value = new Turn<GameResult<any>, P, R>(
+        this.turn.value = new Turn<GameResult<P>, P, R>(
           "root",
           this,
           this.state,
@@ -93,7 +94,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         );
         this.turn.value.fixPass();
         this.notify();
-        this.result = await this.turn.value.execute();
+        this.result.value = await this.turn.value.execute();
         break;
       } catch (e) {
         if (e instanceof RerunError) {

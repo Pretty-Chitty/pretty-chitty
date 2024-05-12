@@ -2,6 +2,7 @@ import React, { ReactNode, useEffect, useState } from "react";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { Box, useTheme } from "@mui/material";
 import { ChevronRight } from "@material-ui/icons";
+import { ZINDEX_TOP_BAR_BODY, ZINDEX_TOP_BAR_HEADER } from "../utilities/zIndex";
 
 export default function TopBarDropdown({
   label,
@@ -46,7 +47,7 @@ export default function TopBarDropdown({
           color: theme.barTextColor,
           position: "relative",
           background: theme.barColor,
-          zIndex: 21,
+          zIndex: ZINDEX_TOP_BAR_HEADER,
           lineHeight: `${theme.topBarHeight}px`,
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -54,7 +55,6 @@ export default function TopBarDropdown({
         }}
       >
         {label}
-
         <ChevronRight
           style={{
             position: "absolute",
@@ -77,7 +77,7 @@ export default function TopBarDropdown({
           left: 0,
           right: 0,
           background: theme.barTopDropdownColor,
-          zIndex: 20,
+          zIndex: ZINDEX_TOP_BAR_BODY,
           boxShadow: "3px 3px 30px rgba(0,0,0,0.7)",
           borderBottomRightRadius: 10,
           borderBottomLeftRadius: 10,

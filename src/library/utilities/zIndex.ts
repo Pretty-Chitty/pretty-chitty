@@ -1,0 +1,8 @@
+export const ZINDEX_BOTTOM_BAR_BUTTON_LONG_CLICK = 1;
+export const ZINDEX_BOTTOM_BAR_BUTTON_LABEL = 2;
+export const ZINDEX_PANEL_CUTOUTS = 3;
+export const ZINDEX_SPARKS = 10;
+export const ZINDEX_PROMPT_CONTROLS = 3;
+export const ZINDEX_MATCH_END_DISPLAY = 15;
+export const ZINDEX_TOP_BAR_HEADER = 21;
+export const ZINDEX_TOP_BAR_BODY = 20;

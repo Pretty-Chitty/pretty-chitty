@@ -26,6 +26,9 @@ export class GameTheme {
   public barTopDropdownColor = "#1c092c";
   public barTopLineColor = "rgba(255,255,255,0.1)";
 
+  public endGameBackgroundColor = "#1c092c";
+  public endGameTextColor = "rgba(255,255,255,1)";
+
   public chitHighlightColor = "#66d5c144";
   public chitInnerHighlightColor = "#66d5c1";
 
@@ -51,6 +54,8 @@ export class GameTheme {
     result.fullResetColor = highlight;
     result.barHighlightTextColor = highlight;
     result.barTopDropdownColor = Color(primaryColor).lighten(0.1).alpha(0.9).hexa();
+
+    result.endGameBackgroundColor = result.barTopDropdownColor;
     return result;
   }
 }

@@ -12,6 +12,7 @@ import { Chit } from "../game/Chit";
 import useSize from "@react-hook/size";
 import TopBar from "./TopBar";
 import { useEventChannelState } from "../hooks/useEventChannelState";
+import { MatchEndDisplay } from "./MatchEndDisplay";
 
 function generateTheme(game: Game<any, any>) {
   console.log(game); // gets rid of warning? weird.
@@ -70,8 +71,11 @@ function InnerMatchViewer() {
   return (
     <Stack sx={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
       <TopBar />
-      {!errorMessage && rootChit && <PanelContents rootChit={rootChit} />}
-      {errorMessage && <Box flex={1}>{errorMessage}</Box>}
+      <Box flex={1} style={{ display: "flex", position: "relative" }}>
+        <MatchEndDisplay />
+        {!errorMessage && rootChit && <PanelContents rootChit={rootChit} />}
+        {errorMessage}
+      </Box>
       <BottomBar />
     </Stack>
   );

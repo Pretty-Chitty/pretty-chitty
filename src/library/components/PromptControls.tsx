@@ -9,6 +9,7 @@ import { useClientPrompts, useTimeState } from "../hooks/useTimeController";
 import { usePlayerId } from "../hooks/usePlayer";
 import GameDialog from "./GameDialog";
 import Markdown from "react-markdown";
+import { ZINDEX_PROMPT_CONTROLS } from "../utilities/zIndex";
 
 export default function PromptControls() {
   const [expanded, setExpanded] = useState(false);
@@ -43,7 +44,7 @@ export default function PromptControls() {
       direction="row"
       sx={{
         position: "absolute",
-        zIndex: 3,
+        zIndex: ZINDEX_PROMPT_CONTROLS,
         background: theme.actionBarColor,
         maxWidth: "390px",
         width: "97%",

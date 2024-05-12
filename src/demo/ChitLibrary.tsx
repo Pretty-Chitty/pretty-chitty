@@ -88,7 +88,7 @@ export class Card extends Chit {
       obj.subTitle2 = this.something;
     });
 
-    spec.object = new CardMesh(1, 2, ts.material, ts.material, {
+    spec.object = new CardMesh(1, 2, ts.material, new MeshPhongMaterial({ color: 0xff0000 }), {
       castShadow: true,
       receiveShadow: true,
     });

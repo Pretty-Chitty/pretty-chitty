@@ -103,7 +103,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     }
 
     // now do 100 turns
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 3; i++) {
       rootChit.playerAid.turnCount++;
       players[0].counter.value += Math.round((await setup.rng()) * 10);
       // alternating players
@@ -114,21 +114,6 @@ export class DemoGame implements Game<MyPlayer, Root> {
           let lastPiece: Card | undefined;
 
           const counter = (await turn.rng()) * 3 + 3;
-
-          //const counter2 = (await turn.rng()) * 3 + 3;
-          // const counter3 = (await turn.rng()) * 3 + 3;
-
-          // await turn.pick([
-          //   Chit.pick(rows, async (row) => {
-          //     console.log(row);
-          //   }),
-          // ]);
-
-          // await turn.pick([
-          //   Chit.pick([pieces[0]], async (chit) => {
-          //     console.log(chit);
-          //   }).message("Hey whats up"),
-          // ]);
 
           for (let i = 0; i < counter; i++) {
             await turn.pick([

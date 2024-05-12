@@ -145,7 +145,7 @@ export default function TopBarPlayers() {
               overflow: "hidden",
             }}
           >
-            {message}
+            {message?.length > 0 ? message : <>&nbsp;</>}
           </Typography>
         </Stack>
       }

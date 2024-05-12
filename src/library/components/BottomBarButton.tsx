@@ -5,6 +5,11 @@ import { LongPressEventType, useLongPress } from "use-long-press";
 import useHover from "@react-hook/hover";
 import { OverridableComponent } from "@mui/material/OverridableComponent";
 import { useInterval } from "react-interval-hook";
+import {
+  ZINDEX_BOTTOM_BAR,
+  ZINDEX_BOTTOM_BAR_BUTTON_LABEL,
+  ZINDEX_BOTTOM_BAR_BUTTON_LONG_CLICK,
+} from "../utilities/zIndex";
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export type BottomBarButtonIcon = OverridableComponent<SvgIconTypeMap<{}, "svg">> & { muiName: string };
@@ -137,7 +142,7 @@ export default function BottomBarButton({
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 1,
+            zIndex: ZINDEX_BOTTOM_BAR_BUTTON_LONG_CLICK,
             borderRadius: "200px",
             position: "absolute",
             transition: `transform ease-out ${isPressed ? LONG_PRESS_SECONDS : 0.1}s`,
@@ -146,7 +151,7 @@ export default function BottomBarButton({
           }}
         />
       )}
-      <Stack sx={{ position: "relative", zIndex: 2, height: "100%" }}>
+      <Stack sx={{ position: "relative", zIndex: ZINDEX_BOTTOM_BAR_BUTTON_LABEL, height: "100%" }}>
         <Box flex={1} />
         <Box sx={{ fontSize: "30px", lineHeight: "30px", height: "30px", textAlign: "center" }}>
           <IconType fontSize="inherit" />

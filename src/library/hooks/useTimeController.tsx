@@ -73,7 +73,7 @@ export function TimeControllerProvider({ children }: { children: ReactNode }) {
       const cp = new ClientPrompts(playerId, connection, newClientTime);
       connection.register(cp);
 
-      const cs = new ClientStatus(connection);
+      const cs = new ClientStatus(match, connection);
       connection.register(cs);
 
       if (clientTime) {
