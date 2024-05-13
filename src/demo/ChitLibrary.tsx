@@ -30,8 +30,7 @@ import { TestStack2 } from "./TestStack2";
 import { PlayerAid } from "./PlayerAid";
 import { cityscape, cityscape2 } from "./assets/network_overload";
 import { Ordered } from "../library/utilities/Annotations";
-import { CounterStack } from "./CanvasLibrary";
-import { CardGeometry, CardMesh } from "../library/utilities/CardMesh";
+import { CardMesh } from "../library/utilities/CardMesh";
 
 export * from "../library/utilities/BaseTable";
 

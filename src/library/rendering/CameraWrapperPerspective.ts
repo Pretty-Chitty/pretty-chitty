@@ -180,7 +180,8 @@ export class CameraWrapperPerspective {
 
     let distance = Math.max(
       this.cameraSpec.minCameraDistance,
-      Math.max(distanceX, distanceY) + (this.bbox.max.z - this.bbox.min.z),
+      Math.max(distanceX, distanceY)
+      // + (this.bbox.max.z - this.bbox.min.z),
     );
 
     this.wiggleRoomX = (1 - (Math.atan(gameHalfWidth / distance) * 2) / fovRadsX) * this.width;

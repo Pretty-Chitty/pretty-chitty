@@ -5,11 +5,7 @@ import { LongPressEventType, useLongPress } from "use-long-press";
 import useHover from "@react-hook/hover";
 import { OverridableComponent } from "@mui/material/OverridableComponent";
 import { useInterval } from "react-interval-hook";
-import {
-  ZINDEX_BOTTOM_BAR,
-  ZINDEX_BOTTOM_BAR_BUTTON_LABEL,
-  ZINDEX_BOTTOM_BAR_BUTTON_LONG_CLICK,
-} from "../utilities/zIndex";
+import { ZINDEX_BOTTOM_BAR_BUTTON_LABEL, ZINDEX_BOTTOM_BAR_BUTTON_LONG_CLICK } from "../utilities/zIndex";
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export type BottomBarButtonIcon = OverridableComponent<SvgIconTypeMap<{}, "svg">> & { muiName: string };

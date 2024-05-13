@@ -15,7 +15,7 @@ export class CardMesh extends Group {
 
     const face2 = new PlaneGeometry(width, height);
     face2.rotateY(Math.PI);
-    face2.translate(0, 0, -(options.zDifference ?? 0.01));
+    face2.translate(0, 0, -(options.zDifference ?? 0.05));
     this.add(new Mesh(face2, back));
 
     if (options.castShadow) {

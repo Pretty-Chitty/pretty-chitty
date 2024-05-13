@@ -22,7 +22,7 @@ export { MatchViewer } from "./components/MatchViewer";
 export type { BottomBarButtonIcon } from "./components/BottomBarButton";
 export { GameDesigner } from "./components/GameDesigner";
 
-export { ChildOutlet, NonEditable } from "./utilities/Annotations";
+export { ChildOutlet, NonEditable, Ordered } from "./utilities/Annotations";
 export { ParameterizedCanvas } from "./utilities/ParameterizedCanvas";
 export { StaticImage } from "./utilities/StaticImage";
 export type { StaticImageOptions } from "./utilities/StaticImage";
@@ -43,6 +43,7 @@ export { CardMesh } from "./utilities/CardMesh";
 
 export { CameraSpec } from "./rendering/CameraSpec";
 export { ChitRenderSpec, OwnerOriginPosition } from "./rendering/ChitRenderSpec";
+export type { SplayCounterOptions } from "./rendering/SplayCounter";
 export { HighlightSpec } from "./rendering/HighlightSpec";
 export { LightSpec, Light } from "./rendering/LightSpec";
 export { Splay } from "./rendering/Splay";
