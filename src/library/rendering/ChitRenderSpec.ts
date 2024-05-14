@@ -105,8 +105,10 @@ export class ChitRenderSpec {
         itemBox3.expandByObject(fakeRenderSpec.object);
         itemWidth = fakeRenderSpec.splay.itemWidth ?? itemBox3.max.x - itemBox3.min.x;
         itemHeight = fakeRenderSpec.splay.itemHeight ?? itemBox3.max.y - itemBox3.min.y;
-        rows = fakeRenderSpec.splay.rows * fakeRenderSpec.splay.spacingMultiplier;
-        columns = fakeRenderSpec.splay.columns * fakeRenderSpec.splay.spacingMultiplier;
+
+        const positionResult = fakeRenderSpec.splay.splayEndPosition(itemWidth, itemHeight, position);
+        offsetX += positionResult.x;
+        offsetY += positionResult.y;
       }
 
       if (!(canvas instanceof ParameterizedCanvas)) {
@@ -137,22 +139,21 @@ export class ChitRenderSpec {
 
       switch (position) {
         case "bottom":
-          offsetY = -((rows / 2) * itemHeight) - h / 2;
+          offsetY -= h / 2;
           break;
         case "top":
-          offsetY = (rows / 2) * itemHeight + h / 2;
+          offsetY += h / 2;
           break;
         case "left":
-          offsetX = -((columns / 2) * itemWidth) - w / 2;
+          offsetX -= w / 2;
           break;
         case "right":
-          offsetX = (columns / 2) * itemWidth + w / 2;
+          offsetX += w / 2;
           break;
       }
 
-      const p = this.outletPositions[ordered.outletName] ?? new Vector3(0,0,0);
+      const p = this.outletPositions[ordered.outletName] ?? new Vector3(0, 0, 0);
       mesh.position.set(p.x + offsetX, p.y + offsetY, box3.max.z - box3.min.z + p.z + 0.001);
-      // mesh.renderOrder = ;
       this.ornaments.push(mesh);
     }
   }

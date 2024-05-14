@@ -146,8 +146,10 @@ export class Card2 extends Chit {
     // spec.rotateZ = Math.PI / 2.5 + (this.something / 360) * (Math.PI * 2) + (this.thingy ? Math.PI : 0);
 
     spec.splay.enabled = true;
-    spec.splay.rows = 2;
-    spec.splay.columns = 5;
+    spec.splay.rows = 5;
+    spec.splay.columnOrientation = "increasing";
+    spec.splay.rowOrientation = "decreasing";
+    spec.splay.columns = 3;
     spec.splay.spacingMultiplier = 1.5;
   }
 }

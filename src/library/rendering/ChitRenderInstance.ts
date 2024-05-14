@@ -431,13 +431,13 @@ export class ChitRenderInstance {
       });
 
       const m1 = new Mesh(planeGeometry, face);
-      m1.position.z = this.clickbox.scale.z + 0.01 - this.sizeZ / 2;
+      m1.position.z = this.clickbox.scale.z + 0.01;
       m1.position.y = this.clickbox.position.y;
       m1.position.x = this.clickbox.position.x;
       group.add(m1);
 
       const m2 = new Mesh(planeGeometry, face);
-      m2.position.z = -0.01 - this.sizeZ / 2;
+      m2.position.z = -0.01;
       m2.position.y = this.clickbox.position.y;
       m2.position.x = this.clickbox.position.x;
       m2.rotateY(Math.PI);
@@ -659,7 +659,7 @@ export class ChitRenderInstance {
         this.sizeZ + this.renderSpec.childrenOffsetZ,
       );
       targetOffset.x += splay.x;
-      targetOffset.y -= splay.y;
+      targetOffset.y += splay.y;
       targetOffset.z += splay.z;
     }
 

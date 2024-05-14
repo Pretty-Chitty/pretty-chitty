@@ -1,12 +1,32 @@
 type SplayResults = { x: number; y: number; z: number };
+export type SplayOrientation = "center" | "decreasing" | "increasing";
+
+function midFromOrientation(max: number, orientation: SplayOrientation) {
+  switch (orientation) {
+    case "center":
+      return (max - 1) / 2;
+    case "decreasing":
+      return max - 1;
+    case "increasing":
+      return 0;
+  }
+}
 
 const splayOrder: { [key: string]: SplayResults[] } = {};
-function getSplayOrder(key: string, rows: number, columns: number): SplayResults[] {
+
+function getSplayOrder(
+  key: string,
+  rows: number,
+  columns: number,
+  rowOrientation: SplayOrientation,
+  columnOrientation: SplayOrientation,
+): SplayResults[] {
   if (splayOrder[key]) {
     return splayOrder[key];
   }
-  const midX = (columns - 1) / 2;
-  const midY = (rows - 1) / 2;
+
+  const midX = midFromOrientation(columns, columnOrientation);
+  const midY = midFromOrientation(rows, rowOrientation);
   const order: SplayResults[] = [];
   for (let row = 0; row < rows; row++) {
     for (let column = 0; column < columns; column++) {
@@ -29,14 +49,27 @@ function getSplayOrder(key: string, rows: number, columns: number): SplayResults
 export class Splay {
   public rows: number = 1;
   public columns: number = 1;
+  public rowOrientation: SplayOrientation = "center";
+  public columnOrientation: SplayOrientation = "center";
+
   public enabled: boolean = false;
   public zSpacingMultiplier: number = 1;
   public spacingMultiplier: number = 1;
   public itemWidth?: number = undefined;
   public itemHeight?: number = undefined;
 
+  private get splayOrder() {
+    return getSplayOrder(
+      `${this.rows}_${this.columns}_${this.rowOrientation}_${this.columnOrientation}`,
+      this.rows,
+      this.columns,
+      this.rowOrientation,
+      this.columnOrientation,
+    );
+  }
+
   processSplay(childIndex: number, sizeX: number, sizeY: number, sizeZ: number): SplayResults {
-    const order = getSplayOrder(`${this.rows}_${this.columns}`, this.rows, this.columns);
+    const order = this.splayOrder;
     const zIndex = Math.floor(childIndex / order.length);
     const orderIndex = childIndex % order.length;
     const orderItem = order[orderIndex];
@@ -45,5 +78,36 @@ export class Splay {
       y: sizeY * this.spacingMultiplier * orderItem.y,
       z: sizeZ * this.zSpacingMultiplier * zIndex,
     };
+  }
+
+  /** @internal */
+  splayEndPosition(
+    itemWidth: number,
+    itemHeight: number,
+    position: "top" | "left" | "right" | "bottom" = "bottom",
+  ): { x: number; y: number } {
+    const counter = this.rows * this.columns;
+
+    let x = 0,
+      y = 0;
+    for (let i = 0; i < counter; i++) {
+      const splayResult = this.processSplay(i, itemWidth, itemHeight, 1);
+      switch (position) {
+        case "top":
+          y = Math.max(splayResult.y + itemHeight / 2, y);
+          break;
+        case "bottom":
+          y = Math.min(splayResult.y - itemHeight / 2, y);
+          break;
+        case "left":
+          x = Math.min(splayResult.x - itemWidth / 2, x);
+          break;
+        case "right":
+          x = Math.max(splayResult.x + itemWidth / 2, x);
+          break;
+      }
+    }
+
+    return { x, y };
   }
 }
