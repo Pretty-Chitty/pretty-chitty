@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Horizontal, Image, Text, Vertical } from "../library/utilities/CanvasStack/ReactCanvas";
+import { Color, Horizontal, Image, Layered, Text, Vertical } from "../library/utilities/CanvasStack/ReactCanvas";
 import { ParameterizedCanvas } from "../library/utilities/ParameterizedCanvas";
 
 import { metropolis } from "./assets/network_overload";
@@ -16,14 +16,18 @@ export class TestStack3 extends ParameterizedCanvas {
   height = 200;
 
   render() {
+    if (this.title.length < 5) {
+      throw "wtf";
+    }
+
     return (
       <Horizontal>
-        <Vertical>
+        <Layered>
           <Text fill="#336" font="17px sans-serif">
             {this.title}????
           </Text>
-          <Image fill image={metropolis} />
-        </Vertical>
+          <Color hex="#ff000033" />
+        </Layered>
         <Image fill image={metropolis} />
       </Horizontal>
     );

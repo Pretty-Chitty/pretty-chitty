@@ -30,3 +30,9 @@ X - splay counter position
   X - IT IS CACHING THE TEXTURE!!!
 
 X - End game display
+
+X - StaticImage.from isn't working
+X - need maximum zoom on chit library
+X - chits removing crashes
+X - color AFTER text is wonky as hell and starts in wrong spot
+X - ENUM SUPPORT is needed or something

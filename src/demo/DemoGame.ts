@@ -177,7 +177,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     const m = new Mesh(
       new PlaneGeometry(100, 100),
       new MeshPhongMaterial({
-        map: StaticImage.from(table, scale),
+        map: StaticImage.texture(table, scale),
       }),
     );
     m.position.z = -0.02;

@@ -23,6 +23,7 @@ import {
   OwnerOriginPosition,
   ChitRenderSpec,
   OrderedOutlet,
+  StaticImage,
 } from "../library";
 
 import { TestStack } from "./TestStack";
@@ -115,7 +116,7 @@ export class Card2 extends Chit {
   public thingy = false;
 
   public override render(spec: ChitRenderSpec): void {
-    const boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
+    const boxGeometry = new BoxGeometry(1, 1, 0.25);
 
     const ts = new TestStack2();
     ts.subTitle = "yo ho ho";
@@ -130,11 +131,12 @@ export class Card2 extends Chit {
       side,
       side,
       side,
-      new MeshPhongMaterial({
-        bumpMap: ts.get().texture,
-        bumpScale: 1,
-        map: ts.get().texture,
-      }),
+      // new MeshPhongMaterial({
+      //   bumpMap: ts.get().texture,
+      //   bumpScale: 1,
+      //   map: ts.get().texture,
+      // }),
+      StaticImage.material(cityscape),
       side,
     ]);
     mesh.castShadow = true;
@@ -150,7 +152,7 @@ export class Card2 extends Chit {
     spec.splay.columnOrientation = "increasing";
     spec.splay.rowOrientation = "decreasing";
     spec.splay.columns = 3;
-    spec.splay.spacingMultiplier = 1.5;
+    spec.splay.spacingMultiplier = 1;
   }
 }
 

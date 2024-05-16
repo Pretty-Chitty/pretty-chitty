@@ -345,6 +345,10 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     prompt.picks = flatPicks;
 
+    if (flatPicks.length === 0) {
+      return;
+    }
+
     const autoresolved = await prompt.autoResolve();
 
     if (!autoresolved) {

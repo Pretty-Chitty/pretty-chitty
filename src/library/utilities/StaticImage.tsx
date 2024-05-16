@@ -1,7 +1,7 @@
 import React from "react";
 import { ParameterizedCanvas } from "./ParameterizedCanvas";
 import { Image } from "./CanvasStack/ReactCanvas";
-import { RepeatWrapping } from "three";
+import { MeshPhongMaterial, RepeatWrapping } from "three";
 import { ImageSpec } from "./CanvasStack/CanvasOperations";
 
 export type StaticImageOptions = {
@@ -23,7 +23,12 @@ export class StaticImage extends ParameterizedCanvas {
     return <Image image={this.image} fill />;
   }
 
-  static from(image: ImageSpec, options?: StaticImageOptions) {
+  static material(image: ImageSpec) {
+    const result = new StaticImage(image);
+    return result.get().material;
+  }
+
+  static texture(image: ImageSpec, options?: StaticImageOptions) {
     const result = new StaticImage(image);
     const texture = result.get().texture;
     if (options) {

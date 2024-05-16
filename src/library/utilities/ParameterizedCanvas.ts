@@ -6,6 +6,7 @@ import { CanvasStack } from "./CanvasStack/CanvasStack";
 import { ObjectWithProps } from "./ObjectWithProps";
 import { NonEditable } from "./Annotations";
 import { unwrapCanvasNode } from "./CanvasStack/ReactCanvas";
+import { LayeredCanvasOperation } from "./CanvasStack/CanvasOperations";
 
 export abstract class ParameterizedCanvas extends ObjectWithProps {
   /** @internal */
@@ -41,8 +42,13 @@ export abstract class ParameterizedCanvas extends ObjectWithProps {
   get(): IUpdatingCanvas {
     const signature = this.signature();
     return ParameterizedCanvas.lu.get(signature, () => {
-      const ops = this.render();
-      return new CanvasStack(this.width, this.height, unwrapCanvasNode(ops));
+      try {
+        const ops = this.render();
+        return new CanvasStack(this.width, this.height, unwrapCanvasNode(ops));
+      } catch (e) {
+        console.error(e);
+        return new CanvasStack(this.width, this.height, new LayeredCanvasOperation([]));
+      }
     });
   }
 

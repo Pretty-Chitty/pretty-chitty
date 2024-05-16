@@ -17,7 +17,7 @@ export class LayeredCanvasOperation extends CanvasOperation {
   }
 
   override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
-    this.layers.forEach((layer) => layer.render(context, bounds, getImage));
+    this.layers.forEach((layer) => layer.render(context, { ...bounds }, getImage));
   }
 }
 

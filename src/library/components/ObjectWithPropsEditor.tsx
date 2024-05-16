@@ -111,9 +111,11 @@ function PropEditor({ entry, obj }: { entry: string; obj: ObjectWithProps }) {
   return null;
 }
 
+const defaultObjWithProps = new ObjectWithProps();
+
 export default function ObjectWithPropsEditor({ obj }: { obj: ObjectWithProps }) {
   if (!obj) {
-    obj = new ObjectWithProps();
+    obj = defaultObjWithProps;
   }
 
   const [targetType, setTargetType] = useState("");

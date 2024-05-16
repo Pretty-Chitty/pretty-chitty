@@ -41,6 +41,11 @@ function Editor({
   const [rootInstance, setRootInstance] = useState<Chit | undefined>();
 
   useEffect(() => {
+    if (!ClassDef) {
+      setInstance(undefined);
+      return;
+    }
+
     const newInstance = new ClassDef();
     setInstance(newInstance);
     return () => newInstance.removeFromParent();
@@ -64,41 +69,45 @@ function Editor({
       return;
     }
 
-    timeState.animationSpeedMultiplier.value = 1;
-    setTimeout(() => rootInstance?.renderInstance?.tweenGroup?.update(Number.MAX_SAFE_INTEGER), 10);
+    try {
+      timeState.animationSpeedMultiplier.value = 1;
+      setTimeout(() => rootInstance?.renderInstance?.tweenGroup?.update(Number.MAX_SAFE_INTEGER), 10);
 
-    const instanceRenderResult = new ChitRenderSpec(instance);
-    instance.render(instanceRenderResult);
-    parentInstance?.add(instance);
-    if (instanceRenderResult.camera || instanceRenderResult.lightSpec) {
-      needsToHaveStageCreated = false;
-    }
-
-    if (parentInstance) {
-      needsToHaveStageCreated = true;
-      const parentRenderResult = new ChitRenderSpec(parentInstance);
-      parentInstance.render(parentRenderResult);
-      if (parentRenderResult.camera || parentRenderResult.lightSpec) {
+      const instanceRenderResult = new ChitRenderSpec(instance);
+      instance.render(instanceRenderResult);
+      parentInstance?.add(instance);
+      if (instanceRenderResult.camera || instanceRenderResult.lightSpec) {
         needsToHaveStageCreated = false;
       }
-    }
 
-    if (needsToHaveStageCreated) {
-      if (!(rootInstance instanceof BT)) {
-        const stage = new BT();
-        stage.add(parentInstance ?? instance);
-        stage.target = instance;
-        stage.parentTarget = parentInstance;
-        setRootInstance(stage);
-      } else {
-        rootInstance.add(parentInstance ?? instance);
-        rootInstance.target = instance;
-        rootInstance.parentTarget = parentInstance;
-        rootInstance.notifyChange("target");
-        rootInstance.notifyChange("parentTarget");
+      if (parentInstance) {
+        needsToHaveStageCreated = true;
+        const parentRenderResult = new ChitRenderSpec(parentInstance);
+        parentInstance.render(parentRenderResult);
+        if (parentRenderResult.camera || parentRenderResult.lightSpec) {
+          needsToHaveStageCreated = false;
+        }
       }
-    } else {
-      setRootInstance(parentInstance ?? instance);
+
+      if (needsToHaveStageCreated) {
+        if (!(rootInstance instanceof BT)) {
+          const stage = new BT();
+          stage.add(parentInstance ?? instance);
+          stage.target = instance;
+          stage.parentTarget = parentInstance;
+          setRootInstance(stage);
+        } else {
+          rootInstance.add(parentInstance ?? instance);
+          rootInstance.target = instance;
+          rootInstance.parentTarget = parentInstance;
+          rootInstance.notifyChange("target");
+          rootInstance.notifyChange("parentTarget");
+        }
+      } else {
+        setRootInstance(parentInstance ?? instance);
+      }
+    } catch (e) {
+      console.error(e);
     }
   }, [timeState, instance, parentInstance, rootInstance, BT]);
 
