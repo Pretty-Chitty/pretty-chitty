@@ -31,6 +31,11 @@ interface Point2d {
   x: number;
   y: number;
 }
+interface Point3d {
+  x: number;
+  y: number;
+  z: number;
+}
 interface PointZ {
   z: number;
 }
@@ -190,9 +195,7 @@ export class ChitRenderInstance {
     let result = this.anchorPoints.get(ownerPosition);
     if (!result) {
       result = new Group();
-      if (!(typeof ownerPosition === "string")) {
-        this.updateGroupPosition(result, ownerPosition);
-      }
+      this.updateGroupPosition(result, ownerPosition);
       this.group.add(result);
       this.anchorPoints.set(ownerPosition, result);
     }
@@ -203,9 +206,7 @@ export class ChitRenderInstance {
     let result = this.bboxAnchorPoints.get(ownerPosition);
     if (!result) {
       result = new Group();
-      if (!(typeof ownerPosition === "string")) {
-        this.updateGroupPosition(result, ownerPosition);
-      }
+      this.updateGroupPosition(result, ownerPosition);
       this.bboxGroup.add(result);
       this.bboxAnchorPoints.set(ownerPosition, result);
     }
@@ -272,6 +273,7 @@ export class ChitRenderInstance {
     this.zOffsetTween.stop();
     this.group.removeFromParent();
     this.bboxGroup.removeFromParent();
+    this.parentRenderInstance?.removeChild(this);
     this.childrenRenderInstances.forEach((child) => {
       if (child.chit.parent === this.chit) {
         child.destroy();
@@ -393,6 +395,7 @@ export class ChitRenderInstance {
       renderSpec.offsetX = intersection.x;
       this.handlePositionAndRotation();
       this.offsetTween.onComplete(() => this.destroy());
+      this.offsetTween = new Tween();
     } else {
       this.destroy();
     }
@@ -431,7 +434,7 @@ export class ChitRenderInstance {
       });
 
       const m1 = new Mesh(planeGeometry, face);
-      m1.position.z = this.clickbox.scale.z + 0.01;
+      m1.position.z = this.clickbox.scale.z + 0.05;
       m1.position.y = this.clickbox.position.y;
       m1.position.x = this.clickbox.position.x;
       group.add(m1);
@@ -493,12 +496,15 @@ export class ChitRenderInstance {
       this.centerZ,
       this.renderSpec?.ownerOrigin,
       this.chit.parentOutlet,
+      this.chit.parentOutletIndex,
+      this.renderSpec?.childrenOffsetZ,
       this.renderSpec?.offsetX,
       this.renderSpec?.offsetY,
       this.renderSpec?.offsetZ,
       this.renderSpec?.rotateX,
       this.renderSpec?.rotateY,
       this.renderSpec?.rotateZ,
+      this.renderSpec?.splay.toString(),
     ].join("___");
   }
 
@@ -511,17 +517,23 @@ export class ChitRenderInstance {
 
     const box3 = new Box3();
     box3.expandByObject(this.renderSpec.object);
-    fixBbox(box3);
     const clickBox3 = box3.clone();
 
     // goofy circumstances where the thing being clicked doesn't have anything to actually highlight - we
     // have to highlight the children (do we care about grandchildren?)
     if (box3.isEmpty() && this.chit.onClick) {
       this.isUsingSyntheticBbox = true;
-      this.childrenRenderInstances.forEach((child) => clickBox3.expandByObject(child.bbox));
+      this.childrenRenderInstances.forEach((child) => {
+        const clone = child.bbox.clone();
+        clone.position.add(child.bboxGroup.position); // the child bbox is relative to its own space...
+        clickBox3.expandByObject(clone);
+      });
     } else {
       this.isUsingSyntheticBbox = false;
     }
+
+    fixBbox(box3);
+    fixBbox(clickBox3);
 
     this.bbox.renderOrder = 5;
     this.sizeX = box3.max.x - box3.min.x;
@@ -533,7 +545,8 @@ export class ChitRenderInstance {
     this.centerZ = this.sizeZ / 2 + box3.min.z;
 
     const newKey = this.positionKey();
-    if (newKey !== this._lastUpdateBoudingBoxKey) {
+    const keyChanged = newKey !== this._lastUpdateBoudingBoxKey;
+    if (keyChanged) {
       this._lastUpdateBoudingBoxKey = newKey;
       this.bbox.scale.set(this.sizeX, this.sizeY, this.sizeZ);
       this.clickbox.scale.set(
@@ -554,14 +567,20 @@ export class ChitRenderInstance {
       this.clickbox.position.x = (clickBox3.max.x - clickBox3.min.x) / 2 + clickBox3.min.x;
       this.clickbox.position.y = (clickBox3.max.y - clickBox3.min.y) / 2 + clickBox3.min.y;
 
-      this.bboxGroup.position.set(this.renderSpec.offsetX, this.renderSpec.offsetY, this.renderSpec.offsetZ);
+      const targetOffset = { x: this.renderSpec.offsetX, y: this.renderSpec.offsetY, z: this.renderSpec.offsetZ };
+
+      this.handleOffsetForSplay(targetOffset);
+
+      this.bboxGroup.position.set(targetOffset.x, targetOffset.y, targetOffset.z);
       this.bboxGroup.rotation.set(this.renderSpec.rotateX, this.renderSpec.rotateY, this.renderSpec.rotateZ);
 
       Object.entries(this.renderSpec.outletPositions).forEach(([key, position]) => {
         this.setOutletPosition(key, new Vector3(position.x, position.y, position.z + this.sizeZ));
       });
 
-      this.notifyBoundingBoxChanged();
+      if (keyChanged) {
+        this.notifyBoundingBoxChanged();
+      }
     }
   }
 
@@ -604,6 +623,7 @@ export class ChitRenderInstance {
           })
           .easing(Easing.Quadratic.In),
       );
+      this.offsetTween = new Tween(); // make sure this is not cancellable
     }
     return this.isDestroying;
   }
@@ -639,6 +659,24 @@ export class ChitRenderInstance {
     }
   }
 
+  private handleOffsetForSplay(p: Point3d) {
+    if (!this.renderSpec) {
+      return;
+    }
+
+    if (this.chit.parentOutlet && this.chit.parentOutletIndex !== undefined && this.renderSpec.splay.enabled) {
+      const splay = this.renderSpec.splay.processSplay(
+        this.chit.parentOutletIndex,
+        this.sizeX,
+        this.sizeY,
+        this.sizeZ + this.renderSpec.childrenOffsetZ,
+      );
+      p.x += splay.x;
+      p.y += splay.y;
+      p.z += splay.z;
+    }
+  }
+
   protected handlePositionAndRotation() {
     if (!this.renderSpec) {
       this.offsetTween.stop();
@@ -651,17 +689,7 @@ export class ChitRenderInstance {
     const targetOffset = { x: this.renderSpec.offsetX, y: this.renderSpec.offsetY, z: this.renderSpec.offsetZ };
     const targetRotation = { x: this.renderSpec.rotateX, y: this.renderSpec.rotateY, z: this.renderSpec.rotateZ };
 
-    if (this.chit.parentOutlet && this.chit.parentOutletIndex !== undefined && this.renderSpec.splay.enabled) {
-      const splay = this.renderSpec.splay.processSplay(
-        this.chit.parentOutletIndex,
-        this.sizeX,
-        this.sizeY,
-        this.sizeZ + this.renderSpec.childrenOffsetZ,
-      );
-      targetOffset.x += splay.x;
-      targetOffset.y += splay.y;
-      targetOffset.z += splay.z;
-    }
+    this.handleOffsetForSplay(targetOffset);
 
     let duration = 0;
     let distanceMoved = 0;

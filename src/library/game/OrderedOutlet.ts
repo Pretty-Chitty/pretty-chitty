@@ -54,7 +54,7 @@ export class OrderedOutlet<C extends Chit> {
   //   return () => {};
   // }
 
-  public copy() {
+  public copy():C[] {
     return this.chits.concat();
   }
 

@@ -6,7 +6,7 @@ export interface ConnectionTransport {
   connected: EventChannel<boolean>;
 }
 
-const LOCAL_LATENCY_SIMULATION = 10;
+const LOCAL_LATENCY_SIMULATION = 50;
 
 export class LocalConnectionTransport implements ConnectionTransport {
   public connected = new EventChannel(false);

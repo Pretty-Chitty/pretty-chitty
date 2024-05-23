@@ -8,7 +8,7 @@ import Playground from "./Playground";
 
 export function GameDesigner({ game }: { game: Game<any, any> }) {
   const [tabIndex, setTabIndex] = useLocalStorageState("selectedMainTab", {
-    defaultValue: 0,
+    defaultValue: 2,
   });
 
   return (

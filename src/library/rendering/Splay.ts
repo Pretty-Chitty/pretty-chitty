@@ -58,6 +58,12 @@ export class Splay {
   public itemWidth?: number = undefined;
   public itemHeight?: number = undefined;
 
+
+  /** @internal */
+  toString() {
+    return `${this.rows} ${this.columns} ${this.rowOrientation} ${this.columnOrientation} ${this.enabled} ${this.zSpacingMultiplier} ${this.spacingMultiplier} ${this.itemWidth} ${this.itemHeight}`;
+  }
+
   private get splayOrder() {
     return getSplayOrder(
       `${this.rows}_${this.columns}_${this.rowOrientation}_${this.columnOrientation}`,
@@ -74,8 +80,8 @@ export class Splay {
     const orderIndex = childIndex % order.length;
     const orderItem = order[orderIndex];
     return {
-      x: sizeX * this.spacingMultiplier * orderItem.x,
-      y: sizeY * this.spacingMultiplier * orderItem.y,
+      x: (this.itemWidth ?? sizeX) * this.spacingMultiplier * orderItem.x,
+      y: (this.itemHeight ?? sizeY) * this.spacingMultiplier * orderItem.y,
       z: sizeZ * this.zSpacingMultiplier * zIndex,
     };
   }

@@ -21,6 +21,7 @@ import { ParameterizedCanvas } from "../utilities/ParameterizedCanvas";
 import { TextOptions } from "../utilities/CanvasStack/CanvasOperations";
 import { Text } from "../utilities/CanvasStack/ReactCanvas";
 import { SplayCounter, SplayCounterOptions } from "./SplayCounter";
+import { fixBbox } from "../utilities/BboxUtils";
 
 // prettier-ignore
 export enum OwnerOriginPosition {
@@ -103,6 +104,7 @@ export class ChitRenderSpec {
 
         const itemBox3 = new Box3();
         itemBox3.expandByObject(fakeRenderSpec.object);
+        fixBbox(itemBox3);
         itemWidth = fakeRenderSpec.splay.itemWidth ?? itemBox3.max.x - itemBox3.min.x;
         itemHeight = fakeRenderSpec.splay.itemHeight ?? itemBox3.max.y - itemBox3.min.y;
 
@@ -136,6 +138,7 @@ export class ChitRenderSpec {
       // this kinda sucks, but maybe isn't so bad?
       const box3 = new Box3();
       box3.expandByObject(this.object);
+      fixBbox(box3);
 
       switch (position) {
         case "bottom":

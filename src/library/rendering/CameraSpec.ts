@@ -5,8 +5,8 @@ export class CameraSpec {
   public targetFov: number = 45;
   public horizontalRadiansRotation: number = 0;
   public verticalRadiansRotation: number = -0.5;
-  public padding: number = 1; // a 0-10 percent
+  public padding: number = 0.25; // a 0-10 percent
   public offsetSpeed: number = 250;
-  public minCameraDistance: number = 1;
+  public minCameraDistance: number = 5;
   public maximumCameraAnimationDuration: number = 750;
 }
