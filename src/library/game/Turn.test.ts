@@ -177,7 +177,7 @@ test("chits get deleted (and unlocked appropriately)", async () => {
       match,
       state,
       async (turn: Turn<any, any, any>) => {
-        expect(c.lockedBy).toEqual(turn);
+        expect(c.currentTurn).toEqual(turn);
         const sub = new FakeChit();
         c.add(sub);
         sub.s1 = `updated s1 again! ${++counter}`;
@@ -189,15 +189,15 @@ test("chits get deleted (and unlocked appropriately)", async () => {
         c.add(sub3);
         sub3.s1 = `updated s1 again again!`;
         sub2.removeFromParent();
-        expect(sub3.lockedBy).toEqual(undefined);
-        expect(sub2.lockedBy).toEqual(undefined);
+        expect(sub3.currentTurn).toEqual(undefined);
+        expect(sub2.currentTurn).toEqual(undefined);
         turn.flush();
-        expect(sub3.lockedBy).toEqual(turn);
-        expect(sub2.lockedBy).toEqual(undefined);
+        expect(sub3.currentTurn).toEqual(turn);
+        expect(sub2.currentTurn).toEqual(undefined);
         sub3.removeFromParent();
-        expect(sub3.lockedBy).toEqual(turn);
+        expect(sub3.currentTurn).toEqual(turn);
         turn.flush();
-        expect(sub3.lockedBy).toEqual(undefined);
+        expect(sub3.currentTurn).toEqual(undefined);
       },
       [c],
     );
@@ -236,28 +236,28 @@ test("single subturn for second player", async () => {
         subsub.s1 = `new subsub`;
         turn.flush();
 
-        expect(c.lockedBy).toEqual(turn);
-        expect(sub.lockedBy).toEqual(turn);
-        expect(subsub.lockedBy).toEqual(turn);
+        expect(c.currentTurn).toEqual(turn);
+        expect(sub.currentTurn).toEqual(turn);
+        expect(subsub.currentTurn).toEqual(turn);
 
         let subsubsub = new FakeChit();
 
         const result = await turn.createTurn<number>([sub], p2, async (subTurn) => {
-          expect(c.lockedBy).toEqual(turn);
-          expect(sub.lockedBy).toEqual(subTurn);
-          expect(subsub.lockedBy).toEqual(subTurn);
+          expect(c.currentTurn).toEqual(turn);
+          expect(sub.currentTurn).toEqual(subTurn);
+          expect(subsub.currentTurn).toEqual(subTurn);
           subsubsub = new FakeChit();
           subsub.add(subsubsub);
-          expect(subsubsub.lockedBy).toEqual(undefined);
+          expect(subsubsub.currentTurn).toEqual(undefined);
           subTurn.flush();
-          expect(subsubsub.lockedBy).toEqual(subTurn);
+          expect(subsubsub.currentTurn).toEqual(subTurn);
           return 1;
         });
 
-        expect(c.lockedBy).toEqual(turn);
-        expect(sub.lockedBy).toEqual(turn);
-        expect(subsub.lockedBy).toEqual(turn);
-        expect(subsubsub.lockedBy).toEqual(turn);
+        expect(c.currentTurn).toEqual(turn);
+        expect(sub.currentTurn).toEqual(turn);
+        expect(subsub.currentTurn).toEqual(turn);
+        expect(subsubsub.currentTurn).toEqual(turn);
 
         return result + 1;
       },

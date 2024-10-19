@@ -1,6 +1,6 @@
 import { NonEditable } from "../utilities/Annotations";
 import { Chit } from "./Chit";
-import { Turn } from "./Turn";
+import { ITurn, Turn } from "./Turn";
 
 export type Stage<T> = {
   type: "draw" | "discard";
@@ -20,7 +20,7 @@ export class GameDeck<T extends Chit> extends Chit {
     return false;
   }
 
-  async draw(turn: Turn<any, any, any>): Promise<T | undefined> {
+  async draw(turn: ITurn): Promise<T | undefined> {
     while (this.isEmpty(this.stages[0])) {
       this.stages.shift();
     }

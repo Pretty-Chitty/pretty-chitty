@@ -13,6 +13,7 @@ export { PlayerChit } from "./game/PlayerChit";
 export { RootChit } from "./game/RootChit";
 export { SparkChit, BagSparkChit } from "./game/SparkChit";
 export { Turn } from "./game/Turn";
+export type {ITurn} from './game/Turn';
 export { PlayerInfo } from "./game/PlayerInfo";
 export type { Stage } from "./game/GameDeck";
 export type { IChitLibrary, GameResult, IButtonLibrary, ICanvasLibrary } from "./game/Game";
