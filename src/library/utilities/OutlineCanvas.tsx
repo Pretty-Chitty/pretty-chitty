@@ -1,13 +1,14 @@
-import React from "react";
-import { Raw } from "./CanvasStack/ReactCanvas";
-import { ParameterizedCanvas } from "./ParameterizedCanvas";
+import React from 'react';
+
+import { Raw } from './CanvasStack/ReactCanvas';
+import { ParameterizedCanvas } from './ParameterizedCanvas';
 
 export class OutlineCanvas extends ParameterizedCanvas {
   radius = 6;
   lineWidth = 6;
   innerLineWidth = 2;
-  outerColor = "#f00";
-  innerColor = "#ff0";
+  outerColor = '#f00';
+  innerColor = '#ff0';
   width = 100;
   height = 100;
   render() {

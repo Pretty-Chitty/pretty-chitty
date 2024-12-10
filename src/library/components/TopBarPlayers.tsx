@@ -1,22 +1,23 @@
-import React from "react";
-import { Box, Stack, Typography } from "@mui/material";
-import TopBarDropdown from "./TopBarDropdown";
-import { useMatch } from "../hooks/useMatch";
-import PlayerImage from "./PlayerImage";
-import { useGameTheme } from "../hooks/useGameTheme";
-import { useChits } from "../hooks/useChits";
-import { PlayerChit } from "../game/PlayerChit";
-import { PlayerPromptStatus } from "../game/PlayerPromptStatus";
-import { SparkChit } from "../game/SparkChit";
-import { UpdatingCanvasImage } from "./UpdatingCanvasImage";
-import { StaticImage } from "../utilities/StaticImage";
+import React from 'react';
+import { Box, Stack, Typography } from '@mui/material';
+
+import TopBarDropdown from './TopBarDropdown';
+import { useMatch } from '../hooks/useMatch';
+import PlayerImage from './PlayerImage';
+import { useGameTheme } from '../hooks/useGameTheme';
+import { useChits } from '../hooks/useChits';
+import { PlayerChit } from '../game/PlayerChit';
+import { PlayerPromptStatus } from '../game/PlayerPromptStatus';
+import { SparkChit } from '../game/SparkChit';
+import { UpdatingCanvasImage } from './UpdatingCanvasImage';
+import { StaticImage } from '../utilities/StaticImage';
 
 function PlayerInfoCell({ spark, size }: { size: number; spark: SparkChit }) {
   const theme = useGameTheme();
   return (
     <Box sx={{ width: `${spark.width}px`, pl: 1, pr: 1, borderRight: `1px solid ${theme.barTopLineColor}` }}>
       <Typography
-        sx={{ fontSize: 14, textOverflow: "ellipsis", overflow: "hidden", textAlign: "right", lineHeight: `${size}px` }}
+        sx={{ fontSize: 14, textOverflow: 'ellipsis', overflow: 'hidden', textAlign: 'right', lineHeight: `${size}px` }}
       >
         {spark.value}
       </Typography>
@@ -31,10 +32,10 @@ function TextPlayerInfoCell({ text, size, width }: { size: number; text: string;
       <Typography
         sx={{
           fontSize: 14,
-          textOverflow: "ellipsis",
-          overflow: "hidden",
-          whiteSpace: "nowrap",
-          textAlign: "left",
+          textOverflow: 'ellipsis',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          textAlign: 'left',
           lineHeight: `${size}px`,
         }}
       >
@@ -64,7 +65,7 @@ function HeaderCell({ spark }: { spark: SparkChit }) {
 function PlayerInfoRow({ headers, player }: { player: PlayerChit; headers?: boolean }) {
   const theme = useGameTheme();
 
-  const sparks = useChits<SparkChit>(player.getSparks("dropdown").map((d) => d.id ?? ""));
+  const sparks = useChits<SparkChit>(player.getSparks('dropdown').map((d) => d.id ?? ''));
 
   const LINE_HEIGHT_RATIO = 0.6;
   const IMAGE_SIZE_RATIO = 0.75;
@@ -103,14 +104,14 @@ function PlayerInfoRow({ headers, player }: { player: PlayerChit; headers?: bool
           mr: 1,
           mt: `${size * ((1 - IMAGE_SIZE_RATIO) / 2)}px`,
           left: 0,
-          position: "sticky",
+          position: 'sticky',
         }}
       />
       {sparks.map((spark) => (
         <PlayerInfoCell size={size} key={spark.id} spark={spark} />
       ))}
       <TextPlayerInfoCell size={size} width={NAME_WIDTH} text={player.name} />
-      <TextPlayerInfoCell size={size} width={PROMPT_WIDTH} text={player.promptStatus.latestPromptMessage ?? ""} />
+      <TextPlayerInfoCell size={size} width={PROMPT_WIDTH} text={player.promptStatus.latestPromptMessage ?? ''} />
     </Stack>
   );
 }
@@ -119,18 +120,18 @@ export default function TopBarPlayers() {
   const theme = useGameTheme();
   const match = useMatch();
   const playerChits = useChits<PlayerChit>(match.players.map((p) => p.id));
-  const promptStatuses = useChits<PlayerPromptStatus>(playerChits.map((p) => p.promptStatus.id ?? ""));
+  const promptStatuses = useChits<PlayerPromptStatus>(playerChits.map((p) => p.promptStatus.id ?? ''));
 
   const playersWithMessages = promptStatuses.filter((p) => p.latestPromptMessage).map((p) => p.parent as PlayerChit);
   const message = promptStatuses
     .map((c) => c.latestPromptMessage)
     .filter((p) => p)
-    .join(", ");
+    .join(', ');
 
   return (
     <TopBarDropdown
       label={
-        <Stack direction={"row"} sx={{ pt: 1, pb: 1, maxWidth: "100%" }}>
+        <Stack direction="row" sx={{ pt: 1, pb: 1, maxWidth: '100%' }}>
           {playersWithMessages.map((player) => (
             <PlayerImage size={theme.topBarHeight - theme.spacing * 2} key={player.id} player={player} />
           ))}
@@ -140,9 +141,9 @@ export default function TopBarPlayers() {
               p: 1,
               lineHeight: 1.8,
               fontSize: 14,
-              whiteSpace: "nowrap",
-              textOverflow: "ellipsis",
-              overflow: "hidden",
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              overflow: 'hidden',
             }}
           >
             {message?.length > 0 ? message : <>&nbsp;</>}

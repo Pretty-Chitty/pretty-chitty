@@ -1,20 +1,20 @@
-import { MismatchError } from "./Turn";
+import { MismatchError } from './Turn';
 
-export type DecisionType = "prompt" | "rng" | "turn";
+export type DecisionType = 'prompt' | 'rng' | 'turn';
 
 export type PromptResponse = {
-  readonly type: "prompt";
+  readonly type: 'prompt';
   response?: any;
   timestamp: Date;
 };
 
-export type RngResponse = { readonly type: "rng"; value: number };
+export type RngResponse = { readonly type: 'rng'; value: number };
 
 export type Decision = PromptResponse | RngResponse | TurnState;
 
 export class TurnState {
-  readonly type = "turn";
-  id = "root";
+  readonly type = 'turn';
+  id = 'root';
   playerId?: string;
   createdDate = Date.now();
 
@@ -23,13 +23,13 @@ export class TurnState {
   public getOrCreatePromptResponse(index: number): PromptResponse {
     if (index < this.decisions.length) {
       const result = this.decisions[index];
-      if (result.type !== "prompt") {
+      if (result.type !== 'prompt') {
         throw new MismatchError();
       }
       return result as PromptResponse;
     } else if (index === this.decisions.length) {
       this.decisions.push({
-        type: "prompt",
+        type: 'prompt',
         timestamp: new Date(),
       });
       return this.decisions[this.decisions.length - 1] as PromptResponse;
@@ -41,14 +41,14 @@ export class TurnState {
   public getOrCreateRng(index: number): number {
     if (index < this.decisions.length) {
       const result = this.decisions[index];
-      if (result.type !== "rng") {
+      if (result.type !== 'rng') {
         throw new MismatchError();
       }
       return (result as RngResponse).value;
     } else if (index === this.decisions.length) {
       const rng = Math.random();
       this.decisions.push({
-        type: "rng",
+        type: 'rng',
         value: rng,
       });
       return rng;
@@ -60,7 +60,7 @@ export class TurnState {
   public getOrCreateTurnState(index: number): TurnState {
     if (index < this.decisions.length) {
       const result = this.decisions[index];
-      if (result.type !== "turn") {
+      if (result.type !== 'turn') {
         throw new MismatchError();
       }
       return result as TurnState;
@@ -76,9 +76,9 @@ export class TurnState {
   public deserialize(serialized: any) {
     this.createdDate = serialized.createdDate ?? Date.now();
     this.decisions = (serialized.decisions ?? []).map((d: Decision, i: number) => {
-      if (d.type === "turn") {
+      if (d.type === 'turn') {
         const existing = this.decisions[i];
-        if (existing?.type === "turn") {
+        if (existing?.type === 'turn') {
           existing.deserialize(d);
         } else {
           const r = new TurnState();
@@ -95,11 +95,11 @@ export class TurnState {
       const lastDecision = this.decisions[i];
       if (!lastDecision) {
         continue;
-      } else if (lastDecision.type === "rng") {
+      } else if (lastDecision.type === 'rng') {
         return false;
-      } else if (lastDecision.type === "prompt") {
+      } else if (lastDecision.type === 'prompt') {
         return true;
-      } else if (lastDecision.type === "turn") {
+      } else if (lastDecision.type === 'turn') {
         const subTurn = lastDecision as TurnState;
         if (subTurn.decisions.length === 0) {
           continue;
@@ -116,15 +116,15 @@ export class TurnState {
 
   public stepBack() {
     if (!this.hasUserMadeChoiceSinceUserContextChangedOrRng(this.decisions.length)) {
-      throw new Error("Cannot step back");
+      throw new Error('Cannot step back');
     }
 
     const lastDecision = this.decisions[this.decisions.length - 1];
     if (!lastDecision) {
-      throw new Error("Cannot step back - no decisions");
+      throw new Error('Cannot step back - no decisions');
     }
 
-    if (lastDecision.type === "turn") {
+    if (lastDecision.type === 'turn') {
       lastDecision.stepBack();
       if (lastDecision.decisions.length > 0) {
         return;
@@ -138,10 +138,10 @@ export class TurnState {
     while (this.hasUserMadeChoiceSinceUserContextChangedOrRng(this.decisions.length)) {
       const lastDecision = this.decisions[this.decisions.length - 1];
       if (!lastDecision) {
-        throw new Error("Cannot step back - no decisions");
+        throw new Error('Cannot step back - no decisions');
       }
 
-      if (lastDecision.type === "turn") {
+      if (lastDecision.type === 'turn') {
         lastDecision.stepBack();
         if (lastDecision.decisions.length > 0) {
           return;

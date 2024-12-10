@@ -120,7 +120,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
               Chit.pick(pieces, async (chit) => {
                 if (!chit.subCard) {
                   chit.tapped = true;
-                  const drawn = await deck.draw(turn);
+                  const drawn = await deck.draw();
 
                   if (drawn) {
                     chit.subCard = drawn;

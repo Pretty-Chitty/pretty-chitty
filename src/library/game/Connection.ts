@@ -1,5 +1,5 @@
-import { ConnectionObject } from "./ConnectionObject";
-import { ConnectionTransport } from "./ConnectionTransport";
+import { ConnectionObject } from './ConnectionObject';
+import { ConnectionTransport } from './ConnectionTransport';
 
 type Message = {
   name: string;
@@ -28,7 +28,7 @@ export class Connection {
     if (isResponse) {
       const { resolve, reject } = this.requestRegistry[requestId];
       if (!resolve) {
-        throw new Error("Cannot find requestId");
+        throw new Error('Cannot find requestId');
       }
 
       if (errorMessage) {
@@ -76,7 +76,7 @@ export class Connection {
       name = Object.getPrototypeOf(instance).constructor.name;
     }
     if (!name) {
-      throw new Error("Name must be specified");
+      throw new Error('Name must be specified');
     }
 
     this.registry[name] = instance;

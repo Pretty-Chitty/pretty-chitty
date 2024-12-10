@@ -1,4 +1,4 @@
-import { EventChannel } from "../utilities/EventChannel";
+import { EventChannel } from '../utilities/EventChannel';
 
 export interface ConnectionTransport {
   sendMessage(message: any): void;
@@ -23,7 +23,7 @@ export class LocalConnectionTransport implements ConnectionTransport {
 
   sendMessage(message: any): void {
     if (!this.connectedTransport) {
-      throw new Error("Not connected");
+      throw new Error('Not connected');
     }
 
     const copied = JSON.parse(JSON.stringify(message));

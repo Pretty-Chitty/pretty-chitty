@@ -1,5 +1,7 @@
 import { Vector3 } from "three";
+
 import { Chit } from "../game/Chit";
+// this was here - i think it was needed to fix import order problems?
 import { OrderedOutlet } from "../game/OrderedOutlet";
 
 const NON_EDITABLE = "NonEditable";
@@ -10,19 +12,31 @@ function annotationToPropName(key: string, category: string) {
 
 function Annotation(category: string) {
   const result = function (cls: any, key: string) {
-    Object.defineProperty(cls, annotationToPropName(key, category), { value: true, enumerable: false });
+    Object.defineProperty(cls, annotationToPropName(key, category), {
+      value: true,
+      enumerable: false,
+    });
   };
   result.__name = category;
   return result;
 }
 
-export function checkAnnotation(obj: any, key: string, annotation: any): boolean {
+export function checkAnnotation(
+  obj: any,
+  key: string,
+  annotation: any
+): boolean {
   return obj[annotationToPropName(key, annotation.__name)] === true;
 }
 
 export const NonEditable = Annotation(NON_EDITABLE);
 
-function addOutletDefinition(outletKey: string, cls: any, key: string, prop: any) {
+function addOutletDefinition(
+  outletKey: string,
+  cls: any,
+  key: string,
+  prop: any
+) {
   if (!cls[outletKey]) {
     Object.defineProperty(cls, outletKey, {
       enumerable: false,
@@ -30,7 +44,8 @@ function addOutletDefinition(outletKey: string, cls: any, key: string, prop: any
     });
   }
   cls[outletKey][key] = prop;
-  return {};
+  return undefined;
+  // return { configurable: true, writable: true, enumerable: true };
 }
 function addOutletPosition(cls: any, key: string, vector: Vector3) {
   const OUTLET_POSITION = "__outletPosition";
@@ -91,50 +106,54 @@ export function FixChildOutlets(instance: Chit) {
   while (obj) {
     obj = Object.getPrototypeOf(obj);
     if (obj?.__childOutlets) {
-      Object.entries(obj.__childOutlets).forEach(([key, prop]: [key: any, prop: any]) => {
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key);
-          let v: Chit | undefined;
-          const set = (newValue: Chit) => {
-            if (newValue !== v) {
-              if (v) {
-                v.removeFromParent();
+      Object.entries(obj.__childOutlets).forEach(
+        ([key, prop]: [key: any, prop: any]) => {
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            let v: Chit | undefined;
+            const set = (newValue: Chit) => {
+              if (newValue !== v) {
+                if (v) {
+                  v.removeFromParent();
+                }
+                v = newValue;
+                if (newValue) {
+                  newValue.setParent(instance, key);
+                }
               }
-              v = newValue;
-              if (newValue) {
-                newValue.setParent(instance, key);
-              }
+            };
+            const get = () => v;
+
+            if (prop?.initializer) {
+              set(prop?.initializer.apply(instance, []));
             }
-          };
-          const get = () => v;
 
-          if (prop?.initializer) {
-            set(prop?.initializer.apply(instance, []));
+            Object.defineProperty(instance, key, {
+              enumerable: true,
+              get,
+              set,
+            });
           }
-
-          Object.defineProperty(instance, key, {
-            enumerable: true,
-            get,
-            set,
-          });
         }
-      });
+      );
     }
 
     if (obj?.__orderedOutlets) {
-      Object.entries(obj.__orderedOutlets).forEach(([key, prop]: [key: any, prop: any]) => {
-        if (!(instance as any)[key]) {
-          const v = prop?.initializer?.apply(instance, []);
-          if (v) {
-            v.outletName = key;
-            v.parent = instance;
+      Object.entries(obj.__orderedOutlets).forEach(
+        ([key, prop]: [key: any, prop: any]) => {
+          if (!(instance as any)[key]) {
+            const v = prop?.initializer?.apply(instance, []);
+            if (v) {
+              v.outletName = key;
+              v.parent = instance;
+            }
+            Object.defineProperty(instance, key, {
+              enumerable: true,
+              value: v,
+            });
           }
-          Object.defineProperty(instance, key, {
-            enumerable: true,
-            value: v,
-          });
         }
-      });
+      );
     }
   }
 }

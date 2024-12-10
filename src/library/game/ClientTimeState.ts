@@ -1,4 +1,4 @@
-import { EventChannel } from "../utilities/EventChannel";
+import { EventChannel } from '../utilities/EventChannel';
 
 export class ClientTimeState {
   public live = new EventChannel<boolean>(true);

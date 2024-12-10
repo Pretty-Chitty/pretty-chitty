@@ -1,13 +1,13 @@
 type SplayResults = { x: number; y: number; z: number };
-export type SplayOrientation = "center" | "decreasing" | "increasing";
+export type SplayOrientation = 'center' | 'decreasing' | 'increasing';
 
 function midFromOrientation(max: number, orientation: SplayOrientation) {
   switch (orientation) {
-    case "center":
+    case 'center':
       return (max - 1) / 2;
-    case "decreasing":
+    case 'decreasing':
       return max - 1;
-    case "increasing":
+    case 'increasing':
       return 0;
   }
 }
@@ -49,15 +49,14 @@ function getSplayOrder(
 export class Splay {
   public rows: number = 1;
   public columns: number = 1;
-  public rowOrientation: SplayOrientation = "center";
-  public columnOrientation: SplayOrientation = "center";
+  public rowOrientation: SplayOrientation = 'center';
+  public columnOrientation: SplayOrientation = 'center';
 
   public enabled: boolean = false;
   public zSpacingMultiplier: number = 1;
   public spacingMultiplier: number = 1;
   public itemWidth?: number = undefined;
   public itemHeight?: number = undefined;
-
 
   /** @internal */
   toString() {
@@ -90,7 +89,7 @@ export class Splay {
   splayEndPosition(
     itemWidth: number,
     itemHeight: number,
-    position: "top" | "left" | "right" | "bottom" = "bottom",
+    position: 'top' | 'left' | 'right' | 'bottom' = 'bottom',
   ): { x: number; y: number } {
     const counter = this.rows * this.columns;
 
@@ -99,16 +98,16 @@ export class Splay {
     for (let i = 0; i < counter; i++) {
       const splayResult = this.processSplay(i, itemWidth, itemHeight, 1);
       switch (position) {
-        case "top":
+        case 'top':
           y = Math.max(splayResult.y + itemHeight / 2, y);
           break;
-        case "bottom":
+        case 'bottom':
           y = Math.min(splayResult.y - itemHeight / 2, y);
           break;
-        case "left":
+        case 'left':
           x = Math.min(splayResult.x - itemWidth / 2, x);
           break;
-        case "right":
+        case 'right':
           x = Math.max(splayResult.x + itemWidth / 2, x);
           break;
       }

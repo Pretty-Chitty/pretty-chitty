@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { TextField, Grid, Checkbox, FormControlLabel, Box, Paper, Typography } from "@mui/material";
-import { ObjectWithProps } from "../utilities/ObjectWithProps";
+import React, { useEffect, useState } from 'react';
+import { TextField, Grid, Checkbox, FormControlLabel, Box, Paper, Typography } from '@mui/material';
+
+import { ObjectWithProps } from '../utilities/ObjectWithProps';
 
 function createEffectProps(obj: ObjectWithProps, entry: string, value: any) {
   return () => {
     if (obj.props.indexOf(entry) >= 0) {
       (obj as any)[entry] = value;
       obj.notifyChange(entry);
-      obj.notifyChange("deserialized");
+      obj.notifyChange('deserialized');
     }
   };
 }
@@ -27,7 +28,7 @@ function TextPropEditor({ entry, obj }: { entry: string; obj: ObjectWithProps })
       label={entry}
       variant="standard"
       type="text"
-      value={value ?? ""}
+      value={value ?? ''}
       onChange={(e) => set(e.target.value)}
     />
   );
@@ -47,7 +48,7 @@ function NumberPropEditor({ entry, obj }: { entry: string; obj: ObjectWithProps 
       label={entry}
       variant="standard"
       type="number"
-      value={value ?? ""}
+      value={value ?? ''}
       onChange={(e) => set(+e.target.value)}
     />
   );
@@ -92,16 +93,16 @@ function PropEditor({ entry, obj }: { entry: string; obj: ObjectWithProps }) {
 
   let ComponentType: undefined | (({ entry, obj }: { entry: string; obj: ObjectWithProps }) => JSX.Element);
 
-  if (typeof value === "number") {
+  if (typeof value === 'number') {
     ComponentType = NumberPropEditor;
   }
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     ComponentType = TextPropEditor;
   }
-  if (typeof value === "boolean") {
+  if (typeof value === 'boolean') {
     ComponentType = BooleanPropEditor;
   }
-  if (entry !== "parent" && value instanceof ObjectWithProps) {
+  if (entry !== 'parent' && value instanceof ObjectWithProps) {
     ComponentType = SubObjectPropEditor;
   }
 
@@ -118,7 +119,7 @@ export default function ObjectWithPropsEditor({ obj }: { obj: ObjectWithProps })
     obj = defaultObjWithProps;
   }
 
-  const [targetType, setTargetType] = useState("");
+  const [targetType, setTargetType] = useState('');
   const [objProps, setObjProps] = useState<string[]>(obj.props);
 
   useEffect(() => {

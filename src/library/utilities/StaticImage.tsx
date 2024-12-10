@@ -1,8 +1,9 @@
-import React from "react";
-import { ParameterizedCanvas } from "./ParameterizedCanvas";
-import { Image } from "./CanvasStack/ReactCanvas";
-import { MeshPhongMaterial, RepeatWrapping } from "three";
-import { ImageSpec } from "./CanvasStack/CanvasOperations";
+import React from 'react';
+import { RepeatWrapping } from 'three';
+
+import { ParameterizedCanvas } from './ParameterizedCanvas';
+import { Image } from './CanvasStack/ReactCanvas';
+import { ImageSpec } from './CanvasStack/CanvasOperations';
 
 export type StaticImageOptions = {
   rx?: number;

@@ -1,21 +1,19 @@
-import { useEffect, useState } from "react";
-import { Chit } from "../game/Chit";
-import { useTimeController } from "./useTimeController";
+import { useEffect, useState } from 'react';
+
+import { Chit } from '../game/Chit';
+import { useTimeController } from './useTimeController';
 
 export function useChits<C extends Chit>(ids: string[]) {
   const time = useTimeController();
   const [result, setResult] = useState<C[]>([]);
 
-  const idString = ids.join("___");
+  const idString = ids.join('___');
 
   useEffect(() => {
     const resultVersions = result.map((r) => r.version);
     return time.currentClock.on(() => {
       const chits = ids.map((id) => time.findChitUnsafe(id) as C).filter((c) => c);
-      if (
-        result.length !== chits.length ||
-        chits.find((el, i) => el !== result[i] || el.version !== resultVersions[i])
-      ) {
+      if (result.length !== chits.length || chits.find((el, i) => el !== result[i] || el.version !== resultVersions[i])) {
         setResult(chits);
       }
     });

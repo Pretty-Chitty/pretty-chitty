@@ -1,14 +1,15 @@
-import { Box, Stack, SvgIconTypeMap, Typography } from "@mui/material";
-import React, { useCallback, useRef, useState } from "react";
-import { useGameTheme } from "../hooks/useGameTheme";
-import { LongPressEventType, useLongPress } from "use-long-press";
-import useHover from "@react-hook/hover";
-import { OverridableComponent } from "@mui/material/OverridableComponent";
-import { useInterval } from "react-interval-hook";
-import { ZINDEX_BOTTOM_BAR_BUTTON_LABEL, ZINDEX_BOTTOM_BAR_BUTTON_LONG_CLICK } from "../utilities/zIndex";
+import { Box, Stack, SvgIconTypeMap, Typography } from '@mui/material';
+import React, { useCallback, useRef, useState } from 'react';
+import { LongPressEventType, useLongPress } from 'use-long-press';
+import useHover from '@react-hook/hover';
+import { OverridableComponent } from '@mui/material/OverridableComponent';
+import { useInterval } from 'react-interval-hook';
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-export type BottomBarButtonIcon = OverridableComponent<SvgIconTypeMap<{}, "svg">> & { muiName: string };
+import { useGameTheme } from '../hooks/useGameTheme';
+import { ZINDEX_BOTTOM_BAR_BUTTON_LABEL, ZINDEX_BOTTOM_BAR_BUTTON_LONG_CLICK } from '../utilities/zIndex';
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export type BottomBarButtonIcon = OverridableComponent<SvgIconTypeMap<{}, 'svg'>> & { muiName: string };
 
 export default function BottomBarButton({
   icon,
@@ -59,7 +60,9 @@ export default function BottomBarButton({
   const bind = useLongPress(
     () => {
       // long press done!
-      onLongClick && onLongClick();
+      if (onLongClick) {
+        onLongClick();
+      }
     },
     {
       onStart: () => {
@@ -119,16 +122,16 @@ export default function BottomBarButton({
       }}
       {...bind()}
       sx={{
-        position: "relative",
+        position: 'relative',
         top: isPressed ? 1 : 0,
         left: isPressed ? 1 : 0,
-        userSelect: "none",
-        cursor: !disabled ? "pointer" : undefined,
+        userSelect: 'none',
+        cursor: !disabled ? 'pointer' : undefined,
         p: 1,
-        height: "100%",
+        height: '100%',
         textShadow: textShadowColor && `0 0 4px ${textShadowColor}`,
         color,
-        transition: "color linear 0.25s, left linear 0.05s, top linear 0.05s",
+        transition: 'color linear 0.25s, left linear 0.05s, top linear 0.05s',
       }}
     >
       {onLongClick && (
@@ -139,21 +142,21 @@ export default function BottomBarButton({
             right: 0,
             bottom: 0,
             zIndex: ZINDEX_BOTTOM_BAR_BUTTON_LONG_CLICK,
-            borderRadius: "200px",
-            position: "absolute",
+            borderRadius: '200px',
+            position: 'absolute',
             transition: `transform ease-out ${isPressed ? LONG_PRESS_SECONDS : 0.1}s`,
-            transform: isPressed ? "scale(1.1)" : "scale(0)",
+            transform: isPressed ? 'scale(1.1)' : 'scale(0)',
             top: 0,
           }}
         />
       )}
-      <Stack sx={{ position: "relative", zIndex: ZINDEX_BOTTOM_BAR_BUTTON_LABEL, height: "100%" }}>
+      <Stack sx={{ position: 'relative', zIndex: ZINDEX_BOTTOM_BAR_BUTTON_LABEL, height: '100%' }}>
         <Box flex={1} />
-        <Box sx={{ fontSize: "30px", lineHeight: "30px", height: "30px", textAlign: "center" }}>
+        <Box sx={{ fontSize: '30px', lineHeight: '30px', height: '30px', textAlign: 'center' }}>
           <IconType fontSize="inherit" />
         </Box>
         {!removeLabel && (
-          <Typography sx={{ textAlign: "center", mt: 0.5, fontSize: 12 }}>{label ?? "\u00a0"}</Typography>
+          <Typography sx={{ textAlign: 'center', mt: 0.5, fontSize: 12 }}>{label ?? '\u00a0'}</Typography>
         )}
         <Box flex={1} />
       </Stack>

@@ -1,10 +1,10 @@
-import { Connection } from "../Connection";
-import { ConnectionObject } from "../ConnectionObject";
-import { Match } from "../Match";
-import { PlayerChit } from "../PlayerChit";
-import { PromptSerialization } from "../Prompt";
-import { RootChit } from "../RootChit";
-import { ClientPrompts } from "../clientTransport/ClientPrompts";
+import { Connection } from '../Connection';
+import { ConnectionObject } from '../ConnectionObject';
+import { Match } from '../Match';
+import { PlayerChit } from '../PlayerChit';
+import { PromptSerialization } from '../Prompt';
+import { RootChit } from '../RootChit';
+import { ClientPrompts } from '../clientTransport/ClientPrompts';
 
 export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends ConnectionObject {
   private clientPrompts: ClientPrompts<P, R>;
@@ -15,7 +15,7 @@ export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
   ) {
     super();
 
-    this.clientPrompts = this.connection.get<ClientPrompts<P, R>>("ClientPrompts");
+    this.clientPrompts = this.connection.get<ClientPrompts<P, R>>('ClientPrompts');
 
     // I HATE THIS
     // but it's fine? maybe?
@@ -29,11 +29,7 @@ export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
           if (newTurn) {
             unsubs = newTurn.rootChit.players.map((player) =>
               player.promptStatus.latestPrompt.on((latestPrompt) =>
-                this.clientPrompts.setPromptForPlayer(
-                  player.playerId,
-                  latestPrompt?.serialize(),
-                  this.match.turn.value?.clockDetails,
-                ),
+                this.clientPrompts.setPromptForPlayer(player.playerId, latestPrompt?.serialize(), this.match.turn.value?.clockDetails),
               ),
             );
           }
@@ -67,7 +63,7 @@ export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
     }
   }
 
-  async stepBackPrompt(fullReset: boolean = false) {
+  stepBackPrompt(fullReset: boolean = false) {
     const player = this.playerChits?.find((p) => p.playerId === this.playerId);
     if (player && player.promptStatus.latestPrompt.value && player.promptStatus.latestPrompt.value.canReset) {
       player.promptStatus.latestPrompt.value.stepBack(fullReset);

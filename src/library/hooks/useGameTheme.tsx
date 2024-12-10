@@ -1,5 +1,6 @@
-import React, { useContext, createContext, ReactNode } from "react";
-import { GameTheme as Theme } from "../game/GameTheme";
+import React, { useContext, createContext, ReactNode } from 'react';
+
+import { GameTheme as Theme } from '../game/GameTheme';
 
 const ThemeContext = createContext<Theme>(new Theme());
 

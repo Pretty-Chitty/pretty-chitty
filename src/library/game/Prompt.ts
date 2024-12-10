@@ -1,10 +1,10 @@
-import { Chit } from "./Chit";
-import { IButtonLibrary } from "./Game";
-import { Confirm, GameButton } from "./GameButton";
-import { ButtonPick, Pick } from "./Pick";
-import { MismatchError, Turn } from "./Turn";
+import { Chit } from './Chit';
+import { IButtonLibrary } from './Game';
+import { Confirm, GameButton } from './GameButton';
+import { ButtonPick, Pick } from './Pick';
+import { MismatchError, Turn } from './Turn';
 
-type PromptType = "SelectPrompt" | "ConfirmPrompt" | "PickPrompt";
+type PromptType = 'SelectPrompt' | 'ConfirmPrompt' | 'PickPrompt';
 
 export type PromptSerialization = {
   type: PromptType;
@@ -13,13 +13,13 @@ export type PromptSerialization = {
 };
 
 const defaultFindChit: FindChit = () => {
-  throw new Error("NOT SET");
+  throw new Error('NOT SET');
 };
 
 type FindChit = (id: string) => Chit;
 
 export abstract class Prompt {
-  public id = "";
+  public id = '';
   public resolved = false;
   public clock = 0;
   public response: any;
@@ -63,7 +63,7 @@ export abstract class Prompt {
 
   stepBack(fullReset: boolean = false) {
     if (!this.canReset) {
-      throw new Error("Cannot be stepped back");
+      throw new Error('Cannot be stepped back');
     }
     this.resolved = true;
     this.shouldReset = fullReset;
@@ -79,11 +79,11 @@ export abstract class Prompt {
   abstract stageOut(): void;
 
   public get message() {
-    return "Message";
+    return 'Message';
   }
 
   public get help(): string {
-    return "";
+    return '';
   }
 
   public formatHelpText() {
@@ -97,11 +97,11 @@ export abstract class Prompt {
   public static deserialize(prompt: PromptSerialization, findChit: FindChit, buttonLibrary: IButtonLibrary): Prompt {
     let p: Prompt | undefined = undefined;
     switch (prompt.type) {
-      case "SelectPrompt": {
+      case 'SelectPrompt': {
         p = new SelectPrompt();
         break;
       }
-      case "PickPrompt": {
+      case 'PickPrompt': {
         p = new PickPrompt();
         break;
       }
@@ -119,7 +119,7 @@ export abstract class Prompt {
 }
 
 export class SelectPrompt extends Prompt {
-  type: PromptType = "SelectPrompt";
+  type: PromptType = 'SelectPrompt';
 
   public chits: Chit[] = [];
   public selectedChit: Chit | undefined;
@@ -152,7 +152,7 @@ export class SelectPrompt extends Prompt {
 type PickResolution = { idx: number; value: any };
 
 export class PickPrompt extends Prompt {
-  type: PromptType = "PickPrompt";
+  type: PromptType = 'PickPrompt';
 
   private _message?: string;
   private _help?: string;
@@ -168,7 +168,7 @@ export class PickPrompt extends Prompt {
     return this.picks
       .map((p) => p.messageContents)
       .filter((d) => d)
-      .join(" or ");
+      .join(' or ');
   }
 
   override get help() {
@@ -179,7 +179,7 @@ export class PickPrompt extends Prompt {
     return this.picks
       .map((p) => p.helpContents)
       .filter((d) => d)
-      .join("\n\nor\n\n");
+      .join('\n\nor\n\n');
   }
 
   async autoResolve(): Promise<boolean> {

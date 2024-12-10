@@ -1,12 +1,12 @@
-import { EventChannel } from "../../utilities/EventChannel";
-import { ClockDetails } from "../ClockDetails";
-import { Connection } from "../Connection";
-import { ConnectionObject } from "../ConnectionObject";
-import { PlayerChit } from "../PlayerChit";
-import { Prompt, PromptSerialization } from "../Prompt";
-import { RootChit } from "../RootChit";
-import { ServerPrompts } from "../serverTransport/ServerPrompts";
-import { ClientTime } from "./ClientTime";
+import { EventChannel } from '../../utilities/EventChannel';
+import { ClockDetails } from '../ClockDetails';
+import { Connection } from '../Connection';
+import { ConnectionObject } from '../ConnectionObject';
+import { PlayerChit } from '../PlayerChit';
+import { Prompt, PromptSerialization } from '../Prompt';
+import { RootChit } from '../RootChit';
+import { ServerPrompts } from '../serverTransport/ServerPrompts';
+import { ClientTime } from './ClientTime';
 
 export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends ConnectionObject {
   private waitingPrompts: { [playerId: string]: EventChannel<PromptSerialization | undefined> } = {};
@@ -17,12 +17,12 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
 
   constructor(
     private playerId: string,
-    private connection: Connection,
+    connection: Connection,
     private clientTime: ClientTime,
   ) {
     super();
 
-    this.serverPrompts = connection.get<ServerPrompts<P, R>>("ServerPrompts");
+    this.serverPrompts = connection.get<ServerPrompts<P, R>>('ServerPrompts');
     this.register(this.clientTime.currentClock.on(this.checkIfPromptCanBeInflated.bind(this)));
     this.register(this.clientTime.maxClock.on(this.checkIfPromptCanBeInflated.bind(this)));
     this.register(this.clientTime.clientTimeState.live.on(this.checkIfPromptCanBeInflated.bind(this)));
@@ -69,7 +69,7 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
 
   public async setPromptForPlayer(playerId: string, prompt?: PromptSerialization, clockDetails?: ClockDetails) {
     if (clockDetails) {
-      this.clientTime.newMaxClock(clockDetails);
+      await this.clientTime.newMaxClock(clockDetails);
     }
     this.getPromptEventChannelForPlayer(playerId).value = prompt;
   }

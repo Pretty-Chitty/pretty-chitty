@@ -1,4 +1,4 @@
-import nextTick from "next-tick";
+import nextTick from 'next-tick';
 
 export class EventChannel<T> {
   private cbs: ((t: T) => void)[] = [];

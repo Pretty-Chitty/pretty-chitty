@@ -1,11 +1,11 @@
-import { Chit } from "./Chit";
-import { IButtonLibrary } from "./Game";
-import { Confirm, GameButton } from "./GameButton";
-import { PickPrompt } from "./Prompt";
-import { MismatchError, Turn } from "./Turn";
+import { Chit } from './Chit';
+import { IButtonLibrary } from './Game';
+import { Confirm, GameButton } from './GameButton';
+import { PickPrompt } from './Prompt';
+import { MismatchError, Turn } from './Turn';
 
 export type FindChit = (id: string) => Chit;
-export type PickType = "ChitPick" | "ButtonPick";
+export type PickType = 'ChitPick' | 'ButtonPick';
 export type PickSerialization = {
   type: PickType;
   message?: string;
@@ -21,9 +21,8 @@ export abstract class Pick {
   /** @internal */
   abstract get type(): PickType;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   /** @internal */
-  confirmLock(turn: Turn<any, any, any>) {
+  confirmLock(_turn: Turn<any, any, any>) {
     // do nothing
   }
 
@@ -71,11 +70,11 @@ export abstract class Pick {
   public static deserialize(pick: PickSerialization, findChit: FindChit, buttonLibrary: IButtonLibrary): Pick {
     let p: Pick | undefined = undefined;
     switch (pick.type) {
-      case "ChitPick": {
+      case 'ChitPick': {
         p = new ChitPick();
         break;
       }
-      case "ButtonPick": {
+      case 'ButtonPick': {
         p = new ButtonPick();
         break;
       }
@@ -94,22 +93,38 @@ export abstract class Pick {
 
 export class ChitPick<T extends Chit> extends Pick {
   /** @internal */
-  type: PickType = "ChitPick";
+  type: PickType = 'ChitPick';
 
   /** @internal */
   public chits: T[] = [];
+
+  /** @internal */
+  public focusChits: Chit[] = [];
 
   /** @internal */
   public cb: (chit: T) => void | Promise<void> = () => {};
 
   /** @internal */
   serializeDetails() {
-    return this.chits.map((chit) => chit.id);
+    return {
+      c: this.chits.map((chit) => chit.id),
+      f: this.focusChits.map((chit) => chit.id),
+    };
+  }
+
+  focus(chit: Chit | Chit[]) {
+    if (Array.isArray(chit)) {
+      this.focusChits.push(...chit);
+    } else {
+      this.focusChits.push(chit);
+    }
+    return this;
   }
 
   /** @internal */
-  deserializeDetails(chitIds: string[], findChit: FindChit): void {
-    this.chits = chitIds.map((chitId) => findChit(chitId) as T).filter((d) => d);
+  deserializeDetails({ c, f }: { c: string[]; f: string[] }, findChit: FindChit): void {
+    this.chits = c.map((chitId) => findChit(chitId) as T).filter((d) => d);
+    this.focusChits = f.map((chitId) => findChit(chitId) as T).filter((d) => d);
   }
 
   /** @internal */
@@ -124,6 +139,9 @@ export class ChitPick<T extends Chit> extends Pick {
   /** @internal */
   stageIn(prompt: PickPrompt) {
     this.chits.forEach((c) => (c.onClick = () => prompt.resolvePick(this, c.id)));
+
+    // show it?
+    this.focusChits.forEach((c) => c.renderInstance?.rootRenderInstance.markHasChitsEntering());
   }
 
   /** @internal */
@@ -149,7 +167,7 @@ export class ChitPick<T extends Chit> extends Pick {
 
 export class ButtonPick extends Pick {
   /** @internal */
-  type: PickType = "ButtonPick";
+  type: PickType = 'ButtonPick';
 
   public button?: GameButton;
 
@@ -171,7 +189,7 @@ export class ButtonPick extends Pick {
   /** @internal */
   serializeDetails() {
     if (!this.button) {
-      throw new Error("Cannot resolve without a button defined");
+      throw new Error('Cannot resolve without a button defined');
     }
 
     const details = this.button.serialize();
@@ -180,7 +198,7 @@ export class ButtonPick extends Pick {
   }
 
   /** @internal */
-  deserializeDetails(state: any, findChit: FindChit, buttonLibrary: IButtonLibrary) {
+  deserializeDetails(state: any, _findChit: FindChit, buttonLibrary: IButtonLibrary) {
     const HARDCODED_BUTTON_LIBRARY: { [id: string]: new () => GameButton } = { Confirm };
     const buttonType = state.__buttonType;
     const ButtonType = buttonLibrary[buttonType] ?? HARDCODED_BUTTON_LIBRARY[buttonType];
@@ -194,7 +212,7 @@ export class ButtonPick extends Pick {
   /** @internal */
   resolveDetails() {
     if (!this.button) {
-      throw new Error("Cannot resolve without a button defined");
+      throw new Error('Cannot resolve without a button defined');
     }
     return Promise.resolve(this.button && this.button.cb && this.button.cb());
   }

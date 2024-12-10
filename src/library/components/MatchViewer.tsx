@@ -1,24 +1,24 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useGame } from "../hooks/useGame";
-import { Box, Stack, ThemeProvider, createTheme } from "@mui/material";
-import { TimeControllerProvider, useClientStatus, useTimeController } from "../hooks/useTimeController";
-import BottomBar from "./BottomBar";
-import { GameThemeProvider, useGameTheme } from "../hooks/useGameTheme";
-import { Game } from "../game/Game";
+import React, { useEffect, useRef, useState } from 'react';
+import { Box, Stack, ThemeProvider, createTheme } from '@mui/material';
+import useSize from '@react-hook/size';
+import '@fontsource/raleway/400.css';
 
-import "@fontsource/raleway/400.css";
-import Panel from "./Panel";
-import { Chit } from "../game/Chit";
-import useSize from "@react-hook/size";
-import TopBar from "./TopBar";
-import { useEventChannelState } from "../hooks/useEventChannelState";
-import { MatchEndDisplay } from "./MatchEndDisplay";
+import { useGame } from '../hooks/useGame';
+import { TimeControllerProvider, useClientStatus, useTimeController } from '../hooks/useTimeController';
+import BottomBar from './BottomBar';
+import { GameThemeProvider, useGameTheme } from '../hooks/useGameTheme';
+import { Game } from '../game/Game';
+import Panel from './Panel';
+import { Chit } from '../game/Chit';
+import TopBar from './TopBar';
+import { useEventChannelState } from '../hooks/useEventChannelState';
+import { MatchEndDisplay } from './MatchEndDisplay';
 
 function generateTheme(game: Game<any, any>) {
   console.log(game); // gets rid of warning? weird.
   const theme = createTheme({
     typography: {
-      fontFamily: ["Raleway", "sans-serif"].join(","),
+      fontFamily: ['Raleway', 'sans-serif'].join(','),
     },
   });
 
@@ -32,7 +32,7 @@ function PanelContents({ rootChit }: { rootChit: Chit }) {
   return (
     <Box
       sx={{
-        position: "relative",
+        position: 'relative',
         flex: 1,
         p: 1,
         background: `${theme.backgroundColor} linear-gradient(${theme.backgroundGradientAngle}deg, rgba(255,255,255,${theme.backgroundGradientPercent}) 0%, rgba(0,0,0,${theme.backgroundGradientPercent}) 100%)`,
@@ -41,9 +41,9 @@ function PanelContents({ rootChit }: { rootChit: Chit }) {
       <Box
         ref={ref}
         sx={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
+          position: 'relative',
+          width: '100%',
+          height: '100%',
         }}
       >
         <Panel chit={rootChit} x={0} y={0} w={width} h={height} />
@@ -69,9 +69,9 @@ function InnerMatchViewer() {
   );
 
   return (
-    <Stack sx={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
+    <Stack sx={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
       <TopBar />
-      <Box flex={1} style={{ display: "flex", position: "relative" }}>
+      <Box flex={1} style={{ display: 'flex', position: 'relative' }}>
         <MatchEndDisplay />
         {!errorMessage && rootChit && <PanelContents rootChit={rootChit} />}
         {errorMessage}

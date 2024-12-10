@@ -1,7 +1,8 @@
-import { Texture, UVMapping, ClampToEdgeWrapping, LinearFilter, MeshPhongMaterial, Material } from "three";
-import { IUpdatingCanvas } from "../IUpdatingCanvas";
-import { CanvasOperation } from "./CanvasOperations";
-import { ImageResult, ImageCache } from "./ImageCache";
+import { Texture, UVMapping, ClampToEdgeWrapping, LinearFilter, MeshPhongMaterial, Material } from 'three';
+
+import { IUpdatingCanvas } from '../IUpdatingCanvas';
+import { CanvasOperation } from './CanvasOperations';
+import { ImageResult, ImageCache } from './ImageCache';
 
 export type RenderBounds = {
   x: number;
@@ -70,13 +71,13 @@ export class CanvasStack implements IUpdatingCanvas {
     public height: number,
     public operation: CanvasOperation,
   ) {
-    this.canvas = document.createElement("canvas");
+    this.canvas = document.createElement('canvas');
     this.canvas.width = width;
     this.canvas.height = height;
 
-    const context = this.canvas.getContext("2d");
+    const context = this.canvas.getContext('2d');
     if (context === null) {
-      throw "Invalid Context";
+      throw 'Invalid Context';
     }
     this.context = context;
 
@@ -91,14 +92,7 @@ export class CanvasStack implements IUpdatingCanvas {
 
   get texture(): Texture {
     if (!this._texture) {
-      this._texture = new Texture(
-        this.canvas,
-        UVMapping,
-        ClampToEdgeWrapping,
-        ClampToEdgeWrapping,
-        LinearFilter,
-        LinearFilter,
-      );
+      this._texture = new Texture(this.canvas, UVMapping, ClampToEdgeWrapping, ClampToEdgeWrapping, LinearFilter, LinearFilter);
       this._texture.needsUpdate = true;
 
       CanvasStack.texturesReferences[this._texture.uuid] = {

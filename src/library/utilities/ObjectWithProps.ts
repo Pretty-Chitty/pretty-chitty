@@ -1,8 +1,8 @@
-import "reflect-metadata";
-import nextTick from "next-tick";
-import { checkAnnotation, NonEditable } from "./Annotations";
+import nextTick from 'next-tick';
 
-const CATCH_ALL = "[[null]]";
+import { checkAnnotation, NonEditable } from './Annotations';
+
+const CATCH_ALL = '[[null]]';
 export class ObjectWithProps {
   /** @internal */
   public get props(): string[] {

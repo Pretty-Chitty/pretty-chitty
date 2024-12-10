@@ -14,14 +14,15 @@ import {
   Shape,
   Vector2,
   Vector3,
-} from "three";
-import { Chit } from "../game/Chit";
-import { ChitRenderSpec, OwnerOriginPosition } from "./ChitRenderSpec";
-import { Easing, Tween, Group as TweenGroup } from "@tweenjs/tween.js";
-import { RootChitRenderInstance } from "./RootChitRenderInstance";
-import { OutlineCanvas } from "../utilities/OutlineCanvas";
-import { outlineGeometry } from "../utilities/OutlineGeometry";
-import { fixBbox } from "../utilities/BboxUtils";
+} from 'three';
+import { Easing, Tween, Group as TweenGroup } from '@tweenjs/tween.js';
+
+import { Chit } from '../game/Chit';
+import { ChitRenderSpec, OwnerOriginPosition } from './ChitRenderSpec';
+import { RootChitRenderInstance } from './RootChitRenderInstance';
+import { OutlineCanvas } from '../utilities/OutlineCanvas';
+import { outlineGeometry } from '../utilities/OutlineGeometry';
+import { fixBbox } from '../utilities/BboxUtils';
 
 const LINE_COLOR = new MeshBasicMaterial({ color: 0xff0000, wireframe: true, wireframeLinewidth: 2 });
 const CLICK_LINE_COLOR = new MeshBasicMaterial({ color: 0xffff00, wireframe: true, wireframeLinewidth: 2 });
@@ -89,7 +90,7 @@ export class ChitRenderInstance {
         this.group.position.y = intersection.y;
         this.group.position.x = intersection.x;
       }
-    } else if (chit.lastParent?.type === "spark" && chit.parent?.renderInstance?.rootRenderInstance) {
+    } else if (chit.lastParent?.type === 'spark' && chit.parent?.renderInstance?.rootRenderInstance) {
       const intersection = this.attemptToFindPlaneZ0(chit.parent?.renderInstance?.rootRenderInstance, chit.lastParent);
       if (intersection) {
         this.group.position.y = intersection.y;
@@ -102,7 +103,7 @@ export class ChitRenderInstance {
     chit.renderInstance = this;
 
     // handle refreshes.
-    const cb1 = chit.onChange("deserialized parent", () => {
+    const cb1 = chit.onChange('deserialized parent', () => {
       try {
         this.refresh();
         this.rootRenderInstance.markHasPendingChange();
@@ -114,7 +115,7 @@ export class ChitRenderInstance {
         }
       }
     });
-    const cb2 = chit.onChange("onClick", () => {
+    const cb2 = chit.onChange('onClick', () => {
       this.refresh();
     });
     this.unsubscribeToOnChange = () => {
@@ -175,7 +176,7 @@ export class ChitRenderInstance {
     }
     if (!this.parentRenderInstance) {
       this.destroy();
-      throw new DestroyedError("Must have parent");
+      throw new DestroyedError('Must have parent');
     }
     return (this._rootRenderInstance = this.parentRenderInstance?.rootRenderInstance);
   }
@@ -346,13 +347,10 @@ export class ChitRenderInstance {
     const screenCoordsOfNewLocation = chit.screenCoordinates();
     if (rootRenderInstance && rootRenderInstance.rootGroup && screenCoordsOfNewLocation) {
       // find the current screen coordinates of its new home and map it to "camera space"
-      const cameraSpace = rootRenderInstance.convertScreenSpaceToCameraSpace(
-        screenCoordsOfNewLocation.x,
-        screenCoordsOfNewLocation.y,
-      );
+      const cameraSpace = rootRenderInstance.convertScreenSpaceToCameraSpace(screenCoordsOfNewLocation.x, screenCoordsOfNewLocation.y);
 
       if (!cameraSpace) {
-        return;
+        return undefined;
       }
 
       const scale = Math.max(Math.abs(cameraSpace.x), Math.abs(cameraSpace.y));
@@ -361,10 +359,7 @@ export class ChitRenderInstance {
       // figure out what camera space means at Z=0
       for (; multiplier > 0.11; multiplier *= 0.75) {
         const raycaster = new Raycaster();
-        raycaster.setFromCamera(
-          new Vector2(cameraSpace.x * multiplier, cameraSpace.y * multiplier),
-          rootRenderInstance.camera,
-        );
+        raycaster.setFromCamera(new Vector2(cameraSpace.x * multiplier, cameraSpace.y * multiplier), rootRenderInstance.camera);
         const planeZ = new Plane(new Vector3(0, 0, 1), 0);
         const intersection = new Vector3();
         const intersects = raycaster.ray.intersectPlane(planeZ, intersection);
@@ -372,8 +367,8 @@ export class ChitRenderInstance {
           return intersects;
         }
       }
-      // return intersection;
     }
+    return undefined;
   }
 
   protected moveToNewViewer() {
@@ -505,10 +500,10 @@ export class ChitRenderInstance {
       this.renderSpec?.rotateY,
       this.renderSpec?.rotateZ,
       this.renderSpec?.splay.toString(),
-    ].join("___");
+    ].join('___');
   }
 
-  private _lastUpdateBoudingBoxKey: string = "";
+  private _lastUpdateBoudingBoxKey: string = '';
   protected updateBoundingBox() {
     if (!this.renderSpec) {
       // bail?
@@ -549,11 +544,7 @@ export class ChitRenderInstance {
     if (keyChanged) {
       this._lastUpdateBoudingBoxKey = newKey;
       this.bbox.scale.set(this.sizeX, this.sizeY, this.sizeZ);
-      this.clickbox.scale.set(
-        clickBox3.max.x - clickBox3.min.x,
-        clickBox3.max.y - clickBox3.min.y,
-        clickBox3.max.z - clickBox3.min.z,
-      );
+      this.clickbox.scale.set(clickBox3.max.x - clickBox3.min.x, clickBox3.max.y - clickBox3.min.y, clickBox3.max.z - clickBox3.min.z);
 
       [...this.anchorPoints.entries()].forEach(([key, value]) => this.updateGroupPosition(value, key));
       [...this.bboxAnchorPoints.entries()].forEach(([key, value]) => this.updateGroupPosition(value, key));
@@ -640,7 +631,7 @@ export class ChitRenderInstance {
     if (this.renderSpec) {
       origin =
         this.renderSpec.ownerOrigin === OwnerOriginPosition.Default
-          ? this.chit.parentOutlet ?? OwnerOriginPosition.MiddleCenter
+          ? (this.chit.parentOutlet ?? OwnerOriginPosition.MiddleCenter)
           : this.renderSpec.ownerOrigin;
     }
 
@@ -704,15 +695,10 @@ export class ChitRenderInstance {
       this.zOffsetTween.stop();
 
       distanceMoved = Math.sqrt(
-        Math.pow(position.x - targetOffset.x, 2) +
-          Math.pow(position.y - targetOffset.y, 2) +
-          Math.pow(position.z - targetOffset.z, 2),
+        Math.pow(position.x - targetOffset.x, 2) + Math.pow(position.y - targetOffset.y, 2) + Math.pow(position.z - targetOffset.z, 2),
       );
 
-      duration = Math.max(
-        duration,
-        this.renderSpec.offsetSpeed * Math.min(this.renderSpec.maxDistanceForSpeed, distanceMoved),
-      );
+      duration = Math.max(duration, this.renderSpec.offsetSpeed * Math.min(this.renderSpec.maxDistanceForSpeed, distanceMoved));
     }
 
     // rotation has to change
@@ -748,7 +734,7 @@ export class ChitRenderInstance {
     }
 
     if (rotationEasing) {
-      rotation.order = "ZYX";
+      rotation.order = 'ZYX';
       this.rotationTween = this.createTween(rotation, (tween) =>
         tween.to(targetRotation, duration * this.animationSpeedMultiplier).easing(rotationEasing),
       );

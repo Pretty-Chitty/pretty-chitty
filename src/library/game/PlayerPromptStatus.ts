@@ -1,8 +1,8 @@
-import { NonEditable } from "../utilities/Annotations";
-import { EventChannel } from "../utilities/EventChannel";
-import { Chit } from "./Chit";
-import { Prompt } from "./Prompt";
-import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
+import { NonEditable } from '../utilities/Annotations';
+import { EventChannel } from '../utilities/EventChannel';
+import { Chit } from './Chit';
+import { Prompt } from './Prompt';
+import StaticChitTypeRegistry from './StaticChitTypeRegistry';
 
 export class PlayerPromptStatus extends Chit {
   /** @internal */
@@ -17,4 +17,4 @@ export class PlayerPromptStatus extends Chit {
   }
 }
 
-StaticChitTypeRegistry["PlayerPromptStatus"] = PlayerPromptStatus;
+StaticChitTypeRegistry['PlayerPromptStatus'] = PlayerPromptStatus;

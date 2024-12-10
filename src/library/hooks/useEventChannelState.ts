@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { EventChannel } from "../utilities/EventChannel";
+import { useEffect, useState } from 'react';
+
+import { EventChannel } from '../utilities/EventChannel';
 
 export function useEventChannelState<T>(e: EventChannel<T>): [T, (a: T) => void] {
   const [v, setV] = useState<T>(e.value);

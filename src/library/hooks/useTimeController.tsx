@@ -1,13 +1,14 @@
-import React, { useContext, createContext, ReactNode, useEffect, useState } from "react";
-import { ClockDetails } from "../game/ClockDetails";
-import { Chit } from "../game/Chit";
-import { useConnection } from "./useConnection";
-import { ClientTime } from "../game/clientTransport/ClientTime";
-import { ClientTimeState } from "../game/ClientTimeState";
-import { ClientPrompts } from "../game/clientTransport/ClientPrompts";
-import { usePlayerId } from "./usePlayer";
-import { useMatch } from "./useMatch";
-import { ClientStatus } from "../game/clientTransport/ClientStatus";
+import React, { useContext, createContext, ReactNode, useEffect, useState } from 'react';
+
+import { ClockDetails } from '../game/ClockDetails';
+import { Chit } from '../game/Chit';
+import { useConnection } from './useConnection';
+import { ClientTime } from '../game/clientTransport/ClientTime';
+import { ClientTimeState } from '../game/ClientTimeState';
+import { ClientPrompts } from '../game/clientTransport/ClientPrompts';
+import { usePlayerId } from './usePlayer';
+import { useMatch } from './useMatch';
+import { ClientStatus } from '../game/clientTransport/ClientStatus';
 
 export class TimeState {
   public targetClock: number = 1;
@@ -26,7 +27,7 @@ const TimeControllerContext = createContext<{
 export function useTimeController() {
   const result = useContext(TimeControllerContext);
   if (!result.clientTime) {
-    throw new Error("Connection is required");
+    throw new Error('Connection is required');
   }
   return result.clientTime;
 }
@@ -38,14 +39,14 @@ export function useTimeState() {
 export function useClientPrompts() {
   const result = useContext(TimeControllerContext);
   if (!result.clientPrompts) {
-    throw new Error("Connection is required");
+    throw new Error('Connection is required');
   }
   return result.clientPrompts;
 }
 export function useClientStatus() {
   const result = useContext(TimeControllerContext);
   if (!result.clientStatus) {
-    throw new Error("Connection is required");
+    throw new Error('Connection is required');
   }
   return result.clientStatus;
 }

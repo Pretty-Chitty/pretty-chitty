@@ -1,5 +1,6 @@
-import QuickLRU from "quick-lru";
-import { EventChannel } from "../EventChannel";
+import QuickLRU from 'quick-lru';
+
+import { EventChannel } from '../EventChannel';
 
 export class ImageResult {
   /** @internal */
@@ -10,8 +11,8 @@ export class ImageResult {
 
   constructor(url: string) {
     this.image = new Image();
-    this.image.crossOrigin = "anonymous";
-    this.image.src = "";
+    this.image.crossOrigin = 'anonymous';
+    this.image.src = '';
     this.image.onload = () => {
       this.isLoaded.value = true;
     };

@@ -1,4 +1,4 @@
-import { Material, Texture } from "three";
+import { Material, Texture } from 'three';
 
 export interface IUpdatingCanvas {
   get width(): number;

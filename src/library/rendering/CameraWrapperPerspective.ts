@@ -1,7 +1,8 @@
-import { Box3, PerspectiveCamera, Vector3 } from "three";
-import { RootChitRenderInstance } from "./RootChitRenderInstance";
-import { Easing, Tween } from "@tweenjs/tween.js";
-import { CameraSpec } from "./CameraSpec";
+import { Box3, PerspectiveCamera, Vector3 } from 'three';
+import { Easing, Tween } from '@tweenjs/tween.js';
+
+import { RootChitRenderInstance } from './RootChitRenderInstance';
+import { CameraSpec } from './CameraSpec';
 
 interface Point3d {
   x: number;
@@ -19,7 +20,6 @@ export class CameraWrapperPerspective {
 
   private firstPositionedCamera?: number;
   private current = { x: 0, y: 0, z: 1 };
-  private last = { x: 0, y: 0, z: 1 };
   private width: number = 1;
   private height: number = 1;
   private wiggleRoomX: number = 0;
@@ -180,7 +180,7 @@ export class CameraWrapperPerspective {
 
     let distance = Math.max(
       this.cameraSpec.minCameraDistance,
-      Math.max(distanceX, distanceY)
+      Math.max(distanceX, distanceY),
       // + (this.bbox.max.z - this.bbox.min.z),
     );
 
@@ -204,12 +204,7 @@ export class CameraWrapperPerspective {
     }
 
     const distanceDifference = this.lastNearFarDistanceSet / distance;
-    if (
-      !Number.isFinite(distanceDifference) ||
-      !distanceDifference ||
-      distanceDifference > 1.1 ||
-      distanceDifference < 0.9
-    ) {
+    if (!Number.isFinite(distanceDifference) || !distanceDifference || distanceDifference > 1.1 || distanceDifference < 0.9) {
       this.camera.near = distance / 10;
       this.camera.far = distance * 10;
       this.lastNearFarDistanceSet = distance;
@@ -220,9 +215,7 @@ export class CameraWrapperPerspective {
     this.camera.position.x = gameAreaX + distance * Math.sin(this.cameraSpec.horizontalRadiansRotation);
     this.camera.position.y = gameAreaY + distance * Math.sin(this.cameraSpec.verticalRadiansRotation);
     this.camera.position.z =
-      distance *
-      Math.cos(this.cameraSpec.horizontalRadiansRotation) *
-      Math.cos(this.cameraSpec.verticalRadiansRotation);
+      distance * Math.cos(this.cameraSpec.horizontalRadiansRotation) * Math.cos(this.cameraSpec.verticalRadiansRotation);
     this.camera.lookAt(gameAreaX, gameAreaY, 0);
 
     if (this.current.z) {
@@ -243,9 +236,7 @@ export class CameraWrapperPerspective {
       newRotation = this.camera.rotation.clone();
 
     const positionDistance = currentPosition.distanceTo(newPosition),
-      rotationDistance = new Vector3()
-        .setFromEuler(currentRotation)
-        .distanceTo(new Vector3().setFromEuler(newRotation));
+      rotationDistance = new Vector3().setFromEuler(currentRotation).distanceTo(new Vector3().setFromEuler(newRotation));
 
     // stupid, but now it can be reset
     this.camera.position.set(currentPosition.x, currentPosition.y, currentPosition.z);
@@ -258,24 +249,20 @@ export class CameraWrapperPerspective {
 
     if (!immediate) {
       if (positionDistance > 0) {
-        this.offsetTween = this.chit.createTween(
-          { x: currentPosition.x, y: currentPosition.y, z: currentPosition.z },
-          (tween) =>
-            tween
-              .to(newPosition, duration)
-              .easing(Easing.Quadratic.InOut)
-              .onUpdate((obj) => this.camera.position.set(obj.x, obj.y, obj.z)),
+        this.offsetTween = this.chit.createTween({ x: currentPosition.x, y: currentPosition.y, z: currentPosition.z }, (tween) =>
+          tween
+            .to(newPosition, duration)
+            .easing(Easing.Quadratic.InOut)
+            .onUpdate((obj) => this.camera.position.set(obj.x, obj.y, obj.z)),
         );
       }
 
       if (rotationDistance > 0) {
-        this.rotationTween = this.chit.createTween(
-          { x: currentRotation.x, y: currentRotation.y, z: currentRotation.z },
-          (tween) =>
-            tween
-              .to({ x: newRotation.x, y: newRotation.y, z: newRotation.z }, duration)
-              .easing(Easing.Quadratic.InOut)
-              .onUpdate((obj) => this.camera.rotation.set(obj.x, obj.y, obj.z)),
+        this.rotationTween = this.chit.createTween({ x: currentRotation.x, y: currentRotation.y, z: currentRotation.z }, (tween) =>
+          tween
+            .to({ x: newRotation.x, y: newRotation.y, z: newRotation.z }, duration)
+            .easing(Easing.Quadratic.InOut)
+            .onUpdate((obj) => this.camera.rotation.set(obj.x, obj.y, obj.z)),
         );
       }
     } else {

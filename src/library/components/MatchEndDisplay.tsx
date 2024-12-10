@@ -1,9 +1,10 @@
-import { Box, Typography } from "@mui/material";
-import React from "react";
-import { useGameTheme } from "../hooks/useGameTheme";
-import { useClientStatus, useTimeController, useTimeState } from "../hooks/useTimeController";
-import { useEventChannelState } from "../hooks/useEventChannelState";
-import { ZINDEX_MATCH_END_DISPLAY } from "../utilities/zIndex";
+import { Box, Typography } from '@mui/material';
+import React from 'react';
+
+import { useGameTheme } from '../hooks/useGameTheme';
+import { useClientStatus, useTimeController, useTimeState } from '../hooks/useTimeController';
+import { useEventChannelState } from '../hooks/useEventChannelState';
+import { ZINDEX_MATCH_END_DISPLAY } from '../utilities/zIndex';
 
 export function MatchEndDisplay() {
   const theme = useGameTheme();
@@ -22,7 +23,7 @@ export function MatchEndDisplay() {
   return (
     <Box
       sx={{
-        position: "absolute",
+        position: 'absolute',
         zIndex: ZINDEX_MATCH_END_DISPLAY,
         borderRadius: 1,
         color: theme.endGameTextColor,

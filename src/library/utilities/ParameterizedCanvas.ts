@@ -1,12 +1,12 @@
-import { ReactNode } from "react";
+import { ReactNode } from 'react';
 
-import { ParameterizedMemoized } from "./ParameterizedMemoized";
-import { IUpdatingCanvas } from "./IUpdatingCanvas";
-import { CanvasStack } from "./CanvasStack/CanvasStack";
-import { ObjectWithProps } from "./ObjectWithProps";
-import { NonEditable } from "./Annotations";
-import { unwrapCanvasNode } from "./CanvasStack/ReactCanvas";
-import { LayeredCanvasOperation } from "./CanvasStack/CanvasOperations";
+import { ParameterizedMemoized } from './ParameterizedMemoized';
+import { IUpdatingCanvas } from './IUpdatingCanvas';
+import { CanvasStack } from './CanvasStack/CanvasStack';
+import { ObjectWithProps } from './ObjectWithProps';
+import { NonEditable } from './Annotations';
+import { unwrapCanvasNode } from './CanvasStack/ReactCanvas';
+import { LayeredCanvasOperation } from './CanvasStack/CanvasOperations';
 
 export abstract class ParameterizedCanvas extends ObjectWithProps {
   /** @internal */
@@ -36,7 +36,7 @@ export abstract class ParameterizedCanvas extends ObjectWithProps {
         }
         return v;
       })
-      .join("___")}`;
+      .join('___')}`;
   }
 
   get(): IUpdatingCanvas {

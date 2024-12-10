@@ -1,5 +1,5 @@
-import { BufferGeometry, ExtrudeGeometry, Mesh, Shape } from "three";
-import { CSG } from "three-csg-ts";
+import { BufferGeometry, ExtrudeGeometry, Mesh, Shape } from 'three';
+import { CSG } from 'three-csg-ts';
 
 export function outlineGeometry(shape: Shape, height: number): BufferGeometry | ExtrudeGeometry {
   // const extrudeSettings = {

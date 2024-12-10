@@ -1,12 +1,13 @@
-import React, { useContext, createContext, ReactNode } from "react";
-import { Match } from "../game/Match";
+import React, { useContext, createContext, ReactNode } from 'react';
+
+import { Match } from '../game/Match';
 
 const MatchContext = createContext<Match<any, any> | undefined>(undefined);
 
 export function useMatch(): Match<any, any> {
   const result = useContext(MatchContext);
   if (!result) {
-    throw new Error("Match is required");
+    throw new Error('Match is required');
   }
   return result;
 }

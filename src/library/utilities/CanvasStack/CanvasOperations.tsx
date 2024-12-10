@@ -1,7 +1,8 @@
-import * as Colors from "color";
-import { RenderBounds } from "./CanvasStack";
-import { ImageResult } from "./ImageCache";
-import { PlayerChit } from "../../game/PlayerChit";
+import * as Colors from 'color';
+
+import { RenderBounds } from './CanvasStack';
+import { ImageResult } from './ImageCache';
+import { PlayerChit } from '../../game/PlayerChit';
 
 export type GetImage = (url: string) => ImageResult | undefined;
 
@@ -104,7 +105,7 @@ export class PadCanvasOperation extends CanvasOperation {
   }
 }
 
-export type Alignment = "center" | "left" | "right";
+export type Alignment = 'center' | 'left' | 'right';
 
 export interface TextOptions {
   contextOptions?: any;
@@ -135,9 +136,9 @@ export class TextCanvasOperation extends CanvasOperation {
     }
 
     const measured = context.measureText(this.text);
-    if (this.options.align === "center") {
+    if (this.options.align === 'center') {
       bounds.x += bounds.w / 2 - measured.width / 2;
-    } else if (this.options.align === "right") {
+    } else if (this.options.align === 'right') {
       bounds.x += bounds.w - measured.width;
     }
 
@@ -256,7 +257,7 @@ export class ImageCanvasOperation extends CanvasOperation {
       h = newH;
     }
 
-    if (typeof sourceImage === "string") {
+    if (typeof sourceImage === 'string') {
       context.fillStyle = sourceImage;
       context.globalAlpha = 1;
       context.fillRect(x, y, w, h);
@@ -295,7 +296,7 @@ export class ImageCanvasOperation extends CanvasOperation {
       sx += (sourceBounds.width - sw) / 2; // Center horizontally in source
     }
 
-    if (typeof sourceImage === "string") {
+    if (typeof sourceImage === 'string') {
       context.fillStyle = sourceImage;
       context.globalAlpha = 1;
       context.fillRect(x, y, w, h);

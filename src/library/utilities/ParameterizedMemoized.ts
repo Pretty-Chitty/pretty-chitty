@@ -1,4 +1,4 @@
-import QuickLRU from "quick-lru";
+import QuickLRU from 'quick-lru';
 
 export class ParameterizedMemoized<T> {
   lru: QuickLRU<string, T>;

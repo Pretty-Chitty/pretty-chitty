@@ -1,5 +1,5 @@
-import { NonEditable } from "../utilities/Annotations";
-import { Chit } from "./Chit";
+import { NonEditable } from '../utilities/Annotations';
+import { Chit } from './Chit';
 
 export type PanelLayoutCell = {
   width: number;
@@ -24,10 +24,9 @@ export type PanelLayoutResult = {
 
 export class PanelChit extends Chit {
   /** @internal */
-  @NonEditable type = "panel";
+  @NonEditable type = 'panel';
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getLayout(width: number, height: number): PanelLayout {
+  getLayout(_width: number, _height: number): PanelLayout {
     return [
       {
         height: 1,

@@ -1,5 +1,5 @@
-import React, { useContext, createContext, ReactNode, useEffect, useState } from "react";
-import { WebGLRenderer } from "three";
+import React, { useContext, createContext, ReactNode, useEffect, useState } from 'react';
+import { WebGLRenderer } from 'three';
 
 const WebGlRendererContext = createContext<{
   used: { [key: string]: WebGLRendererWrapper };

@@ -1,16 +1,16 @@
-import React, { useMemo, useEffect, useState, useRef } from "react";
+import React, { useMemo, useEffect, useState, useRef } from 'react';
+import { Box, Checkbox, FormControlLabel, MenuItem, Select, Stack, Typography } from '@mui/material';
+import useLocalStorageState from 'use-local-storage-state';
+import useSize from '@react-hook/size';
 
-import ObjectWithPropsEditor from "./ObjectWithPropsEditor";
-import StageAndEditor from "./StageAndEditor";
-import SelectableItemAndStage from "./SelectableItemAndStage";
-import { Chit } from "../game/Chit";
-import Viewer from "./Viewer";
-import { Box, Checkbox, FormControlLabel, MenuItem, Select, Stack, Typography } from "@mui/material";
-import { BaseTable } from "../utilities/BaseTable";
-import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
-import useLocalStorageState from "use-local-storage-state";
-import { useTimeState } from "../hooks/useTimeController";
-import useSize from "@react-hook/size";
+import ObjectWithPropsEditor from './ObjectWithPropsEditor';
+import StageAndEditor from './StageAndEditor';
+import SelectableItemAndStage from './SelectableItemAndStage';
+import { Chit } from '../game/Chit';
+import Viewer from './Viewer';
+import { BaseTable } from '../utilities/BaseTable';
+import { ChitRenderSpec } from '../rendering/ChitRenderSpec';
+import { useTimeState } from '../hooks/useTimeController';
 
 export interface IChitLibrary {
   [key: string]: new () => Chit;
@@ -20,7 +20,7 @@ function ResizingViewer({ wireframes, chit }: { wireframes: boolean; chit: Chit 
   const ref = useRef(null);
   const [width, height] = useSize(ref);
   return (
-    <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0, overflow: "hidden" }} ref={ref}>
+    <Box sx={{ position: 'absolute', top: 0, right: 0, left: 0, bottom: 0, overflow: 'hidden' }} ref={ref}>
       <Viewer w={width} h={height} wireframes={wireframes} chit={chit} />
     </Box>
   );
@@ -58,6 +58,7 @@ function Editor({
       return () => newInstance.removeFromParent();
     } else {
       setParentInstance(undefined);
+      return () => {};
     }
   }, [ParentClassDef]);
 
@@ -100,8 +101,8 @@ function Editor({
           rootInstance.add(parentInstance ?? instance);
           rootInstance.target = instance;
           rootInstance.parentTarget = parentInstance;
-          rootInstance.notifyChange("target");
-          rootInstance.notifyChange("parentTarget");
+          rootInstance.notifyChange('target');
+          rootInstance.notifyChange('parentTarget');
         }
       } else {
         setRootInstance(parentInstance ?? instance);
@@ -120,10 +121,10 @@ function Editor({
 
 export default function ChitLibraryViewer({ library }: { library: IChitLibrary }) {
   const items = useMemo(() => Object.keys(library), [library]);
-  const [parentType, setParentType] = useLocalStorageState<string>("chitLibraryParentType", {
-    defaultValue: "",
+  const [parentType, setParentType] = useLocalStorageState<string>('chitLibraryParentType', {
+    defaultValue: '',
   });
-  const [wireframes, setWireframes] = useLocalStorageState<boolean>("showBoundingBoxes", { defaultValue: false });
+  const [wireframes, setWireframes] = useLocalStorageState<boolean>('showBoundingBoxes', { defaultValue: false });
 
   return (
     <SelectableItemAndStage
@@ -138,7 +139,7 @@ export default function ChitLibraryViewer({ library }: { library: IChitLibrary }
             label="Select Choice"
             onChange={(e) => setParentType(e.target.value ?? undefined)}
           >
-            <MenuItem value={""}>(none)</MenuItem>
+            <MenuItem value="">(none)</MenuItem>
             {items.map((item) => (
               <MenuItem value={item} key={item}>
                 {item}
@@ -147,7 +148,7 @@ export default function ChitLibraryViewer({ library }: { library: IChitLibrary }
           </Select>
           <FormControlLabel
             control={<Checkbox checked={wireframes} onChange={(e) => setWireframes(e.target.checked)} />}
-            label={"Bounding Boxes"}
+            label="Bounding Boxes"
           />
         </Stack>
       }

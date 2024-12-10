@@ -1,14 +1,14 @@
-import { Scene, Vector2, WebGLRenderer } from "three";
-import { Box } from "@mui/material";
-import React, { useEffect, useRef, useState } from "react";
-import { Chit } from "../game/Chit";
-import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
-import { useTimeState } from "../hooks/useTimeController";
-import { useEventChannelState } from "../hooks/useEventChannelState";
-import Hammer from "@egjs/hammerjs";
-import { addWheelListener, removeWheelListener } from "wheel";
-import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
-import { requestSharedAnimationFrame } from "../utilities/RequestSharedAnimationFrame";
+import { Scene, Vector2 } from 'three';
+import { Box } from '@mui/material';
+import React, { useEffect, useRef, useState } from 'react';
+import Hammer from '@egjs/hammerjs';
+import { addWheelListener, removeWheelListener } from 'wheel';
+
+import { Chit } from '../game/Chit';
+import { RootChitRenderInstance } from '../rendering/RootChitRenderInstance';
+import { useTimeState } from '../hooks/useTimeController';
+import { useEventChannelState } from '../hooks/useEventChannelState';
+import { useWebGlRenderer } from '../hooks/useWebGlRenderer';
 
 let ID_COUNTER = 1;
 
@@ -25,7 +25,7 @@ export default function Viewer({
   w: number;
   h: number;
   paused?: boolean;
-  panCallback?: (direction: "left" | "right") => void;
+  panCallback?: (direction: 'left' | 'right') => void;
 }) {
   const [id] = useState(`Viewer${ID_COUNTER++}`);
   const timeState = useTimeState();
@@ -105,7 +105,7 @@ export default function Viewer({
       return;
     }
 
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext('2d');
     if (!context) {
       return;
     }
@@ -166,42 +166,42 @@ export default function Viewer({
         return { x: ev.center.x - rect.left, y: ev.center.y - rect.top };
       };
 
-      hammer.add(new Hammer.Tap({ event: "doubletap", taps: 2, interval: 300, threshold: 5, posThreshold: 50 }));
-      hammer.add(new Hammer.Tap({ event: "singletap", time: 400 }));
-      hammer.add(new Hammer.Pinch({ event: "pinch", threshold: 0.03 }));
+      hammer.add(new Hammer.Tap({ event: 'doubletap', taps: 2, interval: 300, threshold: 5, posThreshold: 50 }));
+      hammer.add(new Hammer.Tap({ event: 'singletap', time: 400 }));
+      hammer.add(new Hammer.Pinch({ event: 'pinch', threshold: 0.03 }));
       hammer.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL }));
 
-      hammer.add(new Hammer.Press({ event: "longtap", time: 600 }));
+      hammer.add(new Hammer.Press({ event: 'longtap', time: 600 }));
 
-      hammer.get("doubletap").recognizeWith("singletap");
-      hammer.get("singletap").requireFailure("doubletap");
+      hammer.get('doubletap').recognizeWith('singletap');
+      hammer.get('singletap').requireFailure('doubletap');
 
-      hammer.get("longtap").recognizeWith("singletap");
-      hammer.get("singletap").requireFailure("longtap");
+      hammer.get('longtap').recognizeWith('singletap');
+      hammer.get('singletap').requireFailure('longtap');
 
-      hammer.on("longtap", (ev) => console.log("longtap", ev));
-      hammer.on("singletap", (ev) => {
+      hammer.on('longtap', (ev) => console.log('longtap', ev));
+      hammer.on('singletap', (ev) => {
         const pos = fixPosition(ev);
         chitRenderInstance.handleClick(pos.x, pos.y);
       });
-      hammer.on("doubletap", (ev) => {
+      hammer.on('doubletap', (ev) => {
         const pos = fixPosition(ev);
         chitRenderInstance.handleZoom(pos.x, pos.y, chitRenderInstance.cameraZoom === 1 ? 20 : -20, true);
       });
 
-      hammer.on("pinch", (ev) => {
+      hammer.on('pinch', (ev) => {
         console.log(ev);
       });
 
       let lastDeltaX = 0,
         lastDeltaY = 0,
         cancelled = false;
-      hammer.on("panstart", () => {
+      hammer.on('panstart', () => {
         lastDeltaX = 0;
         lastDeltaY = 0;
         cancelled = false;
       });
-      hammer.on("pan", (ev) => {
+      hammer.on('pan', (ev) => {
         if (cancelled) {
           return;
         }
@@ -212,7 +212,7 @@ export default function Viewer({
         if (panCallback) {
           const neededVelocity = chitRenderInstance.cameraZoom === 1 ? 0.3 : 1.5;
           if (Math.abs(ev.velocityX) > neededVelocity && ev.distance > 20 && Math.abs(ev.velocityY) < 0.2) {
-            const direction = ev.velocityX > 0 ? "left" : "right";
+            const direction = ev.velocityX > 0 ? 'left' : 'right';
             panCallback(direction);
             cancelled = true;
             return;
@@ -227,12 +227,12 @@ export default function Viewer({
 
       let lastScale = 1,
         pinchScale = 1;
-      hammer.on("pinchstart", () => {
+      hammer.on('pinchstart', () => {
         lastScale = 1;
         pinchScale = chitRenderInstance.cameraZoom;
         cancelled = false;
       });
-      hammer.on("pinch", (ev) => {
+      hammer.on('pinch', (ev) => {
         if (cancelled) {
           return;
         }
@@ -257,10 +257,11 @@ export default function Viewer({
         removeWheelListener(el, wheelListener);
       };
     }
+    return () => {};
   }, [refContainer, chitRenderInstance, panCallback]);
 
   return (
-    <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }}>
+    <Box sx={{ position: 'absolute', top: 0, right: 0, left: 0, bottom: 0 }}>
       <canvas
         width={w * window.devicePixelRatio}
         height={h * window.devicePixelRatio}

@@ -1,23 +1,13 @@
-import {
-  AmbientLight,
-  Box2,
-  Box3,
-  DirectionalLight,
-  Group,
-  Mesh,
-  PlaneGeometry,
-  ShadowMaterial,
-  Vector2,
-  Vector3,
-} from "three";
-import { LightSpec } from "./LightSpec";
+import { AmbientLight, Box2, Box3, DirectionalLight, Group, Mesh, PlaneGeometry, ShadowMaterial, Vector2, Vector3 } from 'three';
+
+import { LightSpec } from './LightSpec';
 
 export class LightWrapper {
   private bbox = new Box3();
   private lightSpec = new LightSpec();
   public group = new Group();
-  private width: number = 1;
-  private height: number = 1;
+  // private width: number = 1;
+  // private height: number = 1;
 
   private ambient = new AmbientLight();
   private directionalLights: DirectionalLight[] = [];
@@ -40,8 +30,8 @@ export class LightWrapper {
   }
 
   setSize(width: number, height: number): void {
-    this.width = width;
-    this.height = height;
+    // this.width = width;
+    // this.height = height;
     this.adjust(this.bbox);
   }
 

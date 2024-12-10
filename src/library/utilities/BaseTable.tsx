@@ -1,11 +1,12 @@
-import React from "react";
-import { Mesh, MeshPhongMaterial, PlaneGeometry, RepeatWrapping } from "three";
-import { Chit } from "../game/Chit";
-import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
-import { ParameterizedCanvas } from "./ParameterizedCanvas";
-import { Color, Horizontal, Vertical } from "./CanvasStack/ReactCanvas";
-import { CameraSpec } from "../rendering/CameraSpec";
-import { LightSpec } from "../rendering/LightSpec";
+import React from 'react';
+import { Mesh, MeshPhongMaterial, PlaneGeometry, RepeatWrapping } from 'three';
+
+import { Chit } from '../game/Chit';
+import { ChitRenderSpec } from '../rendering/ChitRenderSpec';
+import { ParameterizedCanvas } from './ParameterizedCanvas';
+import { Color, Horizontal, Vertical } from './CanvasStack/ReactCanvas';
+import { CameraSpec } from '../rendering/CameraSpec';
+import { LightSpec } from '../rendering/LightSpec';
 
 class Checkerboard extends ParameterizedCanvas {
   protected render() {

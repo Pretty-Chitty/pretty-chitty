@@ -1,18 +1,19 @@
-import { Chit } from "./Chit";
-import { Connection } from "./Connection";
-import { ConnectionTransport } from "./ConnectionTransport";
-import { Game, GameResult } from "./Game";
-import { ServerTime } from "./serverTransport/ServerTime";
-import { PlayerInfo } from "./PlayerInfo";
-import { MismatchError, RerunError, Turn } from "./Turn";
-import { TurnState } from "./TurnState";
-import { IMatchStorage } from "./MatchStorage";
-import nextTick from "next-tick";
-import { ServerPrompts } from "./serverTransport/ServerPrompts";
-import { EventChannel } from "../utilities/EventChannel";
-import { RootChit } from "./RootChit";
-import { ServerStatus } from "./serverTransport/ServerStatus";
-import { PlayerChit } from "./PlayerChit";
+import nextTick from 'next-tick';
+
+import { Chit } from './Chit';
+import { Connection } from './Connection';
+import { ConnectionTransport } from './ConnectionTransport';
+import { Game, GameResult } from './Game';
+import { ServerTime } from './serverTransport/ServerTime';
+import { PlayerInfo } from './PlayerInfo';
+import { MismatchError, RerunError, Turn } from './Turn';
+import { TurnState } from './TurnState';
+import { IMatchStorage } from './MatchStorage';
+import { ServerPrompts } from './serverTransport/ServerPrompts';
+import { EventChannel } from '../utilities/EventChannel';
+import { RootChit } from './RootChit';
+import { ServerStatus } from './serverTransport/ServerStatus';
+import { PlayerChit } from './PlayerChit';
 
 export class Match<P extends PlayerChit, R extends RootChit<P>> {
   public state: TurnState = new TurnState();
@@ -38,7 +39,9 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
       if (this.errorState) {
         this.turn.value?.destroy();
         this.turn.value = undefined;
-        this.start();
+        this.start()
+          .then(() => console.log('match finished'))
+          .catch(console.error);
       } else if (this.turn.value) {
         this.turn.value.handleNewSavedState(this.state);
       }
@@ -57,18 +60,18 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
 
   async start() {
     if (this.turn.value) {
-      throw new Error("Can only start once per Match instance");
+      throw new Error('Can only start once per Match instance');
     }
 
     // if players change (promise status, etc.) then we need to notify
     // as that means the clock has changed (or promise status)
-    // eslint-disable-next-line no-constant-condition
+
     while (true) {
       try {
         this.result.value = undefined;
         this.errorState.value = undefined;
         const rootChit = this.game.generateRootChit();
-        rootChit.id = "root";
+        rootChit.id = 'root';
         rootChit.match = this;
 
         const players = this.players.map((p) => {
@@ -85,13 +88,9 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
           }
         });
 
-        this.turn.value = new Turn<GameResult<P>, P, R>(
-          "root",
-          this,
-          this.state,
-          (turn) => this.game.run(players, turn, rootChit),
-          [rootChit],
-        );
+        this.turn.value = new Turn<GameResult<P>, P, R>('root', this, this.state, (turn) => this.game.run(players, turn, rootChit), [
+          rootChit,
+        ]);
         this.turn.value.fixPass();
         this.notify();
         this.result.value = await this.turn.value.execute();
@@ -121,7 +120,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
     return connection;
   }
 
-  private _timeout?: NodeJS.Timeout | number = undefined;
+  private _timeout?: NodeJS.Timeout = undefined;
   private notify() {
     clearTimeout(this._timeout);
     this._timeout = setTimeout(() => this.processNotify(), 0);
@@ -131,7 +130,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
     this.onChangeCallbacks.forEach((cb) => cb());
 
     // TODO: this is a promise going nowhere... do we block on saving?
-    this.matchStorage.saveState(this.state);
+    this.matchStorage.saveState(this.state).catch(console.error);
   }
 
   public dispose() {
@@ -140,7 +139,9 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
 
   public onChange(cb: () => void, callNow = true) {
     this.onChangeCallbacks.push(cb);
-    callNow && nextTick(cb);
+    if (callNow) {
+      nextTick(cb);
+    }
     return () => {
       this.onChangeCallbacks = this.onChangeCallbacks.filter((c) => c !== cb);
     };

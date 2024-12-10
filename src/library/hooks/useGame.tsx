@@ -1,12 +1,13 @@
-import React, { useContext, createContext, ReactNode } from "react";
-import { Game } from "../game/Game";
+import React, { useContext, createContext, ReactNode } from 'react';
+
+import { Game } from '../game/Game';
 
 const GameContext = createContext<Game<any, any> | undefined>(undefined);
 
 export function useGame(): Game<any, any> {
   const result = useContext(GameContext);
   if (!result) {
-    throw new Error("Game is required");
+    throw new Error('Game is required');
   }
   return result;
 }

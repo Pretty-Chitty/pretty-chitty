@@ -1,15 +1,16 @@
-import { RefObject } from "react";
-import { Chit } from "./Chit";
-import { Vector2 } from "three";
-import { NonEditable } from "../utilities/Annotations";
-import { PlayerChit } from "./PlayerChit";
-import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
+import { RefObject } from 'react';
+import { Vector2 } from 'three';
+
+import { Chit } from './Chit';
+import { NonEditable } from '../utilities/Annotations';
+import { PlayerChit } from './PlayerChit';
+import { ImageSpec } from '../utilities/CanvasStack/CanvasOperations';
 
 export abstract class SparkChit extends Chit {
   /** @internal */
-  @NonEditable type = "spark";
+  @NonEditable type = 'spark';
 
-  public color: string = "";
+  public color: string = '';
   public abstract get icon(): PlayerChit | ImageSpec | undefined;
   public get headerIcon(): PlayerChit | ImageSpec | undefined {
     return this.icon;
@@ -57,10 +58,11 @@ export abstract class BagSparkChit<T extends Chit> extends SparkChit {
       const result = this.orderedChildren.pop();
       return result as T;
     }
+    return undefined;
   }
 
   /** @internal */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   override shouldRenderChild(childChit: Chit): boolean {
     return false;
   }

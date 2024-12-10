@@ -1,12 +1,13 @@
-import { Tween, Group as TweenGroup } from "@tweenjs/tween.js";
-import { ChitRenderInstance } from "./ChitRenderInstance";
-import { Chit } from "../game/Chit";
-import { Box3, Group, Material, Mesh, Raycaster, Vector2, Vector3 } from "three";
-import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
-import { LightWrapper } from "./LightWrapper";
-import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
+import { Tween, Group as TweenGroup } from '@tweenjs/tween.js';
+import { Box3, Group, Material, Mesh, Raycaster, Vector2, Vector3 } from 'three';
 
-export type AnimationState = "leaving" | "entering" | "pending" | "inactive";
+import { ChitRenderInstance } from './ChitRenderInstance';
+import { Chit } from '../game/Chit';
+import { CameraWrapperPerspective } from './CameraWrapperPerspective';
+import { LightWrapper } from './LightWrapper';
+import { CanvasStack } from '../utilities/CanvasStack/CanvasStack';
+
+export type AnimationState = 'leaving' | 'entering' | 'pending' | 'inactive';
 
 //
 // Like a ChitRenderInstance, but only useful at the root
@@ -17,11 +18,10 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   public _lightGroup = new Group();
   private _tweenGroup = new TweenGroup();
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public convertCameraSpaceToScreenSpace = (x: number, y: number): Vector2 | undefined => {
     return;
   };
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   public convertScreenSpaceToCameraSpace = (x: number, y: number): Vector2 | undefined => {
     return;
   };
@@ -82,16 +82,16 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   registerTextures() {
     const idsUsed = new Set<string>();
     const props = [
-      "map",
-      "lightMap",
-      "aoMap",
-      "emissiveMap",
-      "bumpMap",
-      "normalMap",
-      "displacementMap",
-      "specularMap",
-      "alphaMap",
-      "envMap",
+      'map',
+      'lightMap',
+      'aoMap',
+      'emissiveMap',
+      'bumpMap',
+      'normalMap',
+      'displacementMap',
+      'specularMap',
+      'alphaMap',
+      'envMap',
     ];
 
     const processMaterial = (mat: Material) => {
@@ -155,15 +155,15 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
   public get animationState(): AnimationState {
     if (this._hasChitsLeaving) {
-      return "leaving";
+      return 'leaving';
     }
     if (this._hasChitsEntering) {
-      return "entering";
+      return 'entering';
     }
     if (this._hasPendingChanges) {
-      return "pending";
+      return 'pending';
     }
-    return "inactive";
+    return 'inactive';
   }
 
   public pause() {

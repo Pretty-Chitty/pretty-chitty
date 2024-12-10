@@ -1,11 +1,16 @@
+import { Vector2 } from "three";
+
 import { ChitRenderInstance } from "../rendering/ChitRenderInstance";
 import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
 import { Turn } from "./Turn";
-import { FixChildOutlets, NonEditable, Ordered } from "../utilities/Annotations";
+import {
+  FixChildOutlets,
+  NonEditable,
+  Ordered,
+} from "../utilities/Annotations";
 import { ObjectWithProps } from "../utilities/ObjectWithProps";
 import { Match } from "./Match";
 import { ChitPick } from "./Pick";
-import { Vector2 } from "three";
 import { OrderedOutlet } from "./OrderedOutlet";
 import { SparkChit } from "./SparkChit";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
@@ -26,24 +31,21 @@ export class Chit extends ObjectWithProps {
   @Ordered
   public orderedChildren = new OrderedOutlet<Chit>();
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public render(spec: ChitRenderSpec) {}
+  public render(_spec: ChitRenderSpec) {}
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public renderInvisible(spec: ChitRenderSpec) {
     spec.rotateX = Math.PI;
     spec.zLiftRotationMultiplier = 3;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public shouldRenderChild(childChit: Chit): boolean {
+  public shouldRenderChild(_childChit: Chit): boolean {
     return true;
   }
 
   // used if this chit is the root of a panel
   // maybe should be forced to be on PanelChit?
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getSparks(context: "panel" | "dropdown" | "endgame"): SparkChit[] {
+
+  getSparks(_context: "panel" | "dropdown" | "endgame"): SparkChit[] {
     return [];
   }
 
@@ -148,8 +150,14 @@ export class Chit extends ObjectWithProps {
 
   @NonEditable private _lockedBy?: Turn<any, any, any>;
 
-  public get currentTurn() {
-    return this._lockedBy;
+  public get currentTurn(): Turn<any, any, any> {
+    if (this._lockedBy) {
+      return this._lockedBy;
+    }
+    if (this.parent) {
+      return this.parent.currentTurn;
+    }
+    throw "No current turn";
   }
 
   /** @internal */
@@ -192,7 +200,11 @@ export class Chit extends ObjectWithProps {
   }
 
   /** @internal */
-  public setParent(newValue?: Chit, parentOutlet?: string, parentOutletIndex?: number) {
+  public setParent(
+    newValue?: Chit,
+    parentOutlet?: string,
+    parentOutletIndex?: number
+  ) {
     if (this._parent === newValue && this._parentOutlet === parentOutlet) {
       this._parentOutletIndex = parentOutletIndex;
       return;
@@ -252,12 +264,21 @@ export class Chit extends ObjectWithProps {
   }
 
   private get serializationProps() {
-    return [...this.props, "id", "_parent", "_parentOutlet", "_parentOutletIndex"];
+    return [
+      ...this.props,
+      "id",
+      "_parent",
+      "_parentOutlet",
+      "_parentOutletIndex",
+    ];
   }
 
   /** @internal */
   public screenCoordinates(): Vector2 | undefined {
-    return this.renderInstance?.screenCoordinates() ?? this.parent?.screenCoordinates();
+    return (
+      this.renderInstance?.screenCoordinates() ??
+      this.parent?.screenCoordinates()
+    );
   }
 
   /** @internal */
@@ -315,14 +336,20 @@ export class Chit extends ObjectWithProps {
       const value = j[key];
 
       if (value?.___orderedOutlet) {
-        (this as any)[key].deserialize(value.___orderedOutlet.map(inflateValue));
+        (this as any)[key].deserialize(
+          value.___orderedOutlet.map(inflateValue)
+        );
       } else {
         (this as any)[key] = inflateValue(value);
       }
     });
 
     this.id = j.id;
-    this.setParent(inflateValue(j._parent), j._parentOutlet, j._parentOutletIndex);
+    this.setParent(
+      inflateValue(j._parent),
+      j._parentOutlet,
+      j._parentOutletIndex
+    );
   }
 
   /** @internal */
@@ -336,8 +363,8 @@ export class Chit extends ObjectWithProps {
         },
         {
           __chitType: Object.getPrototypeOf(this).constructor.name,
-        } as { [key: string]: any },
-      ),
+        } as { [key: string]: any }
+      )
     );
   }
 
@@ -353,7 +380,8 @@ export class Chit extends ObjectWithProps {
   /** @internal */
   public static deflate(serialized: string, match: Match<any, any>) {
     const { __chitType } = JSON.parse(serialized);
-    const ChitType = match.game.chitLibrary[__chitType] ?? StaticChitTypeRegistry[__chitType];
+    const ChitType =
+      match.game.chitLibrary[__chitType] ?? StaticChitTypeRegistry[__chitType];
     if (!ChitType) {
       throw new Error(`Chit Type ${__chitType} not found`);
     }
@@ -374,11 +402,14 @@ export class Chit extends ObjectWithProps {
           seenIds.add(chit.id);
         }
         return fn(chit);
-      }),
+      })
     );
   }
 
-  public static pick<T extends Chit>(chit: T | T[], cb: (chit: T) => void | Promise<void>) {
+  public static pick<T extends Chit>(
+    chit: T | T[],
+    cb: (chit: T) => void | Promise<void>
+  ) {
     const result = new ChitPick<T>();
     result.chits = Array.isArray(chit) ? chit : [chit];
     result.cb = cb;

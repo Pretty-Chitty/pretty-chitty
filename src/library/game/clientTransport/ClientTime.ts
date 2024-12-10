@@ -1,11 +1,11 @@
-import { EventChannel } from "../../utilities/EventChannel";
-import { Chit } from "../Chit";
-import { ClientTimeState } from "../ClientTimeState";
-import { ClockDetails, samePasses } from "../ClockDetails";
-import { Connection } from "../Connection";
-import { ConnectionObject } from "../ConnectionObject";
-import { Match } from "../Match";
-import { ServerTime } from "../serverTransport/ServerTime";
+import { EventChannel } from '../../utilities/EventChannel';
+import { Chit } from '../Chit';
+import { ClientTimeState } from '../ClientTimeState';
+import { ClockDetails, samePasses } from '../ClockDetails';
+import { Connection } from '../Connection';
+import { ConnectionObject } from '../ConnectionObject';
+import { Match } from '../Match';
+import { ServerTime } from '../serverTransport/ServerTime';
 
 export class ClientTime extends ConnectionObject {
   private lastSerializedState: { [chitId: string]: string } = {};
@@ -17,26 +17,21 @@ export class ClientTime extends ConnectionObject {
   ) {
     super();
 
-    this.serverTime = this.connection.get<ServerTime<any, any>>("ServerTime");
+    this.serverTime = this.connection.get<ServerTime<any, any>>('ServerTime');
 
     this.register(this.clientTimeState.targetClock.on(() => this.processNewTargetClock()));
     this.register(
       this.clientTimeState.isWaitingOnAnimations.on((isWaiting) => {
-        if (
-          !isWaiting &&
-          this.clientTimeState.live.value &&
-          this.clientTimeState.targetClock.value < this.maxClock.value.clock
-        ) {
+        if (!isWaiting && this.clientTimeState.live.value && this.clientTimeState.targetClock.value < this.maxClock.value.clock) {
           this.clientTimeState.targetClock.value++;
         }
       }),
     );
 
-    this.clientTimeState.targetAnimationSpeedMultiplier.value =
-      parseFloat(localStorage["targetAnimationSpeedMultiplier"] ?? "1") || 1;
+    this.clientTimeState.targetAnimationSpeedMultiplier.value = parseFloat(localStorage['targetAnimationSpeedMultiplier'] ?? '1') || 1;
     this.register(
       this.clientTimeState.targetAnimationSpeedMultiplier.on((targetSpeed) => {
-        localStorage["targetAnimationSpeedMultiplier"] = targetSpeed;
+        localStorage['targetAnimationSpeedMultiplier'] = targetSpeed;
       }),
     );
   }
@@ -49,7 +44,7 @@ export class ClientTime extends ConnectionObject {
   public readonly findChit: (id: string) => Chit = (id: string) => {
     const result = this.chitLookup[id];
     if (!result) {
-      throw new Error("Cannot find chit");
+      throw new Error('Cannot find chit');
     }
     return result;
   };
@@ -76,13 +71,10 @@ export class ClientTime extends ConnectionObject {
 
     this.maxClock.value = newMaxClock;
     if (this.clientTimeState.live.value || !isSamePass) {
-      if (
-        !this.clientTimeState.isWaitingOnAnimations.value &&
-        this.clientTimeState.targetClock.value < this.maxClock.value.clock
-      ) {
+      if (!this.clientTimeState.isWaitingOnAnimations.value && this.clientTimeState.targetClock.value < this.maxClock.value.clock) {
         this.clientTimeState.targetClock.value++;
       } else {
-        this.processNewTargetClock();
+        await this.processNewTargetClock();
       }
     }
   }
@@ -138,7 +130,7 @@ export class ClientTime extends ConnectionObject {
 
       chits.forEach((chit) => chit.doneDeserializing());
 
-      this.rootChit.value = this.findChit("root");
+      this.rootChit.value = this.findChit('root');
 
       // sometimes deserializing chits does not result in animations (maybe a pure texture change?)
       // in that case, we need to make sure that the clock moves forward
@@ -148,18 +140,14 @@ export class ClientTime extends ConnectionObject {
 
       if (
         this.currentClock.value.clock >= 2 &&
-        this.clientTimeState.animationSpeedMultiplier.value !==
-          this.clientTimeState.targetAnimationSpeedMultiplier.value
+        this.clientTimeState.animationSpeedMultiplier.value !== this.clientTimeState.targetAnimationSpeedMultiplier.value
       ) {
         const checkForAnimationEnd = () => {
           if (!this.clientTimeState.isWaitingOnAnimations.value) {
-            this.clientTimeState.animationSpeedMultiplier.value =
-              this.clientTimeState.targetAnimationSpeedMultiplier.value;
+            this.clientTimeState.animationSpeedMultiplier.value = this.clientTimeState.targetAnimationSpeedMultiplier.value;
           } else if (this.currentClock.value.clock >= this.clientTimeState.targetClock.value) {
             setTimeout(
-              () =>
-                (this.clientTimeState.animationSpeedMultiplier.value =
-                  this.clientTimeState.targetAnimationSpeedMultiplier.value),
+              () => (this.clientTimeState.animationSpeedMultiplier.value = this.clientTimeState.targetAnimationSpeedMultiplier.value),
               100,
             );
           } else {

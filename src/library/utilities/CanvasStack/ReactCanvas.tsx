@@ -1,5 +1,6 @@
-import * as Colors from "color";
-import React, { ReactNode, ReactElement } from "react";
+import * as Colors from 'color';
+import React, { ReactNode, ReactElement } from 'react';
+
 import {
   CallbackCanvasOperation,
   CanvasOperation,
@@ -14,15 +15,15 @@ import {
   StackItem,
   TextCanvasOperation,
   VerticalStackCanvasOperation,
-} from "./CanvasOperations";
-import { PlayerChit } from "../../game/PlayerChit";
+} from './CanvasOperations';
+import { PlayerChit } from '../../game/PlayerChit';
 
 export interface DefaultProps {
   size?: number;
 }
 
 /** @internal */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 function WrappedCanvasOperation({ operation }: { operation: CanvasOperation }): ReactNode {
   return <></>;
 }
@@ -39,14 +40,14 @@ export function unwrapCanvasNode(node: ReactNode): CanvasOperation {
       return reactElement.props.operation;
     }
 
-    if (typeof reactElement.type === "function") {
+    if (typeof reactElement.type === 'function') {
       // eslint-disable-next-line no-empty-pattern
       const Element = reactElement.type as ({}) => ReactNode;
       if (Element) {
         const results = Element(reactElement.props);
         return unwrapCanvasNode(results);
       }
-    } else if (typeof reactElement.type === "symbol") {
+    } else if (typeof reactElement.type === 'symbol') {
       return new LayeredCanvasOperation([].concat(reactElement.props.children ?? []).map(unwrapCanvasNode));
     }
   }
@@ -171,8 +172,8 @@ export function Player({ player }: { player: PlayerChit }) {
  * @returns
  */
 export function Text({
-  children = "",
-  align = "center",
+  children = '',
+  align = 'center',
   fill,
   stroke,
   font,
@@ -184,7 +185,7 @@ export function Text({
   after,
 }: {
   children?: string | any[] | any;
-  align?: "center" | "left" | "right";
+  align?: 'center' | 'left' | 'right';
   fill?: string;
   stroke?: string;
   font?: string;
@@ -198,7 +199,7 @@ export function Text({
   return (
     <WrappedCanvasOperation
       operation={
-        new TextCanvasOperation(Array.isArray(children) ? children.join("") : String(children), {
+        new TextCanvasOperation(Array.isArray(children) ? children.join('') : String(children), {
           align,
           before: before ? unwrapCanvasNode(before) : undefined,
           after: after ? unwrapCanvasNode(after) : undefined,

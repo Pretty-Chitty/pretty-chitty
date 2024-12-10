@@ -1,16 +1,17 @@
-import { Check, Flip } from "@mui/icons-material";
-import { BottomBarButtonIcon } from "../components/BottomBarButton";
-import { ButtonPick } from "./Pick";
-import { NonEditable } from "../utilities/Annotations";
+import { Check, Flip } from '@mui/icons-material';
+
+import { BottomBarButtonIcon } from '../components/BottomBarButton';
+import { ButtonPick } from './Pick';
+import { NonEditable } from '../utilities/Annotations';
 
 export type ButtonCallback = () => void | Promise<void>;
 
 export class GameButton {
   /** @internal */
-  @NonEditable type = "button";
+  @NonEditable type = 'button';
 
   public icon: BottomBarButtonIcon = Flip;
-  public label: string = "Flip Me";
+  public label: string = 'Flip Me';
   public message: string | undefined;
 
   /** @internal */
@@ -24,7 +25,6 @@ export class GameButton {
     result.button = button;
     return result;
   }
-  
 
   /** @internal */
   serialize(): any {
@@ -32,12 +32,12 @@ export class GameButton {
   }
 
   /** @internal */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  deserialize(config: any) {}
+
+  deserialize(_config: any) {}
 }
 
 export class Confirm extends GameButton {
-  label = "Confirm";
+  label = 'Confirm';
   icon = Check;
   canAutoResolve = false;
 }

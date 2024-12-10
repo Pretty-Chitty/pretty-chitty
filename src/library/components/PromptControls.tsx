@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { ChevronRight, ChevronLeft, Replay, QuestionMark } from "@mui/icons-material";
-import { Box, Stack } from "@mui/material";
-import BottomBarButton from "./BottomBarButton";
-import { useGameTheme } from "../hooks/useGameTheme";
-import BottomBarBreak from "./BottomBarBreak";
-import { useEventChannelState } from "../hooks/useEventChannelState";
-import { useClientPrompts, useTimeState } from "../hooks/useTimeController";
-import { usePlayerId } from "../hooks/usePlayer";
-import GameDialog from "./GameDialog";
-import Markdown from "react-markdown";
-import { ZINDEX_PROMPT_CONTROLS } from "../utilities/zIndex";
+import React, { useEffect, useState } from 'react';
+import { ChevronRight, ChevronLeft, Replay, QuestionMark } from '@mui/icons-material';
+import { Box, Stack } from '@mui/material';
+import Markdown from 'react-markdown';
+
+import BottomBarButton from './BottomBarButton';
+import { useGameTheme } from '../hooks/useGameTheme';
+import BottomBarBreak from './BottomBarBreak';
+import { useEventChannelState } from '../hooks/useEventChannelState';
+import { useClientPrompts, useTimeState } from '../hooks/useTimeController';
+import { usePlayerId } from '../hooks/usePlayer';
+import GameDialog from './GameDialog';
+import { ZINDEX_PROMPT_CONTROLS } from '../utilities/zIndex';
 
 export default function PromptControls() {
   const [expanded, setExpanded] = useState(false);
@@ -27,8 +28,10 @@ export default function PromptControls() {
     setExpanded(true);
     if (!live) {
       setExpandedBecauseOfPrompt(false);
+      return () => {};
     } else if (prompt) {
       setExpandedBecauseOfPrompt(true);
+      return () => {};
     } else {
       const to = setTimeout(() => setExpandedBecauseOfPrompt(false), promptSpec ? 4000 : 400);
       return () => clearTimeout(to);
@@ -43,20 +46,20 @@ export default function PromptControls() {
     <Stack
       direction="row"
       sx={{
-        position: "absolute",
+        position: 'absolute',
         zIndex: ZINDEX_PROMPT_CONTROLS,
         background: theme.actionBarColor,
-        maxWidth: "390px",
-        width: "97%",
-        minWidth: "100px",
+        maxWidth: '390px',
+        width: '97%',
+        minWidth: '100px',
         height: theme.bottomBarHeight,
         transform: expandedBecauseOfPrompt
-          ? `translateX(${expanded ? "0px" : "calc(100% - 55px)"})`
-          : "translateX(100%)",
+          ? `translateX(${expanded ? '0px' : 'calc(100% - 55px)'})`
+          : 'translateX(100%)',
         transition: `transform ease-in-out ${theme.actionBarAnimationDuration}`,
         pr: 1,
         right: 0,
-        boxShadow: "-2px -2px 10px 0px rgba(0,0,0,0.2)",
+        boxShadow: '-2px -2px 10px 0px rgba(0,0,0,0.2)',
       }}
     >
       <BottomBarButton

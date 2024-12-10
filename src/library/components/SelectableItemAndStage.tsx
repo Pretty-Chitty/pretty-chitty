@@ -1,6 +1,6 @@
-import React, { ReactNode, useEffect } from "react";
-import useLocalStorageState from "use-local-storage-state";
-import { Stack, Box, Select, MenuItem, Paper } from "@mui/material";
+import React, { ReactNode, useEffect } from 'react';
+import useLocalStorageState from 'use-local-storage-state';
+import { Stack, Box, Select, MenuItem, Paper } from '@mui/material';
 
 export default function SelectableItemAndStage({
   items,
@@ -14,19 +14,19 @@ export default function SelectableItemAndStage({
   topOptions?: ReactNode;
 }) {
   const [selected, setSelected] = useLocalStorageState<string>(`dropdown${keySpace}`, {
-    defaultValue: "",
+    defaultValue: '',
   });
 
   useEffect(() => {
-    if (selected === "" && items.length > 0) {
+    if (selected === '' && items.length > 0) {
       setSelected(items[0]);
     }
   }, [selected, items, setSelected]);
 
   return (
-    <Stack sx={{ height: "100%" }}>
-      <Paper elevation={3} sx={{ position: "relative" }}>
-        <Stack direction={"row"}>
+    <Stack sx={{ height: '100%' }}>
+      <Paper elevation={3} sx={{ position: 'relative' }}>
+        <Stack direction="row">
           <Select
             variant="standard"
             sx={{ m: 2, width: 200 }}

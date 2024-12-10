@@ -1,12 +1,12 @@
-import { Chit } from "./Chit";
-import { PlayerInfo } from "./PlayerInfo";
-import { Turn } from "./Turn";
-import { ParameterizedCanvas } from "../utilities/ParameterizedCanvas";
-import { GameTheme } from "./GameTheme";
-import { GameButton } from "./GameButton";
-import { PlayerChit } from "./PlayerChit";
-import { RootChit } from "./RootChit";
-import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
+import { Chit } from './Chit';
+import { PlayerInfo } from './PlayerInfo';
+import { Turn } from './Turn';
+import { ParameterizedCanvas } from '../utilities/ParameterizedCanvas';
+import { GameTheme } from './GameTheme';
+import { GameButton } from './GameButton';
+import { PlayerChit } from './PlayerChit';
+import { RootChit } from './RootChit';
+import { ChitRenderSpec } from '../rendering/ChitRenderSpec';
 
 export interface IChitLibrary {
   [key: string]: new () => Chit;

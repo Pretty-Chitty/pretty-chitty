@@ -1,6 +1,5 @@
-import React, { useMemo, useEffect, useState } from "react";
-
-import { Box, ToggleButton, ToggleButtonGroup } from "@mui/material";
+import React, { useMemo, useEffect, useState } from 'react';
+import { Box, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import {
   FormatColorFill,
   PhotoSizeSelectSmall,
@@ -8,15 +7,15 @@ import {
   PhotoSizeSelectLarge,
   GridOn,
   GridOff,
-} from "@material-ui/icons";
+} from '@mui/icons-material';
+import useLocalStorageState from 'use-local-storage-state';
 
-import UpdatingCanvasViewer, { Size } from "./UpdatingCanvasViewer";
-import ObjectWithPropsEditor from "./ObjectWithPropsEditor";
-import { ParameterizedCanvas } from "../utilities/ParameterizedCanvas";
-import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
-import StageAndEditor from "./StageAndEditor";
-import SelectableItemAndStage from "./SelectableItemAndStage";
-import useLocalStorageState from "use-local-storage-state";
+import UpdatingCanvasViewer, { Size } from './UpdatingCanvasViewer';
+import ObjectWithPropsEditor from './ObjectWithPropsEditor';
+import { ParameterizedCanvas } from '../utilities/ParameterizedCanvas';
+import { IUpdatingCanvas } from '../utilities/IUpdatingCanvas';
+import StageAndEditor from './StageAndEditor';
+import SelectableItemAndStage from './SelectableItemAndStage';
 
 export interface ICanvasLibrary {
   [key: string]: new () => ParameterizedCanvas;
@@ -44,8 +43,8 @@ function Editor({ size, ClassDef }: { size: Size; ClassDef: new () => Parameteri
 
 export default function CanvasLibraryViewer({ library }: { library: ICanvasLibrary }) {
   const items = useMemo(() => Object.keys(library), [library]);
-  const [selectedSize, setSelectedSize] = useLocalStorageState<Size>("canvasLibrarySize", {
-    defaultValue: "actual",
+  const [selectedSize, setSelectedSize] = useLocalStorageState<Size>('canvasLibrarySize', {
+    defaultValue: 'actual',
   });
 
   return (
@@ -57,7 +56,7 @@ export default function CanvasLibraryViewer({ library }: { library: ICanvasLibra
           size="small"
           sx={{ m: 2 }}
           value={selectedSize}
-          onChange={(e, newValue) => setSelectedSize(newValue)}
+          onChange={(_e, newValue) => setSelectedSize(newValue)}
         >
           <ToggleButton value="actual">
             <PhotoSizeSelectActual />

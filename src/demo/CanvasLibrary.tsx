@@ -1,8 +1,14 @@
 import React from "react";
 
-import { Color, Horizontal, Image, Layered, Text, Vertical } from "../library/utilities/CanvasStack/ReactCanvas";
+import {
+  Color,
+  Horizontal,
+  Image,
+  Layered,
+  Text,
+  Vertical,
+} from "../library/utilities/CanvasStack/ReactCanvas";
 import { ParameterizedCanvas } from "../library/utilities/ParameterizedCanvas";
-
 import { metropolis } from "./assets/network_overload";
 
 // in other modules

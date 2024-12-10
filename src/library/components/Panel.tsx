@@ -1,19 +1,19 @@
-import React, { useCallback, useEffect, useState } from "react";
-import base64 from "base-64";
-import { Box, Stack } from "@mui/material";
-import { useDebounce } from "@react-hook/debounce";
-import { Chit } from "../game/Chit";
-import Viewer from "./Viewer";
-import { PanelLayoutResult, PanelChit } from "../game/PanelChit";
-import { useGameTheme } from "../hooks/useGameTheme";
+import React, { useCallback, useEffect, useState } from 'react';
+import base64 from 'base-64';
+import { Box, Stack } from '@mui/material';
+import { useDebounce } from '@react-hook/debounce';
 
-import { useTimeState } from "../hooks/useTimeController";
-import { usePanelStates } from "../hooks/usePanelStates";
-import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
-import { useEventChannelState } from "../hooks/useEventChannelState";
-import PanelSpark from "./PanelSpark";
-import { useChit } from "../hooks/useChits";
-import { ZINDEX_PANEL_CUTOUTS, ZINDEX_SPARKS } from "../utilities/zIndex";
+import { Chit } from '../game/Chit';
+import Viewer from './Viewer';
+import { PanelLayoutResult, PanelChit } from '../game/PanelChit';
+import { useGameTheme } from '../hooks/useGameTheme';
+import { useTimeState } from '../hooks/useTimeController';
+import { usePanelStates } from '../hooks/usePanelStates';
+import { RootChitRenderInstance } from '../rendering/RootChitRenderInstance';
+import { useEventChannelState } from '../hooks/useEventChannelState';
+import PanelSpark from './PanelSpark';
+import { useChit } from '../hooks/useChits';
+import { ZINDEX_PANEL_CUTOUTS, ZINDEX_SPARKS } from '../utilities/zIndex';
 
 const Cutout = `data:image/svg+xml;base64,${base64.encode(
   `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -51,15 +51,15 @@ function ViewerWrapper({
   w: number;
   h: number;
   paused: boolean;
-  panCallback?: (direction: "left" | "right") => void;
+  panCallback?: (direction: 'left' | 'right') => void;
 }) {
-  const chitInstance = useChit(chit.id ?? "nochit");
+  const chitInstance = useChit(chit.id ?? 'nochit');
 
-  const sparks = chitInstance?.getSparks("panel") ?? [];
+  const sparks = chitInstance?.getSparks('panel') ?? [];
 
   return (
     <>
-      <Stack direction={"row-reverse"} sx={{ position: "absolute", zIndex: ZINDEX_SPARKS }}>
+      <Stack direction="row-reverse" sx={{ position: 'absolute', zIndex: ZINDEX_SPARKS }}>
         {sparks
           .concat()
           .reverse()
@@ -77,16 +77,16 @@ function SinglePanel({ chit, x, y, w, h }: { chit: Chit; x: number; y: number; w
   return (
     <Box
       sx={{
-        overflow: "hidden",
+        overflow: 'hidden',
         width: `${w}px`,
         height: `${h}px`,
         left: `${x}px`,
         top: `${y}px`,
-        position: "absolute",
+        position: 'absolute',
         p: `${theme.spacing}px`,
       }}
     >
-      <Box sx={{ width: "100%", height: "100%", position: "relative", borderRadius: "10px", overflow: "hidden" }}>
+      <Box sx={{ width: '100%', height: '100%', position: 'relative', borderRadius: '10px', overflow: 'hidden' }}>
         <ViewerWrapper chit={chit} w={w - theme.spacing * 2} h={h - theme.spacing * 2} paused={false} />
       </Box>
     </Box>
@@ -123,9 +123,9 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   // } else
   // if (panelStates[selectedIndex]?.state === "inactive") {
   // check to see if there is a panel that is "leaving"
-  const leavingIndex = panelStates.findIndex((p) => p.state === "leaving");
-  const enteringIndex = panelStates.findIndex((p) => p.state === "entering");
-  const pendingIndex = panelStates.findIndex((p) => p.state === "pending");
+  const leavingIndex = panelStates.findIndex((p) => p.state === 'leaving');
+  const enteringIndex = panelStates.findIndex((p) => p.state === 'entering');
+  const pendingIndex = panelStates.findIndex((p) => p.state === 'pending');
   if (leavingIndex >= 0) {
     // console.log("leaving", leavingIndex);
     setSelectedIndex(leavingIndex);
@@ -138,7 +138,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   }
   // }
 
-  const key = `panel--${chits.map((c) => c.id).join("-")}`;
+  const key = `panel--${chits.map((c) => c.id).join('-')}`;
   useEffect(() => {
     setIsSliding(true);
     timeState.setAnimationState(key, true);
@@ -153,8 +153,8 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   }, [selectedIndex, key, timeState]);
 
   const panCallback = useCallback(
-    (direction: "left" | "right") => {
-      if (direction === "left") {
+    (direction: 'left' | 'right') => {
+      if (direction === 'left') {
         setSelectedIndex((chits.length + selectedIndex - 1) % chits.length);
       } else {
         setSelectedIndex((chits.length + selectedIndex + 1) % chits.length);
@@ -166,28 +166,28 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   return (
     <Stack
       sx={{
-        overflow: "hidden",
+        overflow: 'hidden',
         width: `${w}px`,
         height: `${h}px`,
         left: `${x}px`,
         top: `${y}px`,
-        position: "absolute",
+        position: 'absolute',
         p: `${theme.spacing}px`,
       }}
     >
-      <Box sx={{ width: "100%", flex: 1, position: "relative", borderRadius: "10px", overflow: "hidden" }}>
+      <Box sx={{ width: '100%', flex: 1, position: 'relative', borderRadius: '10px', overflow: 'hidden' }}>
         {chits.map((chit, index) => (
           <Box
             key={chit.id}
             sx={{
-              width: "100%",
-              height: "100%",
+              width: '100%',
+              height: '100%',
               transition: `transform ease-in-out ${ANIMATION_DURATION}s`,
-              position: "absolute",
+              position: 'absolute',
               left: 0,
               top: 0,
               transform:
-                index === selectedIndex ? `translateX(0)` : `translateX(${index > selectedIndex ? "110%" : "-110%"})`,
+                index === selectedIndex ? `translateX(0)` : `translateX(${index > selectedIndex ? '110%' : '-110%'})`,
             }}
           >
             <ViewerWrapper
@@ -206,7 +206,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
         <Box
           sx={{
             width: CUTOUT_WIDTH * chits.length,
-            position: "relative",
+            position: 'relative',
             mask: `url(${Cutout})`,
             maskSize: `${CUTOUT_WIDTH}px ${CUTOUT_HEIGHT}px`,
           }}
@@ -217,23 +217,23 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
               key={chit.id}
               sx={{
                 zIndex: ZINDEX_PANEL_CUTOUTS,
-                cursor: "pointer",
+                cursor: 'pointer',
                 height: CUTOUT_HEIGHT,
                 width: CUTOUT_WIDTH,
-                position: "absolute",
+                position: 'absolute',
                 top: 0,
                 left: index * CUTOUT_WIDTH,
               }}
             />
           ))}
-          <Box sx={{ height: CUTOUT_HEIGHT, width: "100%", background: theme.panelSelectionCutoutBackground }}></Box>
+          <Box sx={{ height: CUTOUT_HEIGHT, width: '100%', background: theme.panelSelectionCutoutBackground }} />
           <Box
             sx={{
               height: CUTOUT_HEIGHT,
               width: CUTOUT_WIDTH,
               transition: `left ease-in-out ${ANIMATION_DURATION}s`,
               background: theme.panelSelectionCutoutSelected,
-              position: "absolute",
+              position: 'absolute',
               top: 0,
               left: selectedIndex * CUTOUT_WIDTH,
             }}

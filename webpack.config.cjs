@@ -4,12 +4,12 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 const nodeExternals = require("webpack-node-externals"); // You might need to install this
 
-const isDevelopment = process.env.NODE_ENV !== "production";
+const isDevelopment = true;
 
 module.exports = {
   mode: "development", // isDevelopment ? "development" : "production",
 
-  entry: isDevelopment ? "./src/index.tsx" : "./src/library/index.ts",
+  entry: "./src/index.tsx",
   output: {
     path: path.resolve(__dirname, "dist"),
     umdNamedDefine: true,
@@ -27,11 +27,6 @@ module.exports = {
         }),
     ].filter(Boolean),
   ],
-  externals: {
-    react: "react",
-    three: "three",
-    "react-dom": "react-dom",
-  },
   devtool: "source-map",
   devServer: {
     static: "./dist",

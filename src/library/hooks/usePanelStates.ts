@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { AnimationState, RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
+import { useEffect, useState } from 'react';
+
+import { AnimationState, RootChitRenderInstance } from '../rendering/RootChitRenderInstance';
 
 type PanelState = {
   panel?: RootChitRenderInstance;

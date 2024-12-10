@@ -1,11 +1,11 @@
-import React, { ReactNode } from "react";
-import { Chit } from "./Chit";
-import TopBarDropdown from "../components/TopBarDropdown";
-import { NonEditable } from "../utilities/Annotations";
+import React, { ReactNode } from 'react';
+
+import { Chit } from './Chit';
+import TopBarDropdown from '../components/TopBarDropdown';
 
 export abstract class DropdownChit extends Chit {
   /** @internal */
-  @NonEditable type = "dropdown";
+  type = 'dropdown';
 
   abstract renderLabel(): string | ReactNode;
   abstract renderBody(): string | ReactNode | ReactNode[];

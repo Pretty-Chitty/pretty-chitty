@@ -1,27 +1,14 @@
-import React from "react";
-import {
-  Box3,
-  BoxGeometry,
-  DoubleSide,
-  Group,
-  Mesh,
-  MeshBasicMaterial,
-  MeshPhongMaterial,
-  Object3D,
-  PlaneGeometry,
-  Vector3,
-} from "three";
-import { CameraSpec } from "./CameraSpec";
-import { Chit } from "../game/Chit";
-import { LightSpec } from "./LightSpec";
-import { HighlightSpec } from "./HighlightSpec";
-import { Splay } from "./Splay";
-import { OrderedOutlet } from "../game/OrderedOutlet";
-import { ParameterizedCanvas } from "../utilities/ParameterizedCanvas";
-import { TextOptions } from "../utilities/CanvasStack/CanvasOperations";
-import { Text } from "../utilities/CanvasStack/ReactCanvas";
-import { SplayCounter, SplayCounterOptions } from "./SplayCounter";
-import { fixBbox } from "../utilities/BboxUtils";
+import { Box3, Group, Mesh, MeshPhongMaterial, Object3D, PlaneGeometry, Vector3 } from 'three';
+
+import { CameraSpec } from './CameraSpec';
+import { Chit } from '../game/Chit';
+import { LightSpec } from './LightSpec';
+import { HighlightSpec } from './HighlightSpec';
+import { Splay } from './Splay';
+import { OrderedOutlet } from '../game/OrderedOutlet';
+import { ParameterizedCanvas } from '../utilities/ParameterizedCanvas';
+import { SplayCounter, SplayCounterOptions } from './SplayCounter';
+import { fixBbox } from '../utilities/BboxUtils';
 
 // prettier-ignore
 export enum OwnerOriginPosition {
@@ -88,15 +75,13 @@ export class ChitRenderSpec {
     canvas: SplayCounterOptions | (ParameterizedCanvas & { value: number }),
     minimumToRender = 2,
     dpi: number = 100,
-    position: "top" | "left" | "right" | "bottom" = "bottom",
+    position: 'top' | 'left' | 'right' | 'bottom' = 'bottom',
   ) {
     if (ordered.length >= minimumToRender) {
       let offsetY = 0,
         offsetX = 0,
         itemWidth = 0.0001,
-        itemHeight = 0.0001,
-        rows = 0,
-        columns = 0;
+        itemHeight = 0.0001;
       const firstItem = ordered.get(0) as Chit;
       if (firstItem) {
         const fakeRenderSpec = new ChitRenderSpec(firstItem);
@@ -141,16 +126,16 @@ export class ChitRenderSpec {
       fixBbox(box3);
 
       switch (position) {
-        case "bottom":
+        case 'bottom':
           offsetY -= h / 2;
           break;
-        case "top":
+        case 'top':
           offsetY += h / 2;
           break;
-        case "left":
+        case 'left':
           offsetX -= w / 2;
           break;
-        case "right":
+        case 'right':
           offsetX += w / 2;
           break;
       }

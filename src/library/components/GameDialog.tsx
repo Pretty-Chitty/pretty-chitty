@@ -1,7 +1,7 @@
-import React from "react";
-import { Dialog } from "@mui/material";
-import { ReactNode } from "react";
-import { useGameTheme } from "../hooks/useGameTheme";
+import React, { ReactNode } from 'react';
+import { Dialog } from '@mui/material';
+
+import { useGameTheme } from '../hooks/useGameTheme';
 
 export default function GameDialog({
   children,
@@ -20,7 +20,7 @@ export default function GameDialog({
       open={open}
       PaperProps={{
         style: {
-          backgroundColor: "transparent",
+          backgroundColor: 'transparent',
           color: theme.dialogForegroundColor,
           fontSize: 16,
         },

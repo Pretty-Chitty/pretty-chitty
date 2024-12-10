@@ -1,4 +1,4 @@
-import { Group, Material, Mesh, PlaneGeometry } from "three";
+import { Group, Material, Mesh, PlaneGeometry } from 'three';
 
 type CardMeshOptions = {
   castShadow?: boolean;

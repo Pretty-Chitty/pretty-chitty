@@ -1,11 +1,11 @@
-import { EventChannel } from "../../utilities/EventChannel";
-import { Connection } from "../Connection";
-import { ConnectionObject } from "../ConnectionObject";
-import { Match } from "../Match";
-import { PlayerChit } from "../PlayerChit";
-import { PlayerInfo } from "../PlayerInfo";
-import { RootChit } from "../RootChit";
-import { ServerStatus } from "../serverTransport/ServerStatus";
+import { EventChannel } from '../../utilities/EventChannel';
+import { Connection } from '../Connection';
+import { ConnectionObject } from '../ConnectionObject';
+import { Match } from '../Match';
+import { PlayerChit } from '../PlayerChit';
+import { PlayerInfo } from '../PlayerInfo';
+import { RootChit } from '../RootChit';
+// import { ServerStatus } from '../serverTransport/ServerStatus';
 
 type ClientGameResult = {
   winners: PlayerInfo[];
@@ -14,15 +14,15 @@ type ClientGameResult = {
 export class ClientStatus<P extends PlayerChit, R extends RootChit<P>> extends ConnectionObject {
   public errorMessage = new EventChannel<string | undefined>(undefined);
   public matchResult = new EventChannel<ClientGameResult | undefined>(undefined);
-  private serverStatus: ServerStatus<P, R>;
+  // private serverStatus: ServerStatus<P, R>;
 
   constructor(
     private match: Match<P, R>,
-    private connection: Connection,
+    _connection: Connection,
   ) {
     super();
 
-    this.serverStatus = connection.get<ServerStatus<P, R>>("ServerStatus");
+    // this.serverStatus = connection.get<ServerStatus<P, R>>('ServerStatus');
   }
 
   async setErrorMessage(error: string | undefined) {
@@ -35,7 +35,7 @@ export class ClientStatus<P extends PlayerChit, R extends RootChit<P>> extends C
 
       // ensure no mismatch
       if (winners.find((d) => !d)) {
-        throw new Error("Winner id provided that was not in list");
+        throw new Error('Winner id provided that was not in list');
       }
 
       this.matchResult.value = {
