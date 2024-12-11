@@ -1,31 +1,33 @@
-import nextTick from 'next-tick';
+import nextTick from "next-tick";
 
-import { Chit } from './Chit';
-import { Connection } from './Connection';
-import { ConnectionTransport } from './ConnectionTransport';
-import { Game, GameResult } from './Game';
-import { ServerTime } from './serverTransport/ServerTime';
-import { PlayerInfo } from './PlayerInfo';
-import { MismatchError, RerunError, Turn } from './Turn';
-import { TurnState } from './TurnState';
-import { IMatchStorage } from './MatchStorage';
-import { ServerPrompts } from './serverTransport/ServerPrompts';
-import { EventChannel } from '../utilities/EventChannel';
-import { RootChit } from './RootChit';
-import { ServerStatus } from './serverTransport/ServerStatus';
-import { PlayerChit } from './PlayerChit';
+import { Chit } from "./Chit";
+import { Connection } from "./Connection";
+import { ConnectionTransport } from "./ConnectionTransport";
+import { Game, GameResult } from "./Game";
+import { ServerTime } from "./serverTransport/ServerTime";
+import { PlayerInfo } from "./PlayerInfo";
+import { MismatchError, RerunError, Turn } from "./Turn";
+import { TurnState } from "./TurnState";
+import { IMatchStorage } from "./MatchStorage";
+import { ServerPrompts } from "./serverTransport/ServerPrompts";
+import { EventChannel } from "../utilities/EventChannel";
+import { RootChit } from "./RootChit";
+import { ServerStatus } from "./serverTransport/ServerStatus";
+import { PlayerChit } from "./PlayerChit";
 
 export class Match<P extends PlayerChit, R extends RootChit<P>> {
   public state: TurnState = new TurnState();
   public result = new EventChannel<undefined | GameResult<P>>(undefined);
-  public turn = new EventChannel<undefined | Turn<GameResult<P>, P, R>>(undefined);
+  public turn = new EventChannel<undefined | Turn<GameResult<P>, P, R>>(
+    undefined
+  );
   public errorState = new EventChannel<undefined | string>(undefined);
   private onChangeCallbacks: (() => void)[] = [];
 
   constructor(
     public game: Game<P, R>,
     public players: PlayerInfo[],
-    private matchStorage: IMatchStorage,
+    private matchStorage: IMatchStorage
   ) {}
 
   async load() {
@@ -40,7 +42,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         this.turn.value?.destroy();
         this.turn.value = undefined;
         this.start()
-          .then(() => console.log('match finished'))
+          .then(() => console.log("match finished"))
           .catch(console.error);
       } else if (this.turn.value) {
         this.turn.value.handleNewSavedState(this.state);
@@ -60,7 +62,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
 
   async start() {
     if (this.turn.value) {
-      throw new Error('Can only start once per Match instance');
+      throw new Error("Can only start once per Match instance");
     }
 
     // if players change (promise status, etc.) then we need to notify
@@ -71,26 +73,30 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         this.result.value = undefined;
         this.errorState.value = undefined;
         const rootChit = this.game.generateRootChit();
-        rootChit.id = 'root';
+        rootChit._id = "root";
         rootChit.match = this;
 
         const players = this.players.map((p) => {
           const player = this.game.generatePlayer(p);
-          player.promptStatus.latestPrompt.on(() => this.notify(), false);
+          player.promptStatus._latestPrompt.on(() => this.notify(), false);
           rootChit.players.add(player);
           return player;
         });
 
         let counter = 1;
         rootChit.walk((c: Chit) => {
-          if (!c.id) {
-            c.id = `root-autocreated-${counter++}`;
+          if (!c._id) {
+            c._id = `root-autocreated-${counter++}`;
           }
         });
 
-        this.turn.value = new Turn<GameResult<P>, P, R>('root', this, this.state, (turn) => this.game.run(players, turn, rootChit), [
-          rootChit,
-        ]);
+        this.turn.value = new Turn<GameResult<P>, P, R>(
+          "root",
+          this,
+          this.state,
+          (turn) => this.game.run(players, turn, rootChit),
+          [rootChit]
+        );
         this.turn.value.fixPass();
         this.notify();
         this.result.value = await this.turn.value.execute();

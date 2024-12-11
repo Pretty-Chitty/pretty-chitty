@@ -1,18 +1,18 @@
-import nextTick from 'next-tick';
+import nextTick from "next-tick";
 
-import { checkAnnotation, NonEditable } from './Annotations';
+import { checkAnnotation, NonEditable } from "./Annotations";
 
-const CATCH_ALL = '[[null]]';
+const CATCH_ALL = "[[null]]";
 export class ObjectWithProps {
   /** @internal */
   public get props(): string[] {
-    return Object.keys(this).filter((key) => !checkAnnotation(this, key, NonEditable));
+    return Object.keys(this).filter((key) => !key.startsWith("_"));
   }
   /** @internal */
-  @NonEditable private _cbs: { [key: string]: Array<() => void> } = {};
+  private _cbs: { [key: string]: Array<() => void> } = {};
 
   /** @internal */
-  @NonEditable private _keysThatChanged = new Set<string>();
+  private _keysThatChanged = new Set<string>();
 
   public set(cb: (chit: this) => void): this {
     cb(this);
@@ -23,7 +23,9 @@ export class ObjectWithProps {
   public notifyChange(key: string): void {
     if (this._keysThatChanged.size === 0) {
       nextTick(() => {
-        this._keysThatChanged.forEach((key) => this._cbs[key]?.forEach((cb) => cb()));
+        this._keysThatChanged.forEach((key) =>
+          this._cbs[key]?.forEach((cb) => cb())
+        );
         this._cbs[CATCH_ALL]?.forEach((cb) => cb());
         this._keysThatChanged.clear();
       });

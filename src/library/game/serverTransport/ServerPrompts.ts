@@ -1,21 +1,25 @@
-import { Connection } from '../Connection';
-import { ConnectionObject } from '../ConnectionObject';
-import { Match } from '../Match';
-import { PlayerChit } from '../PlayerChit';
-import { PromptSerialization } from '../Prompt';
-import { RootChit } from '../RootChit';
-import { ClientPrompts } from '../clientTransport/ClientPrompts';
+import { Connection } from "../Connection";
+import { ConnectionObject } from "../ConnectionObject";
+import { Match } from "../Match";
+import { PlayerChit } from "../PlayerChit";
+import { PromptSerialization } from "../Prompt";
+import { RootChit } from "../RootChit";
+import { ClientPrompts } from "../clientTransport/ClientPrompts";
 
-export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends ConnectionObject {
+export class ServerPrompts<
+  P extends PlayerChit,
+  R extends RootChit<P>,
+> extends ConnectionObject {
   private clientPrompts: ClientPrompts<P, R>;
   constructor(
     private playerId: string,
     private match: Match<P, R>,
-    private connection: Connection,
+    private connection: Connection
   ) {
     super();
 
-    this.clientPrompts = this.connection.get<ClientPrompts<P, R>>('ClientPrompts');
+    this.clientPrompts =
+      this.connection.get<ClientPrompts<P, R>>("ClientPrompts");
 
     // I HATE THIS
     // but it's fine? maybe?
@@ -28,9 +32,13 @@ export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
 
           if (newTurn) {
             unsubs = newTurn.rootChit.players.map((player) =>
-              player.promptStatus.latestPrompt.on((latestPrompt) =>
-                this.clientPrompts.setPromptForPlayer(player.playerId, latestPrompt?.serialize(), this.match.turn.value?.clockDetails),
-              ),
+              player.promptStatus._latestPrompt.on((latestPrompt) =>
+                this.clientPrompts.setPromptForPlayer(
+                  player.playerId,
+                  latestPrompt?.serialize(),
+                  this.match.turn.value?.clockDetails
+                )
+              )
             );
           }
         });
@@ -39,7 +47,7 @@ export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
           cb();
           unsubs.forEach((cb) => cb());
         };
-      })(),
+      })()
     );
   }
 
@@ -49,24 +57,28 @@ export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
 
   async resolvePrompt(response: any): Promise<void | PromptSerialization> {
     const player = this.playerChits?.find((p) => p.playerId === this.playerId);
-    if (player && player.promptStatus.latestPrompt.value) {
+    if (player && player.promptStatus._latestPrompt.value) {
       let cb: (() => void) | undefined;
       const p = new Promise((resolve) => {
         cb = this.match.onChange(() => resolve(0), false);
       });
-      player.promptStatus.latestPrompt.value.resolve(response);
+      player.promptStatus._latestPrompt.value.resolve(response);
       await p;
       if (cb) {
         cb();
       }
-      return player.promptStatus.latestPrompt.value?.serialize();
+      return player.promptStatus._latestPrompt.value?.serialize();
     }
   }
 
-  stepBackPrompt(fullReset: boolean = false) {
+  async stepBackPrompt(fullReset: boolean = false) {
     const player = this.playerChits?.find((p) => p.playerId === this.playerId);
-    if (player && player.promptStatus.latestPrompt.value && player.promptStatus.latestPrompt.value.canReset) {
-      player.promptStatus.latestPrompt.value.stepBack(fullReset);
+    if (
+      player &&
+      player.promptStatus._latestPrompt.value &&
+      player.promptStatus._latestPrompt.value.canReset
+    ) {
+      player.promptStatus._latestPrompt.value.stepBack(fullReset);
     }
   }
 }

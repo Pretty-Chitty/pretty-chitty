@@ -1,26 +1,50 @@
-import React, { useMemo, useEffect, useState, useRef } from 'react';
-import { Box, Checkbox, FormControlLabel, MenuItem, Select, Stack, Typography } from '@mui/material';
-import useLocalStorageState from 'use-local-storage-state';
-import useSize from '@react-hook/size';
+import React, { useMemo, useEffect, useState, useRef } from "react";
+import {
+  Box,
+  Checkbox,
+  FormControlLabel,
+  MenuItem,
+  Select,
+  Stack,
+  Typography,
+} from "@mui/material";
+import useLocalStorageState from "use-local-storage-state";
+import useSize from "@react-hook/size";
 
-import ObjectWithPropsEditor from './ObjectWithPropsEditor';
-import StageAndEditor from './StageAndEditor';
-import SelectableItemAndStage from './SelectableItemAndStage';
-import { Chit } from '../game/Chit';
-import Viewer from './Viewer';
-import { BaseTable } from '../utilities/BaseTable';
-import { ChitRenderSpec } from '../rendering/ChitRenderSpec';
-import { useTimeState } from '../hooks/useTimeController';
+import ObjectWithPropsEditor from "./ObjectWithPropsEditor";
+import StageAndEditor from "./StageAndEditor";
+import SelectableItemAndStage from "./SelectableItemAndStage";
+import { Chit } from "../game/Chit";
+import Viewer from "./Viewer";
+import { BaseTable } from "../utilities/BaseTable";
+import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
+import { useTimeState } from "../hooks/useTimeController";
 
 export interface IChitLibrary {
   [key: string]: new () => Chit;
 }
 
-function ResizingViewer({ wireframes, chit }: { wireframes: boolean; chit: Chit }) {
+function ResizingViewer({
+  wireframes,
+  chit,
+}: {
+  wireframes: boolean;
+  chit: Chit;
+}) {
   const ref = useRef(null);
   const [width, height] = useSize(ref);
   return (
-    <Box sx={{ position: 'absolute', top: 0, right: 0, left: 0, bottom: 0, overflow: 'hidden' }} ref={ref}>
+    <Box
+      sx={{
+        position: "absolute",
+        top: 0,
+        right: 0,
+        left: 0,
+        bottom: 0,
+        overflow: "hidden",
+      }}
+      ref={ref}
+    >
       <Viewer w={width} h={height} wireframes={wireframes} chit={chit} />
     </Box>
   );
@@ -72,7 +96,13 @@ function Editor({
 
     try {
       timeState.animationSpeedMultiplier.value = 1;
-      setTimeout(() => rootInstance?.renderInstance?.tweenGroup?.update(Number.MAX_SAFE_INTEGER), 10);
+      setTimeout(
+        () =>
+          rootInstance?._renderInstance?.tweenGroup?.update(
+            Number.MAX_SAFE_INTEGER
+          ),
+        10
+      );
 
       const instanceRenderResult = new ChitRenderSpec(instance);
       instance.render(instanceRenderResult);
@@ -101,8 +131,8 @@ function Editor({
           rootInstance.add(parentInstance ?? instance);
           rootInstance.target = instance;
           rootInstance.parentTarget = parentInstance;
-          rootInstance.notifyChange('target');
-          rootInstance.notifyChange('parentTarget');
+          rootInstance.notifyChange("target");
+          rootInstance.notifyChange("parentTarget");
         }
       } else {
         setRootInstance(parentInstance ?? instance);
@@ -113,18 +143,32 @@ function Editor({
   }, [timeState, instance, parentInstance, rootInstance, BT]);
 
   return (
-    <StageAndEditor editor={rootInstance && <ObjectWithPropsEditor obj={rootInstance} />}>
-      {rootInstance && <ResizingViewer wireframes={wireframes} chit={rootInstance} />}
+    <StageAndEditor
+      editor={rootInstance && <ObjectWithPropsEditor obj={rootInstance} />}
+    >
+      {rootInstance && (
+        <ResizingViewer wireframes={wireframes} chit={rootInstance} />
+      )}
     </StageAndEditor>
   );
 }
 
-export default function ChitLibraryViewer({ library }: { library: IChitLibrary }) {
+export default function ChitLibraryViewer({
+  library,
+}: {
+  library: IChitLibrary;
+}) {
   const items = useMemo(() => Object.keys(library), [library]);
-  const [parentType, setParentType] = useLocalStorageState<string>('chitLibraryParentType', {
-    defaultValue: '',
-  });
-  const [wireframes, setWireframes] = useLocalStorageState<boolean>('showBoundingBoxes', { defaultValue: false });
+  const [parentType, setParentType] = useLocalStorageState<string>(
+    "chitLibraryParentType",
+    {
+      defaultValue: "",
+    }
+  );
+  const [wireframes, setWireframes] = useLocalStorageState<boolean>(
+    "showBoundingBoxes",
+    { defaultValue: false }
+  );
 
   return (
     <SelectableItemAndStage
@@ -147,7 +191,12 @@ export default function ChitLibraryViewer({ library }: { library: IChitLibrary }
             ))}
           </Select>
           <FormControlLabel
-            control={<Checkbox checked={wireframes} onChange={(e) => setWireframes(e.target.checked)} />}
+            control={
+              <Checkbox
+                checked={wireframes}
+                onChange={(e) => setWireframes(e.target.checked)}
+              />
+            }
             label="Bounding Boxes"
           />
         </Stack>

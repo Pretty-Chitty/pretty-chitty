@@ -1,14 +1,14 @@
-import nextTick from 'next-tick';
+import nextTick from "next-tick";
 
-import { Chit } from './Chit';
-import { Match } from './Match';
-import { PickPrompt, Prompt, SelectPrompt } from './Prompt';
-import { PromptResponse, RngResponse, TurnState } from './TurnState';
-import { ClockDetails } from './ClockDetails';
-import { Pick } from './Pick';
-import { Confirm, GameButton } from './GameButton';
-import { PlayerChit } from './PlayerChit';
-import { RootChit } from './RootChit';
+import { Chit } from "./Chit";
+import { Match } from "./Match";
+import { PickPrompt, Prompt, SelectPrompt } from "./Prompt";
+import { PromptResponse, RngResponse, TurnState } from "./TurnState";
+import { ClockDetails } from "./ClockDetails";
+import { Pick } from "./Pick";
+import { Confirm, GameButton } from "./GameButton";
+import { PlayerChit } from "./PlayerChit";
+import { RootChit } from "./RootChit";
 
 type ChitSerializationResponse = {
   chits: ChitStateLookup;
@@ -21,12 +21,22 @@ export interface ITurn {
   rng(): Promise<number>;
   takeRng(count: number): Promise<() => number>;
   flush(): void;
-  createTurn<A>(chits: Chit[], player: PlayerChit, cb: (turn: ITurn) => Promise<A>): Promise<A>;
+  createTurn<A>(
+    chits: Chit[],
+    player: PlayerChit,
+    cb: (turn: ITurn) => Promise<A>
+  ): Promise<A>;
   select(chits: Chit[]): Promise<Chit>;
-  pick(message?: string | Picks, help?: string | Picks, picks?: Picks): Promise<void>;
+  pick(
+    message?: string | Picks,
+    help?: string | Picks,
+    picks?: Picks
+  ): Promise<void>;
 }
 
-export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITurn {
+export class Turn<T, P extends PlayerChit, R extends RootChit<P>>
+  implements ITurn
+{
   private pass = 0;
   private clockSteps: ClockStep[] = [];
   private decisionIndex = 0; // decision points that can be potentially rolled back
@@ -59,7 +69,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
       if (this.parent) {
         return this.parent.findChit(id);
       }
-      throw new Error('Cannot find chit');
+      throw new Error("Cannot find chit");
     }
     return result;
   };
@@ -68,7 +78,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
    * The root chit instance of the game.  All chits in the game have this chit somewhere in its hierarchy
    */
   public get rootChit(): R {
-    return this.findChit('root') as R;
+    return this.findChit("root") as R;
   }
 
   /** @internal */
@@ -84,21 +94,21 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
     private chitsToLock: Chit[],
     public player?: P,
     /** @internal */
-    private parent?: Turn<any, P, R>,
+    private parent?: Turn<any, P, R>
   ) {
-    if (chitsToLock.find((chit) => !chit.id)) {
-      throw new Error('Cannot lock a chit without an id');
+    if (chitsToLock.find((chit) => !chit._id)) {
+      throw new Error("Cannot lock a chit without an id");
     }
 
     // store our chit lookup plus the initial states of all of those chits
     // so if we have to reset, we can just restore those states
     Chit.walk(chitsToLock, (c) => {
-      if (!c.id) {
-        throw new Error('Cannot lock a chit without an id');
+      if (!c._id) {
+        throw new Error("Cannot lock a chit without an id");
       }
       c.lock(this);
-      this.chitLookup[c.id] = c;
-      this.lastChitStates[c.id] = this.lockedChitStates[c.id] = c.serialize();
+      this.chitLookup[c._id] = c;
+      this.lastChitStates[c._id] = this.lockedChitStates[c._id] = c.serialize();
     });
   }
 
@@ -111,7 +121,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
    * @returns A number from 0-1
    */
   async rng() {
-    await this.possiblyConfirm('Confirm draw or roll');
+    await this.possiblyConfirm("Confirm draw or roll");
     const result = this.state.getOrCreateRng(this.decisionIndex);
     this.decisionIndex++;
     return result;
@@ -124,7 +134,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
    * @returns A parameterless function that will return the next random number in the list.  If you try to select too many random numbers, that method will throw.
    */
   async takeRng(count: number): Promise<() => number> {
-    await this.possiblyConfirm('Confirm draw or roll');
+    await this.possiblyConfirm("Confirm draw or roll");
     const results: number[] = [];
     for (let i = 0; i < count; i++) {
       results.push(this.state.getOrCreateRng(this.decisionIndex));
@@ -134,7 +144,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
     let counter = 0;
     return () => {
       if (counter >= results.length) {
-        throw new Error('RNG take out of bounds');
+        throw new Error("RNG take out of bounds");
       }
       return results[counter++];
     };
@@ -153,30 +163,32 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
 
     // first ensure they all are locked and all have ids
     Chit.walk(this.chitsToLock, (c) => {
-      if (!c.id) {
-        c.id = `${this.id}.${this.newChitCounter++}`; // TODO: I thought chit type should be part of the ID?
+      if (!c._id) {
+        c._id = `${this.id}.${this.newChitCounter++}`; // TODO: I thought chit type should be part of the ID?
         c.lock(this);
-        this.chitLookup[c.id] = c; // it's possible that this is kicking out an "old" version of this chit from a previous pass
+        this.chitLookup[c._id] = c; // it's possible that this is kicking out an "old" version of this chit from a previous pass
       }
     });
 
     // now (once per chit) we serialize the state if it changed
     Chit.walk(this.chitsToLock, (c) => {
-      if (!c.id) {
-        throw new Error('Should not be possible unless Chit.walk is misbehaving');
+      if (!c._id) {
+        throw new Error(
+          "Should not be possible unless Chit.walk is misbehaving"
+        );
       }
-      if (!seenIds.has(c.id)) {
-        seenIds.add(c.id);
+      if (!seenIds.has(c._id)) {
+        seenIds.add(c._id);
         const serialized = c.serialize();
-        const lastState = this.lastChitStates[c.id];
+        const lastState = this.lastChitStates[c._id];
         if (serialized !== lastState) {
           // there is a change!
           if (lastState) {
-            fromStates[c.id] = lastState;
+            fromStates[c._id] = lastState;
           } else {
-            fromStates[c.id] = Chit.deletedIfSerialized();
+            fromStates[c._id] = Chit.deletedIfSerialized();
           }
-          this.lastChitStates[c.id] = newStates[c.id] = serialized;
+          this.lastChitStates[c._id] = newStates[c._id] = serialized;
           sawChange = true;
         }
         return true;
@@ -195,16 +207,16 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
     chitsToDelete
       .filter((chit) => !chit.parent)
       .forEach((chit) => {
-        if (chit.id) {
+        if (chit._id) {
           sawChange = true;
           chit.unlock(this);
           // do not store this new state in lastChitStates, but rather delete this record from it altogether
-          newStates[chit.id] = chit.serialize();
+          newStates[chit._id] = chit.serialize();
 
           chit.walk((c) => {
-            if (c.id) {
-              seenIds.add(c.id);
-              delete this.lastChitStates[c.id];
+            if (c._id) {
+              seenIds.add(c._id);
+              delete this.lastChitStates[c._id];
             }
           });
         }
@@ -212,12 +224,16 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
 
     // any chits remaining that we haven't seen are bad news - they have likely been reparented to some other Turn, which
     // is against the rules.  They need to remain under this turns control.
-    if (chitsToDelete.find((c) => c.id && !seenIds.has(c.id))) {
-      throw new Error('Chit has been reparented to another Turn which will corrupt control');
+    if (chitsToDelete.find((c) => c._id && !seenIds.has(c._id))) {
+      throw new Error(
+        "Chit has been reparented to another Turn which will corrupt control"
+      );
     }
 
     if (sawChange) {
-      this.clockSteps.push(new FlushClockStep(this.clock, newStates, fromStates));
+      this.clockSteps.push(
+        new FlushClockStep(this.clock, newStates, fromStates)
+      );
     }
   }
 
@@ -238,23 +254,30 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
    * @param cb The async function that will be the logic of this turn.  The function takes a new turn instance
    * @returns Whatever the final result of cb() is
    */
-  public async createTurn<A>(chits: Chit[], player: P, cb: (turn: Turn<A, P, R>) => Promise<A>): Promise<A> {
+  public async createTurn<A>(
+    chits: Chit[],
+    player: P,
+    cb: (turn: Turn<A, P, R>) => Promise<A>
+  ): Promise<A> {
     if (this.unresolvedPrompt) {
-      throw new Error('Still awaiting a prompt result');
+      throw new Error("Still awaiting a prompt result");
     }
 
     this.flush();
 
     if (player.playerId && player.playerId !== this.player?.playerId) {
-      await this.possiblyConfirm('Confirm switching active player');
+      await this.possiblyConfirm("Confirm switching active player");
     }
 
     if (player) {
       chits = chits.concat(player);
     }
 
-    if (player && this.activeSubTurns.find((subTurn) => subTurn.player === player)) {
-      throw new Error('Only one sub-turn can be active at a time per player');
+    if (
+      player &&
+      this.activeSubTurns.find((subTurn) => subTurn.player === player)
+    ) {
+      throw new Error("Only one sub-turn can be active at a time per player");
     }
 
     const id = `${this.id}.${this.decisionIndex}`;
@@ -276,9 +299,9 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
     this.activeSubTurns = this.activeSubTurns.filter((t) => t !== turn);
 
     Chit.walk(chits, (chit) => {
-      if (chit.id) {
+      if (chit._id) {
         chit.lock(this);
-        this.chitLookup[chit.id] = chit;
+        this.chitLookup[chit._id] = chit;
       }
     });
 
@@ -307,7 +330,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
 
     await this.waitForPromptResolution(prompt);
     if (!prompt.selectedChit) {
-      throw new Error('Prompt should have selected chit response');
+      throw new Error("Prompt should have selected chit response");
     }
 
     return prompt.selectedChit;
@@ -321,18 +344,22 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
    * @param help (optional) A detailed help message to show
    * @param picks An array of "picks" - each of which can have its own typesafe callback
    */
-  public async pick(message?: string | Picks, help?: string | Picks, picks?: Picks) {
-    if (typeof message !== 'string') {
+  public async pick(
+    message?: string | Picks,
+    help?: string | Picks,
+    picks?: Picks
+  ) {
+    if (typeof message !== "string") {
       picks = message;
       message = undefined;
       help = undefined;
     }
-    if (help && typeof help !== 'string') {
+    if (help && typeof help !== "string") {
       picks = help;
       help = undefined;
     }
     if (picks === undefined) {
-      throw new Error('No PIcks');
+      throw new Error("No PIcks");
     }
 
     const prompt = new PickPrompt();
@@ -350,7 +377,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
         if (o instanceof GameButton) {
           return GameButton.pick(o);
         }
-        throw new Error('Invalid type');
+        throw new Error("Invalid type");
       })
       .filter((a) => a && a.numberOfChoices() > 0) as Pick[];
 
@@ -385,7 +412,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
 
   /** @internal */
   async possiblyConfirm(action: string): Promise<void> {
-    if (this.state.hasUserMadeChoiceSinceUserContextChangedOrRng(this.decisionIndex - 1)) {
+    if (
+      this.state.hasUserMadeChoiceSinceUserContextChangedOrRng(
+        this.decisionIndex - 1
+      )
+    ) {
       const c = new Confirm(() => {});
       c.message = action;
       await this.pick([c]);
@@ -415,37 +446,51 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
         break;
       }
 
-      if (oldDecision.type === 'rng') {
-        if ((oldDecision as RngResponse).value !== (newDecision as RngResponse).value) {
+      if (oldDecision.type === "rng") {
+        if (
+          (oldDecision as RngResponse).value !==
+          (newDecision as RngResponse).value
+        ) {
           hasToReset = true;
           break;
         }
-      } else if (oldDecision.type === 'prompt') {
+      } else if (oldDecision.type === "prompt") {
         const oldResponse = oldDecision as PromptResponse;
         const newResponse = newDecision as PromptResponse;
 
         // special case: if we are looking at a prompt we were waiting on previously
         // we can now resolve it!
-        if (i === oldState.decisions.length - 1 && oldResponse.response === undefined && newResponse.response !== undefined) {
+        if (
+          i === oldState.decisions.length - 1 &&
+          oldResponse.response === undefined &&
+          newResponse.response !== undefined
+        ) {
           nextTick(() => {
             if (!this.unresolvedPrompt) {
-              throw new Error('Should have a prompt waiting...');
+              throw new Error("Should have a prompt waiting...");
             }
             this.unresolvedPrompt.resolve(newResponse.response);
           });
-        } else if (JSON.stringify(oldResponse.response) !== JSON.stringify(newResponse.response)) {
+        } else if (
+          JSON.stringify(oldResponse.response) !==
+          JSON.stringify(newResponse.response)
+        ) {
           hasToReset = true;
           break;
         }
-      } else if (oldDecision.type === 'turn') {
+      } else if (oldDecision.type === "turn") {
         const oldTurnState = oldDecision as TurnState;
         const newTurnState = newDecision as TurnState;
 
         // if this turn isn't finished, then let that turn try to resolve the new state
-        const foundTurn = this.activeSubTurns.find((t) => t.id === newTurnState.id);
+        const foundTurn = this.activeSubTurns.find(
+          (t) => t.id === newTurnState.id
+        );
         if (foundTurn) {
           foundTurn.handleNewSavedState(newTurnState);
-        } else if (JSON.stringify(oldTurnState) !== JSON.stringify(newTurnState)) {
+        } else if (
+          JSON.stringify(oldTurnState) !== JSON.stringify(newTurnState)
+        ) {
           hasToReset = true;
           break;
         }
@@ -459,7 +504,10 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
   }
 
   /** @internal */
-  serialize(clock: number, currentState?: ClockDetails): ChitSerializationResponse {
+  serialize(
+    clock: number,
+    currentState?: ClockDetails
+  ): ChitSerializationResponse {
     if (clock < 0) {
       clock = 0;
     }
@@ -481,7 +529,9 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
     // if the current state already has knowledge about subturns, we need to pass
     // each and every subturn, otherwise something has gone terribly awry
     if (currentState && currentState.subTurns) {
-      Object.keys(currentState.subTurns).forEach((id) => requiredSubTurnIds.add(id));
+      Object.keys(currentState.subTurns).forEach((id) =>
+        requiredSubTurnIds.add(id)
+      );
     }
 
     let resultingClock = -1;
@@ -511,12 +561,19 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
         } else if (clockStep instanceof SubTurnClockStep) {
           const id = clockStep.turn.id;
           requiredSubTurnIds.delete(id);
-          const turnState = currentState?.subTurns && currentState?.subTurns[id];
-          const serialized = clockStep.turn.serialize(clock - clockStep.startClock, turnState);
+          const turnState =
+            currentState?.subTurns && currentState?.subTurns[id];
+          const serialized = clockStep.turn.serialize(
+            clock - clockStep.startClock,
+            turnState
+          );
 
           // if the sub-turn is only partially serialized (meaning we asked for it to be half done)
           // then we need to include the sub-turn clock details.
-          if (serialized.clockDetails.clock !== clockStep.turn.clock || !clockStep.turn.completed) {
+          if (
+            serialized.clockDetails.clock !== clockStep.turn.clock ||
+            !clockStep.turn.completed
+          ) {
             if (!subTurns) {
               subTurns = {};
             }
@@ -553,8 +610,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
         } else if (clockStep instanceof SubTurnClockStep) {
           const id = clockStep.turn.id;
           requiredSubTurnIds.delete(id);
-          const turnState = currentState?.subTurns && currentState?.subTurns[id];
-          const serialized = clockStep.turn.serialize(clock - clockStep.startClock, turnState);
+          const turnState =
+            currentState?.subTurns && currentState?.subTurns[id];
+          const serialized = clockStep.turn.serialize(
+            clock - clockStep.startClock,
+            turnState
+          );
 
           if (serialized.clockDetails.clock !== 0) {
             if (!subTurns) {
@@ -594,22 +655,26 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
    */
   private prepareForPrompt<A extends Prompt>(prompt: A): A {
     if (this.unresolvedPrompt) {
-      throw new Error('Already awaiting a prompt result');
+      throw new Error("Already awaiting a prompt result");
     }
     if (!this.player) {
-      throw new Error('No player attached to turn');
+      throw new Error("No player attached to turn");
     }
     if (this.activeSubTurns.length) {
-      throw new Error('Prompts are not allowed while subturns are not resolved');
+      throw new Error(
+        "Prompts are not allowed while subturns are not resolved"
+      );
     }
 
     prompt.findChit = this.findChit;
     prompt.id = `${this.id} prompt ${this.decisionIndex}`;
     prompt.clock = this.clock;
-    prompt.canReset = this.state.hasUserMadeChoiceSinceUserContextChangedOrRng(this.decisionIndex - 1);
+    prompt.canReset = this.state.hasUserMadeChoiceSinceUserContextChangedOrRng(
+      this.decisionIndex - 1
+    );
     this.player.promptStatus.latestPromptMessage = prompt.message;
     if (!this.player.promptStatus.latestPromptMessage.length) {
-      this.player.promptStatus.latestPromptMessage = 'No prompt set';
+      this.player.promptStatus.latestPromptMessage = "No prompt set";
     }
 
     this.flush();
@@ -622,7 +687,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
    */
   private async waitForPromptResolution(prompt: Prompt) {
     if (!this.player) {
-      throw new Error('Must have player specified');
+      throw new Error("Must have player specified");
     }
 
     const resolution = this.state.getOrCreatePromptResponse(this.decisionIndex);
@@ -630,12 +695,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
       await new Promise((resolve) => nextTick(() => resolve(true))); // defer to next tick to make sure replay works identically
       prompt.resolve(resolution.response);
     } else {
-      if (this.player.promptStatus.latestPrompt.value) {
-        throw new Error('Player can only have prompt out at a time');
+      if (this.player.promptStatus._latestPrompt.value) {
+        throw new Error("Player can only have prompt out at a time");
       }
 
       this.unresolvedPrompt = prompt;
-      this.player.promptStatus.latestPrompt.value = prompt;
+      this.player.promptStatus._latestPrompt.value = prompt;
 
       // weird anti-pattern which will actually wait for a resolution to the prompt and return flow here.
       let succeeded = false;
@@ -643,7 +708,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
         prompt.onResolve((success: boolean) => {
           succeeded = success;
           resolve(undefined);
-        }),
+        })
       );
 
       if (prompt.shouldRerun) {
@@ -656,17 +721,17 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
         throw new StepBackError();
       }
       if (!succeeded) {
-        this.player.promptStatus.latestPrompt.value = undefined;
+        this.player.promptStatus._latestPrompt.value = undefined;
         this.unresolvedPrompt = undefined;
         // throw new Error("Unknown error");
         return;
       }
 
-      this.player.promptStatus.latestPrompt.value = undefined;
+      this.player.promptStatus._latestPrompt.value = undefined;
       resolution.response = prompt.response;
       this.unresolvedPrompt = undefined;
     }
-    this.player.promptStatus.latestPromptResponseTime = this.absoluteClock;
+    this.player.promptStatus._latestPromptResponseTime = this.absoluteClock;
     this.player.promptStatus.latestPromptMessage = undefined;
     this.decisionIndex++;
   }
@@ -683,7 +748,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
         const result = await this.fn(this);
 
         if (this.player && this.player !== this.parent?.player) {
-          await this.possiblyConfirm('Confirm turn end');
+          await this.possiblyConfirm("Confirm turn end");
         }
 
         this.cleanUp();
@@ -720,7 +785,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
       c.unlock(this);
     });
     if (this.unresolvedPrompt && this.player) {
-      this.player.promptStatus.latestPrompt.value = undefined;
+      this.player.promptStatus._latestPrompt.value = undefined;
       this.unresolvedPrompt.destroy();
     }
   }
@@ -771,13 +836,13 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
   private restartExecution() {
     this.activeSubTurns.forEach((t) => t.destroy());
 
-    const chits = Object.values(this.chitLookup).filter((chit) => chit.id);
+    const chits = Object.values(this.chitLookup).filter((chit) => chit._id);
 
     chits.forEach((chit) => chit.beginDeserializing());
 
     chits.forEach((chit) => {
       chit.lock(this);
-      const lockedState = this.lockedChitStates[chit.id ?? ''];
+      const lockedState = this.lockedChitStates[chit._id ?? ""];
 
       if (lockedState) {
         chit.deserialize(lockedState, this.findChit);
@@ -789,7 +854,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
     chits.forEach((chit) => chit.doneDeserializing());
 
     if (this.player) {
-      this.player.promptStatus.latestPrompt.value = undefined;
+      this.player.promptStatus._latestPrompt.value = undefined;
     }
     this.lastChitStates = { ...this.lockedChitStates }; // reset our known chit states
     this.clockSteps = [];
@@ -813,7 +878,10 @@ abstract class ClockStep {
   abstract get endClock(): number;
 }
 
-class SubTurnClockStep<P extends PlayerChit, R extends RootChit<P>> extends ClockStep {
+class SubTurnClockStep<
+  P extends PlayerChit,
+  R extends RootChit<P>,
+> extends ClockStep {
   get startClock(): number {
     return this.previousStep?.endClock ?? 0;
   }
@@ -822,7 +890,7 @@ class SubTurnClockStep<P extends PlayerChit, R extends RootChit<P>> extends Cloc
   }
   constructor(
     public turn: Turn<any, P, R>,
-    private previousStep?: ClockStep,
+    private previousStep?: ClockStep
   ) {
     super();
   }
@@ -833,7 +901,7 @@ class FlushClockStep extends ClockStep {
   constructor(
     public startClock: number,
     public state: ChitStateLookup,
-    public fromState: ChitStateLookup,
+    public fromState: ChitStateLookup
   ) {
     super();
     this.endClock = startClock + 1;
@@ -849,6 +917,6 @@ export class RerunError extends Error {
 }
 export class MismatchError extends Error {
   constructor() {
-    super('Mismatch');
+    super("Mismatch");
   }
 }

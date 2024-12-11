@@ -1,15 +1,20 @@
-import { EventChannel } from '../../utilities/EventChannel';
-import { ClockDetails } from '../ClockDetails';
-import { Connection } from '../Connection';
-import { ConnectionObject } from '../ConnectionObject';
-import { PlayerChit } from '../PlayerChit';
-import { Prompt, PromptSerialization } from '../Prompt';
-import { RootChit } from '../RootChit';
-import { ServerPrompts } from '../serverTransport/ServerPrompts';
-import { ClientTime } from './ClientTime';
+import { EventChannel } from "../../utilities/EventChannel";
+import { ClockDetails } from "../ClockDetails";
+import { Connection } from "../Connection";
+import { ConnectionObject } from "../ConnectionObject";
+import { PlayerChit } from "../PlayerChit";
+import { Prompt, PromptSerialization } from "../Prompt";
+import { RootChit } from "../RootChit";
+import { ServerPrompts } from "../serverTransport/ServerPrompts";
+import { ClientTime } from "./ClientTime";
 
-export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends ConnectionObject {
-  private waitingPrompts: { [playerId: string]: EventChannel<PromptSerialization | undefined> } = {};
+export class ClientPrompts<
+  P extends PlayerChit,
+  R extends RootChit<P>,
+> extends ConnectionObject {
+  private waitingPrompts: {
+    [playerId: string]: EventChannel<PromptSerialization | undefined>;
+  } = {};
   private serverPrompts: ServerPrompts<P, R>;
   public currentPrompt = new EventChannel<Prompt | undefined>(undefined);
 
@@ -18,38 +23,74 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
   constructor(
     private playerId: string,
     connection: Connection,
-    private clientTime: ClientTime,
+    private clientTime: ClientTime
   ) {
     super();
 
-    this.serverPrompts = connection.get<ServerPrompts<P, R>>('ServerPrompts');
-    this.register(this.clientTime.currentClock.on(this.checkIfPromptCanBeInflated.bind(this)));
-    this.register(this.clientTime.maxClock.on(this.checkIfPromptCanBeInflated.bind(this)));
-    this.register(this.clientTime.clientTimeState.live.on(this.checkIfPromptCanBeInflated.bind(this)));
-    this.register(this.clientTime.clientTimeState.isWaitingOnAnimations.on(this.checkIfPromptCanBeInflated.bind(this)));
-    this.register(this.getPromptEventChannelForPlayer(this.playerId).on(this.checkIfPromptCanBeInflated.bind(this)));
+    this.serverPrompts = connection.get<ServerPrompts<P, R>>("ServerPrompts");
+    this.register(
+      this.clientTime.currentClock.on(
+        this.checkIfPromptCanBeInflated.bind(this)
+      )
+    );
+    this.register(
+      this.clientTime.maxClock.on(this.checkIfPromptCanBeInflated.bind(this))
+    );
+    this.register(
+      this.clientTime.clientTimeState.live.on(
+        this.checkIfPromptCanBeInflated.bind(this)
+      )
+    );
+    this.register(
+      this.clientTime.clientTimeState.isWaitingOnAnimations.on(
+        this.checkIfPromptCanBeInflated.bind(this)
+      )
+    );
+    this.register(
+      this.getPromptEventChannelForPlayer(this.playerId).on(
+        this.checkIfPromptCanBeInflated.bind(this)
+      )
+    );
   }
 
   private checkIfPromptCanBeInflated() {
     const isLive = this.clientTime.clientTimeState.live.value;
     const currentTime = this.clientTime.currentClock.value.clock;
     const maxTime = this.clientTime.maxClock.value.clock;
-    const isWaitingOnAnimations = this.clientTime.clientTimeState.isWaitingOnAnimations.value;
+    const isWaitingOnAnimations =
+      this.clientTime.clientTimeState.isWaitingOnAnimations.value;
     const promptSpec = this.getPromptEventChannelForPlayer(this.playerId).value;
 
-    if (isLive && promptSpec == this._currentPromptSpec && currentTime <= maxTime) {
+    if (
+      isLive &&
+      promptSpec == this._currentPromptSpec &&
+      currentTime <= maxTime
+    ) {
       // do nothing - we are moving forward and we don't need to unstage and re-stage a prompt
-    } else if (isLive && promptSpec && currentTime === maxTime && currentTime > 0 && !isWaitingOnAnimations) {
+    } else if (
+      isLive &&
+      promptSpec &&
+      currentTime === maxTime &&
+      currentTime > 0 &&
+      !isWaitingOnAnimations
+    ) {
       if (this.currentPrompt.value) {
         this.currentPrompt.value.stageOut();
       }
 
       this._currentPromptSpec = promptSpec;
-      const prompt = Prompt.deserialize(promptSpec, this.clientTime.findChit, this.clientTime.match.game.buttonLibrary);
+      const prompt = Prompt.deserialize(
+        promptSpec,
+        this.clientTime.findChit,
+        this.clientTime.match.game.buttonLibrary
+      );
       prompt.onResolve(async (success) => {
         if (success) {
-          const newPromptSpec = await this.serverPrompts.resolvePrompt(prompt.response);
-          this.getPromptEventChannelForPlayer(this.playerId).value = newPromptSpec ?? undefined;
+          const newPromptSpec = await this.serverPrompts.resolvePrompt(
+            prompt.response
+          );
+          this.getPromptEventChannelForPlayer(this.playerId).value =
+            newPromptSpec ?? undefined;
         } else if (prompt.shouldStepBack) {
           this.getPromptEventChannelForPlayer(this.playerId).value = undefined;
           this.serverPrompts.stepBackPrompt(prompt.shouldReset ?? false);
@@ -67,7 +108,11 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
     }
   }
 
-  public async setPromptForPlayer(playerId: string, prompt?: PromptSerialization, clockDetails?: ClockDetails) {
+  public async setPromptForPlayer(
+    playerId: string,
+    prompt?: PromptSerialization,
+    clockDetails?: ClockDetails
+  ) {
     if (clockDetails) {
       await this.clientTime.newMaxClock(clockDetails);
     }
@@ -77,7 +122,9 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
   public getPromptEventChannelForPlayer(playerId: string) {
     let p = this.waitingPrompts[playerId];
     if (!p) {
-      p = this.waitingPrompts[playerId] = new EventChannel<PromptSerialization | undefined>(undefined);
+      p = this.waitingPrompts[playerId] = new EventChannel<
+        PromptSerialization | undefined
+      >(undefined);
     }
     return p;
   }

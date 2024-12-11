@@ -1,13 +1,21 @@
-import { Tween, Group as TweenGroup } from '@tweenjs/tween.js';
-import { Box3, Group, Material, Mesh, Raycaster, Vector2, Vector3 } from 'three';
+import { Tween, Group as TweenGroup } from "@tweenjs/tween.js";
+import {
+  Box3,
+  Group,
+  Material,
+  Mesh,
+  Raycaster,
+  Vector2,
+  Vector3,
+} from "three";
 
-import { ChitRenderInstance } from './ChitRenderInstance';
-import { Chit } from '../game/Chit';
-import { CameraWrapperPerspective } from './CameraWrapperPerspective';
-import { LightWrapper } from './LightWrapper';
-import { CanvasStack } from '../utilities/CanvasStack/CanvasStack';
+import { ChitRenderInstance } from "./ChitRenderInstance";
+import { Chit } from "../game/Chit";
+import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
+import { LightWrapper } from "./LightWrapper";
+import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
 
-export type AnimationState = 'leaving' | 'entering' | 'pending' | 'inactive';
+export type AnimationState = "leaving" | "entering" | "pending" | "inactive";
 
 //
 // Like a ChitRenderInstance, but only useful at the root
@@ -18,11 +26,17 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   public _lightGroup = new Group();
   private _tweenGroup = new TweenGroup();
 
-  public convertCameraSpaceToScreenSpace = (x: number, y: number): Vector2 | undefined => {
+  public convertCameraSpaceToScreenSpace = (
+    x: number,
+    y: number
+  ): Vector2 | undefined => {
     return;
   };
 
-  public convertScreenSpaceToCameraSpace = (x: number, y: number): Vector2 | undefined => {
+  public convertScreenSpaceToCameraSpace = (
+    x: number,
+    y: number
+  ): Vector2 | undefined => {
     return;
   };
 
@@ -41,7 +55,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
   constructor(chit: Chit) {
     super(chit);
-    this.id = chit.id ?? `${Date.now()}_${Math.random()}`;
+    this.id = chit._id ?? `${Date.now()}_${Math.random()}`;
     this.bboxGroup.visible = false;
     this._tweenGroup.update(0); // make it so initial tweens finish right away?
     this.handleHierarchy();
@@ -82,16 +96,16 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   registerTextures() {
     const idsUsed = new Set<string>();
     const props = [
-      'map',
-      'lightMap',
-      'aoMap',
-      'emissiveMap',
-      'bumpMap',
-      'normalMap',
-      'displacementMap',
-      'specularMap',
-      'alphaMap',
-      'envMap',
+      "map",
+      "lightMap",
+      "aoMap",
+      "emissiveMap",
+      "bumpMap",
+      "normalMap",
+      "displacementMap",
+      "specularMap",
+      "alphaMap",
+      "envMap",
     ];
 
     const processMaterial = (mat: Material) => {
@@ -155,15 +169,15 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
   public get animationState(): AnimationState {
     if (this._hasChitsLeaving) {
-      return 'leaving';
+      return "leaving";
     }
     if (this._hasChitsEntering) {
-      return 'entering';
+      return "entering";
     }
     if (this._hasPendingChanges) {
-      return 'pending';
+      return "pending";
     }
-    return 'inactive';
+    return "inactive";
   }
 
   public pause() {
@@ -211,7 +225,9 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
   protected get now() {
     const n = performance.now();
-    return n - this._totalPauseDuration - (this._isPaused ? n - this._pausedAt : 0);
+    return (
+      n - this._totalPauseDuration - (this._isPaused ? n - this._pausedAt : 0)
+    );
   }
 
   public update() {
@@ -221,7 +237,12 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
     if (this._tweenGroup) {
       const hasChange = this._tweenGroup.update(this.now);
-      if (!hasChange && (this._hasPendingChanges || this._hasChitsEntering || this._hasChitsLeaving)) {
+      if (
+        !hasChange &&
+        (this._hasPendingChanges ||
+          this._hasChitsEntering ||
+          this._hasChitsLeaving)
+      ) {
         this._hasPendingChanges = false;
         this._hasChitsEntering = false;
         this._hasChitsLeaving = false;
@@ -285,7 +306,10 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     return result;
   }
 
-  public createTween<T extends Record<string, any>>(props: T, cb: (tween: Tween<T>) => void): Tween<T> {
+  public createTween<T extends Record<string, any>>(
+    props: T,
+    cb: (tween: Tween<T>) => void
+  ): Tween<T> {
     const tween = new Tween<T>(props, this._tweenGroup);
     cb(tween);
     tween.start(this.now);
@@ -293,24 +317,31 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   }
 
   public handleClick(x: number, y: number) {
-    let vector = new Vector3((x / this._width) * 2 - 1, -(y / this._height) * 2 + 1, 0.5);
+    let vector = new Vector3(
+      (x / this._width) * 2 - 1,
+      -(y / this._height) * 2 + 1,
+      0.5
+    );
     vector = vector.unproject(this.camera);
 
-    const raycaster = new Raycaster(this.camera.position, vector.sub(this.camera.position).normalize());
+    const raycaster = new Raycaster(
+      this.camera.position,
+      vector.sub(this.camera.position).normalize()
+    );
     // raycaster.linePrecision = 0.25;
 
     const chits: ChitRenderInstance[] = [];
     const chitLookup: { [threejsId: number]: Chit } = {};
     this.chit.walk((c) => {
-      if (c.onClick && c.renderInstance) {
-        chits.push(c.renderInstance);
-        chitLookup[c.renderInstance.clickbox.id] = c;
+      if (c.onClick && c._renderInstance) {
+        chits.push(c._renderInstance);
+        chitLookup[c._renderInstance.clickbox.id] = c;
       }
       return true;
     });
     const intersects = raycaster.intersectObjects(
       chits.map((c) => c.clickbox),
-      true,
+      true
     );
 
     if (intersects.length > 0) {
@@ -322,7 +353,11 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   }
 
   public handleZoom(x: number, y: number, dz: number, animate: boolean) {
-    let vector = new Vector3((x / this._width) * 2 - 1, -(y / this._height) * 2 + 1, 0.5);
+    let vector = new Vector3(
+      (x / this._width) * 2 - 1,
+      -(y / this._height) * 2 + 1,
+      0.5
+    );
     vector = vector.unproject(this.camera);
 
     this.cameraWrapper.handleZoom(vector.x, vector.y, dz, animate);

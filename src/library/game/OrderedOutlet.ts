@@ -1,4 +1,4 @@
-import { Chit } from './Chit';
+import { Chit } from "./Chit";
 
 export class OrderedOutlet<C extends Chit> {
   /** @internal */
@@ -10,7 +10,7 @@ export class OrderedOutlet<C extends Chit> {
   private chits: C[] = [];
 
   constructor(outletName?: string, parent?: Chit) {
-    this.outletName = outletName ?? 'no_name_set';
+    this.outletName = outletName ?? "no_name_set";
     this.parent = parent;
   }
 
@@ -27,7 +27,7 @@ export class OrderedOutlet<C extends Chit> {
   }
 
   public add(c: C) {
-    if (this.parent?.isDeserializing) {
+    if (this.parent?._isDeserializing) {
       return;
     }
 
@@ -37,7 +37,7 @@ export class OrderedOutlet<C extends Chit> {
   }
 
   public addAll(c: OrderedOutlet<C> | C[]) {
-    if (this.parent?.isDeserializing) {
+    if (this.parent?._isDeserializing) {
       return;
     }
 
@@ -73,13 +73,13 @@ export class OrderedOutlet<C extends Chit> {
   public get(i: number): C {
     const result = this.chits[i];
     if (!result) {
-      throw new Error('Index out of bounds');
+      throw new Error("Index out of bounds");
     }
     return result;
   }
 
   public remove(c: C | C[]) {
-    if (this.parent?.isDeserializing) {
+    if (this.parent?._isDeserializing) {
       return;
     }
 

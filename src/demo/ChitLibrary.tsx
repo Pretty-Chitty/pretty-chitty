@@ -17,12 +17,11 @@ import {
   RootChit,
   PlayerChit,
   DropdownChit,
+  OrderedOutlet,
   SparkChit,
-  ChildOutlet,
   Chit,
   OwnerOriginPosition,
   ChitRenderSpec,
-  OrderedOutlet,
   StaticImage,
 } from "../library";
 
@@ -30,7 +29,6 @@ import { TestStack } from "./TestStack";
 import { TestStack2 } from "./TestStack2";
 import { PlayerAid } from "./PlayerAid";
 import { cityscape, cityscape2 } from "./assets/network_overload";
-import { Ordered } from "../library/utilities/Annotations";
 import { CardMesh } from "../library/utilities/CardMesh";
 
 export * from "../library/utilities/BaseTable";
@@ -72,13 +70,15 @@ export class Card extends Chit {
   public x = 0;
   public y = 0;
 
-  @ChildOutlet(new Vector3(0.5, 0, 0)) public token?: Card2;
-  @ChildOutlet(new Vector3(-0.5, 0, 1)) public token2?: Card2;
-  @ChildOutlet public subCard?: Card;
+  //@ChildOutlet(new Vector3(0.5, 0, 0))
+  public token?: Card2;
+  //@ChildOutlet(new Vector3(-0.5, 0, 1))
+  public token2?: Card2;
+  public subCard?: Card;
 
-  @Ordered(new Vector3(0.5, 0, 0))
+  // @Ordered(new Vector3(0.5, 0, 0))
   public tokenList = new OrderedOutlet();
-  @Ordered(new Vector3(-0.5, 0, 0))
+  // @Ordered(new Vector3(-0.5, 0, 0))
   public tokenList2 = new OrderedOutlet("tokenList2", this);
 
   public override render(spec: ChitRenderSpec): void {
@@ -88,10 +88,16 @@ export class Card extends Chit {
       obj.subTitle2 = this.something;
     });
 
-    spec.object = new CardMesh(1, 2, ts.material, new MeshPhongMaterial({ color: 0xff0000 }), {
-      castShadow: true,
-      receiveShadow: true,
-    });
+    spec.object = new CardMesh(
+      1,
+      2,
+      ts.material,
+      new MeshPhongMaterial({ color: 0xff0000 }),
+      {
+        castShadow: true,
+        receiveShadow: true,
+      }
+    );
 
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0; // (this.something / 90) % (Math.PI * 2);
     spec.rotateY = this.flipped ? Math.PI : 0;
@@ -103,10 +109,15 @@ export class Card extends Chit {
 
     spec.addCounterToOrderedOutlet(
       this.tokenList2,
-      { fontSize: 0.25, fontFamily: "sans-serif", fill: "#f0f", shadow: "#000" },
+      {
+        fontSize: 0.25,
+        fontFamily: "sans-serif",
+        fill: "#f0f",
+        shadow: "#000",
+      },
       2,
       250,
-      "left",
+      "left"
     );
   }
 }
@@ -142,7 +153,9 @@ export class Card2 extends Chit {
     mesh.castShadow = true;
     spec.object = mesh;
 
-    spec.ownerOrigin = this.thingy ? OwnerOriginPosition.BottomRight : OwnerOriginPosition.Default;
+    spec.ownerOrigin = this.thingy
+      ? OwnerOriginPosition.BottomRight
+      : OwnerOriginPosition.Default;
     // spec.offsetX = !this.thingy ? 0.6 : 0;
 
     // spec.rotateZ = Math.PI / 2.5 + (this.something / 360) * (Math.PI * 2) + (this.thingy ? Math.PI : 0);
@@ -157,24 +170,24 @@ export class Card2 extends Chit {
 }
 
 export class CounterChit extends SparkChit {
-  public player: MyPlayer | undefined;
+  public ZZZplayer: MyPlayer | undefined;
 
-  public get icon() {
-    return this.player;
+  public get ZZZicon() {
+    return this.ZZZplayer;
   }
-  public get headerIcon() {
+  public get ZZZheaderIcon() {
     return cityscape2;
   }
 }
 export class BagChit extends BagSparkChit<Card2> {
-  public get icon() {
+  public get ZZZicon() {
     return cityscape;
   }
 }
 
 export class SideBoards extends PanelChit {
-  @ChildOutlet public sideBoard1 = new Table();
-  @ChildOutlet public sideBoard2 = new Table();
+  public sideBoard1 = new Table();
+  public sideBoard2 = new Table();
 
   override getLayout(width: number, height: number) {
     if (height > width) {
@@ -201,8 +214,8 @@ export class SideBoards extends PanelChit {
 
 export class MyPlayer extends PlayerChit {
   // @ChildOutlet public token = new Card2();
-  @ChildOutlet public counter = new CounterChit().set((c) => (c.player = this));
-  @ChildOutlet public counter2 = new BagChit().set((c) => (c.color = "#ca5275"));
+  public counter = new CounterChit().set((c) => (c.ZZZplayer = this));
+  public counter2 = new BagChit().set((c) => (c.color = "#ca5275"));
 
   override getSparks(): SparkChit[] {
     return [this.counter, this.counter2];
@@ -210,8 +223,8 @@ export class MyPlayer extends PlayerChit {
 }
 
 export class Root extends RootChit<MyPlayer> {
-  @ChildOutlet public mainBoard = new Table();
-  @ChildOutlet public playerAid = new PlayerAid();
+  public mainBoard = new Table();
+  public playerAid = new PlayerAid();
 
   override getDropdowns(): DropdownChit[] {
     return [this.playerAid];

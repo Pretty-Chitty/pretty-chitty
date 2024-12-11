@@ -1,14 +1,14 @@
-import { NonEditable } from '../utilities/Annotations';
-import { Chit } from './Chit';
+import { NonEditable } from "../utilities/Annotations";
+import { Chit } from "./Chit";
 
 export type Stage<T> = {
-  type: 'draw' | 'discard';
+  type: "draw" | "discard";
   chits: T[];
 };
 
 export class GameDeck<T extends Chit> extends Chit {
   /** @internal */
-  @NonEditable type = 'deck';
+  _type = "deck";
 
   public chitGenerator?: () => T;
   public stages: Stage<T>[] = [];
@@ -27,15 +27,17 @@ export class GameDeck<T extends Chit> extends Chit {
     const stage = this.stages[0];
     if (stage) {
       switch (stage.type) {
-        case 'draw': {
-          const index = Math.floor(stage.chits.length * (await this.currentTurn.rng()));
+        case "draw": {
+          const index = Math.floor(
+            stage.chits.length * (await this.currentTurn.rng())
+          );
           const selected = stage.chits[index];
           stage.chits.splice(index, 1);
           selected.setParent();
           return selected;
         }
-        case 'discard': {
-          stage.type = 'draw';
+        case "discard": {
+          stage.type = "draw";
           return this.draw();
         }
       }
@@ -45,7 +47,7 @@ export class GameDeck<T extends Chit> extends Chit {
       return this.chitGenerator();
     }
 
-    throw new Error('No chits to draw');
+    throw new Error("No chits to draw");
   }
 
   private isEmpty(stage?: Stage<T>) {
@@ -53,8 +55,8 @@ export class GameDeck<T extends Chit> extends Chit {
   }
 
   private findDiscardStage() {
-    if (!(this.stages[this.stages.length - 1]?.type === 'discard')) {
-      this.stages.push({ type: 'discard', chits: [] });
+    if (!(this.stages[this.stages.length - 1]?.type === "discard")) {
+      this.stages.push({ type: "discard", chits: [] });
     }
     return this.stages[this.stages.length - 1];
   }

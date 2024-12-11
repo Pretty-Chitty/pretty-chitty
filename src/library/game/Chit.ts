@@ -3,11 +3,6 @@ import { Vector2 } from "three";
 import { ChitRenderInstance } from "../rendering/ChitRenderInstance";
 import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
 import { Turn } from "./Turn";
-import {
-  FixChildOutlets,
-  NonEditable,
-  Ordered,
-} from "../utilities/Annotations";
 import { ObjectWithProps } from "../utilities/ObjectWithProps";
 import { Match } from "./Match";
 import { ChitPick } from "./Pick";
@@ -19,17 +14,55 @@ export const ORDERED_CHILDREN = "orderedChildren";
 
 export class Chit extends ObjectWithProps {
   /** @internal */
-  @NonEditable public type: string = "chit";
+  public _type: string = "chit";
 
-  @NonEditable public id?: string;
+  public _id?: string;
 
   constructor() {
     super();
-    FixChildOutlets(this);
+
+    const result = new Proxy(this, {
+      get(target, property, receiver) {
+        return Reflect.get(target, property, receiver);
+      },
+      set(target, property, value, receiver) {
+        const currentValue = Reflect.get(target, property, receiver);
+
+        if (value === currentValue) {
+          return true;
+        }
+
+        if (
+          !property.toString().startsWith("ZZZ") &&
+          property !== "_parent" &&
+          property !== "_lastParent"
+        ) {
+          if (currentValue instanceof Chit) {
+            currentValue.removeFromParent();
+          }
+
+          if (value instanceof Chit) {
+            value.setParent(receiver, property as string);
+          }
+
+          if (value instanceof OrderedOutlet) {
+            value.outletName = property as string;
+            value.parent = receiver;
+          }
+        }
+
+        return Reflect.set(target, property, value, receiver);
+      },
+    });
+
+    result.orderedChildren = new OrderedOutlet<Chit>();
+
+    return result;
+    // FixChildOutlets(this);
   }
 
-  @Ordered
-  public orderedChildren = new OrderedOutlet<Chit>();
+  // @Ordered
+  public orderedChildren: OrderedOutlet<Chit>;
 
   public render(_spec: ChitRenderSpec) {}
 
@@ -65,22 +98,22 @@ export class Chit extends ObjectWithProps {
     this.setParent();
   }
 
-  @NonEditable private _parentOutletIndex?: number;
+  private _parentOutletIndex?: number;
   public get parentOutletIndex(): number | undefined {
     return this._parentOutletIndex;
   }
 
-  @NonEditable private _parentOutlet?: string;
+  private _parentOutlet?: string;
   public get parentOutlet(): string | undefined {
     return this._parentOutlet;
   }
 
-  @NonEditable private _parent?: Chit;
+  private _parent?: Chit;
   public get parent(): Chit | undefined {
     return this._parent;
   }
 
-  @NonEditable private _lastParent?: Chit;
+  private _lastParent?: Chit;
 
   /** @internal */
   public get lastParent(): Chit | undefined {
@@ -89,17 +122,17 @@ export class Chit extends ObjectWithProps {
 
   /** @internal */
   toJSON() {
-    if (!this.id) {
+    if (!this._id) {
       throw new Error("Attempting toJSON on a chit without an ID");
     }
     return {
-      __chit_id: this.id,
+      __chit_id: this._id,
     };
   }
 
   /** @internal */
   toString() {
-    return `${Object.getPrototypeOf(this).constructor.name} ${this.id}`;
+    return `${Object.getPrototypeOf(this).constructor.name} ${this._id}`;
   }
 
   //
@@ -112,15 +145,15 @@ export class Chit extends ObjectWithProps {
   //
 
   /** @internal */
-  @NonEditable public renderInstance?: ChitRenderInstance;
-  @NonEditable private _version = 0;
+  public _renderInstance?: ChitRenderInstance;
+  private _version = 0;
 
   /** @internal */
   public get version() {
     return this._version;
   }
 
-  @NonEditable private _match?: Match<any, any>;
+  private _match?: Match<any, any>;
 
   /** @internal */
   public get match(): Match<any, any> | undefined {
@@ -135,7 +168,7 @@ export class Chit extends ObjectWithProps {
     this._match = newMatch;
   }
 
-  @NonEditable private _onClick?: () => void;
+  private _onClick?: () => void;
 
   /** @internal */
   public get onClick(): undefined | (() => void) {
@@ -148,7 +181,7 @@ export class Chit extends ObjectWithProps {
     this.notifyChange("onClick");
   }
 
-  @NonEditable private _lockedBy?: Turn<any, any, any>;
+  private _lockedBy?: Turn<any, any, any>;
 
   public get currentTurn(): Turn<any, any, any> {
     if (this._lockedBy) {
@@ -192,10 +225,10 @@ export class Chit extends ObjectWithProps {
       } else if (existingParentOutletValue instanceof OrderedOutlet) {
         existingParentOutletValue.remove(this);
       } else {
-        this.children = this.children.filter((c) => c !== child);
+        this._children = this._children.filter((c) => c !== child);
       }
     } else {
-      this.children = this.children.filter((c) => c !== child);
+      this._children = this._children.filter((c) => c !== child);
     }
   }
 
@@ -226,7 +259,7 @@ export class Chit extends ObjectWithProps {
       this._parentOutlet = undefined;
       this._parentOutletIndex = undefined;
 
-      oldParent.children = oldParent.children.filter((c: Chit) => c !== this);
+      oldParent._children = oldParent._children.filter((c: Chit) => c !== this);
 
       const existingParentOutletValue = oldParent[oldOutlet];
       if (existingParentOutletValue === this) {
@@ -240,12 +273,12 @@ export class Chit extends ObjectWithProps {
       this._parent = newValue;
       this._parentOutlet = parentOutlet;
       this._parentOutletIndex = parentOutletIndex;
-      newValue.children.push(this);
+      newValue._children.push(this);
 
-      if (newValue.renderInstance) {
-        newValue.renderInstance?.childAdded(this, this.renderInstance);
+      if (newValue._renderInstance) {
+        newValue._renderInstance?.childAdded(this, this._renderInstance);
       } else {
-        this.renderInstance = undefined;
+        this._renderInstance = undefined;
       }
     }
 
@@ -253,20 +286,20 @@ export class Chit extends ObjectWithProps {
   }
 
   /** @internal */
-  @NonEditable public children: Chit[] = [];
+  public _children: Chit[] = [];
 
   /** @internal */
   public walk(fn: (c: Chit) => boolean | void) {
     if (fn(this) === false) {
       return;
     }
-    this.children.forEach((child) => child.walk(fn));
+    this._children.forEach((child) => child.walk(fn));
   }
 
   private get serializationProps() {
     return [
       ...this.props,
-      "id",
+      "_id",
       "_parent",
       "_parentOutlet",
       "_parentOutletIndex",
@@ -276,7 +309,7 @@ export class Chit extends ObjectWithProps {
   /** @internal */
   public screenCoordinates(): Vector2 | undefined {
     return (
-      this.renderInstance?.screenCoordinates() ??
+      this._renderInstance?.screenCoordinates() ??
       this.parent?.screenCoordinates()
     );
   }
@@ -287,19 +320,19 @@ export class Chit extends ObjectWithProps {
   }
 
   /** @internal */
-  @NonEditable public isDeserializing = false;
+  public _isDeserializing = false;
 
   /** @internal */
   public doneDeserializing() {
-    if (this.isDeserializing) {
-      this.isDeserializing = false;
+    if (this._isDeserializing) {
+      this._isDeserializing = false;
       this.notifyChange("deserialized");
     }
   }
 
   /** @internal */
   public beginDeserializing() {
-    this.isDeserializing = true;
+    this._isDeserializing = true;
   }
 
   /** @internal */
@@ -344,7 +377,7 @@ export class Chit extends ObjectWithProps {
       }
     });
 
-    this.id = j.id;
+    this._id = j._id;
     this.setParent(
       inflateValue(j._parent),
       j._parentOutlet,
@@ -395,11 +428,11 @@ export class Chit extends ObjectWithProps {
     const seenIds = new Set();
     chits.forEach((chit) =>
       chit.walk((chit) => {
-        if (chit.id) {
-          if (seenIds.has(chit.id)) {
+        if (chit._id) {
+          if (seenIds.has(chit._id)) {
             return false;
           }
-          seenIds.add(chit.id);
+          seenIds.add(chit._id);
         }
         return fn(chit);
       })

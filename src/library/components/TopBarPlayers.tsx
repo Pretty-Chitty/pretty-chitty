@@ -1,23 +1,36 @@
-import React from 'react';
-import { Box, Stack, Typography } from '@mui/material';
+import React from "react";
+import { Box, Stack, Typography } from "@mui/material";
 
-import TopBarDropdown from './TopBarDropdown';
-import { useMatch } from '../hooks/useMatch';
-import PlayerImage from './PlayerImage';
-import { useGameTheme } from '../hooks/useGameTheme';
-import { useChits } from '../hooks/useChits';
-import { PlayerChit } from '../game/PlayerChit';
-import { PlayerPromptStatus } from '../game/PlayerPromptStatus';
-import { SparkChit } from '../game/SparkChit';
-import { UpdatingCanvasImage } from './UpdatingCanvasImage';
-import { StaticImage } from '../utilities/StaticImage';
+import TopBarDropdown from "./TopBarDropdown";
+import { useMatch } from "../hooks/useMatch";
+import PlayerImage from "./PlayerImage";
+import { useGameTheme } from "../hooks/useGameTheme";
+import { useChits } from "../hooks/useChits";
+import { PlayerChit } from "../game/PlayerChit";
+import { PlayerPromptStatus } from "../game/PlayerPromptStatus";
+import { SparkChit } from "../game/SparkChit";
+import { UpdatingCanvasImage } from "./UpdatingCanvasImage";
+import { StaticImage } from "../utilities/StaticImage";
 
 function PlayerInfoCell({ spark, size }: { size: number; spark: SparkChit }) {
   const theme = useGameTheme();
   return (
-    <Box sx={{ width: `${spark.width}px`, pl: 1, pr: 1, borderRight: `1px solid ${theme.barTopLineColor}` }}>
+    <Box
+      sx={{
+        width: `${spark.width}px`,
+        pl: 1,
+        pr: 1,
+        borderRight: `1px solid ${theme.barTopLineColor}`,
+      }}
+    >
       <Typography
-        sx={{ fontSize: 14, textOverflow: 'ellipsis', overflow: 'hidden', textAlign: 'right', lineHeight: `${size}px` }}
+        sx={{
+          fontSize: 14,
+          textOverflow: "ellipsis",
+          overflow: "hidden",
+          textAlign: "right",
+          lineHeight: `${size}px`,
+        }}
       >
         {spark.value}
       </Typography>
@@ -25,17 +38,32 @@ function PlayerInfoCell({ spark, size }: { size: number; spark: SparkChit }) {
   );
 }
 
-function TextPlayerInfoCell({ text, size, width }: { size: number; text: string; width: number }) {
+function TextPlayerInfoCell({
+  text,
+  size,
+  width,
+}: {
+  size: number;
+  text: string;
+  width: number;
+}) {
   const theme = useGameTheme();
   return (
-    <Box sx={{ width: `${width}px`, pl: 1, pr: 1, borderRight: `1px solid ${theme.barTopLineColor}` }}>
+    <Box
+      sx={{
+        width: `${width}px`,
+        pl: 1,
+        pr: 1,
+        borderRight: `1px solid ${theme.barTopLineColor}`,
+      }}
+    >
       <Typography
         sx={{
           fontSize: 14,
-          textOverflow: 'ellipsis',
-          overflow: 'hidden',
-          whiteSpace: 'nowrap',
-          textAlign: 'left',
+          textOverflow: "ellipsis",
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+          textAlign: "left",
           lineHeight: `${size}px`,
         }}
       >
@@ -47,11 +75,11 @@ function TextPlayerInfoCell({ text, size, width }: { size: number; text: string;
 
 function HeaderCell({ spark }: { spark: SparkChit }) {
   const theme = useGameTheme();
-  if (!spark.headerIcon || spark.headerIcon instanceof PlayerChit) {
+  if (!spark.ZZZheaderIcon || spark.ZZZheaderIcon instanceof PlayerChit) {
     return <Box sx={{ width: `${spark.width}px`, pl: 1, pr: 1 }} />;
   }
 
-  const image = new StaticImage(spark.headerIcon);
+  const image = new StaticImage(spark.ZZZheaderIcon);
   image.width = spark.width - theme.spacing * 2;
   image.height = spark.width - theme.spacing * 2;
 
@@ -62,10 +90,18 @@ function HeaderCell({ spark }: { spark: SparkChit }) {
   );
 }
 
-function PlayerInfoRow({ headers, player }: { player: PlayerChit; headers?: boolean }) {
+function PlayerInfoRow({
+  headers,
+  player,
+}: {
+  player: PlayerChit;
+  headers?: boolean;
+}) {
   const theme = useGameTheme();
 
-  const sparks = useChits<SparkChit>(player.getSparks('dropdown').map((d) => d.id ?? ''));
+  const sparks = useChits<SparkChit>(
+    player.getSparks("dropdown").map((d) => d._id ?? "")
+  );
 
   const LINE_HEIGHT_RATIO = 0.6;
   const IMAGE_SIZE_RATIO = 0.75;
@@ -73,7 +109,11 @@ function PlayerInfoRow({ headers, player }: { player: PlayerChit; headers?: bool
   const NAME_WIDTH = 150;
   const PROMPT_WIDTH = 300;
   const width =
-    NAME_WIDTH + PROMPT_WIDTH + size + theme.spacing + sparks.reduce((total, spark) => total + spark.width, 0);
+    NAME_WIDTH +
+    PROMPT_WIDTH +
+    size +
+    theme.spacing +
+    sparks.reduce((total, spark) => total + spark.width, 0);
 
   if (headers) {
     return (
@@ -81,7 +121,7 @@ function PlayerInfoRow({ headers, player }: { player: PlayerChit; headers?: bool
         {/* Player icon */}
         <Box sx={{ width: size }} />
         {sparks.map((spark) => (
-          <HeaderCell key={spark.id} spark={spark} />
+          <HeaderCell key={spark._id} spark={spark} />
         ))}
       </Stack>
     );
@@ -104,14 +144,18 @@ function PlayerInfoRow({ headers, player }: { player: PlayerChit; headers?: bool
           mr: 1,
           mt: `${size * ((1 - IMAGE_SIZE_RATIO) / 2)}px`,
           left: 0,
-          position: 'sticky',
+          position: "sticky",
         }}
       />
       {sparks.map((spark) => (
-        <PlayerInfoCell size={size} key={spark.id} spark={spark} />
+        <PlayerInfoCell size={size} key={spark._id} spark={spark} />
       ))}
       <TextPlayerInfoCell size={size} width={NAME_WIDTH} text={player.name} />
-      <TextPlayerInfoCell size={size} width={PROMPT_WIDTH} text={player.promptStatus.latestPromptMessage ?? ''} />
+      <TextPlayerInfoCell
+        size={size}
+        width={PROMPT_WIDTH}
+        text={player.promptStatus.latestPromptMessage ?? ""}
+      />
     </Stack>
   );
 }
@@ -120,20 +164,28 @@ export default function TopBarPlayers() {
   const theme = useGameTheme();
   const match = useMatch();
   const playerChits = useChits<PlayerChit>(match.players.map((p) => p.id));
-  const promptStatuses = useChits<PlayerPromptStatus>(playerChits.map((p) => p.promptStatus.id ?? ''));
+  const promptStatuses = useChits<PlayerPromptStatus>(
+    playerChits.map((p) => p.promptStatus._id ?? "")
+  );
 
-  const playersWithMessages = promptStatuses.filter((p) => p.latestPromptMessage).map((p) => p.parent as PlayerChit);
+  const playersWithMessages = promptStatuses
+    .filter((p) => p.latestPromptMessage)
+    .map((p) => p.parent as PlayerChit);
   const message = promptStatuses
     .map((c) => c.latestPromptMessage)
     .filter((p) => p)
-    .join(', ');
+    .join(", ");
 
   return (
     <TopBarDropdown
       label={
-        <Stack direction="row" sx={{ pt: 1, pb: 1, maxWidth: '100%' }}>
+        <Stack direction="row" sx={{ pt: 1, pb: 1, maxWidth: "100%" }}>
           {playersWithMessages.map((player) => (
-            <PlayerImage size={theme.topBarHeight - theme.spacing * 2} key={player.id} player={player} />
+            <PlayerImage
+              size={theme.topBarHeight - theme.spacing * 2}
+              key={player._id}
+              player={player}
+            />
           ))}
           <Typography
             flex={1}
@@ -141,9 +193,9 @@ export default function TopBarPlayers() {
               p: 1,
               lineHeight: 1.8,
               fontSize: 14,
-              whiteSpace: 'nowrap',
-              textOverflow: 'ellipsis',
-              overflow: 'hidden',
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+              overflow: "hidden",
             }}
           >
             {message?.length > 0 ? message : <>&nbsp;</>}
@@ -152,9 +204,11 @@ export default function TopBarPlayers() {
       }
     >
       <Box sx={{ pt: 0.5, pb: 0.5 }}>
-        {playerChits.length && <PlayerInfoRow headers player={playerChits[0]} />}
+        {playerChits.length && (
+          <PlayerInfoRow headers player={playerChits[0]} />
+        )}
         {playerChits.map((p) => (
-          <PlayerInfoRow key={p.id} player={p} />
+          <PlayerInfoRow key={p._id} player={p} />
         ))}
       </Box>
     </TopBarDropdown>

@@ -1,5 +1,5 @@
-import { NonEditable } from '../utilities/Annotations';
-import { Chit } from './Chit';
+import { NonEditable } from "../utilities/Annotations";
+import { Chit } from "./Chit";
 
 export type PanelLayoutCell = {
   width: number;
@@ -24,7 +24,7 @@ export type PanelLayoutResult = {
 
 export class PanelChit extends Chit {
   /** @internal */
-  @NonEditable type = 'panel';
+  _type = "panel";
 
   getLayout(_width: number, _height: number): PanelLayout {
     return [
@@ -38,8 +38,17 @@ export class PanelChit extends Chit {
   getFlatLayout(width: number, height: number): PanelLayoutResult[] {
     const layout = this.getLayout(width, height);
 
-    const flatten = (layout: PanelLayout, x: number, y: number, w: number, h: number): PanelLayoutResult[] => {
-      if (layout instanceof Chit || (Array.isArray(layout) && layout[0] instanceof Chit)) {
+    const flatten = (
+      layout: PanelLayout,
+      x: number,
+      y: number,
+      w: number,
+      h: number
+    ): PanelLayoutResult[] => {
+      if (
+        layout instanceof Chit ||
+        (Array.isArray(layout) && layout[0] instanceof Chit)
+      ) {
         const layoutArray = layout as Chit[];
         return [
           {
@@ -47,7 +56,10 @@ export class PanelChit extends Chit {
             y,
             w,
             h,
-            id: Array.isArray(layout) && layoutArray.length > 0 ? layoutArray[0].id : (layout as Chit).id,
+            id:
+              Array.isArray(layout) && layoutArray.length > 0
+                ? layoutArray[0]._id
+                : (layout as Chit)._id,
             chit: Array.isArray(layout) ? layoutArray : layout,
           },
         ];
@@ -71,7 +83,10 @@ export class PanelChit extends Chit {
             .flat();
         } else if ((layout[0] as PanelLayoutRow).height !== undefined) {
           const rows = layout as PanelLayoutRow[];
-          const totalHeight = rows.reduce((total, row) => total + row.height, 0);
+          const totalHeight = rows.reduce(
+            (total, row) => total + row.height,
+            0
+          );
 
           if (rows.length === 1 && rows[0].contents instanceof Chit) {
             return flatten(rows[0].contents, x, y, w, h);

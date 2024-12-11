@@ -35,7 +35,7 @@ export { MatchViewer } from "./components/MatchViewer";
 export type { BottomBarButtonIcon } from "./components/BottomBarButton";
 export { GameDesigner } from "./components/GameDesigner";
 
-export { ChildOutlet, NonEditable, Ordered } from "./utilities/Annotations";
+export { NonEditable } from "./utilities/Annotations";
 
 export { ParameterizedCanvas } from "./utilities/ParameterizedCanvas";
 export { StaticImage } from "./utilities/StaticImage";

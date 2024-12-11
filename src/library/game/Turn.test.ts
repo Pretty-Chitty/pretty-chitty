@@ -1,21 +1,21 @@
-import { expect, test } from 'vitest';
-import { mock } from 'vitest-mock-extended';
-import { nextTick } from 'process';
+import { expect, test } from "vitest";
+import { mock } from "vitest-mock-extended";
+import { nextTick } from "process";
 
-import { Chit } from './Chit';
-import { Match } from './Match';
-import { Turn } from './Turn';
-import { TurnState } from './TurnState';
-import { PlayerInfo } from './PlayerInfo';
-import { ClockDetails } from './ClockDetails';
-import { PlayerChit } from './PlayerChit';
+import { Chit } from "./Chit";
+import { Match } from "./Match";
+import { Turn } from "./Turn";
+import { TurnState } from "./TurnState";
+import { PlayerInfo } from "./PlayerInfo";
+import { ClockDetails } from "./ClockDetails";
+import { PlayerChit } from "./PlayerChit";
 
 class FakeChit extends Chit {
-  public s1 = 's1';
-  public s2 = 's1';
+  public s1 = "s1";
+  public s2 = "s1";
 }
 
-test('rng is replayable', async () => {
+test("rng is replayable", async () => {
   const match = mock<Match<any, any>>();
   const fn = async (turn: Turn<any, any, any>) => {
     const rngs = [];
@@ -28,33 +28,33 @@ test('rng is replayable', async () => {
   };
 
   const chit = new Chit();
-  chit.id = 'root';
+  chit._id = "root";
 
   const state = new TurnState();
 
   // different turns, but reusing state
-  const result1 = await new Turn('id', match, state, fn, [chit]).execute();
-  const result2 = await new Turn('id', match, state, fn, [chit]).execute();
+  const result1 = await new Turn("id", match, state, fn, [chit]).execute();
+  const result2 = await new Turn("id", match, state, fn, [chit]).execute();
 
   expect(result1).toEqual(result2);
 });
 
-test('basic select choices works', async () => {
+test("basic select choices works", async () => {
   const match = mock<Match<any, any>>();
-  const player = new PlayerChit(new PlayerInfo('id', 'my name'));
-  player.playerId = 'p1';
+  const player = new PlayerChit(new PlayerInfo("id", "my name"));
+  player.playerId = "p1";
 
   const c1 = new Chit();
-  c1.id = 'c1';
+  c1._id = "c1";
   const c2 = new Chit();
-  c2.id = 'c2';
+  c2._id = "c2";
 
   // different turns, but reusing state
   let calledCount = 0;
-  player.promptStatus.latestPrompt.on((latestPrompt) => {
+  player.promptStatus._latestPrompt.on((latestPrompt) => {
     if (latestPrompt) {
       calledCount++;
-      latestPrompt.resolve('c1');
+      latestPrompt.resolve("c1");
     }
   });
 
@@ -67,7 +67,7 @@ test('basic select choices works', async () => {
   };
 
   const state = new TurnState();
-  const t1 = new Turn('id', match, state, fn, [c1, c2], player);
+  const t1 = new Turn("id", match, state, fn, [c1, c2], player);
   const result1 = await t1.execute();
 
   expect(result1).toEqual(1);
@@ -75,40 +75,40 @@ test('basic select choices works', async () => {
   expect(calledCount).toEqual(2); // 2nd one is the confirm!
 
   // now if we re-use the state, we should get the same result, but "calledCount" shouldn't increment
-  const t2 = new Turn('id', match, state, fn, [c1, c2], player);
+  const t2 = new Turn("id", match, state, fn, [c1, c2], player);
   const result2 = await t2.execute();
   expect(result2).toEqual(1);
   expect(t2.clock).toEqual(0);
   expect(calledCount).toEqual(2);
 });
 
-test('basic clock mechanics', async () => {
+test("basic clock mechanics", async () => {
   const match = mock<Match<any, any>>();
 
   const state = new TurnState();
-  let c1s1 = '';
+  let c1s1 = "";
   const run = async () => {
     const c1 = new FakeChit();
-    c1.id = 'c1';
+    c1._id = "c1";
     const c2 = new FakeChit();
-    c2.id = 'c2';
+    c2._id = "c2";
 
     const t = new Turn(
-      'id',
+      "id",
       match,
       state,
       async (turn: Turn<any, any, any>) => {
-        c1.s1 = 'updated s1!';
+        c1.s1 = "updated s1!";
         turn.flush();
-        c1.s1 = 'updated s1!'; // this should be a no-op
+        c1.s1 = "updated s1!"; // this should be a no-op
         turn.flush();
         c1.s1 = `updated s1 again! ${turn.rng()}`;
         turn.flush();
         turn.flush(); // this should bea  no-op
-        c2.s1 = 'updated c2 s1';
-        c1.s2 = 'updated c1 s2';
+        c2.s1 = "updated c2 s1";
+        c1.s2 = "updated c1 s2";
       },
-      [c1, c2],
+      [c1, c2]
     );
     await t.execute();
 
@@ -124,17 +124,17 @@ test('basic clock mechanics', async () => {
   expect(originalC1s1, c1s1);
 });
 
-test('ids get autoassigned', async () => {
+test("ids get autoassigned", async () => {
   const match = mock<Match<any, any>>();
 
   const state = new TurnState();
   let counter = 0;
   const run = async () => {
     const c = new FakeChit();
-    c.id = 'root';
+    c._id = "root";
 
     const t = new Turn(
-      'id',
+      "id",
       match,
       state,
       async (turn: Turn<any, any, any>) => {
@@ -150,30 +150,30 @@ test('ids get autoassigned', async () => {
         sub3.s1 = `updated s1 again again!`;
         c.remove(sub2);
       },
-      [c],
+      [c]
     );
     await t.execute();
 
     expect(t.clock).toEqual(2);
-    expect((t.findChit('id.1') as FakeChit).s1, 'updated s1 again again!');
-    return (t.findChit('id.0') as FakeChit).s1;
+    expect((t.findChit("id.1") as FakeChit).s1, "updated s1 again again!");
+    return (t.findChit("id.0") as FakeChit).s1;
   };
 
-  expect(await run()).toEqual('updated s1 again! 1');
-  expect(await run()).toEqual('updated s1 again! 2');
+  expect(await run()).toEqual("updated s1 again! 1");
+  expect(await run()).toEqual("updated s1 again! 2");
 });
 
-test('chits get deleted (and unlocked appropriately)', async () => {
+test("chits get deleted (and unlocked appropriately)", async () => {
   const match = mock<Match<any, any>>();
 
   const state = new TurnState();
   let counter = 0;
   const run = async () => {
     const c = new FakeChit();
-    c.id = 'root';
+    c._id = "root";
 
     const t = new Turn(
-      'id',
+      "id",
       match,
       state,
       async (turn: Turn<any, any, any>) => {
@@ -199,31 +199,31 @@ test('chits get deleted (and unlocked appropriately)', async () => {
         turn.flush();
         expect(sub3.currentTurn).toEqual(undefined);
       },
-      [c],
+      [c]
     );
     await t.execute();
 
     expect(t.clock).toEqual(3);
-    expect((t.findChit('id.1') as FakeChit).s1, 'updated s1 again again!');
-    return (t.findChit('id.0') as FakeChit).s1;
+    expect((t.findChit("id.1") as FakeChit).s1, "updated s1 again again!");
+    return (t.findChit("id.0") as FakeChit).s1;
   };
 
-  expect(await run()).toEqual('updated s1 again! 1');
-  expect(await run()).toEqual('updated s1 again! 2');
+  expect(await run()).toEqual("updated s1 again! 1");
+  expect(await run()).toEqual("updated s1 again! 2");
 });
 
-test('single subturn for second player', async () => {
+test("single subturn for second player", async () => {
   const match = mock<Match<any, any>>();
-  const p1 = new PlayerChit(new PlayerInfo('p1', 'player 1'));
-  const p2 = new PlayerChit(new PlayerInfo('p2', 'player 2'));
+  const p1 = new PlayerChit(new PlayerInfo("p1", "player 1"));
+  const p2 = new PlayerChit(new PlayerInfo("p2", "player 2"));
 
   const state = new TurnState();
   const run = async () => {
     const c = new FakeChit();
-    c.id = 'root';
+    c._id = "root";
 
     const t = new Turn<number, PlayerChit, any>(
-      'id',
+      "id",
       match,
       state,
       async (turn) => {
@@ -242,17 +242,21 @@ test('single subturn for second player', async () => {
 
         let subsubsub = new FakeChit();
 
-        const result = await turn.createTurn<number>([sub], p2, async (subTurn) => {
-          expect(c.currentTurn).toEqual(turn);
-          expect(sub.currentTurn).toEqual(subTurn);
-          expect(subsub.currentTurn).toEqual(subTurn);
-          subsubsub = new FakeChit();
-          subsub.add(subsubsub);
-          expect(subsubsub.currentTurn).toEqual(undefined);
-          subTurn.flush();
-          expect(subsubsub.currentTurn).toEqual(subTurn);
-          return 1;
-        });
+        const result = await turn.createTurn<number>(
+          [sub],
+          p2,
+          async (subTurn) => {
+            expect(c.currentTurn).toEqual(turn);
+            expect(sub.currentTurn).toEqual(subTurn);
+            expect(subsub.currentTurn).toEqual(subTurn);
+            subsubsub = new FakeChit();
+            subsub.add(subsubsub);
+            expect(subsubsub.currentTurn).toEqual(undefined);
+            subTurn.flush();
+            expect(subsubsub.currentTurn).toEqual(subTurn);
+            return 1;
+          }
+        );
 
         expect(c.currentTurn).toEqual(turn);
         expect(sub.currentTurn).toEqual(turn);
@@ -262,7 +266,7 @@ test('single subturn for second player', async () => {
         return result + 1;
       },
       [c, p1, p2],
-      p1,
+      p1
     );
     return await t.execute();
   };
@@ -271,34 +275,34 @@ test('single subturn for second player', async () => {
   expect(await run()).toEqual(2);
 });
 
-test('concurrent turns are okay', async () => {
+test("concurrent turns are okay", async () => {
   const match = mock<Match<any, any>>();
-  const p1 = new PlayerChit(new PlayerInfo('p1', 'player 1'));
-  const p2 = new PlayerChit(new PlayerInfo('p2', 'player 2'));
+  const p1 = new PlayerChit(new PlayerInfo("p1", "player 1"));
+  const p2 = new PlayerChit(new PlayerInfo("p2", "player 2"));
   let p2CalledCount = 0;
-  p2.promptStatus.latestPrompt.on(() => {
-    if (p2.promptStatus.latestPrompt.value) {
+  p2.promptStatus._latestPrompt.on(() => {
+    if (p2.promptStatus._latestPrompt.value) {
       p2CalledCount++;
-      p2.promptStatus.latestPrompt.value.resolve('id.1');
+      p2.promptStatus._latestPrompt.value.resolve("id.1");
     }
   });
 
-  const p3 = new PlayerChit(new PlayerInfo('p3', 'player 3'));
+  const p3 = new PlayerChit(new PlayerInfo("p3", "player 3"));
   let p3CalledCount = 0;
-  p3.promptStatus.latestPrompt.on(() => {
-    if (p3.promptStatus.latestPrompt.value) {
+  p3.promptStatus._latestPrompt.on(() => {
+    if (p3.promptStatus._latestPrompt.value) {
       p3CalledCount++;
-      p3.promptStatus.latestPrompt.value.resolve('id.0');
+      p3.promptStatus._latestPrompt.value.resolve("id.0");
     }
   });
 
   const state = new TurnState();
   const run = async () => {
     const c = new FakeChit();
-    c.id = 'root';
+    c._id = "root";
 
     const t = new Turn<any, any, any>(
-      'id',
+      "id",
       match,
       state,
       async (turn) => {
@@ -307,20 +311,28 @@ test('concurrent turns are okay', async () => {
         const p2chit = new FakeChit();
         c.add(p2chit);
 
-        const p3result = turn.createTurn<number>([p3chit], p3, async (subTurn) => {
-          await subTurn.select([p3chit]);
-          return 1;
-        });
+        const p3result = turn.createTurn<number>(
+          [p3chit],
+          p3,
+          async (subTurn) => {
+            await subTurn.select([p3chit]);
+            return 1;
+          }
+        );
 
-        const p2result = turn.createTurn<number>([p2chit], p2, async (subTurn) => {
-          await subTurn.select([p2chit]);
-          return 2;
-        });
+        const p2result = turn.createTurn<number>(
+          [p2chit],
+          p2,
+          async (subTurn) => {
+            await subTurn.select([p2chit]);
+            return 2;
+          }
+        );
 
         return (await p2result) + (await p3result);
       },
       [c, p1, p2, p3],
-      p1,
+      p1
     );
     return await t.execute();
   };
@@ -333,25 +345,25 @@ test('concurrent turns are okay', async () => {
   expect(p3CalledCount).toEqual(2);
 });
 
-test('concurrent turns with the same player are not okay', async () => {
+test("concurrent turns with the same player are not okay", async () => {
   const match = mock<Match<any, any>>();
-  const p1 = new PlayerChit(new PlayerInfo('p1', 'player 1'));
-  const p2 = new PlayerChit(new PlayerInfo('p2', 'player 2'));
+  const p1 = new PlayerChit(new PlayerInfo("p1", "player 1"));
+  const p2 = new PlayerChit(new PlayerInfo("p2", "player 2"));
   let p2CalledCount = 0;
-  p2.promptStatus.latestPrompt.on(() => {
-    if (p2.promptStatus.latestPrompt.value) {
+  p2.promptStatus._latestPrompt.on(() => {
+    if (p2.promptStatus._latestPrompt.value) {
       p2CalledCount++;
-      p2.promptStatus.latestPrompt.value.resolve('id.0');
+      p2.promptStatus._latestPrompt.value.resolve("id.0");
     }
   });
 
   const state = new TurnState();
   const run = async () => {
     const c = new FakeChit();
-    c.id = 'root';
+    c._id = "root";
 
     const t = new Turn<any, any, any>(
-      'id',
+      "id",
       match,
       state,
       async (turn) => {
@@ -374,55 +386,65 @@ test('concurrent turns with the same player are not okay', async () => {
         return p2result + p2results2;
       },
       [c, p1, p2],
-      p1,
+      p1
     );
 
     return await t.execute();
   };
 
-  await expect(() => run()).rejects.toThrowError(/Only one sub-turn can be active at a time per player/);
+  await expect(() => run()).rejects.toThrowError(
+    /Only one sub-turn can be active at a time per player/
+  );
   expect(p2CalledCount).toEqual(0);
 });
 
-test('serial turns with the same player are okay', async () => {
+test("serial turns with the same player are okay", async () => {
   const match = mock<Match<any, any>>();
-  const p1 = new PlayerChit(new PlayerInfo('p1', 'player 1'));
-  const p2 = new PlayerChit(new PlayerInfo('p2', 'player 2'));
+  const p1 = new PlayerChit(new PlayerInfo("p1", "player 1"));
+  const p2 = new PlayerChit(new PlayerInfo("p2", "player 2"));
   let p2CalledCount = 0;
-  p2.promptStatus.latestPrompt.on(() => {
-    if (p2.promptStatus.latestPrompt.value) {
+  p2.promptStatus._latestPrompt.on(() => {
+    if (p2.promptStatus._latestPrompt.value) {
       p2CalledCount++;
-      p2.promptStatus.latestPrompt.value.resolve('id.0');
+      p2.promptStatus._latestPrompt.value.resolve("id.0");
     }
   });
 
   const state = new TurnState();
   const run = async () => {
     const c = new FakeChit();
-    c.id = 'root';
+    c._id = "root";
 
     const t = new Turn(
-      'id',
+      "id",
       match,
       state,
       async (turn) => {
         const p2chit = new FakeChit();
         c.add(p2chit);
 
-        const p2result = await turn.createTurn<number>([p2chit], p2, async (subTurn) => {
-          await subTurn.select([p2chit]);
-          return 2;
-        });
+        const p2result = await turn.createTurn<number>(
+          [p2chit],
+          p2,
+          async (subTurn) => {
+            await subTurn.select([p2chit]);
+            return 2;
+          }
+        );
 
-        const p2result2 = await turn.createTurn<number>([p2chit], p2, async (subTurn) => {
-          await subTurn.select([p2chit]);
-          return 2;
-        });
+        const p2result2 = await turn.createTurn<number>(
+          [p2chit],
+          p2,
+          async (subTurn) => {
+            await subTurn.select([p2chit]);
+            return 2;
+          }
+        );
 
         return p2result + p2result2;
       },
       [c],
-      p1,
+      p1
     );
     return await t.execute();
   };
@@ -435,58 +457,58 @@ test('serial turns with the same player are okay', async () => {
 async function runTurn(choices: { playerId: string; choice: string }[]) {
   const match = mock<Match<any, any>>();
   const playerLookup: { [id: string]: PlayerChit } = {
-    p1: new PlayerChit(new PlayerInfo('p1', 'player 1')),
-    p2: new PlayerChit(new PlayerInfo('p2', 'player 2')),
+    p1: new PlayerChit(new PlayerInfo("p1", "player 1")),
+    p2: new PlayerChit(new PlayerInfo("p2", "player 2")),
   };
 
   const root = new FakeChit();
-  root.id = 'root';
+  root._id = "root";
 
   const t = new Turn(
-    'id',
+    "id",
     match,
     new TurnState(),
     async (turn) => {
       const a = new FakeChit();
-      a.s1 = 'a';
+      a.s1 = "a";
       root.add(a);
       turn.flush();
 
       const b = new FakeChit();
-      b.s1 = 'b';
+      b.s1 = "b";
       root.add(b);
       turn.flush();
 
       const c = new FakeChit();
-      c.s1 = 'c';
+      c.s1 = "c";
       root.add(c);
       turn.flush();
 
-      a.s1 = 'a2';
-      b.s1 = 'b2';
+      a.s1 = "a2";
+      b.s1 = "b2";
       turn.flush();
 
       await Promise.all([
         turn.createTurn<number>([a], playerLookup.p1, async (subTurn) => {
-          a.s1 = 'a2.1';
+          a.s1 = "a2.1";
           await subTurn.select([a]);
-          a.s1 = 'a2.2';
+          a.s1 = "a2.2";
           await subTurn.select([a]);
           return 2;
         }),
         turn.createTurn<number>([b], playerLookup.p2, async (subTurn) => {
-          b.s1 = 'b2.1';
+          b.s1 = "b2.1";
           await subTurn.select([b]);
-          b.s1 = 'b2.2';
+          b.s1 = "b2.2";
           await subTurn.select([b]);
           return 2;
         }),
       ]);
 
-      a.s1 = 'a3';
-      b.s1 = 'b3';
+      a.s1 = "a3";
+      b.s1 = "b3";
       turn.flush();
-      b.s1 = 'b4';
+      b.s1 = "b4";
       turn.flush();
 
       await turn.createTurn<number>([a], playerLookup.p1, async (subTurn) => {
@@ -496,7 +518,7 @@ async function runTurn(choices: { playerId: string; choice: string }[]) {
 
       return 1;
     },
-    [root, ...Object.values(playerLookup)],
+    [root, ...Object.values(playerLookup)]
   );
 
   t.execute().catch(console.error);
@@ -505,15 +527,15 @@ async function runTurn(choices: { playerId: string; choice: string }[]) {
     await new Promise((resolve) => {
       const p = playerLookup[choices[i].playerId];
       const fn = () => {
-        if (p.promptStatus.latestPrompt.value) {
+        if (p.promptStatus._latestPrompt.value) {
           nextTick(() => {
-            p.promptStatus.latestPrompt.value?.resolve(choices[i].choice);
-            resolve('ok');
+            p.promptStatus._latestPrompt.value?.resolve(choices[i].choice);
+            resolve("ok");
           });
           unsubscribe();
         }
       };
-      const unsubscribe = p.promptStatus.latestPrompt.on(fn);
+      const unsubscribe = p.promptStatus._latestPrompt.on(fn);
       fn();
     });
   }
@@ -524,7 +546,7 @@ async function runTurn(choices: { playerId: string; choice: string }[]) {
   return t;
 }
 
-test('serialization', async () => {
+test("serialization", async () => {
   const confirm = (
     message: string,
     turn: Turn<any, any, any>,
@@ -532,7 +554,7 @@ test('serialization', async () => {
     clockDetails?: ClockDetails,
     a?: string,
     b?: string,
-    c?: string,
+    c?: string
   ) => {
     const chit = new FakeChit();
     const serialized = turn.serialize(clock, clockDetails);
@@ -541,7 +563,7 @@ test('serialization', async () => {
     const confirmChit = (id: string, value?: string) => {
       if (value === undefined) {
         expect(serialized.chits[id], id + message).toBe(undefined);
-      } else if (value === 'DELETED') {
+      } else if (value === "DELETED") {
         chit.deserialize(serialized.chits[id], () => chit);
         expect(chit.parent, id + message).toBe(undefined);
       } else {
@@ -550,60 +572,84 @@ test('serialization', async () => {
       }
     };
 
-    confirmChit('id.0', a);
-    confirmChit('id.1', b);
-    confirmChit('id.2', c);
+    confirmChit("id.0", a);
+    confirmChit("id.1", b);
+    confirmChit("id.2", c);
     return serialized.clockDetails;
   };
 
-  const t1 = await runTurn([{ playerId: 'p1', choice: 'id.0' }]);
-  const details1 = confirm('details1', t1, 1, undefined, 'a', undefined, undefined);
-  confirm('post details1', t1, 2, undefined, 'a', 'b', undefined);
-  const details2b = confirm('details2b', t1, 2, details1, undefined, 'b', undefined);
-  const details3 = confirm('details3', t1, 3, undefined, 'a', 'b', 'c');
-  confirm('3.1', t1, 3, details1, undefined, 'b', 'c');
-  confirm('3.2', t1, 3, details2b, undefined, undefined, 'c');
-  confirm('3.3', t1, 4, undefined, 'a2', 'b2', 'c');
-  confirm('3.4', t1, 4, details3, 'a2', 'b2', undefined);
-  const details5 = confirm('details5', t1, 5, undefined, 'a2.1', 'b2', 'c');
-  expect(details5.subTurns && details5.subTurns['id.0'].clock).toBe(1);
+  const t1 = await runTurn([{ playerId: "p1", choice: "id.0" }]);
+  const details1 = confirm(
+    "details1",
+    t1,
+    1,
+    undefined,
+    "a",
+    undefined,
+    undefined
+  );
+  confirm("post details1", t1, 2, undefined, "a", "b", undefined);
+  const details2b = confirm(
+    "details2b",
+    t1,
+    2,
+    details1,
+    undefined,
+    "b",
+    undefined
+  );
+  const details3 = confirm("details3", t1, 3, undefined, "a", "b", "c");
+  confirm("3.1", t1, 3, details1, undefined, "b", "c");
+  confirm("3.2", t1, 3, details2b, undefined, undefined, "c");
+  confirm("3.3", t1, 4, undefined, "a2", "b2", "c");
+  confirm("3.4", t1, 4, details3, "a2", "b2", undefined);
+  const details5 = confirm("details5", t1, 5, undefined, "a2.1", "b2", "c");
+  expect(details5.subTurns && details5.subTurns["id.0"].clock).toBe(1);
   // the p2's turn hasn't made a move yet but their turn has flushed
-  const details7 = confirm('details7', t1, 7, undefined, 'a2.2', 'b2.1', 'c');
-  expect(details7.subTurns && details7.subTurns['id.1'].clock).toBe(1);
+  const details7 = confirm("details7", t1, 7, undefined, "a2.2", "b2.1", "c");
+  expect(details7.subTurns && details7.subTurns["id.1"].clock).toBe(1);
 
   // now go backwards!
-  const details5back = confirm('details5back', t1, 4, details5, 'a2', undefined, undefined);
+  const details5back = confirm(
+    "details5back",
+    t1,
+    4,
+    details5,
+    "a2",
+    undefined,
+    undefined
+  );
   expect(!details5back.subTurns).toBe(true);
-  confirm('5.1', t1, 3, details5, 'a', 'b', undefined);
-  confirm('5.2', t1, 2, details5, 'a', 'b', 'DELETED');
+  confirm("5.1", t1, 3, details5, "a", "b", undefined);
+  confirm("5.2", t1, 2, details5, "a", "b", "DELETED");
 
   // if there is a pass mismatch it will reseserialize it all
-  confirm('5.3', t1, 3, details2b, undefined, undefined, 'c');
+  confirm("5.3", t1, 3, details2b, undefined, undefined, "c");
   details2b.pass = 99;
-  confirm('5.4', t1, 3, details2b, 'a', 'b', 'c');
+  confirm("5.4", t1, 3, details2b, "a", "b", "c");
 
   // if there is a pass mismatch it will reseserialize it all
-  confirm('5.5', t1, 4, details3, 'a2', 'b2', undefined);
+  confirm("5.5", t1, 4, details3, "a2", "b2", undefined);
   details3.subTurns = { someTurnThatDoesntExist: { clock: 5, pass: 1 } };
-  confirm('5.6', t1, 4, details3, 'a2', 'b2', 'c');
+  confirm("5.6", t1, 4, details3, "a2", "b2", "c");
 
   const t1b = await runTurn([
-    { playerId: 'p1', choice: 'id.0' },
-    { playerId: 'p1', choice: 'id.0' },
-    { playerId: 'p2', choice: 'id.1' },
+    { playerId: "p1", choice: "id.0" },
+    { playerId: "p1", choice: "id.0" },
+    { playerId: "p2", choice: "id.1" },
   ]);
   // weird funky case where it really has to reserialize everything
-  confirm('weird funky serialize all', t1b, 8, details7, 'a2.2', 'b2.1', 'c');
+  confirm("weird funky serialize all", t1b, 8, details7, "a2.2", "b2.1", "c");
 
   const t1c = await runTurn([
-    { playerId: 'p2', choice: 'id.1' },
-    { playerId: 'p1', choice: 'id.0' },
-    { playerId: 'p1', choice: 'id.0' },
-    { playerId: 'p2', choice: 'id.1' },
+    { playerId: "p2", choice: "id.1" },
+    { playerId: "p1", choice: "id.0" },
+    { playerId: "p1", choice: "id.0" },
+    { playerId: "p2", choice: "id.1" },
   ]);
   // weird funky case where it really has to reserialize everything
   // const details7c =
-  confirm('details7c', t1c, 8, details7, 'a2.2', 'b2.1', 'c');
+  confirm("details7c", t1c, 8, details7, "a2.2", "b2.1", "c");
 
   // these got messed up by adding confirm :(
   // const details8 = confirm("details8", t1c, 8, details7c, undefined, "b2.2", undefined);

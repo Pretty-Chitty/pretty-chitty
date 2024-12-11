@@ -1,23 +1,23 @@
-import { RefObject } from 'react';
-import { Vector2 } from 'three';
+import { RefObject } from "react";
+import { Vector2 } from "three";
 
-import { Chit } from './Chit';
-import { NonEditable } from '../utilities/Annotations';
-import { PlayerChit } from './PlayerChit';
-import { ImageSpec } from '../utilities/CanvasStack/CanvasOperations';
+import { Chit } from "./Chit";
+import { NonEditable } from "../utilities/Annotations";
+import { PlayerChit } from "./PlayerChit";
+import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 
 export abstract class SparkChit extends Chit {
   /** @internal */
-  @NonEditable type = 'spark';
+  _type = "spark";
 
-  public color: string = '';
-  public abstract get icon(): PlayerChit | ImageSpec | undefined;
-  public get headerIcon(): PlayerChit | ImageSpec | undefined {
-    return this.icon;
+  public color: string = "";
+  public abstract get ZZZicon(): PlayerChit | ImageSpec | undefined;
+  public get ZZZheaderIcon(): PlayerChit | ImageSpec | undefined {
+    return this.ZZZicon;
   }
 
   /** @internal */
-  @NonEditable public element: RefObject<HTMLElement> | undefined;
+  public element: RefObject<HTMLElement> | undefined;
 
   private _value: number = 0;
   public get value() {

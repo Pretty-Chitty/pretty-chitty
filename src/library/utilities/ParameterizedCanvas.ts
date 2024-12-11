@@ -1,12 +1,12 @@
-import { ReactNode } from 'react';
+import { ReactNode } from "react";
 
-import { ParameterizedMemoized } from './ParameterizedMemoized';
-import { IUpdatingCanvas } from './IUpdatingCanvas';
-import { CanvasStack } from './CanvasStack/CanvasStack';
-import { ObjectWithProps } from './ObjectWithProps';
-import { NonEditable } from './Annotations';
-import { unwrapCanvasNode } from './CanvasStack/ReactCanvas';
-import { LayeredCanvasOperation } from './CanvasStack/CanvasOperations';
+import { ParameterizedMemoized } from "./ParameterizedMemoized";
+import { IUpdatingCanvas } from "./IUpdatingCanvas";
+import { CanvasStack } from "./CanvasStack/CanvasStack";
+import { ObjectWithProps } from "./ObjectWithProps";
+import { NonEditable } from "./Annotations";
+import { unwrapCanvasNode } from "./CanvasStack/ReactCanvas";
+import { LayeredCanvasOperation } from "./CanvasStack/CanvasOperations";
 
 export abstract class ParameterizedCanvas extends ObjectWithProps {
   /** @internal */
@@ -15,8 +15,8 @@ export abstract class ParameterizedCanvas extends ObjectWithProps {
   /** @internal */
   static counter = 1;
 
-  @NonEditable width = 100;
-  @NonEditable height = 100;
+  width = 100;
+  height = 100;
 
   private signature(): string {
     const proto = Object.getPrototypeOf(this);
@@ -36,7 +36,7 @@ export abstract class ParameterizedCanvas extends ObjectWithProps {
         }
         return v;
       })
-      .join('___')}`;
+      .join("___")}`;
   }
 
   get(): IUpdatingCanvas {
@@ -47,7 +47,11 @@ export abstract class ParameterizedCanvas extends ObjectWithProps {
         return new CanvasStack(this.width, this.height, unwrapCanvasNode(ops));
       } catch (e) {
         console.error(e);
-        return new CanvasStack(this.width, this.height, new LayeredCanvasOperation([]));
+        return new CanvasStack(
+          this.width,
+          this.height,
+          new LayeredCanvasOperation([])
+        );
       }
     });
   }

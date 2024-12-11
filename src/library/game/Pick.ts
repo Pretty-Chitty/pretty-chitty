@@ -1,11 +1,11 @@
-import { Chit } from './Chit';
-import { IButtonLibrary } from './Game';
-import { Confirm, GameButton } from './GameButton';
-import { PickPrompt } from './Prompt';
-import { MismatchError, Turn } from './Turn';
+import { Chit } from "./Chit";
+import { IButtonLibrary } from "./Game";
+import { Confirm, GameButton } from "./GameButton";
+import { PickPrompt } from "./Prompt";
+import { MismatchError, Turn } from "./Turn";
 
 export type FindChit = (id: string) => Chit;
-export type PickType = 'ChitPick' | 'ButtonPick';
+export type PickType = "ChitPick" | "ButtonPick";
 export type PickSerialization = {
   type: PickType;
   message?: string;
@@ -29,7 +29,11 @@ export abstract class Pick {
   /** @internal */
   abstract serializeDetails(): any;
   /** @internal */
-  abstract deserializeDetails(state: any, findChit: FindChit, buttonLibrary: IButtonLibrary): void;
+  abstract deserializeDetails(
+    state: any,
+    findChit: FindChit,
+    buttonLibrary: IButtonLibrary
+  ): void;
   /** @internal */
   abstract resolveDetails(details: any): Promise<void>;
   /** @internal */
@@ -67,14 +71,18 @@ export abstract class Pick {
   }
 
   /** @internal */
-  public static deserialize(pick: PickSerialization, findChit: FindChit, buttonLibrary: IButtonLibrary): Pick {
+  public static deserialize(
+    pick: PickSerialization,
+    findChit: FindChit,
+    buttonLibrary: IButtonLibrary
+  ): Pick {
     let p: Pick | undefined = undefined;
     switch (pick.type) {
-      case 'ChitPick': {
+      case "ChitPick": {
         p = new ChitPick();
         break;
       }
-      case 'ButtonPick': {
+      case "ButtonPick": {
         p = new ButtonPick();
         break;
       }
@@ -93,7 +101,7 @@ export abstract class Pick {
 
 export class ChitPick<T extends Chit> extends Pick {
   /** @internal */
-  type: PickType = 'ChitPick';
+  type: PickType = "ChitPick";
 
   /** @internal */
   public chits: T[] = [];
@@ -107,8 +115,8 @@ export class ChitPick<T extends Chit> extends Pick {
   /** @internal */
   serializeDetails() {
     return {
-      c: this.chits.map((chit) => chit.id),
-      f: this.focusChits.map((chit) => chit.id),
+      c: this.chits.map((chit) => chit._id),
+      f: this.focusChits.map((chit) => chit._id),
     };
   }
 
@@ -122,14 +130,17 @@ export class ChitPick<T extends Chit> extends Pick {
   }
 
   /** @internal */
-  deserializeDetails({ c, f }: { c: string[]; f: string[] }, findChit: FindChit): void {
+  deserializeDetails(
+    { c, f }: { c: string[]; f: string[] },
+    findChit: FindChit
+  ): void {
     this.chits = c.map((chitId) => findChit(chitId) as T).filter((d) => d);
     this.focusChits = f.map((chitId) => findChit(chitId) as T).filter((d) => d);
   }
 
   /** @internal */
   resolveDetails(chitId: string) {
-    const selectedChit = this.chits.find((chit) => chit.id === chitId);
+    const selectedChit = this.chits.find((chit) => chit._id === chitId);
     if (!selectedChit) {
       throw new MismatchError();
     }
@@ -138,10 +149,14 @@ export class ChitPick<T extends Chit> extends Pick {
 
   /** @internal */
   stageIn(prompt: PickPrompt) {
-    this.chits.forEach((c) => (c.onClick = () => prompt.resolvePick(this, c.id)));
+    this.chits.forEach(
+      (c) => (c.onClick = () => prompt.resolvePick(this, c._id))
+    );
 
     // show it?
-    this.focusChits.forEach((c) => c.renderInstance?.rootRenderInstance.markHasChitsEntering());
+    this.focusChits.forEach((c) =>
+      c._renderInstance?.rootRenderInstance.markHasChitsEntering()
+    );
   }
 
   /** @internal */
@@ -167,7 +182,7 @@ export class ChitPick<T extends Chit> extends Pick {
 
 export class ButtonPick extends Pick {
   /** @internal */
-  type: PickType = 'ButtonPick';
+  type: PickType = "ButtonPick";
 
   public button?: GameButton;
 
@@ -189,7 +204,7 @@ export class ButtonPick extends Pick {
   /** @internal */
   serializeDetails() {
     if (!this.button) {
-      throw new Error('Cannot resolve without a button defined');
+      throw new Error("Cannot resolve without a button defined");
     }
 
     const details = this.button.serialize();
@@ -198,10 +213,17 @@ export class ButtonPick extends Pick {
   }
 
   /** @internal */
-  deserializeDetails(state: any, _findChit: FindChit, buttonLibrary: IButtonLibrary) {
-    const HARDCODED_BUTTON_LIBRARY: { [id: string]: new () => GameButton } = { Confirm };
+  deserializeDetails(
+    state: any,
+    _findChit: FindChit,
+    buttonLibrary: IButtonLibrary
+  ) {
+    const HARDCODED_BUTTON_LIBRARY: { [id: string]: new () => GameButton } = {
+      Confirm,
+    };
     const buttonType = state.__buttonType;
-    const ButtonType = buttonLibrary[buttonType] ?? HARDCODED_BUTTON_LIBRARY[buttonType];
+    const ButtonType =
+      buttonLibrary[buttonType] ?? HARDCODED_BUTTON_LIBRARY[buttonType];
     if (!ButtonType) {
       throw new Error(`Cannot find button type ${buttonType}`);
     }
@@ -212,7 +234,7 @@ export class ButtonPick extends Pick {
   /** @internal */
   resolveDetails() {
     if (!this.button) {
-      throw new Error('Cannot resolve without a button defined');
+      throw new Error("Cannot resolve without a button defined");
     }
     return Promise.resolve(this.button && this.button.cb && this.button.cb());
   }

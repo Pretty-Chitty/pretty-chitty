@@ -1,17 +1,17 @@
-import { Check, Flip } from '@mui/icons-material';
+import { Check, Flip } from "@mui/icons-material";
 
-import { BottomBarButtonIcon } from '../components/BottomBarButton';
-import { ButtonPick } from './Pick';
-import { NonEditable } from '../utilities/Annotations';
+import { BottomBarButtonIcon } from "../components/BottomBarButton";
+import { ButtonPick } from "./Pick";
+import { NonEditable } from "../utilities/Annotations";
 
 export type ButtonCallback = () => void | Promise<void>;
 
 export class GameButton {
   /** @internal */
-  @NonEditable type = 'button';
+  type = "button";
 
   public icon: BottomBarButtonIcon = Flip;
-  public label: string = 'Flip Me';
+  public label: string = "Flip Me";
   public message: string | undefined;
 
   /** @internal */
@@ -37,7 +37,7 @@ export class GameButton {
 }
 
 export class Confirm extends GameButton {
-  label = 'Confirm';
+  label = "Confirm";
   icon = Check;
   canAutoResolve = false;
 }
