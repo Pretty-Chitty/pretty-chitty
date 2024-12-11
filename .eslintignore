@@ -1,6 +1,6 @@
 node_modules
 dist
 package-lock.json
-webpack.config.cjs
+webpack.config.js
 build
 docs

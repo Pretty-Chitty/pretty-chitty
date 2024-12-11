@@ -395,7 +395,7 @@ export class ChitRenderInstance {
       renderSpec.offsetX = intersection.x;
       this.handlePositionAndRotation();
       this.offsetTween.onComplete(() => this.destroy());
-      this.offsetTween = new Tween({ x: 0, y: 0 });
+      this.offsetTween = new Tween();
     } else {
       this.destroy();
     }
@@ -623,7 +623,7 @@ export class ChitRenderInstance {
           })
           .easing(Easing.Quadratic.In),
       );
-      this.offsetTween = new Tween({ x: 0, y: 0 }); // make sure this is not cancellable
+      this.offsetTween = new Tween(); // make sure this is not cancellable
     }
     return this.isDestroying;
   }

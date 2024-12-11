@@ -147,7 +147,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
         timeState.setAnimationState(key, false);
         setIsSliding(false);
       },
-      ANIMATION_DURATION * 1000 + 200,
+      ANIMATION_DURATION * 1000 + 10,
     );
     return () => clearTimeout(to);
   }, [selectedIndex, key, timeState]);

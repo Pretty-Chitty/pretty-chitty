@@ -2,14 +2,10 @@
   "name": "pretty-chitty",
   "version": "1.0.0",
   "license": "MIT",
-  "main": "dist/pretty-chitty.js", 
   "exports": {
     ".": "./src/library/index.ts",
     "./ReactCanvas": "./src/library/utilities/CanvasStack/ReactCanvas.tsx"
   },
-  "type": "module",
-  "types": "./dist/index.d.ts",
-  "module": "es2022",
   "peerDependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -19,6 +15,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "three": "^0.158.0",
+
     "@babel/core": "^7.23.3",
     "@babel/plugin-proposal-class-properties": "^7.18.6",
     "@babel/plugin-proposal-decorators": "^7.23.5",
@@ -103,7 +100,6 @@
     "compile:check": "tsc",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "types": "tsc --project tsconfig.build.json --emitDeclarationOnly",
     "coverage": "vitest run --coverage",
     "docs": "typedoc ./src/library/index.ts --excludeInternal --excludePrivate"
   }

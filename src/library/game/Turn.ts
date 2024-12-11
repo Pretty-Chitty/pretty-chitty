@@ -16,16 +16,7 @@ type ChitSerializationResponse = {
 
 export type Picks = (undefined | Pick | Pick[] | GameButton | GameButton[])[];
 
-export interface ITurn {
-  rng():Promise<number>;
-  takeRng(count: number): Promise<() => number>;
-  flush():void;
-  createTurn<A>(chits: Chit[], player: PlayerChit, cb: (turn: ITurn) => Promise<A>): Promise<A>;
-  select(chits: Chit[]): Promise<Chit>;
-  pick(message?: string | Picks, help?: string | Picks, picks?: Picks):Promise<void>;
-}
-
-export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITurn {
+export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private pass = 0;
   private clockSteps: ClockStep[] = [];
   private decisionIndex = 0; // decision points that can be potentially rolled back
@@ -718,7 +709,6 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> implements ITu
     }
   }
 
-  /** @internal */
   destroy() {
     this.activeSubTurns.forEach((turn) => turn.destroy());
     Chit.walk(this.chitsToLock, (c) => {
