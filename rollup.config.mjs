@@ -20,7 +20,7 @@ export default defineConfig([
       {
         file: packageJson.main,
         format: "cjs",
-        sourcemap: false,
+        sourcemap: "inline",
         exports: "named",
         name: packageJson.name,
       },
@@ -28,7 +28,7 @@ export default defineConfig([
         file: packageJson.module,
         format: "es",
         exports: "named",
-        sourcemap: false,
+        sourcemap: "inline",
       },
     ],
     onwarn(warning, warn) {

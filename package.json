@@ -12,9 +12,13 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/<YourGitUserName>"
   },
-  "main": "dist/cjs/index.js",
-  "module": "dist/esm/index.js",
-  "types": "dist/index.d.ts",
+  "afiles": [
+    "dist"
+  ],
+  "module": "src/library/index.ts",
+  "amain": "dist/cjs/index.js",
+  "amodule": "dist/esm/index.js",
+  "atypes": "dist/index.d.ts",
   "type": "module",
   "engines": {
     "node": ">=18"
@@ -46,9 +50,6 @@
     "@chromatic-com/storybook": "^3.2.2",
     "@eslint/js": "^9.15.0",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.11",
-    "@react-hook/debounce": "^4.0.0",
-    "@react-hook/hover": "^4.0.0",
-    "@react-hook/size": "^2.1.2",
     "@rollup/plugin-commonjs": "^28.0.1",
     "@rollup/plugin-node-resolve": "^15.3.0",
     "@rollup/plugin-terser": "^0.4.4",
@@ -99,7 +100,6 @@
     "node-sass": "^9.0.0",
     "prettier": "3.4.1",
     "react-refresh": "^0.14.0",
-    "reflect-metadata": "^0.1.14",
     "regenerator-runtime": "^0.14.1",
     "rimraf": "^6.0.1",
     "rollup": "^4.27.4",
@@ -153,6 +153,10 @@
     "three-csg-ts": "^3.1.13",
     "use-local-storage-state": "^19.1.0",
     "use-long-press": "^3.2.0",
-    "wheel": "^1.0.0"
+    "wheel": "^1.0.0",
+    "@react-hook/debounce": "^4.0.0",
+    "@react-hook/hover": "^4.0.0",
+    "@react-hook/size": "^2.1.2",
+    "reflect-metadata": "^0.1.14"
   }
 }

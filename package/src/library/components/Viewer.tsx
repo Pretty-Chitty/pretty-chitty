@@ -1,0 +1,339 @@
+import { Scene, Vector2 } from "three";
+import { Box } from "@mui/material";
+import React, { useEffect, useRef, useState } from "react";
+import Hammer from "@egjs/hammerjs";
+import { addWheelListener, removeWheelListener } from "wheel";
+
+import { Chit } from "../game/Chit";
+import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
+import { useTimeState } from "../hooks/useTimeController";
+import { useEventChannelState } from "../hooks/useEventChannelState";
+import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
+
+let ID_COUNTER = 1;
+
+export default function Viewer({
+  paused = false,
+  chit,
+  wireframes,
+  w = 0,
+  h = 0,
+  panCallback,
+}: {
+  chit: Chit;
+  wireframes?: boolean;
+  w: number;
+  h: number;
+  paused?: boolean;
+  panCallback?: (direction: "left" | "right") => void;
+}) {
+  const [id] = useState(`Viewer${ID_COUNTER++}`);
+  const timeState = useTimeState();
+  const [animationSpeedMultiplier] = useEventChannelState(
+    timeState.animationSpeedMultiplier
+  );
+  const refContainer = useRef(null);
+  const renderer = useWebGlRenderer(w, h);
+  const [scene] = useState<Scene>(new Scene());
+  const [chitRenderInstance, setChitRenderInstance] =
+    useState<RootChitRenderInstance | null>(null);
+
+  if (chitRenderInstance) {
+    if (
+      chitRenderInstance.animationSpeedMultiplier !== animationSpeedMultiplier
+    ) {
+      chitRenderInstance.animationSpeedMultiplier = animationSpeedMultiplier;
+    }
+  }
+
+  // handle sizing and aspect ratio on camera
+  useEffect(() => {
+    chitRenderInstance?.setSize(w, h);
+  }, [chitRenderInstance, w, h]);
+
+  // handle hooking the root render instance onto the scene
+  const R = RootChitRenderInstance;
+  useEffect(() => {
+    if (
+      !chitRenderInstance ||
+      chitRenderInstance.chit !== chit ||
+      !(chitRenderInstance instanceof R)
+    ) {
+      if (chitRenderInstance) {
+        chitRenderInstance.destroy();
+        scene.remove(chitRenderInstance.rootGroup);
+      }
+
+      if (chit._renderInstance) {
+        chit._renderInstance.invalidateRootRenderInstance();
+      }
+
+      const newInstance = new R(chit);
+      newInstance.animationSpeedMultiplier = animationSpeedMultiplier;
+      newInstance.convertCameraSpaceToScreenSpace = (x: number, y: number) => {
+        const el = refContainer.current as unknown as HTMLElement;
+        if (!el) {
+          return;
+        }
+        const rect = el.getBoundingClientRect();
+
+        return new Vector2(
+          rect.left + ((1 + x) / 2) * rect.width,
+          rect.top + ((1 - y) / 2) * rect.height
+        );
+      };
+      newInstance.convertScreenSpaceToCameraSpace = (x: number, y: number) => {
+        const el = refContainer.current as unknown as HTMLElement;
+        if (!el) {
+          return;
+        }
+        const rect = el.getBoundingClientRect();
+
+        x -= rect.left;
+        y -= rect.top;
+
+        return new Vector2(
+          (x / rect.width) * 2 - 1,
+          -((y / rect.height) * 2 - 1)
+        );
+      };
+      newInstance.init();
+      setChitRenderInstance(newInstance);
+      scene.add(newInstance.rootGroup);
+    }
+  }, [
+    refContainer,
+    animationSpeedMultiplier,
+    chit,
+    chitRenderInstance,
+    scene,
+    R,
+  ]);
+
+  // make sure "wireframes" gets set correctly on the render instance
+  useEffect(() => {
+    if (chitRenderInstance) {
+      chitRenderInstance.wireframes = !!wireframes;
+    }
+  }, [chitRenderInstance, wireframes]);
+
+  // handle animation frames
+  useEffect(() => {
+    const canvas = refContainer.current as any as HTMLCanvasElement;
+    if (!chitRenderInstance || !renderer || !canvas) {
+      return;
+    }
+    if (paused) {
+      return;
+    }
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+
+    let renderNextFrame: boolean | undefined;
+    let cancelled = false;
+    const animate = () => {
+      if (!cancelled) {
+        try {
+          // console.log(renderNextFrame);
+          requestAnimationFrame(animate);
+          if (
+            chitRenderInstance &&
+            (renderNextFrame === undefined ||
+              renderNextFrame ||
+              chitRenderInstance.dirty)
+          ) {
+            renderer.render(scene, chitRenderInstance.camera);
+            context.drawImage(
+              renderer.domElement,
+              0,
+              0,
+              w * window.devicePixelRatio,
+              h * window.devicePixelRatio
+            );
+            chitRenderInstance.dirty = false;
+          }
+          const didRender = renderNextFrame;
+          renderNextFrame = chitRenderInstance?.update();
+          if (didRender !== renderNextFrame) {
+            timeState.setAnimationState(id, renderNextFrame === true);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+    animate();
+
+    return () => {
+      timeState.setAnimationState(id, false);
+      cancelled = true;
+    };
+  }, [
+    id,
+    timeState,
+    renderer,
+    scene,
+    chitRenderInstance,
+    paused,
+    refContainer,
+    w,
+    h,
+  ]);
+
+  useEffect(() => {
+    if (chitRenderInstance) {
+      if (paused) {
+        timeState.setAnimationState(id, false);
+        chitRenderInstance.pause();
+      } else {
+        chitRenderInstance.resume();
+      }
+    }
+  }, [chitRenderInstance, id, paused, timeState]);
+
+  // hook up interactions
+  useEffect(() => {
+    const el = refContainer.current as unknown as HTMLElement;
+    if (el) {
+      if (!chitRenderInstance) {
+        return;
+      }
+
+      const hammer = new Hammer.Manager(el);
+
+      const fixPosition = (ev: HammerInput) => {
+        const rect = el.getBoundingClientRect();
+        return { x: ev.center.x - rect.left, y: ev.center.y - rect.top };
+      };
+
+      hammer.add(
+        new Hammer.Tap({
+          event: "doubletap",
+          taps: 2,
+          interval: 300,
+          threshold: 5,
+          posThreshold: 50,
+        })
+      );
+      hammer.add(new Hammer.Tap({ event: "singletap", time: 400 }));
+      hammer.add(new Hammer.Pinch({ event: "pinch", threshold: 0.03 }));
+      hammer.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL }));
+
+      hammer.add(new Hammer.Press({ event: "longtap", time: 600 }));
+
+      hammer.get("doubletap").recognizeWith("singletap");
+      hammer.get("singletap").requireFailure("doubletap");
+
+      hammer.get("longtap").recognizeWith("singletap");
+      hammer.get("singletap").requireFailure("longtap");
+
+      hammer.on("longtap", (ev) => console.log("longtap", ev));
+      hammer.on("singletap", (ev) => {
+        const pos = fixPosition(ev);
+        chitRenderInstance.handleClick(pos.x, pos.y);
+      });
+      hammer.on("doubletap", (ev) => {
+        const pos = fixPosition(ev);
+        chitRenderInstance.handleZoom(
+          pos.x,
+          pos.y,
+          chitRenderInstance.cameraZoom === 1 ? 20 : -20,
+          true
+        );
+      });
+
+      hammer.on("pinch", (ev) => {
+        console.log(ev);
+      });
+
+      let lastDeltaX = 0,
+        lastDeltaY = 0,
+        cancelled = false;
+      hammer.on("panstart", () => {
+        lastDeltaX = 0;
+        lastDeltaY = 0;
+        cancelled = false;
+      });
+      hammer.on("pan", (ev) => {
+        if (cancelled) {
+          return;
+        }
+
+        const dx = ev.deltaX - lastDeltaX,
+          dy = ev.deltaY - lastDeltaY;
+
+        if (panCallback) {
+          const neededVelocity =
+            chitRenderInstance.cameraZoom === 1 ? 0.3 : 1.5;
+          if (
+            Math.abs(ev.velocityX) > neededVelocity &&
+            ev.distance > 20 &&
+            Math.abs(ev.velocityY) < 0.2
+          ) {
+            const direction = ev.velocityX > 0 ? "left" : "right";
+            panCallback(direction);
+            cancelled = true;
+            return;
+          }
+        }
+
+        lastDeltaX = ev.deltaX;
+        lastDeltaY = ev.deltaY;
+
+        chitRenderInstance.handlePan(dx, dy);
+      });
+
+      let lastScale = 1,
+        pinchScale = 1;
+      hammer.on("pinchstart", () => {
+        lastScale = 1;
+        pinchScale = chitRenderInstance.cameraZoom;
+        cancelled = false;
+      });
+      hammer.on("pinch", (ev) => {
+        if (cancelled) {
+          return;
+        }
+
+        const pos = fixPosition(ev);
+        const sx = ev.scale - lastScale;
+        lastScale = ev.scale;
+
+        chitRenderInstance.handleZoom(pos.x, pos.y, pinchScale * sx, false);
+      });
+
+      const wheelListener = (ev: any) => {
+        const dy = ev.wheelDeltaY as number;
+        chitRenderInstance.handleZoom(
+          ev.layerX as number,
+          ev.layerY as number,
+          dy / 120,
+          true
+        );
+        console.log(dy);
+      };
+
+      addWheelListener(el, wheelListener);
+
+      return () => {
+        hammer.destroy();
+        removeWheelListener(el, wheelListener);
+      };
+    }
+    return () => {};
+  }, [refContainer, chitRenderInstance, panCallback]);
+
+  return (
+    <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }}>
+      <canvas
+        width={w * window.devicePixelRatio}
+        height={h * window.devicePixelRatio}
+        style={{ width: w, height: h }}
+        ref={refContainer}
+      />
+    </Box>
+  );
+}
