@@ -395,7 +395,7 @@ export class ChitRenderInstance {
       renderSpec.offsetX = intersection.x;
       this.handlePositionAndRotation();
       this.offsetTween.onComplete(() => this.destroy());
-      this.offsetTween = new Tween();
+      this.offsetTween = new Tween<Point2d>({ x: 0, y: 0 });
     } else {
       this.destroy();
     }
@@ -623,7 +623,7 @@ export class ChitRenderInstance {
           })
           .easing(Easing.Quadratic.In),
       );
-      this.offsetTween = new Tween(); // make sure this is not cancellable
+      this.offsetTween = new Tween({ x: 0, y: 0 }); // make sure this is not cancellable
     }
     return this.isDestroying;
   }
@@ -640,7 +640,7 @@ export class ChitRenderInstance {
     if (this.renderSpec) {
       origin =
         this.renderSpec.ownerOrigin === OwnerOriginPosition.Default
-          ? this.chit.parentOutlet ?? OwnerOriginPosition.MiddleCenter
+          ? (this.chit.parentOutlet ?? OwnerOriginPosition.MiddleCenter)
           : this.renderSpec.ownerOrigin;
     }
 

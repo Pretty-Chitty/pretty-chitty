@@ -148,6 +148,16 @@ export class Chit extends ObjectWithProps {
 
   @NonEditable private _lockedBy?: Turn<any, any, any>;
 
+  public get currentTurn(): Turn<any, any, any> {
+    if (this._lockedBy) {
+      return this._lockedBy;
+    }
+    if (this.parent) {
+      return this.parent.currentTurn;
+    }
+    throw "No current turn";
+  }
+
   /** @internal */
   public get lockedBy() {
     return this._lockedBy;

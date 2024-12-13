@@ -1,10 +1,16 @@
 {
   "name": "pretty-chitty",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "exports": {
-    ".": "./src/library/index.ts",
-    "./ReactCanvas": "./src/library/utilities/CanvasStack/ReactCanvas.tsx"
+    ".": {
+      "import": "./src/library/index.ts",
+      "types": "./dist/index.d.ts"
+    },
+    "./ReactCanvas": {
+      "import": "./src/library/utilities/CanvasStack/ReactCanvas.tsx",
+      "types": "./dist/utilities/CanvasStack/ReactCanvas.d.ts"
+    }
   },
   "peerDependencies": {
     "react": "^18.2.0",
@@ -15,7 +21,6 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "three": "^0.158.0",
-
     "@babel/core": "^7.23.3",
     "@babel/plugin-proposal-class-properties": "^7.18.6",
     "@babel/plugin-proposal-decorators": "^7.23.5",
@@ -95,7 +100,7 @@
   },
   "scripts": {
     "start": "webpack serve",
-    "build": "rm -rf dist && yarn && yarn docs && webpack --node-env=production && tsc --project tsconfig.build.json --emitDeclarationOnly && rm -rf node_modules",
+    "build": "rm -rf dist && yarn && yarn docs && webpack --node-env=production && tsc --project tsconfig.build.json --emitDeclarationOnly && yarn pack",
     "test": "vitest",
     "compile:check": "tsc",
     "lint": "eslint .",

@@ -100,16 +100,32 @@ export class ChitPick<T extends Chit> extends Pick {
   public chits: T[] = [];
 
   /** @internal */
+  public focusChits: Chit[] = [];
+
+  /** @internal */
   public cb: (chit: T) => void | Promise<void> = () => {};
 
   /** @internal */
   serializeDetails() {
-    return this.chits.map((chit) => chit.id);
+    return {
+      c: this.chits.map((chit) => chit.id),
+      f: this.focusChits.map((chit) => chit.id),
+    };
+  }
+
+  focus(chit: Chit | Chit[]) {
+    if (Array.isArray(chit)) {
+      this.focusChits.push(...chit);
+    } else {
+      this.focusChits.push(chit);
+    }
+    return this;
   }
 
   /** @internal */
-  deserializeDetails(chitIds: string[], findChit: FindChit): void {
-    this.chits = chitIds.map((chitId) => findChit(chitId) as T).filter((d) => d);
+  deserializeDetails({ c, f }: { c: string[]; f: string[] }, findChit: FindChit): void {
+    this.chits = c.map((chitId) => findChit(chitId) as T).filter((d) => d);
+    this.focusChits = f.map((chitId) => findChit(chitId) as T).filter((d) => d);
   }
 
   /** @internal */
@@ -124,6 +140,9 @@ export class ChitPick<T extends Chit> extends Pick {
   /** @internal */
   stageIn(prompt: PickPrompt) {
     this.chits.forEach((c) => (c.onClick = () => prompt.resolvePick(this, c.id)));
+
+    // show it?
+    this.focusChits.forEach((c) => c.renderInstance?.rootRenderInstance.markHasChitsEntering());
   }
 
   /** @internal */

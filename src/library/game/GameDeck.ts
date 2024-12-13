@@ -20,7 +20,7 @@ export class GameDeck<T extends Chit> extends Chit {
     return false;
   }
 
-  async draw(turn: Turn<any, any, any>): Promise<T | undefined> {
+  async draw(): Promise<T | undefined> {
     while (this.isEmpty(this.stages[0])) {
       this.stages.shift();
     }
@@ -29,7 +29,7 @@ export class GameDeck<T extends Chit> extends Chit {
     if (stage) {
       switch (stage.type) {
         case "draw": {
-          const index = Math.floor(stage.chits.length * (await turn.rng()));
+          const index = Math.floor(stage.chits.length * (await this.currentTurn.rng()));
           const selected = stage.chits[index];
           stage.chits.splice(index, 1);
           selected.setParent();
@@ -37,7 +37,7 @@ export class GameDeck<T extends Chit> extends Chit {
         }
         case "discard": {
           stage.type = "draw";
-          return this.draw(turn);
+          return this.draw();
         }
       }
     }
