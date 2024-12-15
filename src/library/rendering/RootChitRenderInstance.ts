@@ -36,8 +36,8 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     return this._height;
   }
 
-  protected cameraWrapper = new CameraWrapperPerspective(this);
-  protected lightWrapper = new LightWrapper();
+  public cameraWrapper = new CameraWrapperPerspective(this);
+  public lightWrapper = new LightWrapper();
 
   constructor(chit: Chit) {
     super(chit);

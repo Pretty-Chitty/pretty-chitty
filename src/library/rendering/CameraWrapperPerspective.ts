@@ -24,8 +24,8 @@ export class CameraWrapperPerspective {
   private height: number = 1;
   private wiggleRoomX: number = 0;
   private wiggleRoomY: number = 0;
-  private visibleGameWidth: number = 0;
-  private visibleGameHeight: number = 0;
+  public visibleGameWidth: number = 0;
+  public visibleGameHeight: number = 0;
   private lastNearFarDistanceSet: number = 0;
 
   protected offsetTween = new Tween<Point3d>({ x: 0, y: 0, z: 0 });
@@ -180,7 +180,7 @@ export class CameraWrapperPerspective {
 
     let distance = Math.max(
       this.cameraSpec.minCameraDistance,
-      Math.max(distanceX, distanceY)
+      Math.max(distanceX, distanceY),
       // + (this.bbox.max.z - this.bbox.min.z),
     );
 

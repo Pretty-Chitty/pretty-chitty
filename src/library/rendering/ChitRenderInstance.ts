@@ -383,10 +383,14 @@ export class ChitRenderInstance {
     const rootGroup = this.rootGroup;
     const renderSpec = this.renderSpec;
     if (rootGroup && rootRenderInstance && renderSpec) {
-      const intersection = this.attemptToFindPlaneZ0(rootRenderInstance, this.chit);
+      let intersection = this.attemptToFindPlaneZ0(rootRenderInstance, this.chit);
       if (!intersection) {
-        this.destroy();
-        return;
+        // shouldn't be hardcoded... but here we are
+        intersection = new Vector3(
+          renderSpec.offsetX,
+          renderSpec.offsetY + rootRenderInstance.cameraWrapper.visibleGameHeight,
+          0,
+        );
       }
 
       rootGroup.attach(this.group);
@@ -613,7 +617,10 @@ export class ChitRenderInstance {
       const { position } = this.group;
       this.offsetTween = this.createTween({ x: position.x, y: position.y }, (tween) =>
         tween
-          .to({ x: position.x, y: position.y + 10 }, 500 * this.animationSpeedMultiplier) // TODO: shouldn't be hardcoded
+          .to(
+            { x: position.x, y: position.y + (this.rootRenderInstance?.cameraWrapper.visibleGameHeight ?? 10) },
+            500 * this.animationSpeedMultiplier,
+          )
           .onUpdate((obj) => {
             position.x = obj.x;
             position.y = obj.y;
@@ -640,7 +647,7 @@ export class ChitRenderInstance {
     if (this.renderSpec) {
       origin =
         this.renderSpec.ownerOrigin === OwnerOriginPosition.Default
-          ? (this.chit.parentOutlet ?? OwnerOriginPosition.MiddleCenter)
+          ? this.chit.parentOutlet ?? OwnerOriginPosition.MiddleCenter
           : this.renderSpec.ownerOrigin;
     }
 

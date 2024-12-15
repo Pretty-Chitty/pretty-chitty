@@ -24,7 +24,6 @@ export class GameButton {
     result.button = button;
     return result;
   }
-  
 
   /** @internal */
   serialize(): any {

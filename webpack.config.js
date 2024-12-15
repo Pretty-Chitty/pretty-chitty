@@ -16,7 +16,7 @@ module.exports = {
     libraryTarget: "umd",
     filename: "pretty-chitty.js",
   },
-  
+
   plugins: [
     ...[
       isDevelopment && new ReactRefreshWebpackPlugin(),
@@ -27,7 +27,7 @@ module.exports = {
         }),
     ].filter(Boolean),
   ],
-  devtool: "source-map",
+  devtool: isDevelopment ? "eval-source-map" : "source-map",
   devServer: {
     static: "./dist",
     hot: true,

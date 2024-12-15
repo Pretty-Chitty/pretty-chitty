@@ -33,7 +33,7 @@ export interface Game<P extends PlayerChit, R extends RootChit<P>> {
 
   // validateConfiguration(): boolean;
 
-  run(players: P[], setup: Turn<any, P, R>, rootChit: R): Promise<GameResult<P>>;
+  run(players: P[], setup: Turn<GameResult<P>, P, R>, rootChit: R): Promise<GameResult<P>>;
   generateRootChit(): R;
   generatePlayer(playerInfo: PlayerInfo): P;
 

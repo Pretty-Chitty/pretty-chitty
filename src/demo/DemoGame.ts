@@ -31,6 +31,11 @@ export class DemoGame implements Game<MyPlayer, Root> {
     players[0].color = "#ed00cb";
     players[1].color = "#00edcb";
 
+    const offscreenDeck = new Deck().set((c) => {
+      rootChit.add(c);
+    });
+    offscreenDeck.discard(new Card());
+
     const deck = new Deck().set((c) => {
       rootChit.mainBoard.add(c);
     });
@@ -61,6 +66,10 @@ export class DemoGame implements Game<MyPlayer, Root> {
         rows[c.y].add(c);
       }),
     );
+    setup.flush();
+
+    // should animate to offscreen location
+    offscreenDeck.discard(pieces[3]);
     setup.flush();
 
     const rng2 = await setup.takeRng(W * H);
