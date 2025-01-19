@@ -1,7 +1,6 @@
 import { Scene, Vector2 } from "three";
 import { Box } from "@mui/material";
 import React, { useEffect, useRef, useState } from "react";
-import { Chit } from "../game/Chit";
 import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
 import { useTimeState } from "../hooks/useTimeController";
 import { useEventChannelState } from "../hooks/useEventChannelState";
@@ -11,21 +10,7 @@ import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 
 let ID_COUNTER = 1;
 
-export default function Viewer({
-  paused = false,
-  chit,
-  wireframes,
-  w = 0,
-  h = 0,
-  panCallback,
-}: {
-  chit: Chit;
-  wireframes?: boolean;
-  w: number;
-  h: number;
-  paused?: boolean;
-  panCallback?: (direction: "left" | "right") => void;
-}) {
+export default function GalleryViewer({ paused = false, w = 0, h = 0 }: { w: number; h: number; paused?: boolean }) {
   const [id] = useState(`Viewer${ID_COUNTER++}`);
   const timeState = useTimeState();
   const [animationSpeedMultiplier] = useEventChannelState(timeState.animationSpeedMultiplier);

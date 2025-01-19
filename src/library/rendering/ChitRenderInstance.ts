@@ -385,12 +385,8 @@ export class ChitRenderInstance {
     if (rootGroup && rootRenderInstance && renderSpec) {
       let intersection = this.attemptToFindPlaneZ0(rootRenderInstance, this.chit);
       if (!intersection) {
-        // shouldn't be hardcoded... but here we are
-        intersection = new Vector3(
-          renderSpec.offsetX,
-          renderSpec.offsetY + rootRenderInstance.cameraWrapper.visibleGameHeight,
-          0,
-        );
+        intersection = this.group.localToWorld(new Vector3(0, rootRenderInstance.cameraWrapper.visibleGameHeight, 0));
+        renderSpec.splay.enabled = false;
       }
 
       rootGroup.attach(this.group);
