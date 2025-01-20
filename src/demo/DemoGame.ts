@@ -112,7 +112,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     }
 
     // now do 100 turns
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       rootChit.playerAid.turnCount++;
       players[0].counter.value += Math.round((await setup.rng()) * 10);
       // alternating players

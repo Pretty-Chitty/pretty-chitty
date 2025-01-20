@@ -45,7 +45,7 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
       }
 
       this._currentPromptSpec = promptSpec;
-      const prompt = Prompt.deserialize(promptSpec, this.clientTime.findChit, this.clientTime.match.game.buttonLibrary);
+      const prompt = Prompt.deserialize(promptSpec, this.clientTime.findChit, this.clientTime.game.buttonLibrary);
       prompt.onResolve(async (success) => {
         if (success) {
           const newPromptSpec = await this.serverPrompts.resolvePrompt(prompt.response);

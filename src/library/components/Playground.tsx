@@ -15,7 +15,6 @@ import { PlayerInfo } from "../game/PlayerInfo";
 import { LocalMatchStorage } from "../game/MatchStorage";
 import { GridOn, PhoneIphone, Tab as TabIcon } from "@material-ui/icons";
 import { PlayerProvider } from "../hooks/usePlayer";
-import { MatchProvider } from "../hooks/useMatch";
 
 type Layout = "tile" | "tab" | "phone";
 
@@ -47,13 +46,11 @@ function PlayerEditor({ playerId, match }: { playerId: string; match: Match<any,
   }
 
   return (
-    <MatchProvider match={match}>
-      <ConnectionProvider connection={localConnection}>
-        <PlayerProvider playerId={playerId}>
-          <MatchViewer />
-        </PlayerProvider>
-      </ConnectionProvider>
-    </MatchProvider>
+    <ConnectionProvider connection={localConnection}>
+      <PlayerProvider playerId={playerId}>
+        <MatchViewer />
+      </PlayerProvider>
+    </ConnectionProvider>
   );
 }
 

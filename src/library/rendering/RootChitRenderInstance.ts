@@ -279,8 +279,8 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
   public createRenderSpec() {
     const result = super.createRenderSpec();
-    if (this.chit.match?.game.renderDefaultRootChit) {
-      this.chit.match?.game.renderDefaultRootChit(result);
+    if (this.chit.game?.renderDefaultRootChit) {
+      this.chit.game?.renderDefaultRootChit(result);
     }
     return result;
   }

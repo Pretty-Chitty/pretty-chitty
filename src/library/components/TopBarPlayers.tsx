@@ -1,15 +1,15 @@
 import React from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import TopBarDropdown from "./TopBarDropdown";
-import { useMatch } from "../hooks/useMatch";
 import PlayerImage from "./PlayerImage";
 import { useGameTheme } from "../hooks/useGameTheme";
-import { useChits } from "../hooks/useChits";
+import { useChit, useChits } from "../hooks/useChits";
 import { PlayerChit } from "../game/PlayerChit";
 import { PlayerPromptStatus } from "../game/PlayerPromptStatus";
 import { SparkChit } from "../game/SparkChit";
 import { UpdatingCanvasImage } from "./UpdatingCanvasImage";
 import { StaticImage } from "../utilities/StaticImage";
+import { RootChit } from "../game/RootChit";
 
 function PlayerInfoCell({ spark, size }: { size: number; spark: SparkChit }) {
   const theme = useGameTheme();
@@ -117,8 +117,8 @@ function PlayerInfoRow({ headers, player }: { player: PlayerChit; headers?: bool
 
 export default function TopBarPlayers() {
   const theme = useGameTheme();
-  const match = useMatch();
-  const playerChits = useChits<PlayerChit>(match.players.map((p) => p.id));
+  const root = useChit<RootChit<PlayerChit>>("root");
+  const playerChits = useChits<PlayerChit>(root?.players.map((p) => p.id ?? "") ?? []);
   const promptStatuses = useChits<PlayerPromptStatus>(playerChits.map((p) => p.promptStatus.id ?? ""));
 
   const playersWithMessages = promptStatuses.filter((p) => p.latestPromptMessage).map((p) => p.parent as PlayerChit);

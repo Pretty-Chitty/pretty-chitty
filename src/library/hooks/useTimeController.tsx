@@ -6,8 +6,8 @@ import { ClientTime } from "../game/clientTransport/ClientTime";
 import { ClientTimeState } from "../game/ClientTimeState";
 import { ClientPrompts } from "../game/clientTransport/ClientPrompts";
 import { usePlayerId } from "./usePlayer";
-import { useMatch } from "./useMatch";
 import { ClientStatus } from "../game/clientTransport/ClientStatus";
+import { useGame } from "./useGame";
 
 export class TimeState {
   public targetClock: number = 1;
@@ -53,7 +53,7 @@ export function useClientStatus() {
 export function TimeControllerProvider({ children }: { children: ReactNode }) {
   const connection = useConnection();
   const playerId = usePlayerId();
-  const match = useMatch();
+  const game = useGame();
   const [clientTimeState] = useState<ClientTimeState>(new ClientTimeState());
   const [clientTime, setClientTime] = useState<ClientTime | null>(null);
   const [clientPrompts, setClientPrompts] = useState<ClientPrompts<any, any> | undefined>(undefined);
@@ -67,13 +67,13 @@ export function TimeControllerProvider({ children }: { children: ReactNode }) {
     if (!clientTime || clientTime.connection !== connection) {
       clientTime?.dispose();
 
-      const newClientTime = new ClientTime(connection, match, clientTimeState);
+      const newClientTime = new ClientTime(connection, game, clientTimeState);
       connection.register(newClientTime);
 
       const cp = new ClientPrompts(playerId, connection, newClientTime);
       connection.register(cp);
 
-      const cs = new ClientStatus(match, connection);
+      const cs = new ClientStatus(connection);
       connection.register(cs);
 
       if (clientTime) {
@@ -86,7 +86,7 @@ export function TimeControllerProvider({ children }: { children: ReactNode }) {
       setClientPrompts(cp);
       setClientStatus(cs);
     }
-  }, [connection, clientTime, match, clientTimeState, playerId]);
+  }, [connection, clientTime, game, clientTimeState, playerId]);
 
   if (!clientTime) {
     return null;

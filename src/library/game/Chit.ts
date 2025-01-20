@@ -3,12 +3,12 @@ import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
 import { Turn } from "./Turn";
 import { FixChildOutlets, NonEditable, Ordered } from "../utilities/Annotations";
 import { ObjectWithProps } from "../utilities/ObjectWithProps";
-import { Match } from "./Match";
 import { ChitPick } from "./Pick";
 import { Vector2 } from "three";
 import { OrderedOutlet } from "./OrderedOutlet";
 import { SparkChit } from "./SparkChit";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
+import type { Game } from "./Game";
 
 export const ORDERED_CHILDREN = "orderedChildren";
 
@@ -118,19 +118,19 @@ export class Chit extends ObjectWithProps {
     return this._version;
   }
 
-  @NonEditable private _match?: Match<any, any>;
+  @NonEditable private _game?: Game<any, any>;
 
   /** @internal */
-  public get match(): Match<any, any> | undefined {
-    if (!this._match) {
-      this._match = this.parent?.match;
+  public get game(): Game<any, any> | undefined {
+    if (!this._game) {
+      this._game = this.parent?.game;
     }
-    return this._match;
+    return this._game;
   }
 
   /** @internal */
-  public set match(newMatch: Match<any, any>) {
-    this._match = newMatch;
+  public set game(newGame: Game<any, any>) {
+    this._game = newGame;
   }
 
   @NonEditable private _onClick?: () => void;
@@ -362,14 +362,14 @@ export class Chit extends ObjectWithProps {
    * Creates a new chit from the serialized spec.
    */
   /** @internal */
-  public static deflate(serialized: string, match: Match<any, any>) {
+  public static deflate(serialized: string, game: Game<any, any>) {
     const { __chitType } = JSON.parse(serialized);
-    const ChitType = match.game.chitLibrary[__chitType] ?? StaticChitTypeRegistry[__chitType];
+    const ChitType = game.chitLibrary[__chitType] ?? StaticChitTypeRegistry[__chitType];
     if (!ChitType) {
       throw new Error(`Chit Type ${__chitType} not found`);
     }
     const result = new ChitType();
-    result.match = match;
+    result.game = game;
     return result;
   }
 

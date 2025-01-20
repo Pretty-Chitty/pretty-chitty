@@ -69,7 +69,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         this.errorState.value = undefined;
         const rootChit = this.game.generateRootChit();
         rootChit.id = "root";
-        rootChit.match = this;
+        rootChit.game = this.game;
 
         const players = this.players.map((p) => {
           const player = this.game.generatePlayer(p);

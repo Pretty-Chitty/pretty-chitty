@@ -4,6 +4,8 @@ import { useGameTheme } from "../hooks/useGameTheme";
 import { useClientStatus, useTimeController, useTimeState } from "../hooks/useTimeController";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { ZINDEX_MATCH_END_DISPLAY } from "../utilities/zIndex";
+import { useChits } from "../hooks/useChits";
+import { PlayerChit } from "../game/PlayerChit";
 
 export function MatchEndDisplay() {
   const theme = useGameTheme();
@@ -14,6 +16,7 @@ export function MatchEndDisplay() {
   const [isLive] = useEventChannelState(timeState.live);
   const [maxClock] = useEventChannelState(timeController.maxClock);
   const [currentClock] = useEventChannelState(timeController.currentClock);
+  const winnerPlayers = useChits<PlayerChit>(matchResult?.winnerIds ?? []);
 
   if (!matchResult || !isLive || maxClock.clock !== currentClock.clock) {
     return null;
@@ -36,7 +39,7 @@ export function MatchEndDisplay() {
     >
       <Typography align="center">The winner is</Typography>
       <Typography align="center" variant="h3">
-        {matchResult?.winners.map((winner) => winner.name)}
+        {winnerPlayers?.map((winner) => winner.name)}
       </Typography>
     </Box>
   );

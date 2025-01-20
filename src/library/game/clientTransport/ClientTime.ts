@@ -4,7 +4,7 @@ import { ClientTimeState } from "../ClientTimeState";
 import { ClockDetails, samePasses } from "../ClockDetails";
 import { Connection } from "../Connection";
 import { ConnectionObject } from "../ConnectionObject";
-import { Match } from "../Match";
+import { Game } from "../Game";
 import { ServerTime } from "../serverTransport/ServerTime";
 
 export class ClientTime extends ConnectionObject {
@@ -12,7 +12,7 @@ export class ClientTime extends ConnectionObject {
 
   constructor(
     public connection: Connection,
-    public match: Match<any, any>,
+    public game: Game<any, any>,
     public clientTimeState: ClientTimeState,
   ) {
     super();
@@ -108,7 +108,7 @@ export class ClientTime extends ConnectionObject {
       Object.entries(result.chits).forEach(([id, value]) => {
         let chit = this.chitLookup[id];
         if (!chit) {
-          chit = this.chitLookup[id] = Chit.deflate(value, this.match);
+          chit = this.chitLookup[id] = Chit.deflate(value, this.game);
         }
       });
 

@@ -468,10 +468,10 @@ export class ChitRenderInstance {
     const renderSpec = new ChitRenderSpec(this.chit);
 
     // attach theme stuff to the spec as defaults
-    renderSpec.highlight.color = this.chit.match?.game.theme.chitHighlightColor ?? renderSpec.highlight.color;
+    renderSpec.highlight.color = this.chit.game?.theme.chitHighlightColor ?? renderSpec.highlight.color;
     renderSpec.highlight.innerColor =
-      this.chit.match?.game.theme.chitInnerHighlightColor ??
-      this.chit.match?.game.theme.chitHighlightColor ??
+      this.chit.game?.theme.chitInnerHighlightColor ??
+      this.chit.game?.theme.chitHighlightColor ??
       renderSpec.highlight.innerColor;
 
     return renderSpec;
