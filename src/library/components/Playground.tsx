@@ -160,10 +160,18 @@ function Editor({
       match.start();
       setMatch(match);
 
+      let aState = {};
+      let bState = {};
+
       setButtons(
         <>
           <Button>New</Button>
           <Button onClick={() => storage.saveState({}, true)}>Reset</Button>
+
+          <Button onClick={() => storage.readState().then((d) => (aState = d))}>Save A</Button>
+          <Button onClick={() => storage.readState().then((d) => (bState = d))}>Save B</Button>
+          <Button onClick={() => storage.saveState(aState, true)}>Read A</Button>
+          <Button onClick={() => storage.saveState(bState, true)}>Read B</Button>
         </>,
       );
     });

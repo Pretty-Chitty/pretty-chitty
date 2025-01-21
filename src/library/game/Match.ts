@@ -35,7 +35,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
     this.matchStorage.registerNewStateCallback((savedState) => {
       this.state = new TurnState();
       this.state.deserialize(savedState);
-      if (this.errorState) {
+      if (this.errorState.value) {
         this.turn.value?.destroy();
         this.turn.value = undefined;
         this.start();
