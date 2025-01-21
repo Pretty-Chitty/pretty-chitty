@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useGame } from "../hooks/useGame";
-import { Box, Stack, ThemeProvider, createTheme } from "@mui/material";
+import { Box, CssBaseline, Stack, ThemeProvider, createTheme } from "@mui/material";
 import { TimeControllerProvider, useClientStatus, useTimeController } from "../hooks/useTimeController";
 import BottomBar from "./BottomBar";
 import { GameThemeProvider, useGameTheme } from "../hooks/useGameTheme";
@@ -14,8 +14,8 @@ import TopBar from "./TopBar";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { MatchEndDisplay } from "./MatchEndDisplay";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function generateTheme(game: Game<any, any>) {
-  console.log(game); // gets rid of warning? weird.
   const theme = createTheme({
     typography: {
       fontFamily: ["Raleway", "sans-serif"].join(","),
@@ -52,7 +52,7 @@ function PanelContents({ rootChit }: { rootChit: Chit }) {
   );
 }
 
-function InnerMatchViewer() {
+function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
   const timeController = useTimeController();
   const clientStatus = useClientStatus();
   const [errorMessage] = useEventChannelState(clientStatus.errorMessage);
@@ -70,7 +70,7 @@ function InnerMatchViewer() {
 
   return (
     <Stack sx={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
-      <TopBar />
+      <TopBar onBack={onBack} />
       <Box flex={1} style={{ display: "flex", position: "relative" }}>
         <MatchEndDisplay />
         {!errorMessage && rootChit && <PanelContents rootChit={rootChit} />}
@@ -81,14 +81,15 @@ function InnerMatchViewer() {
   );
 }
 
-export function MatchViewer() {
+export function MatchViewer({ onBack }: { onBack?: () => void }) {
   const game = useGame();
 
   return (
     <TimeControllerProvider>
+      <CssBaseline />
       <GameThemeProvider theme={game.theme}>
         <ThemeProvider theme={generateTheme(game)}>
-          <InnerMatchViewer />
+          <InnerMatchViewer onBack={onBack} />
         </ThemeProvider>
       </GameThemeProvider>
     </TimeControllerProvider>

@@ -138,7 +138,7 @@ export default function TopBarPlayers() {
             flex={1}
             sx={{
               p: 1,
-              lineHeight: 1.8,
+              lineHeight: `${theme.topBarHeight - theme.spacing * 4}px`,
               fontSize: 14,
               whiteSpace: "nowrap",
               textOverflow: "ellipsis",

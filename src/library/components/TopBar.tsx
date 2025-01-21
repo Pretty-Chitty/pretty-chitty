@@ -1,5 +1,5 @@
 import React, { ReactNode, useState } from "react";
-import { Box, Stack } from "@mui/material";
+import { Box, IconButton, Stack } from "@mui/material";
 import { useGameTheme } from "../hooks/useGameTheme";
 import TopBarDropdown from "./TopBarDropdown";
 import BottomBarBreak from "./BottomBarBreak";
@@ -8,6 +8,7 @@ import { useTimeController } from "../hooks/useTimeController";
 import { useChit } from "../hooks/useChits";
 import { RootChit } from "../game/RootChit";
 import { DropdownChit } from "../game/DropdownChit";
+import { ArrowBack } from "@material-ui/icons";
 
 function BaseTopBar({ children }: { children: ReactNode | ReactNode[] }) {
   const theme = useGameTheme();
@@ -37,7 +38,7 @@ function DropdownChitWrapper({ chitId }: { chitId: string | undefined }) {
   return null;
 }
 
-export default function TopBar() {
+export default function TopBar({ onBack }: { onBack?: () => void }) {
   const theme = useGameTheme();
   const rootChit = useChit<RootChit<any>>("root");
   const dropdowns = rootChit?.getDropdowns() ?? [];
@@ -47,14 +48,21 @@ export default function TopBar() {
   return (
     <BaseTopBar>
       <Stack direction="row" sx={{ width: "100%", height: "100%" }}>
-        <Box sx={{ width: barWidth }}>
-          <TopBarPlayers />
-        </Box>
-        {dropdowns.map((dropdown) => (
-          <Box key={dropdown.id} sx={{ width: barWidth, borderLeft: `1px solid ${theme.barBreak}` }}>
-            <DropdownChitWrapper chitId={dropdown.id} />
+        {onBack && (
+          <IconButton sx={{ color: theme.barTextColor, height: "100%", background: theme.barColor }} onClick={onBack}>
+            <ArrowBack />
+          </IconButton>
+        )}
+        <Stack direction="row" flex={1}>
+          <Box sx={{ width: barWidth }}>
+            <TopBarPlayers />
           </Box>
-        ))}
+          {dropdowns.map((dropdown) => (
+            <Box key={dropdown.id} sx={{ width: barWidth, borderLeft: `1px solid ${theme.barBreak}` }}>
+              <DropdownChitWrapper chitId={dropdown.id} />
+            </Box>
+          ))}
+        </Stack>
       </Stack>
     </BaseTopBar>
   );

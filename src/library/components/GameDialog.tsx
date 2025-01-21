@@ -1,5 +1,5 @@
 import React from "react";
-import { Dialog } from "@mui/material";
+import { Dialog, useTheme } from "@mui/material";
 import { ReactNode } from "react";
 import { useGameTheme } from "../hooks/useGameTheme";
 
@@ -12,6 +12,7 @@ export default function GameDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  const muiTheme = useTheme();
   const theme = useGameTheme();
 
   return (
@@ -23,6 +24,7 @@ export default function GameDialog({
           backgroundColor: "transparent",
           color: theme.dialogForegroundColor,
           fontSize: 16,
+          fontFamily: muiTheme.typography.fontFamily,
         },
         elevation: 0,
       }}

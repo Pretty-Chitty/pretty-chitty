@@ -14,11 +14,14 @@ export { RootChit } from "./game/RootChit";
 export { SparkChit, BagSparkChit } from "./game/SparkChit";
 export { Turn } from "./game/Turn";
 export { PlayerInfo } from "./game/PlayerInfo";
+export type { IPlayerInfo } from "./game/PlayerInfo";
 export type { Stage } from "./game/GameDeck";
 export type { IChitLibrary, GameResult, IButtonLibrary, ICanvasLibrary } from "./game/Game";
 export type { Picks } from "./game/Turn";
 
 export { MatchViewer } from "./components/MatchViewer";
+export { ClientTrustMatchViewer } from "./components/ClientTrustMatchViewer";
+
 export type { BottomBarButtonIcon } from "./components/BottomBarButton";
 export { GameDesigner } from "./components/GameDesigner";
 
