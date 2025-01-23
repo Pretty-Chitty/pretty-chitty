@@ -132,7 +132,12 @@ export default function TopBarPlayers() {
       label={
         <Stack direction={"row"} sx={{ pt: 1, pb: 1, maxWidth: "100%" }}>
           {playersWithMessages.map((player) => (
-            <PlayerImage size={theme.topBarHeight - theme.spacing * 2} key={player.id} player={player} />
+            <PlayerImage
+              sx={{ ml: -1 }}
+              size={theme.topBarHeight - theme.spacing * 2}
+              key={player.id}
+              player={player}
+            />
           ))}
           <Typography
             flex={1}

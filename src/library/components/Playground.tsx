@@ -22,7 +22,7 @@ export interface IChitLibrary {
   [key: string]: new () => Chit;
 }
 
-function PlayerEditor({ playerId, match }: { playerId: string; match: Match<any, any> }) {
+function PlayerEditor({ playerId, match, showBack }: { showBack?: boolean; playerId: string; match: Match<any, any> }) {
   const [localConnection, setLocalConnection] = useState<Connection | undefined>();
   const [, setRemoteConnection] = useState<LocalConnectionTransport>(new LocalConnectionTransport());
 
@@ -48,7 +48,7 @@ function PlayerEditor({ playerId, match }: { playerId: string; match: Match<any,
   return (
     <ConnectionProvider connection={localConnection}>
       <PlayerProvider playerId={playerId}>
-        <MatchViewer />
+        <MatchViewer onBack={showBack ? () => {} : undefined} />
       </PlayerProvider>
     </ConnectionProvider>
   );
@@ -122,7 +122,7 @@ function MatchPhone({ match }: { match: Match<any, any> }) {
       <Stack direction={"row"} sx={{ width: `${390 * match.players.length}px` }}>
         {match.players.map((p) => (
           <Box key={p.id} sx={{ width: `390px`, height: "684px" }}>
-            <PlayerEditor playerId={p.id} match={match} />
+            <PlayerEditor showBack playerId={p.id} match={match} />
           </Box>
         ))}
       </Stack>

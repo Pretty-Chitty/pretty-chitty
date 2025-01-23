@@ -44,16 +44,20 @@ export default function TopBar({ onBack }: { onBack?: () => void }) {
   const dropdowns = rootChit?.getDropdowns() ?? [];
 
   const barWidth = `${(1 / (dropdowns.length + 1)) * 100}%`;
+  const BUTTON_WIDTH = theme.topBarHeight - theme.spacing * 2;
 
   return (
     <BaseTopBar>
       <Stack direction="row" sx={{ width: "100%", height: "100%" }}>
         {onBack && (
-          <IconButton sx={{ color: theme.barTextColor, height: "100%", background: theme.barColor }} onClick={onBack}>
+          <IconButton
+            sx={{ width: BUTTON_WIDTH, color: theme.barTextColor, height: "100%", background: theme.barColor }}
+            onClick={onBack}
+          >
             <ArrowBack />
           </IconButton>
         )}
-        <Stack direction="row" flex={1}>
+        <Stack direction="row" flex={1} sx={{ width: `calc(100% - ${BUTTON_WIDTH}px)` }}>
           <Box sx={{ width: barWidth }}>
             <TopBarPlayers />
           </Box>

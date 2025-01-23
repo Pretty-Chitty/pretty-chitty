@@ -71,7 +71,7 @@ export default function TopBarDropdown({
         sx={{
           position: "absolute",
           top: "100%",
-          transform: open ? "translateY(0)" : `translateY(calc(-100% - ${theme.topBarHeight}px))`,
+          transform: open ? "translateY(0)" : `translateY(calc(-100% - ${theme.topBarHeight}px - 30px))`,
           transition: "transform ease-in-out 0.15s",
           color: theme.barTextColor,
           left: 0,
