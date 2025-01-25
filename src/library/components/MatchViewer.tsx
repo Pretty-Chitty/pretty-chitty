@@ -34,7 +34,7 @@ function PanelContents({ rootChit }: { rootChit: Chit }) {
       sx={{
         position: "relative",
         flex: 1,
-        p: 1,
+        p: `${theme.spacing / 2}px`,
         background: `${theme.backgroundColor} linear-gradient(${theme.backgroundGradientAngle}deg, rgba(255,255,255,${theme.backgroundGradientPercent}) 0%, rgba(0,0,0,${theme.backgroundGradientPercent}) 100%)`,
       }}
     >
@@ -69,7 +69,17 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
   );
 
   return (
-    <Stack sx={{ width: "100%", height: "100%", position: "relative", overflow: "hidden" }}>
+    <Stack
+      sx={{
+        width: "100%",
+        height: "100%",
+        position: "relative",
+        overflow: "hidden",
+        userSelect: "none",
+        touchAction: "none", // Prevent dragging on touch devices
+        WebkitTouchCallout: "none", // Prevent highlighting phone numbers on iOS
+      }}
+    >
       <TopBar onBack={onBack} />
       <Box flex={1} style={{ display: "flex", position: "relative" }}>
         <MatchEndDisplay />
@@ -83,7 +93,6 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
 
 export function MatchViewer({ onBack }: { onBack?: () => void }) {
   const game = useGame();
-
   return (
     <TimeControllerProvider>
       <CssBaseline />

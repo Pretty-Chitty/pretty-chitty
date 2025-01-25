@@ -1,8 +1,10 @@
 // export class LocalMatchStorage extends MatchStorage {}
 
+import { PlayerChit } from "./PlayerChit";
+
 export interface IMatchStorage {
   readState(): Promise<any>;
-  saveState(newState: any): Promise<void>;
+  saveState(newState: any, players: PlayerChit[]): Promise<void>;
   registerNewStateCallback(cb: (newState: any) => void): () => void;
 }
 
@@ -21,7 +23,7 @@ export class LocalMatchStorage implements IMatchStorage {
     }
     return null;
   }
-  async saveState(newState: any, notify = false): Promise<void> {
+  async saveState(newState: any, players: PlayerChit[], notify = false): Promise<void> {
     localStorage[this.localStorageKey] = JSON.stringify(newState);
     if (notify) {
       this.notify(newState);

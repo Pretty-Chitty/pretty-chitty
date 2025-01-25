@@ -19,11 +19,11 @@ const Cutout = `data:image/svg+xml;base64,${base64.encode(
   `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
    width="40"
-   height="20"
+   height="14"
    version="1.1"
    id="svg4"
    sodipodi:docname="cutout.svg"
-   viewport="0 0 40 20"
+   viewport="0 0 40 14"
    inkscape:version="1.3.1 (9b9bdc1480, 2023-11-25, custom)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -83,11 +83,11 @@ function SinglePanel({ chit, x, y, w, h }: { chit: Chit; x: number; y: number; w
         left: `${x}px`,
         top: `${y}px`,
         position: "absolute",
-        p: `${theme.spacing}px`,
+        p: `${theme.spacing / 2}px`,
       }}
     >
       <Box sx={{ width: "100%", height: "100%", position: "relative", borderRadius: "10px", overflow: "hidden" }}>
-        <ViewerWrapper chit={chit} w={w - theme.spacing * 2} h={h - theme.spacing * 2} paused={false} />
+        <ViewerWrapper chit={chit} w={w - theme.spacing} h={h - theme.spacing} paused={false} />
       </Box>
     </Box>
   );
@@ -107,7 +107,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   );
   const panelStates = usePanelStates(rootRenders);
   const CUTOUT_WIDTH = Math.min(40, (w - theme.spacing * 2) / chits.length);
-  const CUTOUT_HEIGHT = 20;
+  const CUTOUT_HEIGHT = 14;
   const ANIMATION_DURATION = 0.25;
 
   // if animation speeds aren't in sync, we are probably trying to fast forward (at the beginning of loading)
@@ -172,7 +172,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
         left: `${x}px`,
         top: `${y}px`,
         position: "absolute",
-        p: `${theme.spacing}px`,
+        p: `${theme.spacing / 2}px`,
       }}
     >
       <Box sx={{ width: "100%", flex: 1, position: "relative", borderRadius: "10px", overflow: "hidden" }}>
@@ -193,8 +193,8 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
             <ViewerWrapper
               paused={isSliding ? true : isAnimationSpeedLinedUp ? selectedIndex !== index : false}
               chit={chit}
-              w={w - theme.spacing * 2}
-              h={h - CUTOUT_HEIGHT - theme.spacing * 2}
+              w={w - theme.spacing}
+              h={h - CUTOUT_HEIGHT - theme.spacing}
               panCallback={panCallback}
             />
           </Box>

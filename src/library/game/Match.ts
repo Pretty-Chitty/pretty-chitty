@@ -127,11 +127,29 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
     this._timeout = setTimeout(() => this.processNotify(), 0);
   }
 
+  private _isSaving = false;
+  private _saveStateNeeded = false;
   private processNotify() {
     this.onChangeCallbacks.forEach((cb) => cb());
 
     // TODO: this is a promise going nowhere... do we block on saving?
-    this.matchStorage.saveState(this.state);
+    this._saveStateNeeded = true;
+    this.processSaveState();
+  }
+
+  private processSaveState() {
+    if (this._isSaving) {
+      return;
+    }
+
+    this._saveStateNeeded = false;
+    this._isSaving = true;
+    this.matchStorage.saveState(this.state, this.turn.value?.rootChit.players.copy() ?? []).finally(() => {
+      this._isSaving = false;
+      if (this._saveStateNeeded) {
+        return this.processSaveState();
+      }
+    });
   }
 
   public dispose() {
