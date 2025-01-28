@@ -157,11 +157,6 @@ export class Card2 extends Chit {
 }
 
 export class CounterChit extends SparkChit {
-  public player: MyPlayer | undefined;
-
-  public get icon() {
-    return this.player;
-  }
   public get headerIcon() {
     return cityscape2;
   }
@@ -201,7 +196,7 @@ export class SideBoards extends PanelChit {
 
 export class MyPlayer extends PlayerChit {
   // @ChildOutlet public token = new Card2();
-  @ChildOutlet public counter = new CounterChit().set((c) => (c.player = this));
+  @ChildOutlet public counter = new CounterChit().set((c) => c.bindToPlayer(this));
   @ChildOutlet public counter2 = new BagChit().set((c) => (c.color = "#ca5275"));
 
   override getSparks(): SparkChit[] {

@@ -9,6 +9,7 @@ import { useChit } from "../hooks/useChits";
 import { RootChit } from "../game/RootChit";
 import { DropdownChit } from "../game/DropdownChit";
 import { ArrowBack } from "@material-ui/icons";
+import { ZINDEX_TOP_BAR_HEADER } from "../utilities/zIndex";
 
 function BaseTopBar({ children }: { children: ReactNode | ReactNode[] }) {
   const theme = useGameTheme();
@@ -50,12 +51,26 @@ export default function TopBar({ onBack }: { onBack?: () => void }) {
     <BaseTopBar>
       <Stack direction="row" sx={{ width: "100%", height: "100%" }}>
         {onBack && (
-          <IconButton
-            sx={{ width: BUTTON_WIDTH, color: theme.barTextColor, height: "100%", background: theme.barColor }}
-            onClick={onBack}
+          <Box
+            sx={{
+              height: "100%",
+              width: BUTTON_WIDTH,
+              position: "relative",
+              background: theme.barColor,
+              zIndex: ZINDEX_TOP_BAR_HEADER,
+            }}
           >
-            <ArrowBack />
-          </IconButton>
+            <IconButton
+              sx={{
+                width: BUTTON_WIDTH,
+                color: theme.barTextColor,
+                height: "100%",
+              }}
+              onClick={onBack}
+            >
+              <ArrowBack />
+            </IconButton>
+          </Box>
         )}
         <Stack direction="row" flex={1} sx={{ width: `calc(100% - ${BUTTON_WIDTH}px)` }}>
           <Box sx={{ width: barWidth }}>

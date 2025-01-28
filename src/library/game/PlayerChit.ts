@@ -11,6 +11,7 @@ export class PlayerChit extends Chit {
   public playerId: string = "no id";
   public name: string = "no name";
   public imageUrl?: string;
+  public score?: number;
 
   @ChildOutlet promptStatus = new PlayerPromptStatus();
 

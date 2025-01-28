@@ -42,7 +42,7 @@ export default function BottomBar() {
   return (
     <BaseBottomBar>
       <Stack direction="row" sx={{ width: "100%", height: "100%", pl: 1, pr: 1 }}>
-        <BottomBarButton icon={Chat} label={"Chat"} />
+        {/* <BottomBarButton icon={Chat} label={"Chat"} /> */}
         <BottomBarButton icon={Speed} label={"Timeline"} onClick={() => setLive(false)} />
         <Box flex={1} />
         <PromptControls />

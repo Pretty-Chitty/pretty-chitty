@@ -7,3 +7,4 @@ build
 yarn 
 .DS_Store
 *.tgz
+.ftpsettings.json

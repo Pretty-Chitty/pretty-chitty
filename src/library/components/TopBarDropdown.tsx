@@ -34,7 +34,7 @@ export default function TopBarDropdown({
   }, [open]);
 
   return (
-    <Box sx={{ position: "relative", fontFamily: muiTheme.typography.fontFamily }} flex={1}>
+    <Box sx={{ fontFamily: muiTheme.typography.fontFamily }} flex={1}>
       <Box
         onClick={() => setOpen(!open)}
         sx={{
@@ -42,10 +42,10 @@ export default function TopBarDropdown({
           cursor: "pointer",
           pl: 2,
           pr: 4,
+          position: "relative",
           fontSize: 14,
           height: "100%",
           color: theme.barTextColor,
-          position: "relative",
           background: theme.barColor,
           zIndex: ZINDEX_TOP_BAR_HEADER,
           lineHeight: `${theme.topBarHeight}px`,

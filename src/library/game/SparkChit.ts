@@ -5,12 +5,18 @@ import { NonEditable } from "../utilities/Annotations";
 import { PlayerChit } from "./PlayerChit";
 import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 
-export abstract class SparkChit extends Chit {
+export class SparkChit extends Chit {
   /** @internal */
   @NonEditable type = "spark";
 
   public color: string = "";
-  public abstract get icon(): PlayerChit | ImageSpec | undefined;
+  public get icon(): PlayerChit | ImageSpec | undefined {
+    if (this._boundPlayer) {
+      return this._boundPlayer;
+    }
+    return undefined;
+  }
+
   public get headerIcon(): PlayerChit | ImageSpec | undefined {
     return this.icon;
   }
@@ -24,6 +30,15 @@ export abstract class SparkChit extends Chit {
   }
   public set value(newValue: number) {
     this._value = newValue;
+    if (this._boundPlayer) {
+      this._boundPlayer.score = newValue;
+    }
+  }
+
+  private _boundPlayer?: PlayerChit;
+  public bindToPlayer(p: PlayerChit) {
+    this._boundPlayer = p;
+    p.score = this.value;
   }
 
   public get width() {

@@ -144,12 +144,19 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
 
     this._saveStateNeeded = false;
     this._isSaving = true;
-    this.matchStorage.saveState(this.state, this.turn.value?.rootChit.players.copy() ?? []).finally(() => {
-      this._isSaving = false;
-      if (this._saveStateNeeded) {
-        return this.processSaveState();
-      }
-    });
+    this.matchStorage
+      .saveState(
+        this.state,
+        this.turn.value?.rootChit.players.copy() ?? [],
+        this.result.value ? "finished" : "active",
+        this.result.value?.winners,
+      )
+      .finally(() => {
+        this._isSaving = false;
+        if (this._saveStateNeeded) {
+          return this.processSaveState();
+        }
+      });
   }
 
   public dispose() {
