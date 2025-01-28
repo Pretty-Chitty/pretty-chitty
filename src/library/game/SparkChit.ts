@@ -4,6 +4,7 @@ import { Vector2 } from "three";
 import { NonEditable } from "../utilities/Annotations";
 import { PlayerChit } from "./PlayerChit";
 import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
+import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
 
 export class SparkChit extends Chit {
   /** @internal */
@@ -31,14 +32,14 @@ export class SparkChit extends Chit {
   public set value(newValue: number) {
     this._value = newValue;
     if (this._boundPlayer) {
-      this._boundPlayer.score = newValue;
+      this._boundPlayer.matchScoreNumber = newValue;
     }
   }
 
   private _boundPlayer?: PlayerChit;
   public bindToPlayer(p: PlayerChit) {
     this._boundPlayer = p;
-    p.score = this.value;
+    p.matchScoreNumber = this.value;
   }
 
   public get width() {
@@ -56,6 +57,8 @@ export class SparkChit extends Chit {
     return false;
   }
 }
+
+StaticChitTypeRegistry["SparkChit"] = SparkChit;
 
 export abstract class BagSparkChit<T extends Chit> extends SparkChit {
   /** @internal */
