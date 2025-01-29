@@ -23,7 +23,7 @@ export function checkAnnotation(obj: any, key: string, annotation: any): boolean
 export const NonEditable = Annotation(NON_EDITABLE);
 
 function addOutletDefinition(outletKey: string, cls: any, key: string, prop: any) {
-  if (!cls[outletKey]) {
+  if (!Object.hasOwn(cls, outletKey)) {
     Object.defineProperty(cls, outletKey, {
       enumerable: false,
       value: {},
@@ -34,10 +34,11 @@ function addOutletDefinition(outletKey: string, cls: any, key: string, prop: any
 }
 function addOutletPosition(cls: any, key: string, vector: Vector3) {
   const OUTLET_POSITION = "__outletPosition";
-  if (!cls[OUTLET_POSITION]) {
+  if (!Object.hasOwn(cls, OUTLET_POSITION)) {
+    const parentOutletPosition = Object.getPrototypeOf(cls)?.[OUTLET_POSITION];
     Object.defineProperty(cls, OUTLET_POSITION, {
       enumerable: false,
-      value: {},
+      value: parentOutletPosition ? { ...parentOutletPosition } : {},
     });
   }
   cls[OUTLET_POSITION][key] = vector;
