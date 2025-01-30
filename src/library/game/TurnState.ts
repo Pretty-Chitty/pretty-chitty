@@ -74,6 +74,8 @@ export class TurnState {
   }
 
   public deserialize(serialized: any) {
+    this.playerId = serialized.playerId;
+    this.id = serialized.id;
     this.createdDate = serialized.createdDate ?? Date.now();
     this.decisions = (serialized.decisions ?? []).map((d: Decision, i: number) => {
       if (d.type === "turn") {
