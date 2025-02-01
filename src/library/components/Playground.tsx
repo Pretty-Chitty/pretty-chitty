@@ -160,18 +160,59 @@ function Editor({
       match.start();
       setMatch(match);
 
-      let aState = {};
-      let bState = {};
+      const saveStateToLocalStorage = (key: string, state: any) => {
+        localStorage.setItem(key, JSON.stringify(state));
+      };
+
+      const readStateFromLocalStorage = (key: string) => {
+        const state = localStorage.getItem(key);
+        return state ? JSON.parse(state) : {};
+      };
+
+      let aState = readStateFromLocalStorage("aState");
+      let bState = readStateFromLocalStorage("bState");
 
       setButtons(
         <>
           <Button>New</Button>
           <Button onClick={() => storage.saveState({}, [], "active", undefined, true)}>Reset</Button>
 
-          <Button onClick={() => storage.readState().then((d) => (aState = d))}>Save A</Button>
-          <Button onClick={() => storage.readState().then((d) => (bState = d))}>Save B</Button>
-          <Button onClick={() => storage.saveState(aState, [], "active", undefined, true)}>Read A</Button>
-          <Button onClick={() => storage.saveState(bState, [], "active", undefined, true)}>Read B</Button>
+          <Button
+            onClick={() =>
+              storage.readState().then((d) => {
+                aState = d;
+                saveStateToLocalStorage("aState", aState);
+              })
+            }
+          >
+            Save A
+          </Button>
+          <Button
+            onClick={() =>
+              storage.readState().then((d) => {
+                bState = d;
+                saveStateToLocalStorage("bState", bState);
+              })
+            }
+          >
+            Save B
+          </Button>
+          <Button
+            onClick={() => {
+              aState = readStateFromLocalStorage("aState");
+              storage.saveState(aState, [], "active", undefined, true);
+            }}
+          >
+            Read A
+          </Button>
+          <Button
+            onClick={() => {
+              bState = readStateFromLocalStorage("bState");
+              storage.saveState(bState, [], "active", undefined, true);
+            }}
+          >
+            Read B
+          </Button>
         </>,
       );
     });

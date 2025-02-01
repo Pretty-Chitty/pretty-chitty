@@ -154,6 +154,10 @@ export class ChitRenderInstance {
     const c = new ChitRenderInstance(chit);
     c.init();
     this.rootRenderInstance.markHasChitsEntering();
+
+    if (existingRenderInstance) {
+      existingRenderInstance.refresh();
+    }
   }
 
   public get tweenGroup(): TweenGroup | undefined {
@@ -377,6 +381,9 @@ export class ChitRenderInstance {
   }
 
   protected moveToNewViewer() {
+    // no matter what, this instance is going to be useless - we don't want to potentially update mid-destroy
+    this.unsubscribeToOnChange();
+
     const rootRenderInstance = this.rootRenderInstance;
     rootRenderInstance.markHasChitsLeaving();
 

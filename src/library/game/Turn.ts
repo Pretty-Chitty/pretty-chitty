@@ -404,6 +404,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         break;
       }
 
+      //
+      // This is just wrong.  the only time we don't have to do a full reset is if the last step is a turn that isn't
+      // resolved yet.  that turn can update itself, but leaving turn 2 alone
+      //
+
       if (oldDecision.type === "rng") {
         if ((oldDecision as RngResponse).value !== (newDecision as RngResponse).value) {
           hasToReset = true;
@@ -437,7 +442,13 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         // if this turn isn't finished, then let that turn try to resolve the new state
         const foundTurn = this.activeSubTurns.find((t) => t.id === newTurnState.id);
         if (foundTurn) {
-          foundTurn.handleNewSavedState(newTurnState);
+          const subTurnHasToReset = foundTurn.handleNewSavedState(newTurnState);
+
+          // if a turn that is not the last turn has been modified, then there is no real choice but to do a full and complete reset
+          if (subTurnHasToReset && i < oldState.decisions.length - 1) {
+            hasToReset = true;
+            break;
+          }
         } else if (JSON.stringify(oldTurnState) !== JSON.stringify(newTurnState)) {
           hasToReset = true;
           break;
