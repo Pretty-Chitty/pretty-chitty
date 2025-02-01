@@ -2,6 +2,7 @@ import * as Colors from "color";
 import { RenderBounds } from "./CanvasStack";
 import { ImageResult } from "./ImageCache";
 import { PlayerChit } from "../../game/PlayerChit";
+import imageColorOverlayer from "./ImageColorOverlayer";
 
 export type GetImage = (url: string) => ImageResult | undefined;
 
@@ -33,6 +34,7 @@ export class ColorCanvasOperation extends CanvasOperation {
     context.fillStyle = this.color;
     context.globalAlpha = this.opacity;
     context.fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
+    context.fillStyle = "";
   }
 }
 
@@ -212,8 +214,7 @@ export type ImageColorSpec = {
 
 export interface ImageOptions {
   fill?: boolean;
-  // tile?: boolean;
-  overdraw?: number;
+  overlayColor?: string;
 }
 
 export class ImageCanvasOperation extends CanvasOperation {
@@ -261,8 +262,12 @@ export class ImageCanvasOperation extends CanvasOperation {
       context.globalAlpha = 1;
       context.fillRect(x, y, w, h);
     } else {
+      // Draw the image
       context.globalAlpha = 1;
-      context.drawImage(sourceImage, sx, sy, sw, sh, x, y, w, h);
+      const source = this.options.overlayColor
+        ? imageColorOverlayer(sourceImage, this.options.overlayColor)
+        : sourceImage;
+      context.drawImage(source, sx, sy, sw, sh, x, y, w, h);
     }
   }
 
@@ -301,7 +306,11 @@ export class ImageCanvasOperation extends CanvasOperation {
       context.fillRect(x, y, w, h);
     } else {
       context.globalAlpha = 1;
-      context.drawImage(sourceImage, sx, sy, sw, sh, x, y, w, h);
+
+      const source = this.options.overlayColor
+        ? imageColorOverlayer(sourceImage, this.options.overlayColor)
+        : sourceImage;
+      context.drawImage(source, sx, sy, sw, sh, x, y, w, h);
     }
   }
 

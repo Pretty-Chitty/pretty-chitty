@@ -4,6 +4,7 @@ import { Color, Horizontal, Image, Layered, Text, Vertical } from "../library/ut
 import { ParameterizedCanvas } from "../library/utilities/ParameterizedCanvas";
 
 import { metropolis } from "./assets/network_overload";
+import { walk } from "./assets/icons";
 
 // in other modules
 export * from "./TestStack";
@@ -23,10 +24,11 @@ export class TestStack3 extends ParameterizedCanvas {
     return (
       <Horizontal>
         <Layered>
+          <Color hex="#ff000033" />
+          <Image image={walk} />
           <Text fill="#336" font="17px sans-serif">
             {this.title}????
           </Text>
-          <Color hex="#ff000033" />
         </Layered>
         <Image fill image={metropolis} />
       </Horizontal>

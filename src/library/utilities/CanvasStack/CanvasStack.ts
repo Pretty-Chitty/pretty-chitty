@@ -61,6 +61,7 @@ export class CanvasStack implements IUpdatingCanvas {
 
   /** @internal */
   render(): void {
+    this.context.clearRect(0, 0, this.width, this.height);
     this.operation.render(this.context, { x: 0, y: 0, w: this.width, h: this.height }, this.loadUrl.bind(this));
     this.cbs.forEach((cb) => cb());
   }

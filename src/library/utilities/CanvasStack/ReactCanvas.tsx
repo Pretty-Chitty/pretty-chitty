@@ -152,8 +152,12 @@ export function Horizontal({ children }: { children: ReactNode[] } & DefaultProp
  * @param args
  * @returns
  */
-export function Image({ image, fill }: { image: ImageSpec; fill?: boolean } & DefaultProps): ReactNode {
-  return <WrappedCanvasOperation operation={new ImageCanvasOperation(image, { fill })} />;
+export function Image({
+  image,
+  fill,
+  overlayColor,
+}: { image: ImageSpec; fill?: boolean; overlayColor?: string; backgroundColor?: string } & DefaultProps): ReactNode {
+  return <WrappedCanvasOperation operation={new ImageCanvasOperation(image, { fill, overlayColor })} />;
 }
 
 /**
