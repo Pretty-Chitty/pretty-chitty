@@ -156,7 +156,7 @@ export function Image({
   image,
   fill,
   overlayColor,
-}: { image: ImageSpec; fill?: boolean; overlayColor?: string; backgroundColor?: string } & DefaultProps): ReactNode {
+}: { image: ImageSpec; fill?: boolean; overlayColor?: string } & DefaultProps): ReactNode {
   return <WrappedCanvasOperation operation={new ImageCanvasOperation(image, { fill, overlayColor })} />;
 }
 

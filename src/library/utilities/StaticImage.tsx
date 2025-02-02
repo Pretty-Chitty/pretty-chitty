@@ -39,8 +39,8 @@ export class StaticImage extends ParameterizedCanvas {
     return imageNode;
   }
 
-  static material(image: ImageSpec) {
-    const result = new StaticImage(image);
+  static material(image: ImageSpec, options?: StaticImageOptions) {
+    const result = new StaticImage(image, options?.overlayColor, options?.backgroundColor);
     return result.get().material;
   }
 

@@ -26,7 +26,7 @@ export default function imageColorOverlayer(image: HTMLImageElement, color: stri
   //    which means: keep only the existing pixels (the icon),
   //    and color them in the new fill style
   offCtx.globalCompositeOperation = "source-in";
-  offCtx.fillStyle = "red";
+  offCtx.fillStyle = color;
   offCtx.fillRect(0, 0, image.width, image.height);
 
   // c) Reset the offscreen context if you like
