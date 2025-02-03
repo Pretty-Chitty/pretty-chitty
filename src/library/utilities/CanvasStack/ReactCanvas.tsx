@@ -55,7 +55,7 @@ export function unwrapCanvasNode(node: ReactNode): CanvasOperation {
 function unwrapStackItem(node: ReactNode): StackItem {
   const reactElement = node as ReactElement;
   if (reactElement) {
-    const { size } = reactElement.props;
+    const size = reactElement.props?.size;
     return { size, layer: unwrapCanvasNode(reactElement) };
   }
   return { size: 0 };
@@ -100,7 +100,7 @@ export function Pad({
   bottom?: number;
   right?: number;
   children: ReactNode;
-}): ReactNode {
+} & DefaultProps): ReactNode {
   return (
     <WrappedCanvasOperation
       operation={
@@ -133,8 +133,14 @@ export function Color({ hex, val }: { hex?: string; val?: number } & DefaultProp
  * @param args
  * @returns
  */
-export function Vertical({ children }: { children: ReactNode[] } & DefaultProps): ReactNode {
-  return <WrappedCanvasOperation operation={new VerticalStackCanvasOperation(children.map(unwrapStackItem))} />;
+export function Vertical({ children }: { children: ReactNode[] | ReactNode } & DefaultProps): ReactNode {
+  return (
+    <WrappedCanvasOperation
+      operation={
+        new VerticalStackCanvasOperation((Array.isArray(children) ? children : [children]).flat().map(unwrapStackItem))
+      }
+    />
+  );
 }
 
 /**
@@ -143,8 +149,16 @@ export function Vertical({ children }: { children: ReactNode[] } & DefaultProps)
  * @param args
  * @returns
  */
-export function Horizontal({ children }: { children: ReactNode[] } & DefaultProps): ReactNode {
-  return <WrappedCanvasOperation operation={new HorizontalStackCanvasOperation(children.map(unwrapStackItem))} />;
+export function Horizontal({ children }: { children: ReactNode[] | ReactNode } & DefaultProps): ReactNode {
+  return (
+    <WrappedCanvasOperation
+      operation={
+        new HorizontalStackCanvasOperation(
+          (Array.isArray(children) ? children : [children]).flat().map(unwrapStackItem),
+        )
+      }
+    />
+  );
 }
 
 /**

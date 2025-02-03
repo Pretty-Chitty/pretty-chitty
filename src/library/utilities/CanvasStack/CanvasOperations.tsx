@@ -49,11 +49,12 @@ export class VerticalStackCanvasOperation extends CanvasOperation {
   }
 
   override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
-    const totalDefinedSize = this.items.reduce((total, item) => total + (item.size || 0), 0);
-    const itemsWithoutDefinedSize = this.items.filter((item) => item.size === undefined);
+    const items = this.items.filter((item) => item);
+    const totalDefinedSize = items.reduce((total, item) => total + (item.size || 0), 0);
+    const itemsWithoutDefinedSize = items.filter((item) => item.size === undefined);
     const itemSizeWithoutDefinition = Math.round((bounds.h - totalDefinedSize) / itemsWithoutDefinedSize.length);
 
-    this.items.forEach((item) => {
+    items.forEach((item) => {
       item.layer?.render(context, { ...bounds, h: item.size ?? itemSizeWithoutDefinition }, getImage);
       bounds.y += item.size ?? itemSizeWithoutDefinition;
     });
@@ -66,11 +67,12 @@ export class HorizontalStackCanvasOperation extends CanvasOperation {
   }
 
   override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
-    const totalDefinedSize = this.items.reduce((total, item) => total + (item.size || 0), 0);
-    const itemsWithoutDefinedSize = this.items.filter((item) => item.size === undefined);
+    const items = this.items.filter((item) => item);
+    const totalDefinedSize = items.reduce((total, item) => total + (item.size || 0), 0);
+    const itemsWithoutDefinedSize = items.filter((item) => item.size === undefined);
     const itemSizeWithoutDefinition = Math.round((bounds.w - totalDefinedSize) / itemsWithoutDefinedSize.length);
 
-    this.items.forEach((item) => {
+    items.forEach((item) => {
       item.layer?.render(context, { ...bounds, w: item.size ?? itemSizeWithoutDefinition }, getImage);
       bounds.x += item.size ?? itemSizeWithoutDefinition;
     });

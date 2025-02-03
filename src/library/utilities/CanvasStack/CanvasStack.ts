@@ -1,4 +1,12 @@
-import { Texture, UVMapping, ClampToEdgeWrapping, LinearFilter, MeshPhongMaterial, Material } from "three";
+import {
+  Texture,
+  UVMapping,
+  ClampToEdgeWrapping,
+  LinearFilter,
+  MeshPhongMaterial,
+  Material,
+  SRGBColorSpace,
+} from "three";
 import { IUpdatingCanvas } from "../IUpdatingCanvas";
 import { CanvasOperation } from "./CanvasOperations";
 import { ImageResult, ImageCache } from "./ImageCache";
@@ -101,6 +109,7 @@ export class CanvasStack implements IUpdatingCanvas {
         LinearFilter,
       );
       this._texture.needsUpdate = true;
+      this._texture.colorSpace = SRGBColorSpace;
 
       CanvasStack.texturesReferences[this._texture.uuid] = {
         uuid: this._texture.uuid,

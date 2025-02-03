@@ -271,6 +271,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
     });
 
+    this.lastChitStates = { ...this.lastChitStates, ...turn.lastChitStates };
+
     return result;
   }
 
@@ -494,6 +496,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       // going forwards
       const startClock = currentState?.clock ?? 0;
       let index = 0;
+
+      // if we are root, then starting state is locked chit state
+      if (startClock === 0 && !this.parent) {
+        Object.assign(chits, this.lockedChitStates);
+      }
 
       // eslint-disable-next-line no-constant-condition
       while (true) {
