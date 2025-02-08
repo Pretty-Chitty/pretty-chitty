@@ -27,7 +27,7 @@ module.exports = {
         }),
     ].filter(Boolean),
   ],
-  devtool: isDevelopment ? "eval-source-map" : "source-map",
+  devtool: isDevelopment ? "source-map" : "source-map",
   devServer: {
     static: "./dist",
     hot: true,
