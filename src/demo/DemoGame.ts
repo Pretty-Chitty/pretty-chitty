@@ -31,6 +31,18 @@ export class DemoGame implements Game<MyPlayer, Root> {
     players[0].color = "#ed00cb";
     players[1].color = "#00edcb";
 
+    const W = 3;
+    const H = 3;
+    const rng2 = await setup.takeRng(W * H);
+    const pieces2 = [...new Array(W * H)].map((d, i) =>
+      new Card().set((c) => {
+        c.x = Math.floor(i / H);
+        c.y = i % H;
+        const target = players[Math.floor(rng2() * players.length)];
+        target.add(c);
+      }),
+    );
+
     const offscreenDeck = new Deck().set((c) => {
       rootChit.add(c);
     });
@@ -51,8 +63,6 @@ export class DemoGame implements Game<MyPlayer, Root> {
     }
 
     // set up the board
-    const W = 3;
-    const H = 3;
     const rows = [...new Array(H)].map(() =>
       new Row().set((row) => {
         rootChit.mainBoard.add(row);
@@ -70,17 +80,6 @@ export class DemoGame implements Game<MyPlayer, Root> {
 
     // should animate to offscreen location
     offscreenDeck.discard(pieces[3]);
-    setup.flush();
-
-    const rng2 = await setup.takeRng(W * H);
-    const pieces2 = [...new Array(W * H)].map((d, i) =>
-      new Card().set((c) => {
-        c.x = Math.floor(i / H);
-        c.y = i % H;
-        const target = players[Math.floor(rng2() * players.length)];
-        target.add(c);
-      }),
-    );
     setup.flush();
 
     // set up a goofy chit
@@ -112,7 +111,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     }
 
     // now do 100 turns
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 5; i++) {
       rootChit.playerAid.turnCount++;
       players[0].counter.value += Math.round((await setup.rng()) * 10);
       // alternating players
@@ -122,6 +121,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
         async (turn) => {
           let lastPiece: Card | undefined;
 
+          const player = players[i % 2];
           const counter = (await turn.rng()) * 3 + 3;
 
           for (let i = 0; i < counter; i++) {
@@ -142,6 +142,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
                 chit.token = c2;
                 lastPiece = chit;
               })
+                .focus(player)
                 .message("pick a card")
                 .help(
                   "Pick a card.  If it already has a card on it, it'll go back to the deck.  Otherwise, it'll draw a card from the deck and put it on top of this card",
@@ -161,7 +162,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
                     const target = players[i % 2].counter2;
                     target.add(c3);
                   }
-                }),
+                }).config({ flipped: lastPiece?.flipped ?? true }),
             ]);
           }
         },

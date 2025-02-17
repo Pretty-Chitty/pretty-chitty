@@ -29,16 +29,26 @@ export default function Viewer({
   const [id] = useState(`Viewer${ID_COUNTER++}`);
   const timeState = useTimeState();
   const [animationSpeedMultiplier] = useEventChannelState(timeState.animationSpeedMultiplier);
+  const [isLoading] = useEventChannelState(timeState.isLoading);
   const refContainer = useRef(null);
   const renderer = useWebGlRenderer(w, h);
   const [scene] = useState<Scene>(new Scene());
   const [chitRenderInstance, setChitRenderInstance] = useState<RootChitRenderInstance | null>(null);
 
   if (chitRenderInstance) {
-    if (chitRenderInstance.animationSpeedMultiplier !== animationSpeedMultiplier) {
+    if (isLoading) {
+      chitRenderInstance.animationSpeedMultiplier = 0.0001;
+    } else if (chitRenderInstance.animationSpeedMultiplier !== animationSpeedMultiplier) {
       chitRenderInstance.animationSpeedMultiplier = animationSpeedMultiplier;
+      chitRenderInstance.resetMarks();
     }
   }
+
+  useEffect(() => {
+    if (!isLoading && chitRenderInstance) {
+      chitRenderInstance.resetMarks();
+    }
+  }, [isLoading, chitRenderInstance]);
 
   // handle sizing and aspect ratio on camera
   useEffect(() => {
@@ -56,10 +66,10 @@ export default function Viewer({
 
       if (chit.renderInstance) {
         chit.renderInstance.invalidateRootRenderInstance();
+        chit.renderInstance.destroy();
       }
 
       const newInstance = new R(chit);
-      newInstance.animationSpeedMultiplier = animationSpeedMultiplier;
       newInstance.convertCameraSpaceToScreenSpace = (x: number, y: number) => {
         const el = refContainer.current as unknown as HTMLElement;
         if (!el) {
@@ -120,12 +130,11 @@ export default function Viewer({
             renderer.render(scene, chitRenderInstance.camera);
             context.drawImage(renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
             chitRenderInstance.dirty = false;
+            timeState.setAnimationState(id, true);
+          } else {
+            timeState.setAnimationState(id, false);
           }
-          const didRender = renderNextFrame;
           renderNextFrame = chitRenderInstance?.update();
-          if (didRender !== renderNextFrame) {
-            timeState.setAnimationState(id, renderNextFrame === true);
-          }
         } catch (e) {
           console.error(e);
         }

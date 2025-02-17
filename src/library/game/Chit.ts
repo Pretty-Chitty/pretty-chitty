@@ -389,9 +389,13 @@ export class Chit extends ObjectWithProps {
     );
   }
 
-  public static pick<T extends Chit>(chit: T | T[], cb: (chit: T) => void | Promise<void>) {
+  public static pick<T extends Chit>(
+    chit: T | (T | undefined | null | false)[] | OrderedOutlet<T>,
+    cb: (chit: T) => void | Promise<void>,
+  ) {
     const result = new ChitPick<T>();
-    result.chits = Array.isArray(chit) ? chit : [chit];
+    result.chits =
+      chit instanceof OrderedOutlet ? chit.copy() : Array.isArray(chit) ? (chit.filter((c) => c) as T[]) : [chit];
     result.cb = cb;
     return result;
   }

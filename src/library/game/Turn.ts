@@ -4,7 +4,7 @@ import { Match } from "./Match";
 import { PickPrompt, Prompt, SelectPrompt } from "./Prompt";
 import { PromptResponse, RngResponse, TurnState } from "./TurnState";
 import { ClockDetails } from "./ClockDetails";
-import { Pick } from "./Pick";
+import { ButtonPick, Pick } from "./Pick";
 import { Confirm, GameButton } from "./GameButton";
 import { PlayerChit } from "./PlayerChit";
 import { RootChit } from "./RootChit";
@@ -14,7 +14,8 @@ type ChitSerializationResponse = {
   clockDetails: ClockDetails;
 };
 
-export type Picks = (undefined | Pick | Pick[] | GameButton | GameButton[])[];
+type ValidPick = undefined | false | Pick | Pick[] | ButtonPick | ButtonPick[] | GameButton | GameButton[];
+export type Picks = ValidPick | ValidPick[];
 
 export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private pass = 0;
@@ -334,12 +335,15 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       message = undefined;
       help = undefined;
     }
-    if (help && typeof help !== "string") {
+    if (help !== undefined && typeof help !== "string") {
       picks = help;
       help = undefined;
     }
     if (picks === undefined) {
       throw new Error("No PIcks");
+    }
+    if (!Array.isArray(picks)) {
+      picks = [picks];
     }
 
     const prompt = new PickPrompt();

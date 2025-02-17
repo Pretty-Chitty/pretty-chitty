@@ -1,5 +1,7 @@
-import { GameButton } from "../library/game/GameButton";
+import { DynamicGameButton } from "../library/game/GameButton";
 
-export class FlipButton extends GameButton {
-  override label = "Flip it";
+export class FlipButton extends DynamicGameButton<{ flipped: boolean }> {
+  process(spec: { flipped: boolean }) {
+    this.label = spec.flipped ? "Unflip it" : "Flip it";
+  }
 }

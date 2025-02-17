@@ -95,12 +95,9 @@ function SinglePanel({ chit, x, y, w, h }: { chit: Chit; x: number; y: number; w
 
 function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number; w: number; h: number }) {
   const theme = useGameTheme();
-  // const clientPrompt = useClientPrompts();
-  // const [prompt] = useEventChannelState(clientPrompt.currentPrompt);
   const timeState = useTimeState();
   const [isSliding, setIsSliding] = useState(false);
-  const [targetAnimationSpeed] = useEventChannelState(timeState.targetAnimationSpeedMultiplier);
-  const [actualAnimationSpeed] = useEventChannelState(timeState.animationSpeedMultiplier);
+  const [isLoading] = useEventChannelState(timeState.isLoading);
   const [selectedIndex, setSelectedIndex] = useDebounce(0);
   const rootRenders = chits.map((c) =>
     c.renderInstance instanceof RootChitRenderInstance ? c.renderInstance : undefined,
@@ -110,47 +107,45 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   const CUTOUT_HEIGHT = 14;
   const ANIMATION_DURATION = 0.25;
 
-  // if animation speeds aren't in sync, we are probably trying to fast forward (at the beginning of loading)
-  const isAnimationSpeedLinedUp = targetAnimationSpeed === actualAnimationSpeed;
-
-  // useEffect(() => {
-  //   rootRenders.forEach((r) => r?.resetMarks());
-  // }, [prompt, rootRenders]);
-
-  // panel selection magic...
-  // if (prompt) {
-  //   // show the correct stuff for prompts?
-  // } else
-  // if (panelStates[selectedIndex]?.state === "inactive") {
-  // check to see if there is a panel that is "leaving"
   const leavingIndex = panelStates.findIndex((p) => p.state === "leaving");
   const enteringIndex = panelStates.findIndex((p) => p.state === "entering");
   const pendingIndex = panelStates.findIndex((p) => p.state === "pending");
-  if (leavingIndex >= 0) {
-    // console.log("leaving", leavingIndex);
-    setSelectedIndex(leavingIndex);
-  } else if (enteringIndex >= 0) {
-    // console.log("enterin", enteringIndex);
-    setSelectedIndex(enteringIndex);
-  } else if (pendingIndex >= 0) {
-    // console.log("pending", pendingIndex);
-    setSelectedIndex(pendingIndex);
+
+  if (!isLoading) {
+    if (leavingIndex >= 0) {
+      if (panelStates[selectedIndex].state !== "leaving") {
+        // if our current panel is entering... obviously stay there
+        setSelectedIndex(leavingIndex);
+      }
+    } else if (enteringIndex >= 0) {
+      if (panelStates[selectedIndex].state !== "entering") {
+        // if our current panel is entering... obviously stay there
+        setSelectedIndex(enteringIndex);
+      }
+    } else if (pendingIndex >= 0) {
+      if (panelStates[selectedIndex].state !== "pending") {
+        // if our current panel is pending... obviously stay there
+        setSelectedIndex(pendingIndex);
+      }
+    }
   }
-  // }
 
   const key = `panel--${chits.map((c) => c.id).join("-")}`;
   useEffect(() => {
     setIsSliding(true);
     timeState.setAnimationState(key, true);
-    const to = setTimeout(
-      () => {
-        timeState.setAnimationState(key, false);
-        setIsSliding(false);
-      },
-      ANIMATION_DURATION * 1000 + 10,
-    );
+    const to = setTimeout(() => {
+      setIsSliding(false);
+    }, ANIMATION_DURATION * 1000);
     return () => clearTimeout(to);
   }, [selectedIndex, key, timeState]);
+
+  useEffect(() => {
+    if (!isSliding) {
+      const off = setTimeout(() => timeState.setAnimationState(key, false), 10);
+      return () => clearTimeout(off);
+    }
+  }, [key, timeState, isSliding]);
 
   const panCallback = useCallback(
     (direction: "left" | "right") => {
@@ -182,7 +177,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
             sx={{
               width: "100%",
               height: "100%",
-              transition: `transform ease-in-out ${ANIMATION_DURATION}s`,
+              transition: isLoading ? null : `transform ease-in-out ${ANIMATION_DURATION}s`,
               position: "absolute",
               left: 0,
               top: 0,
@@ -191,7 +186,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
             }}
           >
             <ViewerWrapper
-              paused={isSliding ? true : isAnimationSpeedLinedUp ? selectedIndex !== index : false}
+              paused={isLoading ? false : isSliding ? true : selectedIndex !== index}
               chit={chit}
               w={w - theme.spacing}
               h={h - CUTOUT_HEIGHT - theme.spacing}

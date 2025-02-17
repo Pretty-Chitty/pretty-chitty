@@ -25,6 +25,15 @@ export class GameButton {
     return result;
   }
 
+  public pick(): ButtonPick {
+    return GameButton.pick(this);
+  }
+
+  public set(cb: (chit: this) => void): this {
+    cb(this);
+    return this;
+  }
+
   /** @internal */
   serialize(): any {
     return {};
@@ -33,6 +42,36 @@ export class GameButton {
   /** @internal */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   deserialize(config: any) {}
+}
+
+export abstract class DynamicGameButton<T> extends GameButton {
+  private spec: T | undefined;
+
+  config(spec: T) {
+    this.spec = spec;
+    this.process(spec);
+    return this;
+  }
+
+  abstract process(spec: T): void;
+
+  /** @internal */
+  override serialize(): any {
+    if (this.spec === undefined) {
+      throw "Not configured";
+    }
+
+    return {
+      spec: this.spec,
+    };
+  }
+
+  /** @internal */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  override deserialize({ spec }: { spec: T }) {
+    this.spec = spec;
+    this.process(this.spec);
+  }
 }
 
 export class Confirm extends GameButton {

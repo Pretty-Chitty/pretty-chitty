@@ -12,7 +12,7 @@ export default function TimeControlBar() {
   const theme = useGameTheme();
   const timeController = useTimeController();
   const timeState = useTimeState();
-  const [speed, setSpeed] = useEventChannelState(timeState.targetAnimationSpeedMultiplier);
+  const [speed, setSpeed] = useEventChannelState(timeState.animationSpeedMultiplier);
   const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
   const [, setLive] = useEventChannelState(timeState.live);

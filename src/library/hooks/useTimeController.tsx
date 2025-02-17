@@ -80,8 +80,6 @@ export function TimeControllerProvider({ children }: { children: ReactNode }) {
         newClientTime.maxClock.value = clientTime.maxClock.value;
       }
 
-      clientTimeState.animationSpeedMultiplier.value = 0.001;
-
       setClientTime(newClientTime);
       setClientPrompts(cp);
       setClientStatus(cs);

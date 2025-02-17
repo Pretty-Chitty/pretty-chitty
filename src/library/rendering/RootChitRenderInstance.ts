@@ -244,7 +244,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     this.bboxGroup.visible = newValue;
   }
 
-  private _animationSpeedMultiplier = 1;
+  private _animationSpeedMultiplier = 0.0001;
   public get animationSpeedMultiplier(): number {
     return this._animationSpeedMultiplier;
   }
