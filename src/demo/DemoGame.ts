@@ -12,7 +12,7 @@ import {
 
 import { Mesh, MeshPhongMaterial, PlaneGeometry } from "three";
 
-import { FlipButton } from "./ButtonLibrary";
+import { FlipButton, PassButton } from "./ButtonLibrary";
 import { BagChit, Card, Card2, CounterChit, Deck, MyPlayer, Root, Row, SideBoards, Table } from "./ChitLibrary";
 import * as CanvasLibrary from "./CanvasLibrary";
 import { PlayerAid } from "./PlayerAid";
@@ -23,7 +23,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
 
   chitLibrary = { Card, Card2, Table, SideBoards, Root, Deck, MyPlayer, PlayerAid, CounterChit, BagChit, Row };
   canvasLibrary = CanvasLibrary;
-  buttonLibrary = { FlipButton };
+  buttonLibrary = { FlipButton, PassButton };
 
   theme = GameTheme.withDefaults("#2d3142", "#ef8354");
 
@@ -110,10 +110,47 @@ export class DemoGame implements Game<MyPlayer, Root> {
       setup.flush();
     }
 
+    for (let i = 0; i < players.length; i++) {
+      const l = [
+        ...pieces,
+        ...pieces2,
+        ...rows,
+        ...players,
+        deck,
+        c3,
+        ...players.map((p) => p.counter),
+        ...players.map((p) => p.counter2),
+      ];
+      await setup.createTurn(l, players[i], async (turn) => {
+        await turn.pick([
+          new FlipButton(async () => {
+            await turn.createTurn(l, players[0], async (turn) => {
+              await turn.pick(
+                Chit.pick(pieces, (chit) => {
+                  chit.flipped = !chit.flipped;
+                }),
+              );
+            });
+          }).config({ flipped: true }),
+          new FlipButton(async () => {
+            await turn.createTurn(l, players[1], async (turn) => {
+              await turn.pick(
+                Chit.pick(pieces, (chit) => {
+                  chit.flipped = !chit.flipped;
+                }),
+              );
+            });
+          }).config({ flipped: false }),
+          new PassButton(),
+        ]);
+      });
+    }
+
     // now do 100 turns
     for (let i = 0; i < 5; i++) {
       rootChit.playerAid.turnCount++;
       players[0].counter.value += Math.round((await setup.rng()) * 10);
+
       // alternating players
       await setup.createTurn(
         [...pieces, ...pieces2, ...rows, deck, c3, ...players.map((p) => p.counter), ...players.map((p) => p.counter2)],

@@ -322,10 +322,11 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   }
 
   public handleZoom(x: number, y: number, dz: number, animate: boolean) {
-    let vector = new Vector3((x / this._width) * 2 - 1, -(y / this._height) * 2 + 1, 0.5);
+    let vector = new Vector3((x / this._width) * 2 - 1, (y / this._height) * 2 + 1, 0);
     vector = vector.unproject(this.camera);
+    // vector.z = 0.5;
 
-    this.cameraWrapper.handleZoom(vector.x, vector.y, dz, animate);
+    this.cameraWrapper.handleZoom(x, y, dz, animate);
     this.markDirty();
   }
 

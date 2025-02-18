@@ -539,7 +539,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           if (subTurnChanges.length === 1 && subTurnChanges[0].type === "reset" && i < oldState.decisions.length - 1) {
             return [{ turn: this, type: "reset" }];
           }
-        } else if (JSON.stringify(oldTurnState) !== JSON.stringify(newTurnState)) {
+        } else if (JSON.stringify(oldTurnState.decisions) !== JSON.stringify(newTurnState.decisions)) {
           return [{ turn: this, type: "reset" }];
         }
       }
@@ -799,6 +799,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           throw error;
         }
         if (error instanceof StepBackError) {
+          // bubble it up to parent if we can
+          if (this.decisionIndex === 0 && this.parent?.player === this.player) {
+            throw error;
+          }
+
           this.state.stepBack(); // once to clear the current prompt
           this.state.stepBack(); // and again to clear what was before
           this.restartExecution();
