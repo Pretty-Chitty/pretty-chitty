@@ -248,6 +248,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     if (player.playerId && player.playerId !== this.player?.playerId) {
       await this.possiblyConfirm("Confirm switching active player");
+      this.flush();
     }
 
     if (player) {

@@ -254,8 +254,8 @@ export default function Viewer({
 
       const wheelListener = (ev: any) => {
         const dy = ev.wheelDeltaY as number;
-        chitRenderInstance.handleZoom(ev.layerX as number, ev.layerY as number, dy / 120, true);
-        console.log(dy);
+        chitRenderInstance.handleZoom(ev.layerX as number, ev.layerY as number, dy / 120, false);
+        ev.preventDefault();
       };
 
       addWheelListener(el, wheelListener);

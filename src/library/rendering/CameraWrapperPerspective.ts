@@ -84,8 +84,8 @@ export class CameraWrapperPerspective {
     x -= halfWidth;
     y -= halfHeight;
 
-    const targetX = -x * (zoom / this.current.z) + x;
-    const targetY = -y * (zoom / this.current.z) + y;
+    const targetX = (this.current.x - x) * (zoom / this.current.z) + x;
+    const targetY = (this.current.y - y) * (zoom / this.current.z) + y;
 
     this.current.x = targetX;
     this.current.y = targetY;
