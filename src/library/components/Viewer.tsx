@@ -177,7 +177,7 @@ export default function Viewer({
       hammer.add(new Hammer.Tap({ event: "doubletap", taps: 2, interval: 300, threshold: 5, posThreshold: 50 }));
       hammer.add(new Hammer.Tap({ event: "singletap", time: 400 }));
       hammer.add(new Hammer.Pinch({ event: "pinch", threshold: 0.03 }));
-      hammer.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL }));
+      hammer.add(new Hammer.Pan({ event: "pan", direction: Hammer.DIRECTION_ALL }));
 
       hammer.add(new Hammer.Press({ event: "longtap", time: 600 }));
 
@@ -203,8 +203,14 @@ export default function Viewer({
 
       let lastDeltaX = 0,
         lastDeltaY = 0,
-        cancelled = false;
+        cancelled = false,
+        pinchEndedRecently = false;
       hammer.on("panstart", () => {
+        // Prevent a quick pan after pinch
+        if (pinchEndedRecently) {
+          cancelled = true;
+          return;
+        }
         lastDeltaX = 0;
         lastDeltaY = 0;
         cancelled = false;
@@ -239,6 +245,11 @@ export default function Viewer({
         lastScale = 1;
         pinchScale = chitRenderInstance.cameraZoom;
         cancelled = false;
+      });
+      hammer.on("pinchend", () => {
+        cancelled = true;
+        pinchEndedRecently = true;
+        setTimeout(() => (pinchEndedRecently = false), 200);
       });
       hammer.on("pinch", (ev) => {
         if (cancelled) {
