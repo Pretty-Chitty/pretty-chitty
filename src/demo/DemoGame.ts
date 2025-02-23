@@ -21,6 +21,7 @@ import { table } from "./assets/environment";
 export class DemoGame implements Game<MyPlayer, Root> {
   name = "Demo Game";
 
+  showGrid = true;
   chitLibrary = { Card, Card2, Table, SideBoards, Root, Deck, MyPlayer, PlayerAid, CounterChit, BagChit, Row };
   canvasLibrary = CanvasLibrary;
   buttonLibrary = { FlipButton, PassButton };

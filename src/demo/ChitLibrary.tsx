@@ -219,7 +219,15 @@ export class Root extends RootChit<MyPlayer> {
           height: 2,
           contents: this.mainBoard,
         },
-        { height: 1, contents: this.players.map((p) => p) },
+        width > this.players.length * 200
+          ? {
+              height: 1,
+              contents: this.players.map((p) => ({
+                contents: p,
+                width: 1,
+              })),
+            }
+          : { height: 1, contents: this.players.map((p) => p) },
       ];
     } else {
       return [
@@ -230,7 +238,16 @@ export class Root extends RootChit<MyPlayer> {
               width: 2,
               contents: this.mainBoard,
             },
-            { width: 1, contents: this.players.map((p) => p) },
+
+            height > this.players.length * 200
+              ? {
+                  width: 1,
+                  contents: this.players.map((p) => ({
+                    contents: p,
+                    height: 1,
+                  })),
+                }
+              : { width: 1, contents: this.players.map((p) => p) },
           ],
         },
       ];

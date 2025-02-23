@@ -13,6 +13,7 @@ import useSize from "@react-hook/size";
 import TopBar from "./TopBar";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { MatchEndDisplay } from "./MatchEndDisplay";
+import { PanelScaleProvider } from "../hooks/usePanelScale";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function generateTheme(game: Game<any, any>) {
@@ -96,11 +97,13 @@ export function MatchViewer({ onBack }: { onBack?: () => void }) {
   return (
     <TimeControllerProvider>
       <CssBaseline />
-      <GameThemeProvider theme={game.theme}>
-        <ThemeProvider theme={generateTheme(game)}>
-          <InnerMatchViewer onBack={onBack} />
-        </ThemeProvider>
-      </GameThemeProvider>
+      <PanelScaleProvider>
+        <GameThemeProvider theme={game.theme}>
+          <ThemeProvider theme={generateTheme(game)}>
+            <InnerMatchViewer onBack={onBack} />
+          </ThemeProvider>
+        </GameThemeProvider>
+      </PanelScaleProvider>
     </TimeControllerProvider>
   );
 }

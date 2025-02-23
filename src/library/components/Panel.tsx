@@ -7,13 +7,14 @@ import Viewer from "./Viewer";
 import { PanelLayoutResult, PanelChit } from "../game/PanelChit";
 import { useGameTheme } from "../hooks/useGameTheme";
 
-import { useTimeState } from "../hooks/useTimeController";
+import { useTimeController, useTimeState } from "../hooks/useTimeController";
 import { usePanelStates } from "../hooks/usePanelStates";
 import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import PanelSpark from "./PanelSpark";
 import { useChit } from "../hooks/useChits";
 import { ZINDEX_PANEL_CUTOUTS, ZINDEX_SPARKS } from "../utilities/zIndex";
+import { usePanelScale } from "../hooks/usePanelScale";
 
 const Cutout = `data:image/svg+xml;base64,${base64.encode(
   `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -96,6 +97,13 @@ function SinglePanel({ chit, x, y, w, h }: { chit: Chit; x: number; y: number; w
 function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number; w: number; h: number }) {
   const theme = useGameTheme();
   const timeState = useTimeState();
+
+  const timeController = useTimeController();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
+  const [maxClock] = useEventChannelState(timeController.maxClock);
+  const [live] = useEventChannelState(timeState.live);
+
   const [isSliding, setIsSliding] = useState(false);
   const [isLoading] = useEventChannelState(timeState.isLoading);
   const [selectedIndex, setSelectedIndex] = useDebounce(0);
@@ -154,8 +162,12 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
       } else {
         setSelectedIndex((chits.length + selectedIndex + 1) % chits.length);
       }
+
+      if (live) {
+        setTargetClock(maxClock.clock);
+      }
     },
-    [selectedIndex, chits.length, setSelectedIndex],
+    [selectedIndex, chits.length, setSelectedIndex, maxClock, setTargetClock, live],
   );
 
   return (
@@ -254,6 +266,7 @@ export default function Panel({
   h: number;
 }) {
   const [layout, setLayout] = useState<PanelLayoutResult[]>([]);
+  const scale = usePanelScale();
 
   useEffect(() => {
     if (!chit) {
@@ -261,12 +274,12 @@ export default function Panel({
     }
 
     if (chit instanceof PanelChit) {
-      const newLayout = chit.getFlatLayout(w, h);
+      const newLayout = chit.getFlatLayout(w, h, scale);
       setLayout(newLayout);
     } else {
       setLayout([{ chit, x: 0, y: 0, w, h }]);
     }
-  }, [chit, w, h, setLayout]);
+  }, [chit, w, h, setLayout, scale]);
 
   if (layout.length > 1) {
     return (

@@ -30,6 +30,7 @@ export interface Game<P extends PlayerChit, R extends RootChit<P>> {
   get chitLibrary(): IChitLibrary;
   get canvasLibrary(): ICanvasLibrary;
   get buttonLibrary(): IButtonLibrary;
+  readonly showGrid?: boolean;
 
   // validateConfiguration(): boolean;
 

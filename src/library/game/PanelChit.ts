@@ -36,8 +36,8 @@ export class PanelChit extends Chit {
     ];
   }
 
-  getFlatLayout(width: number, height: number): PanelLayoutResult[] {
-    const layout = this.getLayout(width, height);
+  getFlatLayout(width: number, height: number, scale = 1): PanelLayoutResult[] {
+    const layout = this.getLayout(width * scale, height * scale);
 
     const flatten = (layout: PanelLayout, x: number, y: number, w: number, h: number): PanelLayoutResult[] => {
       if (layout instanceof Chit || (Array.isArray(layout) && layout[0] instanceof Chit)) {

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Hammer from "@egjs/hammerjs";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 import { Easing, Tween } from "@tweenjs/tween.js";
+import { addWheelListener, removeWheelListener } from "wheel";
 
 let ID_COUNTER = 1;
 
@@ -18,8 +19,13 @@ export interface GalleryItem {
 }
 
 type BuiltItem = {
+  index: number;
+  enteredAmount: number;
+  targetIndex: number;
   item: GalleryItem;
   mesh: Mesh;
+  tween?: Tween<{ x: number }>;
+  enteredTween?: Tween<{ x: number }>;
 };
 
 class GalleryController {
@@ -46,6 +52,7 @@ class GalleryController {
   private offsetAngle = Math.PI * 0.1;
 
   private items: BuiltItem[] = [];
+  private leavingItems: BuiltItem[] = [];
   private itemLookup: { [key: string]: BuiltItem } = {};
 
   public setSize(w: number, h: number, itemWidth: number, itemSpacing: number) {
@@ -60,7 +67,7 @@ class GalleryController {
     const vFov = (this.camera.fov * Math.PI) / 180;
     const hFov = 2 * Math.atan(aspect * Math.tan(vFov / 2));
     this.camera.position.z = w / (2 * Math.tan(hFov / 2));
-    this.camera.position.x = this.frontStageWidth / 2 - this.itemWidth / 2;
+    this.camera.position.x = 0;
 
     const z = this.camera.position.z;
     this.camera.position.z = Math.cos(this.offsetAngle) * z;
@@ -73,6 +80,19 @@ class GalleryController {
     if (this.tween) {
       this.tween.update();
     }
+    this.items.forEach((item) => {
+      if (item.tween) {
+        item.tween.update();
+      }
+      if (item.enteredTween) {
+        item.enteredTween.update();
+      }
+    });
+    this.leavingItems.forEach((item) => {
+      if (item.enteredTween) {
+        item.enteredTween.update();
+      }
+    });
   }
 
   private tween: Tween<{ x: number }> | undefined;
@@ -84,7 +104,7 @@ class GalleryController {
 
     if (!animate) {
       this.offsetX += deltaX;
-      this.items.forEach((item, i) => this.positionItem(item, i));
+      this.items.forEach((item) => this.positionItem(item));
     } else {
       // lock the offset to the nearest item
       let target = this.offsetX + deltaX;
@@ -94,8 +114,10 @@ class GalleryController {
       if (target > 0) {
         target = 0;
       }
-      if (target < -(this.items.length - this.itemsPerPage) * (this.itemWidth + this.itemSpacing)) {
-        target = -(this.items.length - this.itemsPerPage) * (this.itemWidth + this.itemSpacing);
+      const min =
+        -(this.items.length - Math.min(this.items.length, this.itemsPerPage)) * (this.itemWidth + this.itemSpacing);
+      if (target < min) {
+        target = min;
       }
 
       const duration = 0.0001 + Math.min(750, Math.abs(target - this.offsetX) * 300);
@@ -103,7 +125,7 @@ class GalleryController {
       this.tween = new Tween({ x: this.offsetX })
         .onUpdate(({ x }) => {
           this.offsetX = x;
-          this.items.forEach((item, i) => this.positionItem(item, i));
+          this.items.forEach((item) => this.positionItem(item));
         })
         .easing(Easing.Quadratic.Out)
         .to({ x: target }, duration)
@@ -114,19 +136,23 @@ class GalleryController {
     }
   }
 
-  positionItem(item: BuiltItem, index: number) {
+  positionItem(item: BuiltItem) {
+    const index = item.index;
+    const initialOffset = -(this.frontStageWidth / 2 - this.itemWidth / 2);
     const mesh = item.mesh;
-    mesh.position.x = index * (this.itemWidth + this.itemSpacing) + this.offsetX;
+    mesh.position.x = initialOffset + index * (this.itemWidth + this.itemSpacing) + this.offsetX;
 
-    const largestX = (this.itemsPerPage - 1) * (this.itemWidth + this.itemSpacing);
+    mesh.position.y = (1 - item.enteredAmount) * -this.h; // 5 is height of display?
+
+    const largestX = initialOffset + (this.itemsPerPage - 1) * (this.itemWidth + this.itemSpacing);
     if (mesh.position.x > largestX) {
       const overshot = mesh.position.x - largestX;
       mesh.position.x = largestX + Math.pow(overshot, 0.94);
       mesh.position.z = -overshot;
       mesh.rotation.x = -overshot / 3000 - this.offsetAngle;
-    } else if (mesh.position.x < 0) {
-      const overshot = Math.abs(mesh.position.x);
-      mesh.position.x = -Math.pow(overshot, 0.94);
+    } else if (mesh.position.x < initialOffset) {
+      const overshot = Math.abs(initialOffset - mesh.position.x);
+      mesh.position.x = initialOffset - Math.pow(overshot, 0.94);
       mesh.position.z = -overshot;
       mesh.rotation.x = -overshot / 3000 - this.offsetAngle;
     } else {
@@ -147,23 +173,92 @@ class GalleryController {
   }
 
   public setItems(items: GalleryItem[]) {
+    const itemIndexOffset = items.length < this.itemsPerPage ? (this.itemsPerPage - items.length) / 2 : 0;
+
     const seenIds = new Set(Object.keys(this.itemLookup));
     items.forEach((item, i) => {
       seenIds.delete(item.id);
       if (!this.itemLookup[item.id]) {
-        this.itemLookup[item.id] = { item, mesh: item.createMesh() };
-        this.scaleItem(this.itemLookup[item.id]);
+        const builtItem: BuiltItem = (this.itemLookup[item.id] = {
+          item,
+          enteredAmount: 0,
+          mesh: item.createMesh(),
+          index: i + itemIndexOffset,
+          targetIndex: i + itemIndexOffset,
+        });
+        this.scaleItem(builtItem);
 
         // Also add your mesh to the scene:
-        this.scene.add(this.itemLookup[item.id].mesh);
-        this.positionItem(this.itemLookup[item.id], i);
+        this.scene.add(builtItem.mesh);
+        this.positionItem(builtItem);
+
+        builtItem.enteredTween = new Tween({ x: 0 })
+          .to({ x: 1 }, 250)
+          .easing(Easing.Quadratic.Out)
+          .onUpdate((obj) => {
+            builtItem.enteredAmount = obj.x;
+            this.positionItem(builtItem);
+          })
+          .onComplete(() => {
+            builtItem.enteredTween = undefined;
+          })
+          .start();
       }
     });
+
     [...seenIds].forEach((id) => {
-      this.itemLookup[id].mesh.parent?.remove(this.itemLookup[id].mesh);
+      const item = this.itemLookup[id];
       delete this.itemLookup[id];
+      this.leavingItems.push(item);
+
+      if (item.enteredTween) {
+        item.enteredTween.stop();
+        item.enteredTween = undefined;
+      }
+
+      item.enteredTween = new Tween({ x: item.enteredAmount })
+        .to({ x: 0 }, 250)
+        .easing(Easing.Quadratic.In)
+        .onUpdate((obj) => {
+          item.enteredAmount = obj.x;
+          this.positionItem(item);
+        })
+        .onComplete(() => {
+          item.enteredTween = undefined;
+          item.mesh.parent?.remove(item.mesh);
+          this.leavingItems = this.leavingItems.filter((i) => i !== item);
+        })
+        .start();
     });
-    this.items = Object.values(this.itemLookup);
+
+    const hasChangedLength = this.items.length !== items.length;
+    this.items = items.map((item) => this.itemLookup[item.id]);
+
+    this.items.forEach((item, index) => {
+      if (item.tween) {
+        item.tween.stop();
+        item.tween = undefined;
+      }
+      if (item.index !== index + itemIndexOffset) {
+        item.targetIndex = index + itemIndexOffset;
+
+        item.tween = new Tween({ x: item.index })
+          .to({ x: item.targetIndex }, 250)
+          .easing(Easing.Quadratic.InOut)
+          .onUpdate((obj) => {
+            item.index = obj.x;
+            this.positionItem(item);
+          })
+          .onComplete(() => {
+            item.tween = undefined;
+          })
+          .start();
+      }
+    });
+
+    if (hasChangedLength && !this.tween) {
+      this.pan(0, true);
+    }
   }
 }
 
@@ -270,8 +365,20 @@ export function GalleryViewer({
       galleryController.pan(lastVelocityX * 300, true);
       lastVelocityX = 0;
     });
+
+    let timeout: NodeJS.Timeout;
+    const wheelListener = (ev: any) => {
+      const dy = ev.wheelDeltaY as number;
+      galleryController.pan(dy / 3, false);
+      ev.preventDefault();
+      clearTimeout(timeout);
+      timeout = setTimeout(() => galleryController.pan(0, true), 50);
+    };
+
+    addWheelListener(el, wheelListener);
     return () => {
       hammer.destroy();
+      removeWheelListener(el, wheelListener);
     };
   }, [galleryController]);
 
