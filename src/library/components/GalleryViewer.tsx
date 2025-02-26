@@ -1,4 +1,16 @@
-import { DirectionalLight, Fog, FogExp2, Mesh, PerspectiveCamera, Scene, Vector3 } from "three";
+import {
+  AmbientLight,
+  Box3,
+  DirectionalLight,
+  Fog,
+  FogExp2,
+  Group,
+  Mesh,
+  Object3D,
+  PerspectiveCamera,
+  Scene,
+  Vector3,
+} from "three";
 import { Box } from "@mui/material";
 import React, { useEffect, useRef, useState } from "react";
 import Hammer from "@egjs/hammerjs";
@@ -8,14 +20,18 @@ import { addWheelListener, removeWheelListener } from "wheel";
 
 let ID_COUNTER = 1;
 
+type UpdateCallback = () => void;
+
 export interface GalleryItem {
   id: string;
-  createMesh(): Mesh;
+  createMesh(): Object3D;
+  onClick?: () => void;
 
-  /** This takes a callback that gets updated any time the gallery item needs to be refreshed (new texture or mesh or whatnot).
+  /**
+   * This takes a callback that gets updated any time the gallery item needs to be refreshed (new texture or mesh or whatnot).
    * It returns a callback that can be invoked to unsubscribe this callback
    */
-  registerUpdateHandler(cb: () => void): () => void;
+  registerUpdateHandler(cb: UpdateCallback): UpdateCallback;
 }
 
 type BuiltItem = {
@@ -23,9 +39,10 @@ type BuiltItem = {
   enteredAmount: number;
   targetIndex: number;
   item: GalleryItem;
-  mesh: Mesh;
+  mesh: Object3D;
   tween?: Tween<{ x: number }>;
   enteredTween?: Tween<{ x: number }>;
+  unsubscribe: UpdateCallback;
 };
 
 class GalleryController {
@@ -38,12 +55,16 @@ class GalleryController {
     const light = new DirectionalLight(0xffffff, 1);
     light.position.copy(camera.position);
     scene.add(light);
+    const ambient = new AmbientLight(0xffffff, 1);
+    scene.add(ambient);
   }
 
   private w = 100;
   private h = 100;
   private itemWidth = 100;
+  private itemHeight = 100;
 
+  private changed = false;
   private itemSpacing = 100;
   private itemsPerPage = 1;
   private frontStageWidth = 1;
@@ -55,9 +76,10 @@ class GalleryController {
   private leavingItems: BuiltItem[] = [];
   private itemLookup: { [key: string]: BuiltItem } = {};
 
-  public setSize(w: number, h: number, itemWidth: number, itemSpacing: number) {
+  public setSize(w: number, h: number, itemWidth: number, itemHeight: number, itemSpacing: number) {
     this.w = w;
     this.h = h;
+    this.itemHeight = Math.min(itemHeight, h - itemSpacing);
     this.itemWidth = Math.min(itemWidth, w - itemSpacing);
     this.itemSpacing = itemSpacing;
     this.itemsPerPage = Math.floor((w - itemSpacing * 2) / (this.itemWidth + itemSpacing));
@@ -76,27 +98,58 @@ class GalleryController {
     this.scene.fog = new Fog(0x000000, z, z + w);
   }
 
+  getItemAtPosition(x: any) {
+    // const rect = new Box3().setFromObject(this.scene);
+    const mouse = new Vector3((x / window.innerWidth) * 2 - 1, 0, 0.5);
+    mouse.unproject(this.camera);
+    const dir = mouse.sub(this.camera.position).normalize();
+    const distance = -this.camera.position.z / dir.z;
+    const pos = this.camera.position.clone().add(dir.multiplyScalar(distance));
+    for (const item of this.items) {
+      if (item.mesh.position.distanceTo(pos) < this.itemWidth / 2) {
+        return item.item;
+      }
+    }
+    return null;
+  }
+
   render() {
+    let changed = this.changed;
     if (this.tween) {
       this.tween.update();
+      changed = true;
     }
     this.items.forEach((item) => {
       if (item.tween) {
         item.tween.update();
+        changed = true;
       }
       if (item.enteredTween) {
         item.enteredTween.update();
+        changed = true;
       }
     });
     this.leavingItems.forEach((item) => {
       if (item.enteredTween) {
         item.enteredTween.update();
       }
+      changed = true;
     });
+    this.changed = false;
+    return changed;
+  }
+
+  isAnimating() {
+    return this.tween !== undefined;
+  }
+  stop() {
+    this.tween?.stop();
+    this.tween = undefined;
   }
 
   private tween: Tween<{ x: number }> | undefined;
   pan(deltaX: number, animate = false) {
+    this.changed = true;
     if (this.tween) {
       this.tween.stop();
       this.tween = undefined;
@@ -162,17 +215,19 @@ class GalleryController {
   }
 
   scaleItem(item: BuiltItem) {
-    const mesh = item.mesh;
-    mesh.geometry.computeBoundingBox();
-    const box = mesh.geometry.boundingBox;
-    if (box) {
-      const size = box.getSize(new Vector3());
-      const scale = this.itemWidth / size.x;
-      mesh.scale.set(scale, scale, scale);
+    const box3 = new Box3();
+    box3.expandByObject(item.mesh);
+    if (!box3.isEmpty()) {
+      const size = box3.getSize(new Vector3());
+      const xScale = this.itemWidth / size.x;
+      const yScale = this.itemHeight / size.y;
+      const scale = Math.min(xScale, yScale);
+      item.mesh.scale.set(scale, scale, scale);
     }
   }
 
   public setItems(items: GalleryItem[]) {
+    this.changed = true;
     const itemIndexOffset = items.length < this.itemsPerPage ? (this.itemsPerPage - items.length) / 2 : 0;
 
     const seenIds = new Set(Object.keys(this.itemLookup));
@@ -185,6 +240,15 @@ class GalleryController {
           mesh: item.createMesh(),
           index: i + itemIndexOffset,
           targetIndex: i + itemIndexOffset,
+          unsubscribe: item.registerUpdateHandler(() => {
+            if (builtItem.mesh && builtItem.mesh.parent) {
+              builtItem.mesh.parent.remove(builtItem.mesh);
+            }
+            this.changed = true;
+            builtItem.mesh = item.createMesh();
+            this.scene.add(builtItem.mesh);
+            this.scaleItem(builtItem);
+          }),
         });
         this.scaleItem(builtItem);
 
@@ -266,9 +330,11 @@ export function GalleryViewer({
   items,
   paused = false,
   galleryItemWidth = 200,
+  onClose,
   itemSpacing = 50,
   w = 0,
   h = 0,
+  galleryItemHeight = h * 0.7,
 }: {
   items: GalleryItem[];
   w: number;
@@ -276,6 +342,8 @@ export function GalleryViewer({
   itemSpacing: number;
   paused?: boolean;
   galleryItemWidth?: number;
+  galleryItemHeight?: number;
+  onClose?: () => void;
 }) {
   const [id] = useState(`GalleryViewer${ID_COUNTER++}`);
   const refContainer = useRef<HTMLCanvasElement>(null);
@@ -285,39 +353,12 @@ export function GalleryViewer({
   );
 
   useEffect(() => {
-    galleryController.setSize(w, h, galleryItemWidth, itemSpacing);
-  }, [galleryItemWidth, itemSpacing, w, h, galleryController]);
+    galleryController.setSize(w, h, galleryItemWidth, galleryItemHeight, itemSpacing);
+  }, [galleryItemWidth, itemSpacing, galleryItemHeight, w, h, galleryController]);
 
   useEffect(() => {
     galleryController.setItems(items);
   }, [items, galleryController]);
-
-  // const [panOffset, setPanOffset] = useState(0);
-
-  // useEffect(() => {
-  //   if (!items || !renderer || !camera) return;
-  //   scene.clear();
-
-  //   const light = new DirectionalLight(0xffffff, 1);
-  //   light.position.copy(camera.position);
-  //   scene.add(light);
-
-  //   items.forEach((item, i) => {
-  //     const mesh = item.createMesh();
-  //     mesh.geometry.computeBoundingBox();
-  //     const box = mesh.geometry.boundingBox;
-  //     if (box) {
-  //       const size = box.getSize(new Vector3());
-  //       const scale = galleryItemWidth / size.x;
-  //       mesh.scale.set(scale, scale, scale);
-  //     }
-  //     mesh.position.x = i * (galleryItemWidth + 20) + panOffset;
-  //     const half = (items.length - 1) / 2;
-  //     const dist = Math.abs(i - half) / half;
-  //     mesh.position.z = 0; //-dist * 300;
-  //     scene.add(mesh);
-  //   });
-  // }, [items, scene, panOffset, renderer, galleryItemWidth, camera]);
 
   useEffect(() => {
     const canvas = refContainer.current;
@@ -327,13 +368,15 @@ export function GalleryViewer({
     const animate = () => {
       if (cancelled) return;
       requestAnimationFrame(animate);
-      galleryController.render();
-      renderer.setClearColor(0x000000, 0);
 
-      renderer.render(galleryController.scene, galleryController.camera);
-      if (ctx) {
-        ctx.clearRect(0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
-        ctx.drawImage(renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
+      if (galleryController.render()) {
+        renderer.setClearColor(0x000000, 0);
+        renderer.render(galleryController.scene, galleryController.camera);
+
+        if (ctx) {
+          ctx.clearRect(0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
+          ctx.drawImage(renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
+        }
       }
     };
     animate();
@@ -347,6 +390,39 @@ export function GalleryViewer({
     if (!el) return;
     const hammer = new Hammer.Manager(el);
     hammer.add(new Hammer.Pan({ direction: Hammer.DIRECTION_HORIZONTAL }));
+
+    const fixPosition = (ev: HammerInput) => {
+      const rect = el.getBoundingClientRect();
+      return { x: ev.center.x - rect.left, y: ev.center.y - rect.top };
+    };
+
+    hammer.add(new Hammer.Tap());
+    hammer.on("tap", (ev) => {
+      const pos = fixPosition(ev);
+
+      if (galleryController.isAnimating()) {
+        galleryController.pan(0, true); // goofy but fine?  locks to closest slot?
+      } else {
+        if (pos.y < (h - galleryItemHeight) / 2 || pos.y > h - (h - galleryItemHeight) / 2) {
+          if (onClose) {
+            onClose();
+          }
+          return;
+        }
+
+        const tappedItem = galleryController.getItemAtPosition(pos.x);
+        if (tappedItem) {
+          if (tappedItem.onClick) {
+            tappedItem.onClick();
+            if (onClose) {
+              onClose();
+            }
+          }
+        } else if (onClose) {
+          onClose();
+        }
+      }
+    });
 
     let lastX: number | undefined = undefined;
     let lastVelocityX = 0;
@@ -380,7 +456,11 @@ export function GalleryViewer({
       hammer.destroy();
       removeWheelListener(el, wheelListener);
     };
-  }, [galleryController]);
+  }, [galleryController, onClose]);
+
+  if (!w || !h) {
+    return null;
+  }
 
   return (
     <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }}>

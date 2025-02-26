@@ -101,13 +101,13 @@ export class Card extends Chit {
     spec.offsetZ = this.tapped ? 0.25 : 0 + (this.flipped ? 3.1 : 0);
     spec.zLiftRotationMultiplier = 3;
 
-    spec.addCounterToOrderedOutlet(
-      this.tokenList2,
-      { fontSize: 0.25, fontFamily: "sans-serif", fill: "#f0f", shadow: "#000" },
-      2,
-      250,
-      "left",
-    );
+    // spec.addCounterToOrderedOutlet(
+    //   this.tokenList2,
+    //   { fontSize: 0.25, fontFamily: "sans-serif", fill: "#f0f", shadow: "#000" },
+    //   2,
+    //   250,
+    //   "left",
+    // );
   }
 }
 

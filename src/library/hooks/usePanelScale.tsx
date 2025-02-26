@@ -13,7 +13,7 @@ export function usePanelSetScale(): (n: number) => void {
 }
 
 export function PanelScaleProvider({ children }: { children: ReactNode }) {
-  const initialScale = parseFloat(localStorage["panelScale"] ?? "1") || 1;
+  const initialScale = parseFloat(localStorage["panelScale"] ?? "1") || 1; // should this be game specific?
   const [scale, setScaleState] = useState<number>(initialScale);
   const setScale = (n: number) => {
     localStorage["panelScale"] = n;

@@ -14,6 +14,8 @@ import TopBar from "./TopBar";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { MatchEndDisplay } from "./MatchEndDisplay";
 import { PanelScaleProvider } from "../hooks/usePanelScale";
+import { GalleryProvider } from "../hooks/useGalleryState";
+import { GalleryDisplay } from "./GalleryDisplay";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function generateTheme(game: Game<any, any>) {
@@ -84,6 +86,7 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
       <TopBar onBack={onBack} />
       <Box flex={1} style={{ display: "flex", position: "relative" }}>
         <MatchEndDisplay />
+        <GalleryDisplay />
         {!errorMessage && rootChit && <PanelContents rootChit={rootChit} />}
         {errorMessage}
       </Box>
@@ -98,11 +101,13 @@ export function MatchViewer({ onBack }: { onBack?: () => void }) {
     <TimeControllerProvider>
       <CssBaseline />
       <PanelScaleProvider>
-        <GameThemeProvider theme={game.theme}>
-          <ThemeProvider theme={generateTheme(game)}>
-            <InnerMatchViewer onBack={onBack} />
-          </ThemeProvider>
-        </GameThemeProvider>
+        <GalleryProvider>
+          <GameThemeProvider theme={game.theme}>
+            <ThemeProvider theme={generateTheme(game)}>
+              <InnerMatchViewer onBack={onBack} />
+            </ThemeProvider>
+          </GameThemeProvider>
+        </GalleryProvider>
       </PanelScaleProvider>
     </TimeControllerProvider>
   );

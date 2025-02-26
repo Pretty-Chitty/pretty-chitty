@@ -5,6 +5,7 @@ import { Box3, Group, Material, Mesh, Raycaster, Vector2, Vector3 } from "three"
 import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
 import { LightWrapper } from "./LightWrapper";
 import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
+import { GalleryState } from "../game/GalleryState";
 
 export type AnimationState = "leaving" | "entering" | "pending" | "inactive";
 
@@ -292,31 +293,60 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     return tween;
   }
 
-  public handleClick(x: number, y: number) {
-    let vector = new Vector3((x / this._width) * 2 - 1, -(y / this._height) * 2 + 1, 0.5);
-    vector = vector.unproject(this.camera);
-
-    const raycaster = new Raycaster(this.camera.position, vector.sub(this.camera.position).normalize());
-    // raycaster.linePrecision = 0.25;
-
-    const chits: ChitRenderInstance[] = [];
-    const chitLookup: { [threejsId: number]: Chit } = {};
+  public handleClick(x: number, y: number, galleryState: GalleryState, distance: number, precision: number) {
+    const chitRenderInstances: ChitRenderInstance[] = [];
+    const threeJsToChitLookup: { [threejsId: number]: Chit } = {};
+    const chitRenderInstanceDistances: { [id: number]: number } = {};
     this.chit.walk((c) => {
       if (c.onClick && c.renderInstance) {
-        chits.push(c.renderInstance);
-        chitLookup[c.renderInstance.clickbox.id] = c;
+        chitRenderInstances.push(c.renderInstance);
+        threeJsToChitLookup[c.renderInstance.clickbox.id] = c;
       }
       return true;
     });
-    const intersects = raycaster.intersectObjects(
-      chits.map((c) => c.clickbox),
-      true,
-    );
 
-    if (intersects.length > 0) {
-      const c = chitLookup[intersects[0].object.id];
-      if (c && c.onClick) {
-        c.onClick();
+    const PI2 = Math.PI * 2;
+    for (let r = 0; r <= distance; r += precision) {
+      const circumference = PI2 * r;
+
+      for (let steps = 0; steps <= circumference; steps += precision) {
+        const angle = (steps / circumference) * PI2;
+        let vector = new Vector3(
+          ((x + r * Math.cos(angle)) / this._width) * 2 - 1,
+          -((y + r * Math.sin(angle)) / this._height) * 2 + 1,
+          0.5,
+        );
+        vector = vector.unproject(this.camera);
+
+        const raycaster = new Raycaster(this.camera.position, vector.sub(this.camera.position).normalize());
+        const intersects = raycaster.intersectObjects(
+          chitRenderInstances.map((c) => c.clickbox),
+          true,
+        );
+
+        for (let i = 0; i < intersects.length; i++) {
+          const id = intersects[i].object.id;
+          const c = threeJsToChitLookup[id];
+          if (c && c.onClick) {
+            chitRenderInstanceDistances[id] = Math.min(chitRenderInstanceDistances[id] ?? r, r);
+          }
+        }
+      }
+    }
+
+    console.log(chitRenderInstanceDistances);
+    const keys = Object.keys(chitRenderInstanceDistances);
+    if (keys.length > 0) {
+      if (keys.length >= 2) {
+        const instances = chitRenderInstances.filter((c) => chitRenderInstanceDistances[c.clickbox.id] >= 0);
+        const items = instances.map((instance) => instance.createGalleryItem());
+        galleryState.items.value = items;
+      } else {
+        const id = parseInt(keys[0]);
+        const chit = threeJsToChitLookup[id];
+        if (chit && chit.onClick) {
+          chit.onClick();
+        }
       }
     }
   }

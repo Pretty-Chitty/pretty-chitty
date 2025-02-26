@@ -5,15 +5,15 @@ import { GalleryViewer } from "./GalleryViewer";
 import type { GalleryItem } from "./GalleryViewer";
 import { BoxGeometry, Mesh, MeshPhongMaterial, SphereGeometry } from "three";
 
-class MyItem implements GalleryItem {
+export class MyItem implements GalleryItem {
   constructor(
     public color: number,
     public id: string,
   ) {}
 
   createMesh() {
-    const result = new Mesh(new BoxGeometry(50, 50, 50), new MeshPhongMaterial({ color: this.color }));
-    return result;
+    // const result = new Mesh(new BoxGeometry(50, 50, 50), new MeshPhongMaterial({ color: this.color }));
+    // return result;
   }
 
   registerUpdateHandler(cb: () => void) {

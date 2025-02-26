@@ -7,7 +7,13 @@ type CardMeshOptions = {
 };
 
 export class CardMesh extends Group {
-  constructor(width: number, height: number, front: Material, back: Material, options: CardMeshOptions = {}) {
+  constructor(
+    private width: number,
+    private height: number,
+    private front: Material,
+    private back: Material,
+    private options: CardMeshOptions = {},
+  ) {
     super();
 
     const face1 = new PlaneGeometry(width, height);
@@ -26,5 +32,10 @@ export class CardMesh extends Group {
       this.children[0].receiveShadow = options.receiveShadow;
       this.children[1].receiveShadow = options.receiveShadow;
     }
+  }
+
+  override clone(): this {
+    const cloned = new CardMesh(this.width, this.height, this.front, this.back, this.options);
+    return cloned as this;
   }
 }

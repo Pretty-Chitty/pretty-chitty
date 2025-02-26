@@ -22,6 +22,7 @@ import { RootChitRenderInstance } from "./RootChitRenderInstance";
 import { OutlineCanvas } from "../utilities/OutlineCanvas";
 import { outlineGeometry } from "../utilities/OutlineGeometry";
 import { fixBbox } from "../utilities/BboxUtils";
+import { ChitGalleryItemInstance } from "./ChitGalleryItemInstance";
 
 const LINE_COLOR = new MeshBasicMaterial({ color: 0xff0000, wireframe: true, wireframeLinewidth: 2 });
 const CLICK_LINE_COLOR = new MeshBasicMaterial({ color: 0xffff00, wireframe: true, wireframeLinewidth: 2 });
@@ -50,7 +51,7 @@ export class ChitRenderInstance {
   protected renderSpec: ChitRenderSpec | null = null;
 
   // threejs info
-  protected group = new Group(); // group storing the visible meshes.  Will tween
+  public group = new Group(); // group storing the visible meshes.  Will tween
   protected anchorPoints = new Map<OwnerOriginPosition | string, Group>();
 
   protected sizeX = 0;
@@ -269,6 +270,19 @@ export class ChitRenderInstance {
     }
   }
 
+  private _galleryItem?: ChitGalleryItemInstance;
+  public createGalleryItem() {
+    if (!this._galleryItem) {
+      this._galleryItem = new ChitGalleryItemInstance(this, this.chit);
+    }
+    return this._galleryItem;
+  }
+  public destroyGalleryItem() {
+    if (this._galleryItem) {
+      // this._galleryItem.
+    }
+  }
+
   public destroy() {
     this.invalidateRootRenderInstance();
     this.unsubscribeToOnChange();
@@ -337,6 +351,7 @@ export class ChitRenderInstance {
     }
 
     this.fixObjectPosition();
+    this._galleryItem?.update();
   }
 
   public screenCoordinates(): Vector2 | undefined {

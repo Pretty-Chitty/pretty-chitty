@@ -8,6 +8,7 @@ import { useEventChannelState } from "../hooks/useEventChannelState";
 import Hammer from "@egjs/hammerjs";
 import { addWheelListener, removeWheelListener } from "wheel";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
+import { useGalleryState } from "../hooks/useGalleryState";
 
 let ID_COUNTER = 1;
 
@@ -33,6 +34,7 @@ export default function Viewer({
   const refContainer = useRef(null);
   const renderer = useWebGlRenderer(w, h);
   const [scene] = useState<Scene>(new Scene());
+  const galleryState = useGalleryState();
   const [chitRenderInstance, setChitRenderInstance] = useState<RootChitRenderInstance | null>(null);
 
   if (chitRenderInstance) {
@@ -190,7 +192,8 @@ export default function Viewer({
       hammer.on("longtap", (ev) => console.log("longtap", ev));
       hammer.on("singletap", (ev) => {
         const pos = fixPosition(ev);
-        chitRenderInstance.handleClick(pos.x, pos.y);
+        const isMouse = ev.pointerType === "mouse";
+        chitRenderInstance.handleClick(pos.x, pos.y, galleryState, isMouse ? 6 : 25, isMouse ? 3 : 5);
       });
       hammer.on("doubletap", (ev) => {
         const pos = fixPosition(ev);
@@ -276,7 +279,7 @@ export default function Viewer({
         removeWheelListener(el, wheelListener);
       };
     }
-  }, [refContainer, chitRenderInstance, panCallback]);
+  }, [refContainer, chitRenderInstance, galleryState, panCallback]);
 
   return (
     <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }}>
