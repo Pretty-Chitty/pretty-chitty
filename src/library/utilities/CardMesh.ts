@@ -36,6 +36,20 @@ export class CardMesh extends Group {
 
   override clone(): this {
     const cloned = new CardMesh(this.width, this.height, this.front, this.back, this.options);
+    cloned.position.copy(this.position);
+    cloned.rotation.copy(this.rotation);
+    cloned.scale.copy(this.scale);
+    cloned.quaternion.copy(this.quaternion);
+    cloned.matrix.copy(this.matrix);
+    cloned.matrixWorld.copy(this.matrixWorld);
+    cloned.matrixAutoUpdate = this.matrixAutoUpdate;
+    cloned.matrixWorldNeedsUpdate = this.matrixWorldNeedsUpdate;
+    cloned.layers.mask = this.layers.mask;
+    cloned.visible = this.visible;
+    cloned.castShadow = this.castShadow;
+    cloned.receiveShadow = this.receiveShadow;
+    cloned.frustumCulled = this.frustumCulled;
+    cloned.renderOrder = this.renderOrder;
     return cloned as this;
   }
 }

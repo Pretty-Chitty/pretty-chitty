@@ -158,6 +158,69 @@ export class Chit extends ObjectWithProps {
     throw "No current turn";
   }
 
+  public functionallyIdentical(other: Chit) {
+    const compare = (a: any, b: any): boolean => {
+      if (a === b) {
+        return true;
+      }
+      if ((a && !b) || (!b && a)) {
+        return false;
+      }
+
+      const aIsArray = Array.isArray(a);
+      const bIsArray = Array.isArray(b);
+      if (aIsArray && bIsArray) {
+        if (a.length !== b.length) {
+          return false;
+        }
+        return !a.find((item, index) => !compare(item, b[index]));
+      }
+
+      const aIsChit = a instanceof Chit;
+      const bIsChit = b instanceof Chit;
+      if (aIsChit && bIsChit) {
+        return a.functionallyIdentical(b);
+      }
+
+      const aIsOrderedOutlet = a instanceof OrderedOutlet;
+      const bIsOrderedOutlet = b instanceof OrderedOutlet;
+      if (aIsOrderedOutlet && bIsOrderedOutlet) {
+        return compare(a.copy(), b.copy());
+      }
+
+      const aIsObject = a instanceof Object;
+      const bIsObject = b instanceof Object;
+      if (aIsObject && bIsObject) {
+        const aKeys = Object.keys(a);
+        const bKeys = Object.keys(b);
+        if (aKeys.length !== bKeys.length) {
+          return false;
+        }
+        return !aKeys.find((key) => !compare(a[key], b[key]));
+      }
+
+      return a === b;
+    };
+
+    const myProps = this.serializationProps;
+    const otherProps = other.serializationProps;
+    if (myProps.length !== otherProps.length || JSON.stringify(myProps) !== JSON.stringify(otherProps)) {
+      return false;
+    }
+
+    // find a prop that isn't the same
+    return !this.serializationProps.find((prop) => {
+      // indexes will of course be different... no need to stress on these
+      if (prop.startsWith("_") || prop === "id") {
+        return false;
+      }
+
+      const myValue = (this as any)[prop];
+      const otherValue = (other as any)[prop];
+      return !compare(myValue, otherValue);
+    });
+  }
+
   /** @internal */
   public get lockedBy() {
     return this._lockedBy;

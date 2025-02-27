@@ -3,11 +3,9 @@ import {
   Box3,
   DirectionalLight,
   Fog,
-  FogExp2,
-  Group,
-  Mesh,
   Object3D,
   PerspectiveCamera,
+  Raycaster,
   Scene,
   Vector3,
 } from "three";
@@ -40,25 +38,27 @@ type BuiltItem = {
   targetIndex: number;
   item: GalleryItem;
   mesh: Object3D;
+  center: Vector3;
+  height: number;
+  depth: number;
   tween?: Tween<{ x: number }>;
   enteredTween?: Tween<{ x: number }>;
   unsubscribe: UpdateCallback;
 };
 
 class GalleryController {
-  constructor(
-    public camera: PerspectiveCamera,
-    public scene: Scene,
-  ) {
+  constructor(public scene: Scene) {
+    this.camera = new PerspectiveCamera(25, 10, 0.1, 20000);
     this.camera.position.z = 500;
 
-    const light = new DirectionalLight(0xffffff, 1);
-    light.position.copy(camera.position);
-    scene.add(light);
+    this.light = new DirectionalLight(0xffffff, 1);
+    this.light.position.copy(this.camera.position);
+    scene.add(this.light);
     const ambient = new AmbientLight(0xffffff, 1);
     scene.add(ambient);
   }
 
+  public camera: PerspectiveCamera;
   private w = 100;
   private h = 100;
   private itemWidth = 100;
@@ -69,6 +69,7 @@ class GalleryController {
   private itemsPerPage = 1;
   private frontStageWidth = 1;
   private offsetX = 0;
+  private light: DirectionalLight;
 
   private offsetAngle = Math.PI * 0.1;
 
@@ -77,6 +78,7 @@ class GalleryController {
   private itemLookup: { [key: string]: BuiltItem } = {};
 
   public setSize(w: number, h: number, itemWidth: number, itemHeight: number, itemSpacing: number) {
+    this.changed = true;
     this.w = w;
     this.h = h;
     this.itemHeight = Math.min(itemHeight, h - itemSpacing);
@@ -84,6 +86,9 @@ class GalleryController {
     this.itemSpacing = itemSpacing;
     this.itemsPerPage = Math.floor((w - itemSpacing * 2) / (this.itemWidth + itemSpacing));
     this.frontStageWidth = this.itemsPerPage * (this.itemWidth + itemSpacing) - itemSpacing;
+
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
 
     const aspect = this.camera.aspect;
     const vFov = (this.camera.fov * Math.PI) / 180;
@@ -96,21 +101,37 @@ class GalleryController {
     this.camera.position.y = Math.sin(this.offsetAngle) * z;
     this.camera.lookAt(new Vector3(this.camera.position.x, 0, 0));
     this.scene.fog = new Fog(0x000000, z, z + w);
+
+    this.light.position.copy(this.camera.position);
+    this.light.lookAt(0, 0, 0);
+
+    // reset the world
+    this.items.forEach((item) => this.positionItem(item));
+    this.pan(0, true);
   }
 
-  getItemAtPosition(x: any) {
-    // const rect = new Box3().setFromObject(this.scene);
-    const mouse = new Vector3((x / window.innerWidth) * 2 - 1, 0, 0.5);
-    mouse.unproject(this.camera);
-    const dir = mouse.sub(this.camera.position).normalize();
-    const distance = -this.camera.position.z / dir.z;
-    const pos = this.camera.position.clone().add(dir.multiplyScalar(distance));
-    for (const item of this.items) {
-      if (item.mesh.position.distanceTo(pos) < this.itemWidth / 2) {
-        return item.item;
-      }
+  getItemAtPosition(x: any, y: any) {
+    const paddingX = (this.w - this.frontStageWidth) / 2;
+    const index = (-this.offsetX + x - paddingX) / (this.itemWidth + this.itemSpacing);
+
+    const item = this.items.find((item) => index > item.index && Math.abs(index - item.index) < 1);
+    if (!item) {
+      return null;
     }
-    return null;
+
+    if (index - item.index > 1 - this.itemSpacing / (this.itemWidth + this.itemSpacing)) {
+      return null;
+    }
+
+    const boundingBox = new Box3().setFromObject(item.mesh);
+    const ndc = new Vector3((x / this.w) * 2 - 1, -(y / this.h) * 2 + 1, 0.5);
+    ndc.unproject(this.camera);
+    const raycaster = new Raycaster(this.camera.position, ndc.sub(this.camera.position).normalize());
+    if (!raycaster.ray.intersectBox(boundingBox, new Vector3())) {
+      return null;
+    }
+
+    return item.item;
   }
 
   render() {
@@ -212,6 +233,9 @@ class GalleryController {
       mesh.position.z = 0;
       mesh.rotation.x = -this.offsetAngle;
     }
+
+    mesh.rotation.x -= Math.min(1, item.depth / this.w);
+    mesh.position.add(item.center);
   }
 
   scaleItem(item: BuiltItem) {
@@ -219,10 +243,15 @@ class GalleryController {
     box3.expandByObject(item.mesh);
     if (!box3.isEmpty()) {
       const size = box3.getSize(new Vector3());
+      const center = box3.getCenter(new Vector3());
       const xScale = this.itemWidth / size.x;
       const yScale = this.itemHeight / size.y;
       const scale = Math.min(xScale, yScale);
       item.mesh.scale.set(scale, scale, scale);
+      item.center = center.multiplyScalar(scale).negate();
+      item.center.z = 0; // i want to "floor" everything... but that is hard?
+      item.height = size.y * scale;
+      item.depth = size.z * scale;
     }
   }
 
@@ -239,6 +268,9 @@ class GalleryController {
           enteredAmount: 0,
           mesh: item.createMesh(),
           index: i + itemIndexOffset,
+          center: new Vector3(),
+          height: 0,
+          depth: 0,
           targetIndex: i + itemIndexOffset,
           unsubscribe: item.registerUpdateHandler(() => {
             if (builtItem.mesh && builtItem.mesh.parent) {
@@ -348,9 +380,7 @@ export function GalleryViewer({
   const [id] = useState(`GalleryViewer${ID_COUNTER++}`);
   const refContainer = useRef<HTMLCanvasElement>(null);
   const renderer = useWebGlRenderer(w, h);
-  const [galleryController] = useState(
-    new GalleryController(new PerspectiveCamera(50, w / h, 0.1, 20000), new Scene()),
-  );
+  const [galleryController] = useState(new GalleryController(new Scene()));
 
   useEffect(() => {
     galleryController.setSize(w, h, galleryItemWidth, galleryItemHeight, itemSpacing);
@@ -403,14 +433,7 @@ export function GalleryViewer({
       if (galleryController.isAnimating()) {
         galleryController.pan(0, true); // goofy but fine?  locks to closest slot?
       } else {
-        if (pos.y < (h - galleryItemHeight) / 2 || pos.y > h - (h - galleryItemHeight) / 2) {
-          if (onClose) {
-            onClose();
-          }
-          return;
-        }
-
-        const tappedItem = galleryController.getItemAtPosition(pos.x);
+        const tappedItem = galleryController.getItemAtPosition(pos.x, pos.y);
         if (tappedItem) {
           if (tappedItem.onClick) {
             tappedItem.onClick();

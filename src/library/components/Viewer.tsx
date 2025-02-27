@@ -193,7 +193,7 @@ export default function Viewer({
       hammer.on("singletap", (ev) => {
         const pos = fixPosition(ev);
         const isMouse = ev.pointerType === "mouse";
-        chitRenderInstance.handleClick(pos.x, pos.y, galleryState, isMouse ? 6 : 25, isMouse ? 3 : 5);
+        chitRenderInstance.handleClick(pos.x, pos.y, galleryState, isMouse ? 3 : 6, isMouse ? 1.5 : 3);
       });
       hammer.on("doubletap", (ev) => {
         const pos = fixPosition(ev);

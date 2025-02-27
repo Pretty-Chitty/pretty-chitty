@@ -6,6 +6,7 @@ import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
 import { LightWrapper } from "./LightWrapper";
 import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
 import { GalleryState } from "../game/GalleryState";
+import { GalleryItem } from "../components/GalleryViewer";
 
 export type AnimationState = "leaving" | "entering" | "pending" | "inactive";
 
@@ -334,21 +335,36 @@ export class RootChitRenderInstance extends ChitRenderInstance {
       }
     }
 
-    console.log(chitRenderInstanceDistances);
     const keys = Object.keys(chitRenderInstanceDistances);
     if (keys.length > 0) {
       if (keys.length >= 2) {
         const instances = chitRenderInstances.filter((c) => chitRenderInstanceDistances[c.clickbox.id] >= 0);
-        const items = instances.map((instance) => instance.createGalleryItem());
-        galleryState.items.value = items;
-      } else {
-        const id = parseInt(keys[0]);
-        const chit = threeJsToChitLookup[id];
-        if (chit && chit.onClick) {
-          chit.onClick();
+        const items = this.chitsToGalleryItems(instances);
+        if (items.length >= 2) {
+          galleryState.items.value = items;
+          return;
         }
       }
+
+      const id = parseInt(keys[0]);
+      const chit = threeJsToChitLookup[id];
+      if (chit && chit.onClick) {
+        chit.onClick();
+      }
     }
+  }
+
+  private chitsToGalleryItems(chitRenderInstances: ChitRenderInstance[]) {
+    const chits: Chit[] = [];
+    const result: GalleryItem[] = [];
+    chitRenderInstances.forEach((instance) => {
+      if (chits.find((chit) => instance.chit.functionallyIdentical(chit))) {
+        return;
+      }
+      chits.push(instance.chit);
+      result.push(instance.createGalleryItem());
+    });
+    return result;
   }
 
   public handleZoom(x: number, y: number, dz: number, animate: boolean) {

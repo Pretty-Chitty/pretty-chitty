@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react";
 import { Box, Stack } from "@mui/material";
-import { CalendarViewMonth, Chat, Grid3x3, SkipNext, Speed } from "@mui/icons-material";
+import { CalendarViewMonth, SkipNext, Speed } from "@mui/icons-material";
 import { useTimeController, useTimeState } from "../hooks/useTimeController";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import BottomBarButton from "./BottomBarButton";
@@ -10,7 +10,6 @@ import PromptControls from "./PromptControls";
 import { usePanelScale, usePanelSetScale } from "../hooks/usePanelScale";
 import { useGame } from "../hooks/useGame";
 import { useGalleryState } from "../hooks/useGalleryState";
-import { MyItem } from "./GalleryPlayground";
 
 function BaseBottomBar({ children }: { children: ReactNode | ReactNode[] }) {
   const theme = useGameTheme();
@@ -62,14 +61,6 @@ export default function BottomBar() {
     }
   }
 
-  const setItems = () => {
-    if (galleryState.items.value) {
-      galleryState.items.value = undefined;
-    } else {
-      galleryState.items.value = [new MyItem(0xff0000, "a"), new MyItem(0x00ff00, "b"), new MyItem(0x0000ff, "c")];
-    }
-  };
-
   return (
     <BaseBottomBar>
       <Stack direction="row" sx={{ width: "100%", height: "100%", pl: 1, pr: 1 }}>
@@ -78,7 +69,6 @@ export default function BottomBar() {
           <BottomBarButton highlight={scale > 1} icon={CalendarViewMonth} label={"Grid"} onClick={toggleZoom} />
         )}
         <BottomBarButton icon={Speed} label={"Timeline"} onClick={() => setLive(false)} />
-        <BottomBarButton icon={Speed} label={"Test"} onClick={() => setItems()} />
         <Box flex={1} />
         <PromptControls />
         {targetClock < maxClock.clock && (
