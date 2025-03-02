@@ -130,17 +130,25 @@ export class ClientTime extends ConnectionObject {
       this.currentClock.value = result.clockDetails;
 
       // now actually load the new state
-      const chits = Object.entries(result.chits)
+      const changedIds = new Set(
+        Object.entries(result.chits)
+          .filter(([id, value]) => this.lastSerializedState[id] !== value)
+          .map(([id]) => id),
+      );
+
+      const chits: Chit[] = Object.entries(result.chits)
         .filter(([id, value]) => this.lastSerializedState[id] !== value)
         .map(([id]) => this.chitLookup[id]);
 
       chits.forEach((chit) => chit.beginDeserializing());
 
-      Object.entries(result.chits).forEach(([id, value]) => {
-        const chit = this.chitLookup[id];
-        chit.deserialize(value, this.findChit);
-        this.lastSerializedState[id] = value;
-      });
+      Object.entries(result.chits)
+        .filter(([id]) => changedIds.has(id))
+        .forEach(([id, value]) => {
+          const chit = this.chitLookup[id];
+          chit.deserialize(value, this.findChit);
+          this.lastSerializedState[id] = value;
+        });
 
       chits.forEach((chit) => chit.doneDeserializing());
 

@@ -15,6 +15,7 @@ import PanelSpark from "./PanelSpark";
 import { useChit } from "../hooks/useChits";
 import { ZINDEX_PANEL_CUTOUTS, ZINDEX_SPARKS } from "../utilities/zIndex";
 import { usePanelScale } from "../hooks/usePanelScale";
+import { isA } from "vitest-mock-extended";
 
 const Cutout = `data:image/svg+xml;base64,${base64.encode(
   `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -104,6 +105,8 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   const [maxClock] = useEventChannelState(timeController.maxClock);
   const [live] = useEventChannelState(timeState.live);
 
+  const [timeMultiplier] = useEventChannelState(timeController.clientTimeState.animationSpeedMultiplier);
+
   const [isSliding, setIsSliding] = useState(false);
   const [isLoading] = useEventChannelState(timeState.isLoading);
   const [selectedIndex, setSelectedIndex] = useDebounce(0);
@@ -138,22 +141,22 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
     }
   }
 
-  const key = `panel--${chits.map((c) => c.id).join("-")}`;
   useEffect(() => {
     setIsSliding(true);
-    timeState.setAnimationState(key, true);
-    const to = setTimeout(() => {
-      setIsSliding(false);
-    }, ANIMATION_DURATION * 1000);
+    const to = setTimeout(
+      () => {
+        setIsSliding(false);
+      },
+      ANIMATION_DURATION * 1000 * timeMultiplier,
+    );
     return () => clearTimeout(to);
-  }, [selectedIndex, key, timeState]);
+  }, [selectedIndex, timeState, timeMultiplier]);
 
+  const key = `panel--${chits.map((c) => c.id).join("-")}`;
+  const isAnimating = Math.max(leavingIndex, enteringIndex, pendingIndex) >= 0;
   useEffect(() => {
-    if (!isSliding) {
-      const off = setTimeout(() => timeState.setAnimationState(key, false), 10);
-      return () => clearTimeout(off);
-    }
-  }, [key, timeState, isSliding]);
+    timeState.setAnimationState(key, isAnimating);
+  }, [key, isAnimating, timeState]);
 
   const panCallback = useCallback(
     (direction: "left" | "right") => {
@@ -189,7 +192,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
             sx={{
               width: "100%",
               height: "100%",
-              transition: isLoading ? null : `transform ease-in-out ${ANIMATION_DURATION}s`,
+              transition: isLoading ? null : `transform ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
               position: "absolute",
               left: 0,
               top: 0,

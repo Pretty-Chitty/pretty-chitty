@@ -650,7 +650,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         } else if (clockStep instanceof SubTurnClockStep) {
           const id = clockStep.turn.id;
           requiredSubTurnIds.delete(id);
-          const turnState = currentState?.subTurns && currentState?.subTurns[id];
+
+          let turnState = currentState?.subTurns && currentState?.subTurns[id];
+          if (!turnState) {
+            turnState = { clock: clockStep.endClock - clockStep.startClock, pass: clockStep.turn.pass };
+          }
+
           const serialized = clockStep.turn.serialize(clock - clockStep.startClock, turnState);
 
           if (serialized.clockDetails.clock !== 0) {
