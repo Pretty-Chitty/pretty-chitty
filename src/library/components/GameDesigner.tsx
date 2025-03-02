@@ -5,6 +5,7 @@ import CanvasLibraryViewer from "./CanvasLibraryViewer";
 import { Game } from "../game/Game";
 import ChitLibraryViewer from "./ChitLibraryViewer";
 import Playground from "./Playground";
+import GalleryPlayground from "./GalleryPlayground";
 
 export function GameDesigner({ game }: { game: Game<any, any> }) {
   const [tabIndex, setTabIndex] = useLocalStorageState("selectedMainTab", {
@@ -26,11 +27,13 @@ export function GameDesigner({ game }: { game: Game<any, any> }) {
           <Tab label="Canvas" />
           <Tab label="Chits" />
           <Tab label="Playground" />
+          <Tab label="Gallery" />
         </Tabs>
       </AppBar>
       {tabIndex === 0 && <CanvasLibraryViewer library={game.canvasLibrary} />}
       {tabIndex === 1 && <ChitLibraryViewer library={game.chitLibrary} />}
       {tabIndex === 2 && <Playground game={game} />}
+      {tabIndex === 3 && <GalleryPlayground game={game} />}
     </Stack>
   );
 }

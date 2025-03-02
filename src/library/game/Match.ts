@@ -40,7 +40,14 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         this.turn.value = undefined;
         this.start();
       } else if (this.turn.value) {
-        this.turn.value.handleNewSavedState(this.state);
+        this.turn.value
+          .processNewSavedState(this.state)
+          .then(() => {
+            console.log("Processed new saved state");
+          })
+          .catch((e) => {
+            console.error("Error processing new saved state", e);
+          });
       }
 
       // TODO: if the match is over and are resetting.... what do we do?

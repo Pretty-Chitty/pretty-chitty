@@ -13,6 +13,7 @@ export type BottomBarButtonIcon = OverridableComponent<SvgIconTypeMap<{}, "svg">
 export default function BottomBarButton({
   icon,
   label,
+  highlight = false,
   disabled = false,
   removeLabel = false,
   onClick,
@@ -23,6 +24,7 @@ export default function BottomBarButton({
   label?: string;
   disabled?: boolean;
   removeLabel?: boolean;
+  highlight?: boolean;
   onClick?: () => void;
   onLongClick?: () => void;
   whileHolding?: (steps: number) => void;
@@ -109,6 +111,8 @@ export default function BottomBarButton({
   }
   const IconType = icon;
 
+  const iconColor = highlight ? theme.barTextHighlightColor : color;
+
   return (
     <Box
       ref={ref}
@@ -149,7 +153,7 @@ export default function BottomBarButton({
       )}
       <Stack sx={{ position: "relative", zIndex: ZINDEX_BOTTOM_BAR_BUTTON_LABEL, height: "100%" }}>
         <Box flex={1} />
-        <Box sx={{ fontSize: "30px", lineHeight: "30px", height: "30px", textAlign: "center" }}>
+        <Box sx={{ color: iconColor, fontSize: "30px", lineHeight: "30px", height: "30px", textAlign: "center" }}>
           <IconType fontSize="inherit" />
         </Box>
         {!removeLabel && (

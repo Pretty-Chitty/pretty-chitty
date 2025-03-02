@@ -1,7 +1,7 @@
 export { Chit } from "./game/Chit";
 export { DropdownChit } from "./game/DropdownChit";
 export type { Game } from "./game/Game";
-export { GameButton } from "./game/GameButton";
+export { GameButton, DynamicGameButton } from "./game/GameButton";
 export type { ButtonCallback } from "./game/GameButton";
 export { GameDeck } from "./game/GameDeck";
 export { GameTheme } from "./game/GameTheme";

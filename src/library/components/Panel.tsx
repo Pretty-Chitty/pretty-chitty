@@ -7,13 +7,15 @@ import Viewer from "./Viewer";
 import { PanelLayoutResult, PanelChit } from "../game/PanelChit";
 import { useGameTheme } from "../hooks/useGameTheme";
 
-import { useTimeState } from "../hooks/useTimeController";
+import { useTimeController, useTimeState } from "../hooks/useTimeController";
 import { usePanelStates } from "../hooks/usePanelStates";
 import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import PanelSpark from "./PanelSpark";
 import { useChit } from "../hooks/useChits";
 import { ZINDEX_PANEL_CUTOUTS, ZINDEX_SPARKS } from "../utilities/zIndex";
+import { usePanelScale } from "../hooks/usePanelScale";
+import { isA } from "vitest-mock-extended";
 
 const Cutout = `data:image/svg+xml;base64,${base64.encode(
   `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -95,12 +97,18 @@ function SinglePanel({ chit, x, y, w, h }: { chit: Chit; x: number; y: number; w
 
 function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number; w: number; h: number }) {
   const theme = useGameTheme();
-  // const clientPrompt = useClientPrompts();
-  // const [prompt] = useEventChannelState(clientPrompt.currentPrompt);
   const timeState = useTimeState();
+
+  const timeController = useTimeController();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
+  const [maxClock] = useEventChannelState(timeController.maxClock);
+  const [live] = useEventChannelState(timeState.live);
+
+  const [timeMultiplier] = useEventChannelState(timeController.clientTimeState.animationSpeedMultiplier);
+
   const [isSliding, setIsSliding] = useState(false);
-  const [targetAnimationSpeed] = useEventChannelState(timeState.targetAnimationSpeedMultiplier);
-  const [actualAnimationSpeed] = useEventChannelState(timeState.animationSpeedMultiplier);
+  const [isLoading] = useEventChannelState(timeState.isLoading);
   const [selectedIndex, setSelectedIndex] = useDebounce(0);
   const rootRenders = chits.map((c) =>
     c.renderInstance instanceof RootChitRenderInstance ? c.renderInstance : undefined,
@@ -110,47 +118,45 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   const CUTOUT_HEIGHT = 14;
   const ANIMATION_DURATION = 0.25;
 
-  // if animation speeds aren't in sync, we are probably trying to fast forward (at the beginning of loading)
-  const isAnimationSpeedLinedUp = targetAnimationSpeed === actualAnimationSpeed;
-
-  // useEffect(() => {
-  //   rootRenders.forEach((r) => r?.resetMarks());
-  // }, [prompt, rootRenders]);
-
-  // panel selection magic...
-  // if (prompt) {
-  //   // show the correct stuff for prompts?
-  // } else
-  // if (panelStates[selectedIndex]?.state === "inactive") {
-  // check to see if there is a panel that is "leaving"
   const leavingIndex = panelStates.findIndex((p) => p.state === "leaving");
   const enteringIndex = panelStates.findIndex((p) => p.state === "entering");
   const pendingIndex = panelStates.findIndex((p) => p.state === "pending");
-  if (leavingIndex >= 0) {
-    // console.log("leaving", leavingIndex);
-    setSelectedIndex(leavingIndex);
-  } else if (enteringIndex >= 0) {
-    // console.log("enterin", enteringIndex);
-    setSelectedIndex(enteringIndex);
-  } else if (pendingIndex >= 0) {
-    // console.log("pending", pendingIndex);
-    setSelectedIndex(pendingIndex);
-  }
-  // }
 
-  const key = `panel--${chits.map((c) => c.id).join("-")}`;
+  if (!isLoading) {
+    if (leavingIndex >= 0) {
+      if (panelStates[selectedIndex].state !== "leaving") {
+        // if our current panel is entering... obviously stay there
+        setSelectedIndex(leavingIndex);
+      }
+    } else if (enteringIndex >= 0) {
+      if (panelStates[selectedIndex].state !== "entering") {
+        // if our current panel is entering... obviously stay there
+        setSelectedIndex(enteringIndex);
+      }
+    } else if (pendingIndex >= 0) {
+      if (panelStates[selectedIndex].state !== "pending") {
+        // if our current panel is pending... obviously stay there
+        setSelectedIndex(pendingIndex);
+      }
+    }
+  }
+
   useEffect(() => {
     setIsSliding(true);
-    timeState.setAnimationState(key, true);
     const to = setTimeout(
       () => {
-        timeState.setAnimationState(key, false);
         setIsSliding(false);
       },
-      ANIMATION_DURATION * 1000 + 10,
+      ANIMATION_DURATION * 1000 * timeMultiplier,
     );
     return () => clearTimeout(to);
-  }, [selectedIndex, key, timeState]);
+  }, [selectedIndex, timeState, timeMultiplier]);
+
+  const key = `panel--${chits.map((c) => c.id).join("-")}`;
+  const isAnimating = Math.max(leavingIndex, enteringIndex, pendingIndex) >= 0;
+  useEffect(() => {
+    timeState.setAnimationState(key, isAnimating);
+  }, [key, isAnimating, timeState]);
 
   const panCallback = useCallback(
     (direction: "left" | "right") => {
@@ -159,8 +165,12 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
       } else {
         setSelectedIndex((chits.length + selectedIndex + 1) % chits.length);
       }
+
+      if (live) {
+        setTargetClock(maxClock.clock);
+      }
     },
-    [selectedIndex, chits.length, setSelectedIndex],
+    [selectedIndex, chits.length, setSelectedIndex, maxClock, setTargetClock, live],
   );
 
   return (
@@ -182,7 +192,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
             sx={{
               width: "100%",
               height: "100%",
-              transition: `transform ease-in-out ${ANIMATION_DURATION}s`,
+              transition: isLoading ? null : `transform ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
               position: "absolute",
               left: 0,
               top: 0,
@@ -191,7 +201,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
             }}
           >
             <ViewerWrapper
-              paused={isSliding ? true : isAnimationSpeedLinedUp ? selectedIndex !== index : false}
+              paused={isLoading ? false : isSliding ? true : selectedIndex !== index}
               chit={chit}
               w={w - theme.spacing}
               h={h - CUTOUT_HEIGHT - theme.spacing}
@@ -259,6 +269,7 @@ export default function Panel({
   h: number;
 }) {
   const [layout, setLayout] = useState<PanelLayoutResult[]>([]);
+  const scale = usePanelScale();
 
   useEffect(() => {
     if (!chit) {
@@ -266,12 +277,12 @@ export default function Panel({
     }
 
     if (chit instanceof PanelChit) {
-      const newLayout = chit.getFlatLayout(w, h);
+      const newLayout = chit.getFlatLayout(w, h, scale);
       setLayout(newLayout);
     } else {
       setLayout([{ chit, x: 0, y: 0, w, h }]);
     }
-  }, [chit, w, h, setLayout]);
+  }, [chit, w, h, setLayout, scale]);
 
   if (layout.length > 1) {
     return (

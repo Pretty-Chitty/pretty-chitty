@@ -4,6 +4,7 @@ import base64 from "base-64";
 export interface IPlayerInfo {
   id: string;
   name: string;
+  imageUrl?: string;
 }
 
 export class PlayerInfo {
@@ -18,9 +19,10 @@ export class PlayerInfo {
     } else {
       this.id = idOrPlayerInfo.id;
       this.name = idOrPlayerInfo.name;
+      this.imageUrl = idOrPlayerInfo.imageUrl;
     }
 
-    if (window?.URL) {
+    if (!this.imageUrl && window?.URL) {
       const data = multiavatar(`${this.name} ${this.id}`, true).replace("<svg", '<svg width="231" height="231"');
       this.imageUrl = `data:image/svg+xml;base64,${base64.encode(data)}`;
     }

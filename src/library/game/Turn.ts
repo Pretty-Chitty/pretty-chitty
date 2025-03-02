@@ -4,7 +4,7 @@ import { Match } from "./Match";
 import { PickPrompt, Prompt, SelectPrompt } from "./Prompt";
 import { PromptResponse, RngResponse, TurnState } from "./TurnState";
 import { ClockDetails } from "./ClockDetails";
-import { Pick } from "./Pick";
+import { ButtonPick, Pick } from "./Pick";
 import { Confirm, GameButton } from "./GameButton";
 import { PlayerChit } from "./PlayerChit";
 import { RootChit } from "./RootChit";
@@ -14,7 +14,8 @@ type ChitSerializationResponse = {
   clockDetails: ClockDetails;
 };
 
-export type Picks = (undefined | Pick | Pick[] | GameButton | GameButton[])[];
+type ValidPick = undefined | false | Pick | Pick[] | ButtonPick | ButtonPick[] | GameButton | GameButton[];
+export type Picks = ValidPick | ValidPick[];
 
 export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private pass = 0;
@@ -29,6 +30,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
   /** @internal */
   public activeSubTurns: Turn<any, P, R>[] = [];
+
+  /** @internal */
+  public destroyed = false;
+
+  /** @internal */
+  public paused = Promise.resolve();
 
   private newChitCounter = 0;
   private chitLookup: ChitLookup = {};
@@ -231,11 +238,17 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     if (this.unresolvedPrompt) {
       throw new Error("Still awaiting a prompt result");
     }
+    if (this.destroyed) {
+      throw new DestroyError(); // do not create more turns if we are destroyed!
+    }
+
+    await this.checkPause();
 
     this.flush();
 
     if (player.playerId && player.playerId !== this.player?.playerId) {
       await this.possiblyConfirm("Confirm switching active player");
+      this.flush();
     }
 
     if (player) {
@@ -261,7 +274,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     //make sure flow goes to next tick
     await new Promise((resolve) => nextTick(() => resolve(true)));
 
+    await this.checkPause();
+
     const result = await turn.execute();
+
+    await this.checkPause();
+
     this.activeSubTurns = this.activeSubTurns.filter((t) => t !== turn);
 
     Chit.walk(chits, (chit) => {
@@ -318,12 +336,15 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       message = undefined;
       help = undefined;
     }
-    if (help && typeof help !== "string") {
+    if (help !== undefined && typeof help !== "string") {
       picks = help;
       help = undefined;
     }
     if (picks === undefined) {
       throw new Error("No PIcks");
+    }
+    if (!Array.isArray(picks)) {
+      picks = [picks];
     }
 
     const prompt = new PickPrompt();
@@ -384,26 +405,91 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   }
 
   /** @internal */
-  public handleNewSavedState(state: TurnState): boolean {
-    const oldState = this.state;
+  private nextSavedStateToProcess?: TurnState;
+
+  /** @internal */
+  private isProcessingSavedState = false;
+
+  /** @internal */
+  /** This is only useful at the 'root' turn level, really. */
+  public async processNewSavedState(state: TurnState) {
+    if (this.isProcessingSavedState) {
+      this.nextSavedStateToProcess = state;
+      return;
+    }
+
+    try {
+      this.isProcessingSavedState = true;
+      this.pause();
+
+      // defer to next tick on starting
+      await new Promise<void>((resolve) => nextTick(() => resolve()));
+
+      const instructions = this.handleNewSavedState(state);
+
+      this.propagateNewState(state);
+
+      for (const instruction of instructions) {
+        if (instruction.type === "reset") {
+          this.state = state;
+          instruction.turn.rerun(instruction.turn);
+        } else if (instruction.type === "prompt") {
+          await new Promise<void>((resolve, reject) =>
+            nextTick(() => {
+              if (instruction.turn.unresolvedPrompt !== instruction.prompt) {
+                reject("waiting on incorrect prompt");
+              }
+              instruction.prompt.resolve(instruction.response);
+              resolve();
+            }),
+          );
+        }
+      }
+
+      // always defer to next tick again when resuming
+      await new Promise<void>((resolve) => nextTick(() => resolve()));
+    } finally {
+      this.unpause();
+      this.isProcessingSavedState = false;
+
+      if (this.nextSavedStateToProcess) {
+        const newState = this.nextSavedStateToProcess;
+        this.nextSavedStateToProcess = undefined;
+        this.processNewSavedState(newState);
+      }
+    }
+  }
+
+  /** @internal */
+  public propagateNewState(state: TurnState) {
     this.state = state;
+
+    this.activeSubTurns.forEach((t) => {
+      const newState = state.decisions.find((decision) => decision.type === "turn" && decision.id === t.id);
+      if (newState) {
+        t.propagateNewState(newState as TurnState);
+      }
+    });
+  }
+
+  /** @internal */
+  public handleNewSavedState(state: TurnState): SavedStateProcessingInstructions[] {
+    const oldState = this.state;
 
     // if we have decisions that the state we are loading does NOT have yet
     // then we have to reset and rerun this turn
     if (oldState.decisions.length > state.decisions.length) {
-      this.rerun(this);
-      return true;
+      return [{ turn: this, type: "reset" }];
     }
 
     // confirm all of the choices are the same
-    let hasToReset = false;
+    const result: SavedStateProcessingInstructions[] = [];
     for (let i = 0; i < oldState.decisions.length; i++) {
       const oldDecision = oldState.decisions[i];
       const newDecision = state.decisions[i];
 
       if (oldDecision.type !== newDecision.type) {
-        hasToReset = true;
-        break;
+        return [{ turn: this, type: "reset" }];
       }
 
       //
@@ -413,8 +499,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
       if (oldDecision.type === "rng") {
         if ((oldDecision as RngResponse).value !== (newDecision as RngResponse).value) {
-          hasToReset = true;
-          break;
+          return [{ turn: this, type: "reset" }];
         }
       } else if (oldDecision.type === "prompt") {
         const oldResponse = oldDecision as PromptResponse;
@@ -427,15 +512,18 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           oldResponse.response === undefined &&
           newResponse.response !== undefined
         ) {
-          nextTick(() => {
-            if (!this.unresolvedPrompt) {
-              throw new Error("Should have a prompt waiting...");
-            }
-            this.unresolvedPrompt.resolve(newResponse.response);
+          if (!this.unresolvedPrompt) {
+            return [{ turn: this, type: "reset" }]; // something has gone wrong if we have a response and are not waiting on a response
+          }
+
+          result.push({
+            type: "prompt",
+            turn: this,
+            prompt: this.unresolvedPrompt,
+            response: newResponse.response,
           });
         } else if (JSON.stringify(oldResponse.response) !== JSON.stringify(newResponse.response)) {
-          hasToReset = true;
-          break;
+          return [{ turn: this, type: "reset" }];
         }
       } else if (oldDecision.type === "turn") {
         const oldTurnState = oldDecision as TurnState;
@@ -444,24 +532,20 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         // if this turn isn't finished, then let that turn try to resolve the new state
         const foundTurn = this.activeSubTurns.find((t) => t.id === newTurnState.id);
         if (foundTurn) {
-          const subTurnHasToReset = foundTurn.handleNewSavedState(newTurnState);
+          const subTurnChanges = foundTurn.handleNewSavedState(newTurnState);
+          subTurnChanges.forEach((r) => result.push(r));
 
           // if a turn that is not the last turn has been modified, then there is no real choice but to do a full and complete reset
-          if (subTurnHasToReset && i < oldState.decisions.length - 1) {
-            hasToReset = true;
-            break;
+          // since we may have logic that has operated on the state of the turn that is now invalid
+          if (subTurnChanges.length === 1 && subTurnChanges[0].type === "reset" && i < oldState.decisions.length - 1) {
+            return [{ turn: this, type: "reset" }];
           }
-        } else if (JSON.stringify(oldTurnState) !== JSON.stringify(newTurnState)) {
-          hasToReset = true;
-          break;
+        } else if (JSON.stringify(oldTurnState.decisions) !== JSON.stringify(newTurnState.decisions)) {
+          return [{ turn: this, type: "reset" }];
         }
       }
     }
-    if (hasToReset) {
-      this.rerun(this);
-      return true;
-    }
-    return false;
+    return result;
   }
 
   /** @internal */
@@ -566,7 +650,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         } else if (clockStep instanceof SubTurnClockStep) {
           const id = clockStep.turn.id;
           requiredSubTurnIds.delete(id);
-          const turnState = currentState?.subTurns && currentState?.subTurns[id];
+
+          let turnState = currentState?.subTurns && currentState?.subTurns[id];
+          if (!turnState) {
+            turnState = { clock: clockStep.endClock - clockStep.startClock, pass: clockStep.turn.pass };
+          }
+
           const serialized = clockStep.turn.serialize(clock - clockStep.startClock, turnState);
 
           if (serialized.clockDetails.clock !== 0) {
@@ -638,7 +727,10 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       throw new Error("Must have player specified");
     }
 
+    await this.checkPause();
     const resolution = this.state.getOrCreatePromptResponse(this.decisionIndex);
+    await this.checkPause(); // state could have gotten funky here?  if we have a resolution already? maybe not so bad?
+
     if (resolution.response !== undefined) {
       await new Promise((resolve) => nextTick(() => resolve(true))); // defer to next tick to make sure replay works identically
       prompt.resolve(resolution.response);
@@ -693,6 +785,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
+        await this.checkPause();
+
         // actually execute this fn
         const result = await this.fn(this);
 
@@ -711,6 +805,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           throw error;
         }
         if (error instanceof StepBackError) {
+          // bubble it up to parent if we can
+          if (this.decisionIndex === 0 && this.parent?.player === this.player) {
+            throw error;
+          }
+
           this.state.stepBack(); // once to clear the current prompt
           this.state.stepBack(); // and again to clear what was before
           this.restartExecution();
@@ -727,7 +826,45 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     }
   }
 
+  /** @internal */
+  _paused?: () => void;
+
+  /** @internal */
+  pause() {
+    if (this._paused) {
+      return;
+    }
+
+    this.paused = new Promise((resolve) => {
+      this._paused = resolve;
+    });
+    this.activeSubTurns.forEach((turn) => turn.pause());
+  }
+
+  /** @internal */
+  async unpause() {
+    if (this._paused) {
+      this._paused();
+      this._paused = undefined;
+    }
+    this.activeSubTurns.forEach((turn) => turn.unpause());
+  }
+
+  /** @internal */
+  async checkPause() {
+    await this.paused;
+    if (this.destroyed) {
+      throw new DestroyError();
+    }
+  }
+
+  /** @internal */
   destroy() {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
     this.activeSubTurns.forEach((turn) => turn.destroy());
     Chit.walk(this.chitsToLock, (c) => {
       c.unlock(this);
@@ -855,6 +992,7 @@ class FlushClockStep extends ClockStep {
 
 export class StepBackError extends Error {}
 export class RollBackError extends Error {}
+export class DestroyError extends Error {}
 export class RerunError extends Error {
   constructor(public turn: Turn<any, any, any>) {
     super();
@@ -865,3 +1003,15 @@ export class MismatchError extends Error {
     super("Mismatch");
   }
 }
+
+type SavedStateProcessingInstructions =
+  | {
+      type: "reset";
+      turn: Turn<any, any, any>;
+    }
+  | {
+      type: "prompt";
+      turn: Turn<any, any, any>;
+      prompt: Prompt;
+      response: any;
+    };

@@ -8,6 +8,7 @@ import { useEventChannelState } from "../hooks/useEventChannelState";
 import Hammer from "@egjs/hammerjs";
 import { addWheelListener, removeWheelListener } from "wheel";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
+import { useGalleryState } from "../hooks/useGalleryState";
 
 let ID_COUNTER = 1;
 
@@ -29,16 +30,27 @@ export default function Viewer({
   const [id] = useState(`Viewer${ID_COUNTER++}`);
   const timeState = useTimeState();
   const [animationSpeedMultiplier] = useEventChannelState(timeState.animationSpeedMultiplier);
+  const [isLoading] = useEventChannelState(timeState.isLoading);
   const refContainer = useRef(null);
   const renderer = useWebGlRenderer(w, h);
   const [scene] = useState<Scene>(new Scene());
+  const galleryState = useGalleryState();
   const [chitRenderInstance, setChitRenderInstance] = useState<RootChitRenderInstance | null>(null);
 
   if (chitRenderInstance) {
-    if (chitRenderInstance.animationSpeedMultiplier !== animationSpeedMultiplier) {
+    if (isLoading) {
+      chitRenderInstance.animationSpeedMultiplier = 0.0001;
+    } else if (chitRenderInstance.animationSpeedMultiplier !== animationSpeedMultiplier) {
       chitRenderInstance.animationSpeedMultiplier = animationSpeedMultiplier;
+      chitRenderInstance.resetMarks();
     }
   }
+
+  useEffect(() => {
+    if (!isLoading && chitRenderInstance) {
+      chitRenderInstance.resetMarks();
+    }
+  }, [isLoading, chitRenderInstance]);
 
   // handle sizing and aspect ratio on camera
   useEffect(() => {
@@ -56,10 +68,10 @@ export default function Viewer({
 
       if (chit.renderInstance) {
         chit.renderInstance.invalidateRootRenderInstance();
+        chit.renderInstance.destroy();
       }
 
       const newInstance = new R(chit);
-      newInstance.animationSpeedMultiplier = animationSpeedMultiplier;
       newInstance.convertCameraSpaceToScreenSpace = (x: number, y: number) => {
         const el = refContainer.current as unknown as HTMLElement;
         if (!el) {
@@ -120,12 +132,11 @@ export default function Viewer({
             renderer.render(scene, chitRenderInstance.camera);
             context.drawImage(renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
             chitRenderInstance.dirty = false;
+            timeState.setAnimationState(id, true);
+          } else {
+            timeState.setAnimationState(id, false);
           }
-          const didRender = renderNextFrame;
           renderNextFrame = chitRenderInstance?.update();
-          if (didRender !== renderNextFrame) {
-            timeState.setAnimationState(id, renderNextFrame === true);
-          }
         } catch (e) {
           console.error(e);
         }
@@ -168,7 +179,7 @@ export default function Viewer({
       hammer.add(new Hammer.Tap({ event: "doubletap", taps: 2, interval: 300, threshold: 5, posThreshold: 50 }));
       hammer.add(new Hammer.Tap({ event: "singletap", time: 400 }));
       hammer.add(new Hammer.Pinch({ event: "pinch", threshold: 0.03 }));
-      hammer.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL }));
+      hammer.add(new Hammer.Pan({ event: "pan", direction: Hammer.DIRECTION_ALL }));
 
       hammer.add(new Hammer.Press({ event: "longtap", time: 600 }));
 
@@ -181,7 +192,8 @@ export default function Viewer({
       hammer.on("longtap", (ev) => console.log("longtap", ev));
       hammer.on("singletap", (ev) => {
         const pos = fixPosition(ev);
-        chitRenderInstance.handleClick(pos.x, pos.y);
+        const isMouse = ev.pointerType === "mouse";
+        chitRenderInstance.handleClick(pos.x, pos.y, galleryState, isMouse ? 3 : 6, isMouse ? 1.5 : 3);
       });
       hammer.on("doubletap", (ev) => {
         const pos = fixPosition(ev);
@@ -194,8 +206,14 @@ export default function Viewer({
 
       let lastDeltaX = 0,
         lastDeltaY = 0,
-        cancelled = false;
+        cancelled = false,
+        pinchEndedRecently = false;
       hammer.on("panstart", () => {
+        // Prevent a quick pan after pinch
+        if (pinchEndedRecently) {
+          cancelled = true;
+          return;
+        }
         lastDeltaX = 0;
         lastDeltaY = 0;
         cancelled = false;
@@ -231,6 +249,11 @@ export default function Viewer({
         pinchScale = chitRenderInstance.cameraZoom;
         cancelled = false;
       });
+      hammer.on("pinchend", () => {
+        cancelled = true;
+        pinchEndedRecently = true;
+        setTimeout(() => (pinchEndedRecently = false), 200);
+      });
       hammer.on("pinch", (ev) => {
         if (cancelled) {
           return;
@@ -245,8 +268,8 @@ export default function Viewer({
 
       const wheelListener = (ev: any) => {
         const dy = ev.wheelDeltaY as number;
-        chitRenderInstance.handleZoom(ev.layerX as number, ev.layerY as number, dy / 120, true);
-        console.log(dy);
+        chitRenderInstance.handleZoom(ev.layerX as number, ev.layerY as number, dy / 120, false);
+        ev.preventDefault();
       };
 
       addWheelListener(el, wheelListener);
@@ -256,7 +279,7 @@ export default function Viewer({
         removeWheelListener(el, wheelListener);
       };
     }
-  }, [refContainer, chitRenderInstance, panCallback]);
+  }, [refContainer, chitRenderInstance, galleryState, panCallback]);
 
   return (
     <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }}>

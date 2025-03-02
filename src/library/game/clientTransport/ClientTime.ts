@@ -32,11 +32,11 @@ export class ClientTime extends ConnectionObject {
       }),
     );
 
-    this.clientTimeState.targetAnimationSpeedMultiplier.value =
-      parseFloat(localStorage["targetAnimationSpeedMultiplier"] ?? "1") || 1;
+    this.clientTimeState.animationSpeedMultiplier.value =
+      parseFloat(localStorage["animationSpeedMultiplier"] ?? "1") || 1;
     this.register(
-      this.clientTimeState.targetAnimationSpeedMultiplier.on((targetSpeed) => {
-        localStorage["targetAnimationSpeedMultiplier"] = targetSpeed;
+      this.clientTimeState.animationSpeedMultiplier.on((targetSpeed) => {
+        localStorage["animationSpeedMultiplier"] = targetSpeed;
       }),
     );
   }
@@ -45,6 +45,7 @@ export class ClientTime extends ConnectionObject {
   private chitLookup: { [id: string]: Chit } = {};
   public maxClock = new EventChannel<ClockDetails>({ clock: 0, pass: -1 });
   public rootChit = new EventChannel<Chit | undefined>(undefined);
+  private startTime = 0;
 
   public readonly findChit: (id: string) => Chit = (id: string) => {
     const result = this.chitLookup[id];
@@ -62,6 +63,8 @@ export class ClientTime extends ConnectionObject {
 
   public async setStartTime(newTime: number) {
     if (this.clientTimeState.targetClock.value <= newTime) {
+      this.clientTimeState.isLoading.value = true;
+      this.startTime = newTime;
       this.clientTimeState.targetClock.value = newTime;
     }
   }
@@ -99,6 +102,9 @@ export class ClientTime extends ConnectionObject {
       this.clientTimeState.targetClock.value = 1;
       return;
     }
+    if (newTargetClock > this.startTime) {
+      this.clientTimeState.isLoading.value = false;
+    }
 
     const result = await this.serverTime.serializeDelta(currentClock, this.clientTimeState.targetClock.value);
 
@@ -124,17 +130,25 @@ export class ClientTime extends ConnectionObject {
       this.currentClock.value = result.clockDetails;
 
       // now actually load the new state
-      const chits = Object.entries(result.chits)
+      const changedIds = new Set(
+        Object.entries(result.chits)
+          .filter(([id, value]) => this.lastSerializedState[id] !== value)
+          .map(([id]) => id),
+      );
+
+      const chits: Chit[] = Object.entries(result.chits)
         .filter(([id, value]) => this.lastSerializedState[id] !== value)
         .map(([id]) => this.chitLookup[id]);
 
       chits.forEach((chit) => chit.beginDeserializing());
 
-      Object.entries(result.chits).forEach(([id, value]) => {
-        const chit = this.chitLookup[id];
-        chit.deserialize(value, this.findChit);
-        this.lastSerializedState[id] = value;
-      });
+      Object.entries(result.chits)
+        .filter(([id]) => changedIds.has(id))
+        .forEach(([id, value]) => {
+          const chit = this.chitLookup[id];
+          chit.deserialize(value, this.findChit);
+          this.lastSerializedState[id] = value;
+        });
 
       chits.forEach((chit) => chit.doneDeserializing());
 
@@ -144,30 +158,30 @@ export class ClientTime extends ConnectionObject {
       // in that case, we need to make sure that the clock moves forward
       const animationKey = `minimumAnimationDuration${Date.now()}`;
       this.clientTimeState.setAnimationState(animationKey, true);
-      setTimeout(() => this.clientTimeState.setAnimationState(animationKey, false), 50);
+      setTimeout(() => this.clientTimeState.setAnimationState(animationKey, false), 100);
 
-      if (
-        this.currentClock.value.clock >= 2 &&
-        this.clientTimeState.animationSpeedMultiplier.value !==
-          this.clientTimeState.targetAnimationSpeedMultiplier.value
-      ) {
-        const checkForAnimationEnd = () => {
-          if (!this.clientTimeState.isWaitingOnAnimations.value) {
-            this.clientTimeState.animationSpeedMultiplier.value =
-              this.clientTimeState.targetAnimationSpeedMultiplier.value;
-          } else if (this.currentClock.value.clock >= this.clientTimeState.targetClock.value) {
-            setTimeout(
-              () =>
-                (this.clientTimeState.animationSpeedMultiplier.value =
-                  this.clientTimeState.targetAnimationSpeedMultiplier.value),
-              100,
-            );
-          } else {
-            setTimeout(checkForAnimationEnd, 100);
-          }
-        };
-        checkForAnimationEnd();
-      }
+      // if (
+      //   this.currentClock.value.clock >= 2 &&
+      //   this.clientTimeState.animationSpeedMultiplier.value !==
+      //     this.clientTimeState.animationSpeedMultiplier.value
+      // ) {
+      //   const checkForAnimationEnd = () => {
+      //     if (!this.clientTimeState.isWaitingOnAnimations.value) {
+      //       this.clientTimeState.animationSpeedMultiplier.value =
+      //         this.clientTimeState.animationSpeedMultiplier.value;
+      //     } else if (this.currentClock.value.clock >= this.clientTimeState.targetClock.value) {
+      //       setTimeout(
+      //         () =>
+      //           (this.clientTimeState.animationSpeedMultiplier.value =
+      //             this.clientTimeState.animationSpeedMultiplier.value),
+      //         100,
+      //       );
+      //     } else {
+      //       setTimeout(checkForAnimationEnd, 100);
+      //     }
+      //   };
+      //   checkForAnimationEnd();
+      // }
     }
   }
 }

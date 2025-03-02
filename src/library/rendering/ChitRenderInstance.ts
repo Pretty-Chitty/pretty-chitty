@@ -22,6 +22,7 @@ import { RootChitRenderInstance } from "./RootChitRenderInstance";
 import { OutlineCanvas } from "../utilities/OutlineCanvas";
 import { outlineGeometry } from "../utilities/OutlineGeometry";
 import { fixBbox } from "../utilities/BboxUtils";
+import { ChitGalleryItemInstance } from "./ChitGalleryItemInstance";
 
 const LINE_COLOR = new MeshBasicMaterial({ color: 0xff0000, wireframe: true, wireframeLinewidth: 2 });
 const CLICK_LINE_COLOR = new MeshBasicMaterial({ color: 0xffff00, wireframe: true, wireframeLinewidth: 2 });
@@ -50,7 +51,7 @@ export class ChitRenderInstance {
   protected renderSpec: ChitRenderSpec | null = null;
 
   // threejs info
-  protected group = new Group(); // group storing the visible meshes.  Will tween
+  public group = new Group(); // group storing the visible meshes.  Will tween
   protected anchorPoints = new Map<OwnerOriginPosition | string, Group>();
 
   protected sizeX = 0;
@@ -74,7 +75,7 @@ export class ChitRenderInstance {
   protected childrenRenderInstances: ChitRenderInstance[] = [];
 
   // tween info
-  protected rotationTween = new Tween<Euler>(new Euler());
+  protected rotationTween = new Tween<Point3d>({ x: 0, y: 0, z: 0 });
   protected offsetTween = new Tween<Point2d>({ x: 0, y: 0 });
   protected zOffsetTween = new Tween<PointZ>({ z: 0 });
 
@@ -269,6 +270,19 @@ export class ChitRenderInstance {
     }
   }
 
+  private _galleryItem?: ChitGalleryItemInstance;
+  public createGalleryItem() {
+    if (!this._galleryItem) {
+      this._galleryItem = new ChitGalleryItemInstance(this, this.chit);
+    }
+    return this._galleryItem;
+  }
+  public destroyGalleryItem() {
+    if (this._galleryItem) {
+      // this._galleryItem.
+    }
+  }
+
   public destroy() {
     this.invalidateRootRenderInstance();
     this.unsubscribeToOnChange();
@@ -337,6 +351,7 @@ export class ChitRenderInstance {
     }
 
     this.fixObjectPosition();
+    this._galleryItem?.update();
   }
 
   public screenCoordinates(): Vector2 | undefined {
@@ -658,7 +673,7 @@ export class ChitRenderInstance {
     const targetParentBboxGroup = (this.renderSpec && this.parentRenderInstance?.bboxAnchor(origin)) ?? this.rootGroup;
 
     if (targetParentGroup && this.group.parent !== targetParentGroup) {
-      targetParentGroup.attach(this.group);
+      targetParentGroup.attach(this.group); // add works for the outlet not drifting but obviously messes up animations...
     }
     if (targetParentBboxGroup && this.group.parent !== targetParentBboxGroup) {
       targetParentBboxGroup.attach(this.bboxGroup);
@@ -707,11 +722,13 @@ export class ChitRenderInstance {
     let offsetEasing: undefined | ((amount: number) => number);
     let rotationEasing: undefined | ((amount: number) => number);
 
+    this.offsetTween.stop();
+    this.zOffsetTween.stop();
+    this.rotationTween.stop();
+
     // offset has to change
     if (position.x !== targetOffset.x || position.y !== targetOffset.y || position.z !== targetOffset.z) {
       offsetEasing = this.offsetTween.isPlaying() ? Easing.Quadratic.Out : Easing.Quadratic.InOut;
-      this.offsetTween.stop();
-      this.zOffsetTween.stop();
 
       distanceMoved = Math.sqrt(
         Math.pow(position.x - targetOffset.x, 2) +
@@ -728,7 +745,6 @@ export class ChitRenderInstance {
     // rotation has to change
     if (rotation.x !== targetRotation.x || rotation.y !== targetRotation.y || rotation.z !== targetRotation.z) {
       rotationEasing = this.rotationTween.isPlaying() ? Easing.Quadratic.Out : Easing.Quadratic.InOut;
-      this.rotationTween.stop();
 
       const radiansDistance = new Quaternion()
         .setFromEuler(rotation)
@@ -759,8 +775,15 @@ export class ChitRenderInstance {
 
     if (rotationEasing) {
       rotation.order = "ZYX";
-      this.rotationTween = this.createTween(rotation, (tween) =>
-        tween.to(targetRotation, duration * this.animationSpeedMultiplier).easing(rotationEasing),
+      this.rotationTween = this.createTween({ x: rotation.x, y: rotation.y, z: rotation.z }, (tween) =>
+        tween
+          .to(targetRotation, duration * this.animationSpeedMultiplier)
+          .onUpdate((obj) => {
+            rotation.x = obj.x;
+            rotation.y = obj.y;
+            rotation.z = obj.z;
+          })
+          .easing(rotationEasing),
       );
     }
 
@@ -798,34 +821,5 @@ export class ChitRenderInstance {
 
   public createTween<T extends Record<string, any>>(props: T, cb: (tween: Tween<T>) => void): Tween<T> {
     return this.rootRenderInstance.createTween(props, cb);
-  }
-
-  protected handleRotation() {
-    if (!this.renderSpec) {
-      this.rotationTween.stop();
-      return;
-    }
-
-    const renderSpec = this.renderSpec;
-    const { rotation } = this.group;
-    const target = { x: this.renderSpec.rotateX, y: this.renderSpec.rotateY, z: this.renderSpec.rotateZ };
-
-    // has to change
-    if (rotation.x !== target.x || rotation.y !== target.y || rotation.z !== target.z) {
-      const easing = this.rotationTween ? Easing.Quadratic.Out : Easing.Quadratic.InOut;
-
-      this.rotationTween.stop();
-
-      const maxRotationalDistance = Math.max(
-        Math.abs(rotation.x - target.x),
-        Math.abs(rotation.y - target.y),
-        Math.abs(rotation.z - target.z),
-      );
-      const rotations = maxRotationalDistance / (2 * Math.PI);
-
-      this.rotationTween = this.createTween(rotation, (tween) =>
-        tween.to(target, renderSpec.rotationSpeed * rotations * this.animationSpeedMultiplier).easing(easing),
-      );
-    }
   }
 }

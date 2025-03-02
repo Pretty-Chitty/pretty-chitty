@@ -12,6 +12,10 @@
       "types": "./dist/utilities/CanvasStack/ReactCanvas.d.ts"
     }
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "peerDependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

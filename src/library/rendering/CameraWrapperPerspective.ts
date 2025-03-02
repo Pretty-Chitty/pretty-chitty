@@ -78,10 +78,18 @@ export class CameraWrapperPerspective {
 
   public handleZoom(x: number, y: number, dz: number, animate: boolean): void {
     const zoom = Math.max(1, Math.min(this.current.z + dz, this.cameraSpec.maxZoom));
-    const d = this.scaleFrom({ x, y: -y }, this.current.z, zoom);
-    this.current.x += d.x;
-    this.current.y += d.y;
-    this.current.z += d.z;
+
+    const halfWidth = this.width / 2;
+    const halfHeight = this.height / 2;
+    x -= halfWidth;
+    y -= halfHeight;
+
+    const targetX = (this.current.x - x) * (zoom / this.current.z) + x;
+    const targetY = (this.current.y - y) * (zoom / this.current.z) + y;
+
+    this.current.x = targetX;
+    this.current.y = targetY;
+    this.current.z = zoom;
     this.lockZoom();
     this.adjust(this.bbox, !animate);
   }
@@ -115,36 +123,6 @@ export class CameraWrapperPerspective {
         this.current.x = 0;
       }
     }
-  }
-
-  private scaleFrom(zoomOrigin: Point2d, currentScale: number, newScale: number) {
-    const currentShift = this.getCoordinateShiftDueToScale(currentScale);
-    const newShift = this.getCoordinateShiftDueToScale(newScale);
-
-    const zoomDistance = newScale - currentScale;
-
-    const shift = {
-      x: currentShift.x - newShift.x,
-      y: currentShift.y - newShift.y,
-    };
-
-    const output = {
-      x: zoomOrigin.x * shift.x,
-      y: zoomOrigin.y * shift.y,
-      z: zoomDistance,
-    };
-    return output;
-  }
-
-  private getCoordinateShiftDueToScale(scale: number): Point2d {
-    const newWidth = scale * this.width;
-    const newHeight = scale * this.height;
-    const dx = (newWidth - this.width) / 2;
-    const dy = (newHeight - this.height) / 2;
-    return {
-      x: dx,
-      y: dy,
-    };
   }
 
   public adjust(bbox: Box3, immediate = false) {

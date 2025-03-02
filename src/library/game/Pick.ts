@@ -21,6 +21,9 @@ export abstract class Pick {
   /** @internal */
   abstract get type(): PickType;
 
+  /** @internal */
+  public focusChits: Chit[] = [];
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   /** @internal */
   confirmLock(turn: Turn<any, any, any>) {
@@ -90,6 +93,21 @@ export abstract class Pick {
 
     throw new Error(`Pick type ${pick.type} not known`);
   }
+
+  focus(chit: Chit | Chit[]) {
+    if (Array.isArray(chit)) {
+      this.focusChits.push(...chit);
+    } else {
+      this.focusChits.push(chit);
+    }
+    return this;
+  }
+
+  /** @internal */
+  processFocus() {
+    // show it?
+    this.focusChits.forEach((c) => c.renderInstance?.rootRenderInstance.markHasChitsEntering());
+  }
 }
 
 export class ChitPick<T extends Chit> extends Pick {
@@ -98,9 +116,6 @@ export class ChitPick<T extends Chit> extends Pick {
 
   /** @internal */
   public chits: T[] = [];
-
-  /** @internal */
-  public focusChits: Chit[] = [];
 
   /** @internal */
   public cb: (chit: T) => void | Promise<void> = () => {};
@@ -113,19 +128,10 @@ export class ChitPick<T extends Chit> extends Pick {
     };
   }
 
-  focus(chit: Chit | Chit[]) {
-    if (Array.isArray(chit)) {
-      this.focusChits.push(...chit);
-    } else {
-      this.focusChits.push(chit);
-    }
-    return this;
-  }
-
   /** @internal */
   deserializeDetails({ c, f }: { c: string[]; f: string[] }, findChit: FindChit): void {
     this.chits = c.map((chitId) => findChit(chitId) as T).filter((d) => d);
-    this.focusChits = f.map((chitId) => findChit(chitId) as T).filter((d) => d);
+    this.focusChits = f.map((chitId) => findChit(chitId)).filter((d) => d);
   }
 
   /** @internal */
@@ -140,9 +146,7 @@ export class ChitPick<T extends Chit> extends Pick {
   /** @internal */
   stageIn(prompt: PickPrompt) {
     this.chits.forEach((c) => (c.onClick = () => prompt.resolvePick(this, c.id)));
-
-    // show it?
-    this.focusChits.forEach((c) => c.renderInstance?.rootRenderInstance.markHasChitsEntering());
+    this.processFocus();
   }
 
   /** @internal */
@@ -195,6 +199,7 @@ export class ButtonPick extends Pick {
 
     const details = this.button.serialize();
     details.__buttonType = Object.getPrototypeOf(this.button).constructor.name;
+    details.__f = this.focusChits.map((chit) => chit.id);
     return details;
   }
 
@@ -202,6 +207,7 @@ export class ButtonPick extends Pick {
   deserializeDetails(state: any, findChit: FindChit, buttonLibrary: IButtonLibrary) {
     const HARDCODED_BUTTON_LIBRARY: { [id: string]: new () => GameButton } = { Confirm };
     const buttonType = state.__buttonType;
+    this.focusChits = state.__f.map((chitId: string) => findChit(chitId)).filter((d: Chit) => d);
     const ButtonType = buttonLibrary[buttonType] ?? HARDCODED_BUTTON_LIBRARY[buttonType];
     if (!ButtonType) {
       throw new Error(`Cannot find button type ${buttonType}`);
@@ -228,6 +234,7 @@ export class ButtonPick extends Pick {
         prompt.resolvePick(this, null);
       };
     }
+    this.processFocus();
   }
 
   /** @internal */

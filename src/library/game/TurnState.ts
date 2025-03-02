@@ -20,6 +20,15 @@ export class TurnState {
 
   decisions: Decision[] = [];
 
+  private parentTurnState: TurnState | undefined;
+  private parentTurnIndex = 0;
+
+  toJSON() {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { parentTurnIndex, parentTurnState, ...rest } = this;
+    return rest;
+  }
+
   public getOrCreatePromptResponse(index: number): PromptResponse {
     if (index < this.decisions.length) {
       const result = this.decisions[index];
@@ -66,6 +75,8 @@ export class TurnState {
       return result as TurnState;
     } else if (index === this.decisions.length) {
       const result = new TurnState();
+      result.parentTurnState = this;
+      result.parentTurnIndex = index;
       this.decisions.push(result);
       return result;
     } else {
@@ -84,6 +95,8 @@ export class TurnState {
           existing.deserialize(d);
         } else {
           const r = new TurnState();
+          r.parentTurnState = this;
+          r.parentTurnIndex = i;
           r.deserialize(d);
           return r;
         }
@@ -93,6 +106,10 @@ export class TurnState {
   }
 
   public hasUserMadeChoiceSinceUserContextChangedOrRng(index: number): boolean {
+    if (index < 0 && this.parentTurnState && this.parentTurnState.playerId === this.playerId) {
+      return this.parentTurnState.hasUserMadeChoiceSinceUserContextChangedOrRng(this.parentTurnIndex);
+    }
+
     for (let i = index; i >= 0; i--) {
       const lastDecision = this.decisions[i];
       if (!lastDecision) {
@@ -118,6 +135,7 @@ export class TurnState {
 
   public stepBack() {
     if (!this.hasUserMadeChoiceSinceUserContextChangedOrRng(this.decisions.length)) {
+      // should be -1? does it matter?
       throw new Error("Cannot step back");
     }
 

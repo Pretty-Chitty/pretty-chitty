@@ -81,6 +81,18 @@ export class Card extends Chit {
   @Ordered(new Vector3(-0.5, 0, 0))
   public tokenList2 = new OrderedOutlet("tokenList2", this);
 
+  // override functionallyIdentical(other: Chit): boolean {
+  //   if (other instanceof Card) {
+  //     return (
+  //       this.something === other.something &&
+  //       this.tapped === other.tapped &&
+  //       this.flipped === other.flipped &&
+  //       this.x === other.x
+  //     );
+  //   }
+  //   return false;
+  // }
+
   public override render(spec: ChitRenderSpec): void {
     const ts = new TestStack().set((obj) => {
       obj.subTitle = "This is a ...";
@@ -88,11 +100,12 @@ export class Card extends Chit {
       obj.subTitle2 = this.something;
     });
 
-    spec.object = new CardMesh(1, 2, ts.material, new MeshPhongMaterial({ color: 0xff0000 }), {
+    spec.object = new CardMesh(1.5, 2.5, ts.material, new MeshPhongMaterial({ color: 0xff0000 }), {
       castShadow: true,
       receiveShadow: true,
     });
 
+    spec.object.position.set(0, 5, 0);
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0; // (this.something / 90) % (Math.PI * 2);
     spec.rotateY = this.flipped ? Math.PI : 0;
     spec.offsetZ = this.flipped ? 0.1 : 0;
@@ -101,13 +114,13 @@ export class Card extends Chit {
     spec.offsetZ = this.tapped ? 0.25 : 0 + (this.flipped ? 3.1 : 0);
     spec.zLiftRotationMultiplier = 3;
 
-    spec.addCounterToOrderedOutlet(
-      this.tokenList2,
-      { fontSize: 0.25, fontFamily: "sans-serif", fill: "#f0f", shadow: "#000" },
-      2,
-      250,
-      "left",
-    );
+    // spec.addCounterToOrderedOutlet(
+    //   this.tokenList2,
+    //   { fontSize: 0.25, fontFamily: "sans-serif", fill: "#f0f", shadow: "#000" },
+    //   2,
+    //   250,
+    //   "left",
+    // );
   }
 }
 
@@ -219,7 +232,15 @@ export class Root extends RootChit<MyPlayer> {
           height: 2,
           contents: this.mainBoard,
         },
-        { height: 1, contents: this.players.map((p) => p) },
+        width > this.players.length * 200
+          ? {
+              height: 1,
+              contents: this.players.map((p) => ({
+                contents: p,
+                width: 1,
+              })),
+            }
+          : { height: 1, contents: this.players.map((p) => p) },
       ];
     } else {
       return [
@@ -230,7 +251,16 @@ export class Root extends RootChit<MyPlayer> {
               width: 2,
               contents: this.mainBoard,
             },
-            { width: 1, contents: this.players.map((p) => p) },
+
+            height > this.players.length * 200
+              ? {
+                  width: 1,
+                  contents: this.players.map((p) => ({
+                    contents: p,
+                    height: 1,
+                  })),
+                }
+              : { width: 1, contents: this.players.map((p) => p) },
           ],
         },
       ];

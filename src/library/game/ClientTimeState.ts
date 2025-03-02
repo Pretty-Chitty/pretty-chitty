@@ -2,10 +2,10 @@ import { EventChannel } from "../utilities/EventChannel";
 
 export class ClientTimeState {
   public live = new EventChannel<boolean>(true);
-  public targetAnimationSpeedMultiplier = new EventChannel<number>(1);
-  public isWaitingOnAnimations = new EventChannel<boolean>(false);
+  public isWaitingOnAnimations = new EventChannel<boolean>(true);
   public targetClock = new EventChannel<number>(1, 250);
-  public animationSpeedMultiplier = new EventChannel<number>(0.001);
+  public animationSpeedMultiplier = new EventChannel<number>(1);
+  public isLoading = new EventChannel<boolean>(true);
 
   private currentlyAnimating = new Set<string>();
   public setAnimationState(key: string, isAnimating: boolean) {
