@@ -32,6 +32,18 @@ export interface GalleryItem {
   registerUpdateHandler(cb: UpdateCallback): UpdateCallback;
 }
 
+export interface GalleryItemSource {
+  backingObject?: any;
+  get items(): GalleryItem[];
+
+  /**
+   * This takes a callback that gets updated any time the gallery item needs to be refreshed (new texture or mesh or whatnot).
+   * It returns a callback that can be invoked to unsubscribe this callback
+   */
+  registerUpdateHandler(cb: UpdateCallback): UpdateCallback;
+  close(): void;
+}
+
 type BuiltItem = {
   index: number;
   enteredAmount: number;
@@ -170,6 +182,10 @@ class GalleryController {
 
   private tween: Tween<{ x: number }> | undefined;
   pan(deltaX: number, animate = false) {
+    const max = 0;
+    const min =
+      -(this.items.length - Math.min(this.items.length, this.itemsPerPage)) * (this.itemWidth + this.itemSpacing);
+
     this.changed = true;
     if (this.tween) {
       this.tween.stop();
@@ -178,6 +194,14 @@ class GalleryController {
 
     if (!animate) {
       this.offsetX += deltaX;
+
+      if (this.offsetX > max + this.w / 2) {
+        this.offsetX = max + this.w / 2;
+      }
+      if (this.offsetX < min - this.w / 2) {
+        this.offsetX = min - this.w / 2;
+      }
+
       this.items.forEach((item) => this.positionItem(item));
     } else {
       // lock the offset to the nearest item
@@ -185,16 +209,14 @@ class GalleryController {
       const itemIndex = Math.round(target / (this.itemWidth + this.itemSpacing));
       target = itemIndex * (this.itemWidth + this.itemSpacing);
 
-      if (target > 0) {
-        target = 0;
+      if (target > max) {
+        target = max;
       }
-      const min =
-        -(this.items.length - Math.min(this.items.length, this.itemsPerPage)) * (this.itemWidth + this.itemSpacing);
       if (target < min) {
         target = min;
       }
 
-      const duration = 0.0001 + Math.min(750, Math.abs(target - this.offsetX) * 300);
+      const duration = 0.0001 + Math.min(750, Math.abs(target - this.offsetX));
 
       this.tween = new Tween({ x: this.offsetX })
         .onUpdate(({ x }) => {
@@ -273,18 +295,18 @@ class GalleryController {
           depth: 0,
           targetIndex: i + itemIndexOffset,
           unsubscribe: item.registerUpdateHandler(() => {
-            if (builtItem.mesh && builtItem.mesh.parent) {
-              builtItem.mesh.parent.remove(builtItem.mesh);
-            }
+            builtItem.mesh.removeFromParent();
             this.changed = true;
             builtItem.mesh = item.createMesh();
             this.scene.add(builtItem.mesh);
             this.scaleItem(builtItem);
+            this.positionItem(builtItem);
           }),
         });
         this.scaleItem(builtItem);
 
         // Also add your mesh to the scene:
+        builtItem.mesh.removeFromParent();
         this.scene.add(builtItem.mesh);
         this.positionItem(builtItem);
 
@@ -296,6 +318,7 @@ class GalleryController {
             this.positionItem(builtItem);
           })
           .onComplete(() => {
+            this.positionItem(builtItem);
             builtItem.enteredTween = undefined;
           })
           .start();
@@ -304,6 +327,7 @@ class GalleryController {
 
     [...seenIds].forEach((id) => {
       const item = this.itemLookup[id];
+      item.unsubscribe();
       delete this.itemLookup[id];
       this.leavingItems.push(item);
 
@@ -437,9 +461,11 @@ export function GalleryViewer({
         if (tappedItem) {
           if (tappedItem.onClick) {
             tappedItem.onClick();
-            if (onClose) {
-              onClose();
-            }
+
+            // // TODO: this is maybe not right? do we always want to close upon selection?  I don't think so
+            // if (onClose) {
+            //   setTimeout(onClose, 500);
+            // }
           }
         } else if (onClose) {
           onClose();

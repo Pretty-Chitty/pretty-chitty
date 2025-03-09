@@ -12,8 +12,8 @@ import {
 
 import { Mesh, MeshPhongMaterial, PlaneGeometry } from "three";
 
-import { FlipButton, PassButton } from "./ButtonLibrary";
-import { BagChit, Card, Card2, CounterChit, Deck, MyPlayer, Root, Row, SideBoards, Table } from "./ChitLibrary";
+import { FlipButton, HandButton, PassButton } from "./ButtonLibrary";
+import { BagChit, Card, Card2, CounterChit, Deck, Hand, MyPlayer, Root, Row, SideBoards, Table } from "./ChitLibrary";
 import * as CanvasLibrary from "./CanvasLibrary";
 import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
@@ -22,9 +22,9 @@ export class DemoGame implements Game<MyPlayer, Root> {
   name = "Demo Game";
 
   showGrid = true;
-  chitLibrary = { Card, Card2, Table, SideBoards, Root, Deck, MyPlayer, PlayerAid, CounterChit, BagChit, Row };
+  chitLibrary = { Card, Card2, Table, SideBoards, Root, Deck, MyPlayer, PlayerAid, CounterChit, BagChit, Row, Hand };
   canvasLibrary = CanvasLibrary;
-  buttonLibrary = { FlipButton, PassButton };
+  buttonLibrary = { FlipButton, PassButton, HandButton };
 
   theme = GameTheme.withDefaults("#2d3142", "#ef8354");
 
@@ -53,15 +53,40 @@ export class DemoGame implements Game<MyPlayer, Root> {
       rootChit.mainBoard.add(c);
     });
 
-    const count = 5;
+    const count = 25;
     const rng3 = await setup.takeRng(count);
     for (let i = 0; i < count; i++) {
       deck.discard(
         new Card().set((c) => {
-          c.something = 2.5 + rng3();
+          rng3();
+          c.something = i;
         }),
       );
     }
+
+    for (let i = 0; i < 9; i++) {
+      const card = await deck.draw();
+      if (card) {
+        rootChit.mainBoard.hand.add(card);
+      }
+    }
+
+    // ask for some cards in the hand
+    await setup.createTurn([rootChit.mainBoard], players[0], async (turn) => {
+      const possible: Chit[] = rootChit.mainBoard.hand.orderedChildren.copy().slice(0, 3);
+      const possible2: Chit[] = rootChit.mainBoard.hand.orderedChildren.copy().slice(4, 6);
+
+      await turn.pick([
+        Chit.pick(possible, (selected) => {
+          console.log(selected);
+          rootChit.mainBoard.hand.remove(selected);
+        }).toggleButton(new HandButton().set((c) => (c.autoShow = false))), //.setParentChit(rootChit.mainBoard.hand)),
+        Chit.pick(possible2, (selected) => {
+          console.log(selected);
+          rootChit.mainBoard.hand.remove(selected);
+        }).toggleButton(new HandButton().set((c) => (c.autoShow = false)).setParentChit(rootChit.mainBoard.hand)),
+      ]);
+    });
 
     // set up the board
     const rows = [...new Array(H)].map(() =>

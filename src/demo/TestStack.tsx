@@ -34,7 +34,7 @@ export class TestStack extends ParameterizedCanvas {
               <Image fill image={img} />
               <Vertical>
                 <></>
-                <Text size={50} fill="#fff" font="35px sans-serif">
+                <Text size={50} fill="#fff" font="50px sans-serif">
                   {this.title}
                 </Text>
                 {this.subTitle && (

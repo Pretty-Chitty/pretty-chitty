@@ -143,6 +143,17 @@ export class ChitRenderInstance {
     this.refresh();
   }
 
+  public galleryRotation() {
+    if (this.renderSpec) {
+      return new Vector3(
+        this.renderSpec.galleryRotateX,
+        this.renderSpec.galleryRotateY,
+        this.renderSpec.galleryRotateZ,
+      );
+    }
+    return new Vector3(0, 0, 0);
+  }
+
   public childAdded(chit: Chit, existingRenderInstance?: ChitRenderInstance) {
     if (existingRenderInstance?.rootRenderInstance === this.rootRenderInstance) {
       return;
@@ -159,6 +170,10 @@ export class ChitRenderInstance {
     if (existingRenderInstance) {
       existingRenderInstance.refresh();
     }
+  }
+
+  public get absorbsClickEventsForChildren() {
+    return this.renderSpec?.showChildrenAsGallery ?? false;
   }
 
   public get tweenGroup(): TweenGroup | undefined {
@@ -315,20 +330,15 @@ export class ChitRenderInstance {
     this.rootRenderInstance.markDirty();
 
     this.fixVisibility();
-    const isVisible = this.group.visible;
 
-    if (isVisible && this.renderSpec) {
+    if (this.renderSpec) {
       this.group.remove(this.renderSpec.object);
       this.renderSpec.ornaments.forEach((ornament) => this.group.remove(ornament));
     }
 
     // execute the render
     const renderSpec = this.createRenderSpec();
-    if (isVisible) {
-      this.chit.render(renderSpec);
-    } else {
-      this.chit.renderInvisible(renderSpec);
-    }
+    this.chit.render(renderSpec);
     this.renderSpec = renderSpec;
     this.innateObjectZ = this.renderSpec.object?.position?.z ?? 0;
     this.innateOrnamentZs = this.renderSpec.ornaments.map((o) => o.position?.z ?? 0);
@@ -345,10 +355,8 @@ export class ChitRenderInstance {
     }
 
     // now update ourselves
-    if (isVisible) {
-      this.group.add(this.renderSpec.object);
-      this.renderSpec.ornaments.forEach((ornament) => this.group.add(ornament));
-    }
+    this.group.add(this.renderSpec.object);
+    this.renderSpec.ornaments.forEach((ornament) => this.group.add(ornament));
 
     this.fixObjectPosition();
     this._galleryItem?.update();
@@ -425,7 +433,7 @@ export class ChitRenderInstance {
 
   protected createHighlight() {
     const highlight = this.renderSpec?.highlight;
-    if (!highlight || !this.renderSpec) {
+    if (!highlight || !this.renderSpec || !highlight.visible) {
       return;
     }
 
@@ -451,18 +459,18 @@ export class ChitRenderInstance {
       const face = new MeshBasicMaterial({
         map: outline.get().texture,
         transparent: true,
-        depthWrite: false,
+        depthWrite: true,
         side: FrontSide,
       });
 
       const m1 = new Mesh(planeGeometry, face);
-      m1.position.z = this.clickbox.scale.z + 0.05;
+      m1.position.z = this.clickbox.scale.z + highlight.zOffset;
       m1.position.y = this.clickbox.position.y;
       m1.position.x = this.clickbox.position.x;
       group.add(m1);
 
       const m2 = new Mesh(planeGeometry, face);
-      m2.position.z = -0.01;
+      m2.position.z = -highlight.zOffset;
       m2.position.y = this.clickbox.position.y;
       m2.position.x = this.clickbox.position.x;
       m2.rotateY(Math.PI);

@@ -17,15 +17,23 @@ export class ChitGalleryItemInstance implements GalleryItem {
     this.id = chit.id ?? "no id";
 
     if (chit.onClick) {
-      this.onClick = chit.onClick.bind(chit);
+      this.onClick = () => {
+        if (chit.onClick) {
+          chit.onClick();
+        }
+      };
     }
   }
 
   createMesh() {
+    const g = new Group();
     const mesh = this.chitRenderInstance.group.clone(true) ?? new Group();
+    mesh.visible = true;
     mesh.rotation.set(0, 0, 0);
     mesh.position.set(0, 0, 0);
-    return mesh;
+    g.add(mesh);
+    g.rotation.setFromVector3(this.chitRenderInstance.galleryRotation());
+    return g;
   }
 
   registerUpdateHandler(cb: UpdateHandler) {

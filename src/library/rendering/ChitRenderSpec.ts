@@ -22,6 +22,8 @@ import { TextOptions } from "../utilities/CanvasStack/CanvasOperations";
 import { Text } from "../utilities/CanvasStack/ReactCanvas";
 import { SplayCounter, SplayCounterOptions } from "./SplayCounter";
 import { fixBbox } from "../utilities/BboxUtils";
+import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
+import { GalleryItemChitChildrenSource } from "../game/GalleryItemChitChildrenSource";
 
 // prettier-ignore
 export enum OwnerOriginPosition {
@@ -46,6 +48,10 @@ export class ChitRenderSpec {
   public rotateY: number = 0;
   public rotateZ: number = 0;
   public zLiftRotationMultiplier = 1;
+
+  public galleryRotateX: number = 0;
+  public galleryRotateY: number = 0;
+  public galleryRotateZ: number = 0;
 
   public ownerOrigin: string | OwnerOriginPosition = OwnerOriginPosition.Default;
   public outletPositions: { [key: string]: Vector3 } = {};
@@ -79,6 +85,13 @@ export class ChitRenderSpec {
     return this;
   }
 
+  public showChildrenAsGallery() {
+    this.chit.onClick = () => {
+      this.chit.renderInstance?.rootRenderInstance.showGallery(new GalleryItemChitChildrenSource(this.chit));
+    };
+    this.highlight.visible = false;
+  }
+
   public setOutletPosition(key: string, x: number, y: number, z: number = 0) {
     this.outletPositions[key] = new Vector3(x, y, z);
   }
@@ -94,9 +107,7 @@ export class ChitRenderSpec {
       let offsetY = 0,
         offsetX = 0,
         itemWidth = 0.0001,
-        itemHeight = 0.0001,
-        rows = 0,
-        columns = 0;
+        itemHeight = 0.0001;
       const firstItem = ordered.get(0) as Chit;
       if (firstItem) {
         const fakeRenderSpec = new ChitRenderSpec(firstItem);

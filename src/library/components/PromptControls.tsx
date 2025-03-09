@@ -10,6 +10,31 @@ import { usePlayerId } from "../hooks/usePlayer";
 import GameDialog from "./GameDialog";
 import Markdown from "react-markdown";
 import { ZINDEX_PROMPT_CONTROLS } from "../utilities/zIndex";
+import { GameButton, ToggleGalleryButton } from "../game/GameButton";
+import { useGalleryState } from "../hooks/useGalleryState";
+
+function GameButtonWrapper({ button }: { button: GameButton }) {
+  const galleryState = useGalleryState();
+  const [source, setSource] = useEventChannelState(galleryState.source);
+
+  let highlight = false;
+  let cb = button.cb;
+
+  if (button instanceof ToggleGalleryButton) {
+    if (
+      (button.galleryItemSource === source && source) ||
+      (source?.backingObject && button.galleryItemSource?.backingObject === source.backingObject)
+    ) {
+      highlight = true;
+      cb = () => setSource(undefined);
+    } else if (button.galleryItemSource) {
+      const source = button.galleryItemSource;
+      cb = () => setSource(source);
+    }
+  }
+
+  return <BottomBarButton highlight={highlight} icon={button.icon} label={button.label} onClick={cb} />;
+}
 
 export default function PromptControls() {
   const [expanded, setExpanded] = useState(false);
@@ -82,9 +107,7 @@ export default function PromptControls() {
         />
       )}
       <Box flex={1} />
-      {prompt?.buttons.map((button, idx) => (
-        <BottomBarButton key={idx} icon={button.icon} label={button.label} onClick={button.cb} />
-      ))}
+      {prompt?.buttons.map((button, idx) => <GameButtonWrapper key={idx} button={button} />)}
     </Stack>
   );
 }

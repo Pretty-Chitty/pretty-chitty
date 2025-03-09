@@ -35,11 +35,19 @@ import { CardMesh } from "../library/utilities/CardMesh";
 
 export * from "../library/utilities/BaseTable";
 
-export class Table extends Chit {}
+export class Table extends Chit {
+  @ChildOutlet(new Vector3(-4, 4, 0)) public hand = new Hand();
+}
 
 export class Row extends Chit {}
 
 export class Deck extends GameDeck<Card> {
+  tapped = false;
+
+  constructor() {
+    super();
+  }
+
   public override render(spec: ChitRenderSpec): void {
     const boxGeometry = new BoxGeometry(1, 2, 1);
 
@@ -59,9 +67,16 @@ export class Deck extends GameDeck<Card> {
 
     spec.object = new Mesh(boxGeometry, [side, side, side, side, face, side]);
     spec.offsetX = -2;
+    spec.rotateZ = this.tapped ? Math.PI / 2 : 0;
     spec.object.castShadow = true;
-    // spec.rotateX = Math.PI;
-    // spec.offsetZ = 1;
+
+    spec.showChildrenAsGallery();
+  }
+}
+
+export class Hand extends Chit {
+  public override render(spec: ChitRenderSpec): void {
+    spec.showChildrenAsGallery();
   }
 }
 
@@ -81,31 +96,18 @@ export class Card extends Chit {
   @Ordered(new Vector3(-0.5, 0, 0))
   public tokenList2 = new OrderedOutlet("tokenList2", this);
 
-  // override functionallyIdentical(other: Chit): boolean {
-  //   if (other instanceof Card) {
-  //     return (
-  //       this.something === other.something &&
-  //       this.tapped === other.tapped &&
-  //       this.flipped === other.flipped &&
-  //       this.x === other.x
-  //     );
-  //   }
-  //   return false;
-  // }
-
   public override render(spec: ChitRenderSpec): void {
     const ts = new TestStack().set((obj) => {
       obj.subTitle = "This is a ...";
-      obj.title = "and a bottle" + this.something * 2;
+      obj.title = this.something.toString();
       obj.subTitle2 = this.something;
     });
 
-    spec.object = new CardMesh(1.5, 2.5, ts.material, new MeshPhongMaterial({ color: 0xff0000 }), {
+    spec.object = new CardMesh(1, 2, ts.material, new MeshPhongMaterial({ color: 0xff0000 }), {
       castShadow: true,
       receiveShadow: true,
     });
 
-    spec.object.position.set(0, 5, 0);
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0; // (this.something / 90) % (Math.PI * 2);
     spec.rotateY = this.flipped ? Math.PI : 0;
     spec.offsetZ = this.flipped ? 0.1 : 0;
@@ -114,13 +116,18 @@ export class Card extends Chit {
     spec.offsetZ = this.tapped ? 0.25 : 0 + (this.flipped ? 3.1 : 0);
     spec.zLiftRotationMultiplier = 3;
 
-    // spec.addCounterToOrderedOutlet(
-    //   this.tokenList2,
-    //   { fontSize: 0.25, fontFamily: "sans-serif", fill: "#f0f", shadow: "#000" },
-    //   2,
-    //   250,
-    //   "left",
-    // );
+    if (this.parent instanceof Deck) {
+      spec.rotateX += Math.PI;
+    } else if (this.parent instanceof Hand) {
+      spec.splay.enabled = true;
+      spec.splay.rows = 1;
+      spec.splay.columns = 10;
+      spec.splay.itemWidth = 0.2;
+      spec.rotateY = 0.08;
+      spec.galleryRotateZ = (2 * Math.PI * (this.parentOutletIndex ?? 0)) / 10;
+      spec.splay.columnOrientation = "increasing";
+      spec.splay.zPerIndexMultiplier = 0.01;
+    }
   }
 }
 

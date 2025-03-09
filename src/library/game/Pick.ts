@@ -1,6 +1,7 @@
 import { Chit } from "./Chit";
+import { GalleryItemChitChildrenSource } from "./GalleryItemChitChildrenSource";
 import { IButtonLibrary } from "./Game";
-import { Confirm, GameButton } from "./GameButton";
+import { Confirm, DynamicGameButton, GameButton, ToggleGalleryButton } from "./GameButton";
 import { PickPrompt } from "./Prompt";
 import { MismatchError, Turn } from "./Turn";
 
@@ -50,12 +51,12 @@ export abstract class Pick {
     return this.numberOfChoices() === 1;
   }
 
-  message(message?: string) {
+  message(message?: string): this {
     this.messageContents = message;
     return this;
   }
 
-  help(help?: string) {
+  help(help?: string): this {
     this.helpContents = help;
     return this;
   }
@@ -94,7 +95,7 @@ export abstract class Pick {
     throw new Error(`Pick type ${pick.type} not known`);
   }
 
-  focus(chit: Chit | Chit[]) {
+  focus(chit: Chit | Chit[]): this {
     if (Array.isArray(chit)) {
       this.focusChits.push(...chit);
     } else {
@@ -106,8 +107,18 @@ export abstract class Pick {
   /** @internal */
   processFocus() {
     // show it?
-    this.focusChits.forEach((c) => c.renderInstance?.rootRenderInstance.markHasChitsEntering());
+    this.focusChits.forEach((c) => {
+      if (c.renderInstance) {
+        c.renderInstance.rootRenderInstance.markHasChitsEntering();
+        if (c.renderInstance.absorbsClickEventsForChildren) {
+          c.renderInstance.rootRenderInstance.showGallery(new GalleryItemChitChildrenSource(c));
+        }
+      }
+    });
   }
+
+  /** @internal */
+  private showGallery() {}
 }
 
 export class ChitPick<T extends Chit> extends Pick {
@@ -120,18 +131,42 @@ export class ChitPick<T extends Chit> extends Pick {
   /** @internal */
   public cb: (chit: T) => void | Promise<void> = () => {};
 
+  public button?: ToggleGalleryButton;
+
   /** @internal */
   serializeDetails() {
-    return {
+    const result: any = {
       c: this.chits.map((chit) => chit.id),
       f: this.focusChits.map((chit) => chit.id),
     };
+
+    if (this.button) {
+      result.b = this.button.serialize();
+      result.b.__buttonType = Object.getPrototypeOf(this.button).constructor.name;
+    }
+
+    return result;
   }
 
   /** @internal */
-  deserializeDetails({ c, f }: { c: string[]; f: string[] }, findChit: FindChit): void {
+  deserializeDetails(
+    { c, f, b }: { c: string[]; f: string[]; b?: any },
+    findChit: FindChit,
+    buttonLibrary: IButtonLibrary,
+  ): void {
     this.chits = c.map((chitId) => findChit(chitId) as T).filter((d) => d);
     this.focusChits = f.map((chitId) => findChit(chitId)).filter((d) => d);
+
+    if (b) {
+      const HARDCODED_BUTTON_LIBRARY: { [id: string]: new () => GameButton } = { Confirm };
+      const buttonType = b.__buttonType;
+      const ButtonType = buttonLibrary[buttonType] ?? HARDCODED_BUTTON_LIBRARY[buttonType];
+      if (!ButtonType) {
+        throw new Error(`Cannot find button type ${buttonType}`);
+      }
+      this.button = new ButtonType() as ToggleGalleryButton;
+      this.button.deserialize(b, findChit);
+    }
   }
 
   /** @internal */
@@ -147,6 +182,10 @@ export class ChitPick<T extends Chit> extends Pick {
   stageIn(prompt: PickPrompt) {
     this.chits.forEach((c) => (c.onClick = () => prompt.resolvePick(this, c.id)));
     this.processFocus();
+    this.button?.computeItemSource(this);
+    if (this.button?.autoShow && this.button?.galleryItemSource) {
+      this.chits[0]?.renderInstance?.rootRenderInstance.showGallery(this.button.galleryItemSource);
+    }
   }
 
   /** @internal */
@@ -167,6 +206,11 @@ export class ChitPick<T extends Chit> extends Pick {
   /** @internal */
   autoResolve() {
     return Promise.resolve(this.cb(this.chits[0]));
+  }
+
+  toggleButton(button: ToggleGalleryButton): this {
+    this.button = button;
+    return this;
   }
 }
 
@@ -213,7 +257,7 @@ export class ButtonPick extends Pick {
       throw new Error(`Cannot find button type ${buttonType}`);
     }
     this.button = new ButtonType();
-    this.button.deserialize(state);
+    this.button.deserialize(state, findChit);
   }
 
   /** @internal */

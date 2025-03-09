@@ -12,6 +12,8 @@ import type { Game } from "./Game";
 
 export const ORDERED_CHILDREN = "orderedChildren";
 
+export type ChitClick = () => void;
+
 export class Chit extends ObjectWithProps {
   /** @internal */
   @NonEditable public type: string = "chit";
@@ -28,12 +30,6 @@ export class Chit extends ObjectWithProps {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public render(spec: ChitRenderSpec) {}
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public renderInvisible(spec: ChitRenderSpec) {
-    spec.rotateX = Math.PI;
-    spec.zLiftRotationMultiplier = 3;
-  }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public shouldRenderChild(childChit: Chit): boolean {
@@ -133,15 +129,17 @@ export class Chit extends ObjectWithProps {
     this._game = newGame;
   }
 
-  @NonEditable private _onClick?: () => void;
+  @NonEditable
+  /** @internal */
+  private _onClick?: ChitClick;
 
   /** @internal */
-  public get onClick(): undefined | (() => void) {
+  public get onClick(): undefined | ChitClick {
     return this._onClick;
   }
 
   /** @internal */
-  public set onClick(newValue: undefined | (() => void)) {
+  public set onClick(newValue: undefined | ChitClick) {
     this._onClick = newValue;
     this.notifyChange("onClick");
   }

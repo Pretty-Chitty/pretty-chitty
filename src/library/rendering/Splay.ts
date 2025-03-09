@@ -54,10 +54,10 @@ export class Splay {
 
   public enabled: boolean = false;
   public zSpacingMultiplier: number = 1;
+  public zPerIndexMultiplier: number = 0;
   public spacingMultiplier: number = 1;
   public itemWidth?: number = undefined;
   public itemHeight?: number = undefined;
-
 
   /** @internal */
   toString() {
@@ -82,7 +82,7 @@ export class Splay {
     return {
       x: (this.itemWidth ?? sizeX) * this.spacingMultiplier * orderItem.x,
       y: (this.itemHeight ?? sizeY) * this.spacingMultiplier * orderItem.y,
-      z: sizeZ * this.zSpacingMultiplier * zIndex,
+      z: sizeZ * this.zSpacingMultiplier * zIndex + this.zPerIndexMultiplier * childIndex,
     };
   }
 

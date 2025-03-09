@@ -1,7 +1,7 @@
 import { Chit } from "./Chit";
 import { IButtonLibrary } from "./Game";
 import { Confirm, GameButton } from "./GameButton";
-import { ButtonPick, Pick } from "./Pick";
+import { ButtonPick, ChitPick, Pick } from "./Pick";
 import { MismatchError, Turn } from "./Turn";
 
 type PromptType = "SelectPrompt" | "ConfirmPrompt" | "PickPrompt";
@@ -234,8 +234,15 @@ export class PickPrompt extends Prompt {
 
   override get buttons(): GameButton[] {
     return this.picks
-      .filter((p) => p instanceof ButtonPick)
-      .map((p) => (p as ButtonPick).button)
+      .map((p) => {
+        if (p instanceof ButtonPick) {
+          return p.button;
+        }
+        if (p instanceof ChitPick) {
+          return p.button;
+        }
+        return undefined;
+      })
       .filter((a) => a) as GameButton[];
   }
 }

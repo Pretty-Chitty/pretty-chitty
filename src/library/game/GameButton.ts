@@ -1,7 +1,12 @@
 import { Check, Flip } from "@mui/icons-material";
 import { BottomBarButtonIcon } from "../components/BottomBarButton";
-import { ButtonPick } from "./Pick";
+import { ButtonPick, ChitPick, FindChit } from "./Pick";
 import { NonEditable } from "../utilities/Annotations";
+import { Chit } from "./Chit";
+import { GalleryItemSource } from "../components/GalleryViewer";
+import { GalleryItemChitChildrenSource } from "./GalleryItemChitChildrenSource";
+import { GalleryItemRawSource } from "./GalleryItemRawSource";
+import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
 
 export type ButtonCallback = () => void | Promise<void>;
 
@@ -41,13 +46,53 @@ export class GameButton {
 
   /** @internal */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  deserialize(config: any) {}
+  deserialize(config: any, findChit: FindChit) {}
+}
+
+export class ToggleGalleryButton extends GameButton {
+  autoShow = true;
+
+  /** @internal */
+  parentChit?: Chit;
+
+  /** @internal */
+  galleryItemSource?: GalleryItemSource;
+
+  setParentChit(parentChit: Chit): this {
+    this.parentChit = parentChit;
+    return this;
+  }
+
+  /** @internal */
+  override serialize() {
+    return {
+      parentChitId: this.parentChit?.id,
+      autoShow: this.autoShow,
+    };
+  }
+
+  /** @internal */
+  override deserialize({ parentChitId, autoShow }: { parentChitId?: string; autoShow: boolean }, findChit: FindChit) {
+    if (parentChitId) {
+      this.parentChit = findChit(parentChitId);
+    }
+    this.autoShow = autoShow;
+  }
+
+  /** @internal */
+  computeItemSource(chitPick: ChitPick<any>) {
+    if (this.parentChit) {
+      this.galleryItemSource = new GalleryItemChitChildrenSource(this.parentChit);
+    } else {
+      this.galleryItemSource = new GalleryItemRawSource(chitsToGalleryItems(chitPick.chits));
+    }
+  }
 }
 
 export abstract class DynamicGameButton<T> extends GameButton {
   private spec: T | undefined;
 
-  config(spec: T) {
+  config(spec: T): this {
     this.spec = spec;
     this.process(spec);
     return this;

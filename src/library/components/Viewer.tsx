@@ -93,11 +93,11 @@ export default function Viewer({
 
         return new Vector2((x / rect.width) * 2 - 1, -((y / rect.height) * 2 - 1));
       };
-      newInstance.init();
+      newInstance.setup(galleryState);
       setChitRenderInstance(newInstance);
       scene.add(newInstance.rootGroup);
     }
-  }, [refContainer, animationSpeedMultiplier, chit, chitRenderInstance, scene, R]);
+  }, [refContainer, animationSpeedMultiplier, chit, chitRenderInstance, scene, R, galleryState]);
 
   // make sure "wireframes" gets set correctly on the render instance
   useEffect(() => {
@@ -193,7 +193,7 @@ export default function Viewer({
       hammer.on("singletap", (ev) => {
         const pos = fixPosition(ev);
         const isMouse = ev.pointerType === "mouse";
-        chitRenderInstance.handleClick(pos.x, pos.y, galleryState, isMouse ? 3 : 6, isMouse ? 1.5 : 3);
+        chitRenderInstance.handleClick(pos.x, pos.y, isMouse ? 3 : 6, isMouse ? 1.5 : 3);
       });
       hammer.on("doubletap", (ev) => {
         const pos = fixPosition(ev);

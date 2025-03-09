@@ -33,7 +33,6 @@ export default function BottomBar() {
   const scale = usePanelScale();
   const setScale = usePanelSetScale();
   const timeState = useTimeState();
-  const galleryState = useGalleryState();
   const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
   const [live, setLive] = useEventChannelState(timeState.live);
