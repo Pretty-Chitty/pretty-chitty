@@ -7,7 +7,7 @@ import Viewer from "./Viewer";
 import { PanelLayoutResult, PanelChit } from "../game/PanelChit";
 import { useGameTheme } from "../hooks/useGameTheme";
 
-import { useTimeController, useTimeState } from "../hooks/useTimeController";
+import { useClientPrompts, useTimeController, useTimeState } from "../hooks/useTimeController";
 import { usePanelStates } from "../hooks/usePanelStates";
 import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
 import { useEventChannelState } from "../hooks/useEventChannelState";
@@ -15,7 +15,6 @@ import PanelSpark from "./PanelSpark";
 import { useChit } from "../hooks/useChits";
 import { ZINDEX_PANEL_CUTOUTS, ZINDEX_SPARKS } from "../utilities/zIndex";
 import { usePanelScale } from "../hooks/usePanelScale";
-import { isA } from "vitest-mock-extended";
 
 const Cutout = `data:image/svg+xml;base64,${base64.encode(
   `<?xml version="1.0" encoding="UTF-8" standalone="no"?>

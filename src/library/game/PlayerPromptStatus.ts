@@ -10,7 +10,7 @@ export class PlayerPromptStatus extends Chit {
   /** @internal */
   @NonEditable public latestPrompt = new EventChannel<Prompt | undefined>(undefined, 50);
   /** @internal */
-  @NonEditable public latestPromptResponseTime = 0;
+  @NonEditable public latestPromptResponseTime = 0; // TODO: this is maybe not useful?  we want the latest time ignoring sibling turns
 
   public canRender(): boolean {
     return false;

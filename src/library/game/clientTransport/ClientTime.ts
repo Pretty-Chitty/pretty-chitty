@@ -6,9 +6,12 @@ import { Connection } from "../Connection";
 import { ConnectionObject } from "../ConnectionObject";
 import { Game } from "../Game";
 import { ServerTime } from "../serverTransport/ServerTime";
+import { ClientPrompts } from "./ClientPrompts";
 
 export class ClientTime extends ConnectionObject {
   private lastSerializedState: { [chitId: string]: string } = {};
+
+  public clientPrompt?: ClientPrompts<any, any>;
 
   constructor(
     public connection: Connection,
@@ -84,6 +87,9 @@ export class ClientTime extends ConnectionObject {
         this.clientTimeState.targetClock.value < this.maxClock.value.clock
       ) {
         this.clientTimeState.targetClock.value++;
+      } else if (!this.clientTimeState.isWaitingOnAnimations.value) {
+        // some other use has reset...
+        this.clientTimeState.targetClock.value = this.maxClock.value.clock;
       } else {
         this.processNewTargetClock();
       }
@@ -159,29 +165,6 @@ export class ClientTime extends ConnectionObject {
       const animationKey = `minimumAnimationDuration${Date.now()}`;
       this.clientTimeState.setAnimationState(animationKey, true);
       setTimeout(() => this.clientTimeState.setAnimationState(animationKey, false), 100);
-
-      // if (
-      //   this.currentClock.value.clock >= 2 &&
-      //   this.clientTimeState.animationSpeedMultiplier.value !==
-      //     this.clientTimeState.animationSpeedMultiplier.value
-      // ) {
-      //   const checkForAnimationEnd = () => {
-      //     if (!this.clientTimeState.isWaitingOnAnimations.value) {
-      //       this.clientTimeState.animationSpeedMultiplier.value =
-      //         this.clientTimeState.animationSpeedMultiplier.value;
-      //     } else if (this.currentClock.value.clock >= this.clientTimeState.targetClock.value) {
-      //       setTimeout(
-      //         () =>
-      //           (this.clientTimeState.animationSpeedMultiplier.value =
-      //             this.clientTimeState.animationSpeedMultiplier.value),
-      //         100,
-      //       );
-      //     } else {
-      //       setTimeout(checkForAnimationEnd, 100);
-      //     }
-      //   };
-      //   checkForAnimationEnd();
-      // }
     }
   }
 }

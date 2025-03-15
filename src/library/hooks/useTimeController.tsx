@@ -72,6 +72,7 @@ export function TimeControllerProvider({ children }: { children: ReactNode }) {
 
       const cp = new ClientPrompts(playerId, connection, newClientTime);
       connection.register(cp);
+      newClientTime.clientPrompt = cp; // circular reference.  ugly.
 
       const cs = new ClientStatus(connection);
       connection.register(cs);

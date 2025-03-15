@@ -37,8 +37,9 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
     const isWaitingOnAnimations = this.clientTime.clientTimeState.isWaitingOnAnimations.value;
     const promptSpec = this.getPromptEventChannelForPlayer(this.playerId).value;
 
-    if (isLive && promptSpec == this._currentPromptSpec && currentTime <= maxTime) {
-      // do nothing - we are moving forward and we don't need to unstage and re-stage a prompt
+    if (isLive && promptSpec && promptSpec == this._currentPromptSpec) {
+      // do nothing - we have already inflated our prompt and it is still the correct prompt.  as long as we are "live" there is no
+      // need to deflate it
     } else if (isLive && promptSpec && currentTime === maxTime && currentTime > 0 && !isWaitingOnAnimations) {
       if (this.currentPrompt.value) {
         this.currentPrompt.value.stageOut();

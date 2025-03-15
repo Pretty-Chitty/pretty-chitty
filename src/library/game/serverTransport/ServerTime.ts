@@ -20,7 +20,7 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
     this.register(
       match.onChange(() => {
         if (match.turn.value) {
-          this.clientTime.newMaxClock(match.turn.value.clockDetails);
+          this.clientTime.newMaxClock(match.turn.value.clockDetails(this.playerId));
         }
 
         if (!this.hasSentLastActionTime) {
@@ -36,7 +36,7 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
   }
   async serializeDelta(from: ClockDetails, to: number) {
     if (this.match.turn.value) {
-      return this.match.turn.value.serialize(to, from);
+      return this.match.turn.value.serialize(this.playerId, to, from);
     }
     throw new Error("No match or match hasn't started");
   }

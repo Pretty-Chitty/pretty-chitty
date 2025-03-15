@@ -370,7 +370,19 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
   public showGallery(source: GalleryItemSource) {
     if (this.galleryState) {
-      this.galleryState.source.value = source;
+      const s = this.galleryState.source;
+      s.value = source;
+      return () => {
+        if (s.value === source) {
+          s.value = undefined;
+        }
+      };
+    }
+    return () => {};
+  }
+  public hideGallery(source: GalleryItemSource) {
+    if (this.galleryState && this.galleryState.source.value === source) {
+      this.galleryState.source.value = undefined;
     }
   }
 

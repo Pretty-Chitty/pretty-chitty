@@ -213,6 +213,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     }
 
     if (sawChange) {
+      // flushing any changes while there are active subturns makes timelines *VERY* difficult
+      if (this.activeSubTurns.length) {
+        throw new Error("Cannot flush while subturns are active");
+      }
+
       this.clockSteps.push(new FlushClockStep(this.clock, newStates, fromStates));
     }
   }
@@ -267,7 +272,16 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     const turn = new Turn<A, P, R>(id, this.match, s, cb, chits, player, this);
 
     this.decisionIndex++;
-    this.clockSteps.push(new SubTurnClockStep(turn, this.lastClockStep));
+
+    if (this.activeSubTurns.length === 0) {
+      this.clockSteps.push(new SubTurnsClockStep(this.clock, [turn], this.lastClockStep));
+    } else {
+      const lastStep = this.clockSteps[this.clockSteps.length - 1];
+      if (!(lastStep instanceof SubTurnsClockStep)) {
+        throw new Error("Unexpected clocksteps stage");
+      }
+      lastStep.turns.push(turn);
+    }
 
     this.activeSubTurns.push(turn);
 
@@ -537,7 +551,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
           // if a turn that is not the last turn has been modified, then there is no real choice but to do a full and complete reset
           // since we may have logic that has operated on the state of the turn that is now invalid
-          if (subTurnChanges.length === 1 && subTurnChanges[0].type === "reset" && i < oldState.decisions.length - 1) {
+          if (
+            subTurnChanges.length === 1 &&
+            subTurnChanges[0].type === "reset"
+            //&& i < oldState.decisions.length - 1 -- TODO: why was this here?  it had to be an active turn to be in this branch so this is stupid
+          ) {
             return [{ turn: this, type: "reset" }];
           }
         } else if (JSON.stringify(oldTurnState.decisions) !== JSON.stringify(newTurnState.decisions)) {
@@ -549,17 +567,16 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   }
 
   /** @internal */
-  serialize(clock: number, currentState?: ClockDetails): ChitSerializationResponse {
+  serialize(playerId: string, clock: number, currentState?: ClockDetails): ChitSerializationResponse {
     if (clock < 0) {
       clock = 0;
     }
-    if (clock > this.clock) {
-      clock = this.clock;
+    if (clock > this.playerVisibleClockTime(playerId)) {
+      clock = this.playerVisibleClockTime(playerId);
     }
 
     const chits = {};
     let subTurns: { [id: string]: ClockDetails } | undefined;
-    const requiredSubTurnIds = new Set();
 
     // There was a reset.  We have no way of knowing exactly what they had, so we have to
     // resend everything
@@ -568,13 +585,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       currentState = undefined;
     }
 
-    // if the current state already has knowledge about subturns, we need to pass
-    // each and every subturn, otherwise something has gone terribly awry
-    if (currentState && currentState.subTurns) {
-      Object.keys(currentState.subTurns).forEach((id) => requiredSubTurnIds.add(id));
-    }
-
     let resultingClock = -1;
+
+    if (currentState && currentState.clock === clock) {
+      return { chits, clockDetails: currentState };
+    }
 
     if (!currentState || currentState?.clock < clock) {
       // going forwards
@@ -594,7 +609,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           break;
         }
 
-        if (clockStep.endClock <= startClock) {
+        if (clockStep.endClock(playerId) <= startClock) {
           continue;
         }
         if (clockStep.startClock >= clock) {
@@ -603,28 +618,33 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
         if (clockStep instanceof FlushClockStep) {
           Object.assign(chits, clockStep.state);
-          resultingClock = clockStep.endClock;
-        } else if (clockStep instanceof SubTurnClockStep) {
-          const id = clockStep.turn.id;
-          requiredSubTurnIds.delete(id);
-          const turnState = currentState?.subTurns && currentState?.subTurns[id];
-          const serialized = clockStep.turn.serialize(clock - clockStep.startClock, turnState);
+          resultingClock = clockStep.endClock();
+          subTurns = undefined;
+        } else if (clockStep instanceof SubTurnsClockStep) {
+          subTurns = {};
+          resultingClock = clockStep.startClock;
+          let remainingClocksToSpend = clock - clockStep.startClock;
+          for (const turn of clockStep.visibleTurns(playerId)) {
+            const id = turn.id;
 
-          // if the sub-turn is only partially serialized (meaning we asked for it to be half done)
-          // then we need to include the sub-turn clock details.
-          if (serialized.clockDetails.clock !== clockStep.turn.clock || !clockStep.turn.completed) {
-            if (!subTurns) {
-              subTurns = {};
+            const turnState = currentState?.subTurns && currentState?.subTurns[id];
+
+            const time = Math.max(remainingClocksToSpend, turnState?.clock ?? 0);
+            if (time <= 0) {
+              break;
             }
+
+            // we are going forward so we never want to have a turn go backwards.  ever.
+            const serialized = turn.serialize(playerId, time, turnState);
             subTurns[id] = serialized.clockDetails;
+            Object.assign(chits, serialized.chits);
+
+            resultingClock += serialized.clockDetails.clock;
+            remainingClocksToSpend -= serialized.clockDetails.clock;
           }
-
-          Object.assign(chits, serialized.chits);
-
-          resultingClock = clockStep.startClock + serialized.clockDetails.clock;
         }
       }
-    } else {
+    } else if (currentState.clock > clock) {
       // going backwards
       const startClock = currentState?.clock ?? 0;
       let index = this.clockSteps.length - 1;
@@ -640,45 +660,44 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         if (clockStep.startClock >= startClock) {
           continue;
         }
-        if (clockStep.endClock <= clock) {
+        if (
+          clockStep.endClock(playerId) <= clock &&
+          !(clockStep instanceof SubTurnsClockStep && index === this.clockSteps.length - 2)
+        ) {
           break;
         }
 
         if (clockStep instanceof FlushClockStep) {
           Object.assign(chits, clockStep.fromState);
           resultingClock = clockStep.startClock;
-        } else if (clockStep instanceof SubTurnClockStep) {
-          const id = clockStep.turn.id;
-          requiredSubTurnIds.delete(id);
+        } else if (clockStep instanceof SubTurnsClockStep) {
+          subTurns = {};
+          resultingClock = clockStep.startClock;
+          let remainingClocksToSpend = clock - clockStep.startClock;
+          for (const turn of clockStep.visibleTurns(playerId)) {
+            console.log(remainingClocksToSpend);
+            const id = turn.id;
 
-          let turnState = currentState?.subTurns && currentState?.subTurns[id];
-          if (!turnState) {
-            turnState = { clock: clockStep.endClock - clockStep.startClock, pass: clockStep.turn.pass };
-          }
-
-          const serialized = clockStep.turn.serialize(clock - clockStep.startClock, turnState);
-
-          if (serialized.clockDetails.clock !== 0) {
-            if (!subTurns) {
-              subTurns = {};
+            let turnState = currentState?.subTurns && currentState?.subTurns[id];
+            if (!turnState) {
+              turnState = { clock: clockStep.endClock(playerId) - clockStep.startClock, pass: turn.pass };
             }
+
+            const time = Math.min(remainingClocksToSpend, turnState.clock);
+            if (time <= 0) {
+              break;
+            }
+
+            // we are going forward so we never want to have a turn go backwards.  ever.
+            const serialized = turn.serialize(playerId, time, turnState);
             subTurns[id] = serialized.clockDetails;
+            Object.assign(chits, serialized.chits);
+
+            resultingClock += serialized.clockDetails.clock;
+            remainingClocksToSpend -= serialized.clockDetails.clock;
           }
-
-          Object.assign(chits, serialized.chits);
-
-          resultingClock = clockStep.startClock + serialized.clockDetails.clock;
         }
       }
-    }
-
-    // if not all turns were visited, then something has gone wrong.
-    // this likely means there were concurrent turns running and their
-    // clocks are moving in a way that the client wasn't expecting.
-    // The only way to really fix this is to start over and get a full
-    // rundown of all locked chits by this turn from time 0 (of this turn)
-    if (requiredSubTurnIds.size > 0) {
-      return this.serialize(clock);
     }
 
     return {
@@ -895,7 +914,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
   /** @internal */
   get clock() {
-    return this.lastClockStep?.endClock ?? 0;
+    return this.lastClockStep?.endClock() ?? 0;
+  }
+
+  /** @internal */
+  playerVisibleClockTime(playerId?: string) {
+    return this.lastClockStep?.endClock(playerId) ?? 0;
   }
 
   /** @internal */
@@ -904,15 +928,16 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   }
 
   /** @internal */
-  get clockDetails(): ClockDetails {
+  clockDetails(playerId?: string): ClockDetails {
     const result: ClockDetails = {
-      clock: this.clock,
+      clock: this.playerVisibleClockTime(playerId),
       pass: this.pass,
     };
     if (this.activeSubTurns.length > 0) {
       result.subTurns = {};
+
       for (const turn of this.activeSubTurns) {
-        result.subTurns[turn.id] = turn.clockDetails;
+        result.subTurns[turn.id] = turn.clockDetails(playerId);
       }
     }
     return result;
@@ -960,33 +985,57 @@ type ChitStateLookup = { [id: string]: string };
 
 abstract class ClockStep {
   abstract get startClock(): number;
-  abstract get endClock(): number;
+  abstract endClock(playerId?: string): number;
 }
 
-class SubTurnClockStep<P extends PlayerChit, R extends RootChit<P>> extends ClockStep {
-  get startClock(): number {
-    return this.previousStep?.endClock ?? 0;
+class SubTurnsClockStep<P extends PlayerChit, R extends RootChit<P>> extends ClockStep {
+  visibleTurns(playerId?: string) {
+    if (this.turns.length === 1 || playerId === undefined) {
+      return this.turns;
+    }
+
+    const myTurn = this.turns.find((turn) => turn.player?.id === playerId);
+    if (myTurn && !myTurn?.completed) {
+      return [myTurn];
+    }
+
+    if (myTurn?.completed) {
+      return [myTurn, ...this.turns.filter((turn) => turn !== myTurn)];
+    }
+
+    const completedTurns = this.turns.filter((turn) => turn.completed);
+    if (completedTurns.length === this.turns.length) {
+      return completedTurns;
+    }
+
+    return [];
   }
-  get endClock(): number {
-    return this.startClock + this.turn.clock;
+
+  endClock(playerId?: string): number {
+    return (
+      this.startClock +
+      this.visibleTurns(playerId).reduce((sum, turn) => sum + turn.playerVisibleClockTime(playerId), 0)
+    );
   }
+
   constructor(
-    public turn: Turn<any, P, R>,
-    private previousStep?: ClockStep,
+    public startClock: number,
+    public turns: Turn<any, P, R>[],
   ) {
     super();
   }
 }
 
 class FlushClockStep extends ClockStep {
-  public endClock: number;
+  public endClock() {
+    return this.startClock + 1;
+  }
   constructor(
     public startClock: number,
     public state: ChitStateLookup,
     public fromState: ChitStateLookup,
   ) {
     super();
-    this.endClock = startClock + 1;
   }
 }
 

@@ -105,20 +105,20 @@ export abstract class Pick {
   }
 
   /** @internal */
+  closeGallery?: () => void;
+
+  /** @internal */
   processFocus() {
     // show it?
     this.focusChits.forEach((c) => {
       if (c.renderInstance) {
         c.renderInstance.rootRenderInstance.markHasChitsEntering();
         if (c.renderInstance.absorbsClickEventsForChildren) {
-          c.renderInstance.rootRenderInstance.showGallery(new GalleryItemChitChildrenSource(c));
+          this.closeGallery = c.renderInstance.rootRenderInstance.showGallery(new GalleryItemChitChildrenSource(c));
         }
       }
     });
   }
-
-  /** @internal */
-  private showGallery() {}
 }
 
 export class ChitPick<T extends Chit> extends Pick {
@@ -184,13 +184,19 @@ export class ChitPick<T extends Chit> extends Pick {
     this.processFocus();
     this.button?.computeItemSource(this);
     if (this.button?.autoShow && this.button?.galleryItemSource) {
-      this.chits[0]?.renderInstance?.rootRenderInstance.showGallery(this.button.galleryItemSource);
+      this.closeGallery = this.chits[0]?.renderInstance?.rootRenderInstance.showGallery(this.button.galleryItemSource);
     }
   }
 
   /** @internal */
   stageOut() {
     this.chits.forEach((c) => (c.onClick = undefined));
+    if (this.closeGallery) {
+      this.closeGallery();
+    }
+    if (this.button instanceof ToggleGalleryButton && this.button?.galleryItemSource) {
+      this.chits[0]?.renderInstance?.rootRenderInstance.hideGallery(this.button.galleryItemSource);
+    }
   }
 
   /** @internal */

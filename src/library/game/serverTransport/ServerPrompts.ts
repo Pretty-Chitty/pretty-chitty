@@ -32,7 +32,7 @@ export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
                 this.clientPrompts.setPromptForPlayer(
                   player.playerId,
                   latestPrompt?.serialize(),
-                  this.match.turn.value?.clockDetails,
+                  this.match.turn.value?.clockDetails(playerId),
                 ),
               ),
             );
