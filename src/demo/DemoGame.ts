@@ -74,28 +74,28 @@ export class DemoGame implements Game<MyPlayer, Root> {
     }
 
     // ask for some cards in the hand
-    await Promise.all(
-      players.map((player) =>
-        setup.createTurn([player], player, async (turn) => {
-          const possible: Chit[] = player.hand.orderedChildren.copy().slice(0, 1);
-          const possible2: Chit[] = player.hand.orderedChildren.copy().slice(1, 3);
+    await setup.runParallelTurns(
+      players,
+      (p) => [p],
+      async (player, turn) => {
+        const possible: Chit[] = player.hand.orderedChildren.copy().slice(0, 1);
+        const possible2: Chit[] = player.hand.orderedChildren.copy().slice(1, 3);
 
-          await turn.pick([
-            Chit.pick(possible, (selected) => {
-              console.log(selected);
-              player.hand.remove(selected);
-            }).toggleButton(new HandButton().set((c) => (c.autoShow = false))), //.setParentChit(rootChit.mainBoard.hand)),
-            Chit.pick(possible2, (selected) => {
-              console.log(selected);
-              player.hand.remove(selected);
-            })
-              .focus(player.hand)
-              .toggleButton(new HandButton().set((c) => (c.autoShow = false)).setParentChit(player.hand)),
-          ]);
+        await turn.pick([
+          Chit.pick(possible, (selected) => {
+            console.log(selected);
+            player.hand.remove(selected);
+          }).toggleButton(new HandButton().set((c) => (c.autoShow = false))), //.setParentChit(rootChit.mainBoard.hand)),
+          Chit.pick(possible2, (selected) => {
+            console.log(selected);
+            player.hand.remove(selected);
+          })
+            .focus(player.hand)
+            .toggleButton(new HandButton().set((c) => (c.autoShow = false)).setParentChit(player.hand)),
+        ]);
 
-          (player.hand.orderedChildren.get(0) as Card).flipped = true;
-        }),
-      ),
+        (player.hand.orderedChildren.get(0) as Card).flipped = true;
+      },
     );
 
     // set up the board

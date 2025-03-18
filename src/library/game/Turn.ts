@@ -3,11 +3,11 @@ import { Chit } from "./Chit";
 import { Match } from "./Match";
 import { PickPrompt, Prompt, SelectPrompt } from "./Prompt";
 import { PromptResponse, RngResponse, TurnState } from "./TurnState";
-import { ClockDetails } from "./ClockDetails";
 import { ButtonPick, Pick } from "./Pick";
 import { Confirm, GameButton } from "./GameButton";
 import { PlayerChit } from "./PlayerChit";
 import { RootChit } from "./RootChit";
+import { ClockDetails } from "./ClockDetails";
 
 type ChitSerializationResponse = {
   chits: ChitStateLookup;
@@ -264,7 +264,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       throw new Error("Only one sub-turn can be active at a time per player");
     }
 
-    const id = `${this.id}.${this.decisionIndex}`;
+    const id = `${this.id}.t${this.decisionIndex}`;
     const s = this.state.getOrCreateTurnState(this.decisionIndex);
     s.playerId = player?.playerId;
     s.id = id;
@@ -274,7 +274,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.decisionIndex++;
 
     if (this.activeSubTurns.length === 0) {
-      this.clockSteps.push(new SubTurnsClockStep(this.clock, [turn], this.lastClockStep));
+      this.clockSteps.push(new SubTurnsClockStep(this.clock, [turn]));
     } else {
       const lastStep = this.clockSteps[this.clockSteps.length - 1];
       if (!(lastStep instanceof SubTurnsClockStep)) {
@@ -306,6 +306,21 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.lastChitStates = { ...this.lastChitStates, ...turn.lastChitStates };
 
     return result;
+  }
+
+  public async runParallelTurns<A>(
+    players: P[],
+    chits: (p: P) => Chit[],
+    action: (p: P, turn: Turn<A, P, R>) => Promise<A>,
+  ): Promise<A[]> {
+    // the whole point of this function is so we can mark all players as having a prompt waiting for them
+    players.forEach((player) => (player.promptStatus.latestPromptMessage = "Waiting for turn to complete"));
+
+    const turns = players.map((player) =>
+      this.createTurn(chits(player), player, (turn: Turn<A, P, R>) => action(player, turn)),
+    );
+
+    return await Promise.all(turns);
   }
 
   /**
@@ -551,11 +566,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
           // if a turn that is not the last turn has been modified, then there is no real choice but to do a full and complete reset
           // since we may have logic that has operated on the state of the turn that is now invalid
-          if (
-            subTurnChanges.length === 1 &&
-            subTurnChanges[0].type === "reset"
-            //&& i < oldState.decisions.length - 1 -- TODO: why was this here?  it had to be an active turn to be in this branch so this is stupid
-          ) {
+          if (subTurnChanges.length === 1 && subTurnChanges[0].type === "reset") {
             return [{ turn: this, type: "reset" }];
           }
         } else if (JSON.stringify(oldTurnState.decisions) !== JSON.stringify(newTurnState.decisions)) {
@@ -567,7 +578,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   }
 
   /** @internal */
-  serialize(playerId: string, clock: number, currentState?: ClockDetails): ChitSerializationResponse {
+  serialize(playerId: string, clock: number): ChitSerializationResponse {
     if (clock < 0) {
       clock = 0;
     }
@@ -576,126 +587,51 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     }
 
     const chits = {};
-    let subTurns: { [id: string]: ClockDetails } | undefined;
-
-    // There was a reset.  We have no way of knowing exactly what they had, so we have to
-    // resend everything
-    if (currentState && currentState.pass !== this.pass) {
-      Object.assign(chits, this.lockedChitStates);
-      currentState = undefined;
-    }
-
     let resultingClock = -1;
 
-    if (currentState && currentState.clock === clock) {
-      return { chits, clockDetails: currentState };
+    // going forwards
+    let index = 0;
+
+    // if we are root, then starting state is locked chit state
+    if (!this.parent) {
+      Object.assign(chits, this.lockedChitStates);
     }
 
-    if (!currentState || currentState?.clock < clock) {
-      // going forwards
-      const startClock = currentState?.clock ?? 0;
-      let index = 0;
+    let subTurns: { [turnId: string]: ClockDetails } | undefined = undefined;
 
-      // if we are root, then starting state is locked chit state
-      if (startClock === 0 && !this.parent) {
-        Object.assign(chits, this.lockedChitStates);
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const clockStep = this.clockSteps[index];
+      index++;
+      if (!clockStep) {
+        break;
       }
 
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const clockStep = this.clockSteps[index];
-        index++;
-        if (!clockStep) {
-          break;
-        }
-
-        if (clockStep.endClock(playerId) <= startClock) {
-          continue;
-        }
-        if (clockStep.startClock >= clock) {
-          break;
-        }
-
-        if (clockStep instanceof FlushClockStep) {
-          Object.assign(chits, clockStep.state);
-          resultingClock = clockStep.endClock();
-          subTurns = undefined;
-        } else if (clockStep instanceof SubTurnsClockStep) {
-          subTurns = {};
-          resultingClock = clockStep.startClock;
-          let remainingClocksToSpend = clock - clockStep.startClock;
-          for (const turn of clockStep.visibleTurns(playerId)) {
-            const id = turn.id;
-
-            const turnState = currentState?.subTurns && currentState?.subTurns[id];
-
-            const time = Math.max(remainingClocksToSpend, turnState?.clock ?? 0);
-            if (time <= 0) {
-              break;
-            }
-
-            // we are going forward so we never want to have a turn go backwards.  ever.
-            const serialized = turn.serialize(playerId, time, turnState);
-            subTurns[id] = serialized.clockDetails;
-            Object.assign(chits, serialized.chits);
-
-            resultingClock += serialized.clockDetails.clock;
-            remainingClocksToSpend -= serialized.clockDetails.clock;
-          }
-        }
+      if (clockStep.startClock >= clock) {
+        break;
       }
-    } else if (currentState.clock > clock) {
-      // going backwards
-      const startClock = currentState?.clock ?? 0;
-      let index = this.clockSteps.length - 1;
 
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const clockStep = this.clockSteps[index];
-        index--;
-        if (!clockStep) {
-          break;
-        }
-
-        if (clockStep.startClock >= startClock) {
-          continue;
-        }
-        if (
-          clockStep.endClock(playerId) <= clock &&
-          !(clockStep instanceof SubTurnsClockStep && index === this.clockSteps.length - 2)
-        ) {
-          break;
-        }
-
-        if (clockStep instanceof FlushClockStep) {
-          Object.assign(chits, clockStep.fromState);
-          resultingClock = clockStep.startClock;
-        } else if (clockStep instanceof SubTurnsClockStep) {
-          subTurns = {};
-          resultingClock = clockStep.startClock;
-          let remainingClocksToSpend = clock - clockStep.startClock;
-          for (const turn of clockStep.visibleTurns(playerId)) {
-            console.log(remainingClocksToSpend);
-            const id = turn.id;
-
-            let turnState = currentState?.subTurns && currentState?.subTurns[id];
-            if (!turnState) {
-              turnState = { clock: clockStep.endClock(playerId) - clockStep.startClock, pass: turn.pass };
-            }
-
-            const time = Math.min(remainingClocksToSpend, turnState.clock);
-            if (time <= 0) {
-              break;
-            }
-
-            // we are going forward so we never want to have a turn go backwards.  ever.
-            const serialized = turn.serialize(playerId, time, turnState);
-            subTurns[id] = serialized.clockDetails;
-            Object.assign(chits, serialized.chits);
-
-            resultingClock += serialized.clockDetails.clock;
-            remainingClocksToSpend -= serialized.clockDetails.clock;
+      if (clockStep instanceof FlushClockStep) {
+        subTurns = undefined;
+        Object.assign(chits, clockStep.state);
+        resultingClock = clockStep.endClock();
+      } else if (clockStep instanceof SubTurnsClockStep) {
+        subTurns = {};
+        resultingClock = clockStep.startClock;
+        let remainingClocksToSpend = clock - clockStep.startClock;
+        for (const turn of clockStep.visibleTurns(playerId)) {
+          const time = Math.max(remainingClocksToSpend, 0);
+          if (time <= 0) {
+            break;
           }
+
+          // we are going forward so we never want to have a turn go backwards.  ever.
+          const serialized = turn.serialize(playerId, time);
+          Object.assign(chits, serialized.chits);
+
+          resultingClock += serialized.clockDetails.clock;
+          remainingClocksToSpend -= serialized.clockDetails.clock;
+          subTurns[turn.id] = serialized.clockDetails;
         }
       }
     }
@@ -790,7 +726,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       resolution.response = prompt.response;
       this.unresolvedPrompt = undefined;
     }
-    this.player.promptStatus.latestPromptResponseTime = this.absoluteClock;
+    this.player.promptStatus.latestPromptResponseTime = this.clockDetails(this.player.id).clock;
     this.player.promptStatus.latestPromptMessage = undefined;
     this.decisionIndex++;
   }

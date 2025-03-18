@@ -88,7 +88,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         let counter = 1;
         rootChit.walk((c: Chit) => {
           if (!c.id) {
-            c.id = `root-autocreated-${counter++}`;
+            c.id = `r-ac-${counter++}`;
           }
         });
 

@@ -1,4 +1,5 @@
 import { ClockDetails } from "../ClockDetails";
+import QuickLRU from "quick-lru";
 import { Connection } from "../Connection";
 import { ConnectionObject } from "../ConnectionObject";
 import { Match } from "../Match";
@@ -34,9 +35,29 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
       }),
     );
   }
-  async serializeDelta(from: ClockDetails, to: number) {
+
+  private stateCounter = 0;
+  private stateLookups: { [chitId: string]: number } = {};
+  async serializeDelta(to: number) {
     if (this.match.turn.value) {
-      return this.match.turn.value.serialize(this.playerId, to, from);
+      const result = this.match.turn.value.serialize(this.playerId, to);
+
+      const newStates: { [stateId: number]: string } = {};
+      const chitIdToStateCounter: { [chitId: string]: number } = {};
+      Object.entries(result.chits).forEach(([key, value]) => {
+        let state = this.stateLookups[value];
+        if (state === undefined) {
+          state = this.stateLookups[key] = ++this.stateCounter;
+          newStates[this.stateCounter] = value;
+        }
+        chitIdToStateCounter[key] = state;
+      });
+
+      return {
+        clockDetails: result.clockDetails,
+        newStates,
+        chits: chitIdToStateCounter,
+      };
     }
     throw new Error("No match or match hasn't started");
   }

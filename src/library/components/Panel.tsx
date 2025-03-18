@@ -7,7 +7,7 @@ import Viewer from "./Viewer";
 import { PanelLayoutResult, PanelChit } from "../game/PanelChit";
 import { useGameTheme } from "../hooks/useGameTheme";
 
-import { useClientPrompts, useTimeController, useTimeState } from "../hooks/useTimeController";
+import { useTimeController, useTimeState } from "../hooks/useTimeController";
 import { usePanelStates } from "../hooks/usePanelStates";
 import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
 import { useEventChannelState } from "../hooks/useEventChannelState";
@@ -100,7 +100,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
 
   const timeController = useTimeController();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
+  const [_targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
   const [live] = useEventChannelState(timeState.live);
 
@@ -167,9 +167,10 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
 
       if (live) {
         setTargetClock(maxClock.clock);
+        chits.forEach((chit) => chit.renderInstance?.rootRenderInstance.resetMarks());
       }
     },
-    [selectedIndex, chits.length, setSelectedIndex, maxClock, setTargetClock, live],
+    [selectedIndex, chits, setSelectedIndex, maxClock, setTargetClock, live],
   );
 
   return (

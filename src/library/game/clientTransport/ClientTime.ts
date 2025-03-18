@@ -96,6 +96,12 @@ export class ClientTime extends ConnectionObject {
     }
   }
 
+  private _states: { [stateId: number]: string } = {};
+  private inflateSerializedResponse(newState: { [state: number]: string }, chitStates: { [id: string]: number }) {
+    Object.assign(this._states, newState);
+    return Object.fromEntries(Object.entries(chitStates).map(([key, value]) => [key, this._states[value]]));
+  }
+
   private async processNewTargetClock() {
     const newTargetClock = this.clientTimeState.targetClock.value;
     const currentClock = this.currentClock.value;
@@ -112,43 +118,42 @@ export class ClientTime extends ConnectionObject {
       this.clientTimeState.isLoading.value = false;
     }
 
-    const result = await this.serverTime.serializeDelta(currentClock, this.clientTimeState.targetClock.value);
+    const response = await this.serverTime.serializeDelta(this.clientTimeState.targetClock.value);
+    const serializedChits = this.inflateSerializedResponse(response.newStates, response.chits);
 
     // make sure nothing changed while we were waiting...
     if (this.clientTimeState.targetClock.value === newTargetClock && currentClock === this.currentClock.value) {
       // first make sure all chits exist (because they may link to each other)
-      Object.entries(result.chits).forEach(([id, value]) => {
+      Object.entries(serializedChits).forEach(([id, value]) => {
         let chit = this.chitLookup[id];
         if (!chit) {
           chit = this.chitLookup[id] = Chit.deflate(value, this.game);
         }
       });
 
-      // if root "pass" is different, mark all chits as "deleted"
-      if (this.currentClock.value.pass !== result.clockDetails.pass) {
-        Object.values(this.chitLookup).forEach((chit) => {
-          if (chit.id && !result.chits[chit.id]) {
-            chit.removeFromParent();
-          }
-        });
-      }
+      Object.values(this.chitLookup).forEach((chit) => {
+        if (chit.id && !serializedChits[chit.id]) {
+          chit.removeFromParent();
+          delete this.lastSerializedState[chit.id];
+        }
+      });
 
-      this.currentClock.value = result.clockDetails;
+      this.currentClock.value = response.clockDetails;
 
       // now actually load the new state
       const changedIds = new Set(
-        Object.entries(result.chits)
+        Object.entries(serializedChits)
           .filter(([id, value]) => this.lastSerializedState[id] !== value)
           .map(([id]) => id),
       );
 
-      const chits: Chit[] = Object.entries(result.chits)
+      const chits: Chit[] = Object.entries(serializedChits)
         .filter(([id, value]) => this.lastSerializedState[id] !== value)
         .map(([id]) => this.chitLookup[id]);
 
       chits.forEach((chit) => chit.beginDeserializing());
 
-      Object.entries(result.chits)
+      Object.entries(serializedChits)
         .filter(([id]) => changedIds.has(id))
         .forEach(([id, value]) => {
           const chit = this.chitLookup[id];
