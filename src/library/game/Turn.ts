@@ -145,7 +145,6 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   flush() {
     const seenIds = new Set<string>();
     const newStates: ChitStateLookup = {};
-    const fromStates: ChitStateLookup = {};
     let sawChange = false;
 
     // first ensure they all are locked and all have ids
@@ -167,14 +166,10 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         const serialized = c.serialize();
         const lastState = this.lastChitStates[c.id];
         if (serialized !== lastState) {
-          // there is a change!
-          if (lastState) {
-            fromStates[c.id] = lastState;
-          } else {
-            fromStates[c.id] = Chit.deletedIfSerialized();
-          }
           this.lastChitStates[c.id] = newStates[c.id] = serialized;
           sawChange = true;
+        } else {
+          newStates[c.id] = serialized;
         }
       } else {
         return false; // already saw this - no need to keep digging into children
@@ -194,13 +189,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         if (chit.id) {
           sawChange = true;
           chit.unlock(this);
+          newStates[chit.id] = Chit.deletedIfSerialized();
           // do not store this new state in lastChitStates, but rather delete this record from it altogether
-          newStates[chit.id] = chit.serialize();
-
           chit.walk((c) => {
             if (c.id) {
               seenIds.add(c.id);
-              delete this.lastChitStates[c.id];
+              this.lastChitStates[c.id] = Chit.deletedIfSerialized();
             }
           });
         }
@@ -218,7 +212,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         throw new Error("Cannot flush while subturns are active");
       }
 
-      this.clockSteps.push(new FlushClockStep(this.clock, newStates, fromStates));
+      this.clockSteps.push(new FlushClockStep(this.clock, newStates));
     }
   }
 
@@ -563,12 +557,6 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         if (foundTurn) {
           const subTurnChanges = foundTurn.handleNewSavedState(newTurnState);
           subTurnChanges.forEach((r) => result.push(r));
-
-          // if a turn that is not the last turn has been modified, then there is no real choice but to do a full and complete reset
-          // since we may have logic that has operated on the state of the turn that is now invalid
-          if (subTurnChanges.length === 1 && subTurnChanges[0].type === "reset") {
-            return [{ turn: this, type: "reset" }];
-          }
         } else if (JSON.stringify(oldTurnState.decisions) !== JSON.stringify(newTurnState.decisions)) {
           return [{ turn: this, type: "reset" }];
         }
@@ -577,26 +565,24 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     return result;
   }
 
+  private findIndexOfLastFlushStepBefore(clock: number): number {
+    for (let j = this.clockSteps.length - 1; j >= 0; j--) {
+      if (this.clockSteps[j] instanceof FlushClockStep && this.clockSteps[j].startClock < clock) {
+        return j;
+      }
+    }
+    return 0;
+  }
+
   /** @internal */
   serialize(playerId: string, clock: number): ChitSerializationResponse {
-    if (clock < 0) {
-      clock = 0;
-    }
-    if (clock > this.playerVisibleClockTime(playerId)) {
-      clock = this.playerVisibleClockTime(playerId);
-    }
+    clock = Math.max(0, Math.min(clock, this.playerVisibleClockTime(playerId)));
 
-    const chits = {};
+    let chits = {};
     let resultingClock = -1;
 
     // going forwards
-    let index = 0;
-
-    // if we are root, then starting state is locked chit state
-    if (!this.parent) {
-      Object.assign(chits, this.lockedChitStates);
-    }
-
+    let index = this.findIndexOfLastFlushStepBefore(clock);
     let subTurns: { [turnId: string]: ClockDetails } | undefined = undefined;
 
     // eslint-disable-next-line no-constant-condition
@@ -613,7 +599,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
       if (clockStep instanceof FlushClockStep) {
         subTurns = undefined;
-        Object.assign(chits, clockStep.state);
+        chits = { ...clockStep.state };
         resultingClock = clockStep.endClock();
       } else if (clockStep instanceof SubTurnsClockStep) {
         subTurns = {};
@@ -726,7 +712,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       resolution.response = prompt.response;
       this.unresolvedPrompt = undefined;
     }
-    this.player.promptStatus.latestPromptResponseTime = this.clockDetails(this.player.id).clock;
+    this.player.promptStatus.latestPromptResponseTime = this.absoluteClock(this.player.id);
     this.player.promptStatus.latestPromptMessage = undefined;
     this.decisionIndex++;
   }
@@ -859,8 +845,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   }
 
   /** @internal */
-  get absoluteClock(): number {
-    return this.parent?.absoluteClock ?? this.clock;
+  absoluteClock(playerId?: string): number {
+    return this.parent?.absoluteClock(playerId) ?? this.clockDetails(playerId).clock;
   }
 
   /** @internal */
@@ -969,7 +955,6 @@ class FlushClockStep extends ClockStep {
   constructor(
     public startClock: number,
     public state: ChitStateLookup,
-    public fromState: ChitStateLookup,
   ) {
     super();
   }

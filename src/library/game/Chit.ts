@@ -424,7 +424,10 @@ export class Chit extends ObjectWithProps {
    */
   /** @internal */
   public static deflate(serialized: string, game: Game<any, any>) {
-    const { __chitType } = JSON.parse(serialized);
+    const { __chitType, ____deleted } = JSON.parse(serialized);
+    if (____deleted) {
+      return undefined;
+    }
     const ChitType = game.chitLibrary[__chitType] ?? StaticChitTypeRegistry[__chitType];
     if (!ChitType) {
       throw new Error(`Chit Type ${__chitType} not found`);

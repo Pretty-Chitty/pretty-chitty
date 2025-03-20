@@ -127,7 +127,10 @@ export class ClientTime extends ConnectionObject {
       Object.entries(serializedChits).forEach(([id, value]) => {
         let chit = this.chitLookup[id];
         if (!chit) {
-          chit = this.chitLookup[id] = Chit.deflate(value, this.game);
+          const c = Chit.deflate(value, this.game);
+          if (c) {
+            chit = this.chitLookup[id] = c;
+          }
         }
       });
 
@@ -143,12 +146,12 @@ export class ClientTime extends ConnectionObject {
       // now actually load the new state
       const changedIds = new Set(
         Object.entries(serializedChits)
-          .filter(([id, value]) => this.lastSerializedState[id] !== value)
+          .filter(([id, value]) => this.chitLookup[id] && this.lastSerializedState[id] !== value)
           .map(([id]) => id),
       );
 
       const chits: Chit[] = Object.entries(serializedChits)
-        .filter(([id, value]) => this.lastSerializedState[id] !== value)
+        .filter(([id, value]) => this.chitLookup[id] && this.lastSerializedState[id] !== value)
         .map(([id]) => this.chitLookup[id]);
 
       chits.forEach((chit) => chit.beginDeserializing());
