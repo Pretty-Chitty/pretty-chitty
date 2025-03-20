@@ -355,6 +355,17 @@ export class RootChitRenderInstance extends ChitRenderInstance {
         const instances = chitRenderInstances.filter((c) => chitRenderInstanceDistances[c.clickbox.id] >= 0);
         const items = chitsToGalleryItems(instances.map((instance) => instance.chit));
         if (items.length >= 2) {
+          items.forEach((item) => {
+            const orig = item.onClick;
+            if (orig) {
+              item.onClick = () => {
+                orig();
+                if (this.galleryState) {
+                  this.galleryState.source.value = undefined;
+                }
+              };
+            }
+          });
           this.galleryState.source.value = new GalleryItemRawSource(items);
           return;
         }
