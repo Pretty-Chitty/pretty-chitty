@@ -64,29 +64,39 @@ export class DemoGame implements Game<MyPlayer, Root> {
       );
     }
 
-    for (let i = 0; i < 9; i++) {
-      const card = await deck.draw();
-      if (card) {
-        rootChit.mainBoard.hand.add(card);
+    for (let j = 0; j < players.length; j++) {
+      for (let i = 0; i < 3; i++) {
+        const card = await deck.draw();
+        if (card) {
+          players[j].hand.add(card);
+        }
       }
     }
 
     // ask for some cards in the hand
-    await setup.createTurn([rootChit.mainBoard], players[0], async (turn) => {
-      const possible: Chit[] = rootChit.mainBoard.hand.orderedChildren.copy().slice(0, 3);
-      const possible2: Chit[] = rootChit.mainBoard.hand.orderedChildren.copy().slice(4, 6);
+    await setup.runParallelTurns(
+      players,
+      (p) => [p],
+      async (player, turn) => {
+        const possible: Chit[] = player.hand.orderedChildren.copy().slice(0, 1);
+        const possible2: Chit[] = player.hand.orderedChildren.copy().slice(1, 3);
 
-      await turn.pick([
-        Chit.pick(possible, (selected) => {
-          console.log(selected);
-          rootChit.mainBoard.hand.remove(selected);
-        }).toggleButton(new HandButton().set((c) => (c.autoShow = false))), //.setParentChit(rootChit.mainBoard.hand)),
-        Chit.pick(possible2, (selected) => {
-          console.log(selected);
-          rootChit.mainBoard.hand.remove(selected);
-        }).toggleButton(new HandButton().set((c) => (c.autoShow = false)).setParentChit(rootChit.mainBoard.hand)),
-      ]);
-    });
+        await turn.pick([
+          Chit.pick(possible, (selected) => {
+            console.log(selected);
+            player.hand.remove(selected);
+          }).toggleButton(new HandButton().set((c) => (c.autoShow = false))), //.setParentChit(rootChit.mainBoard.hand)),
+          Chit.pick(possible2, (selected) => {
+            console.log(selected);
+            player.hand.remove(selected);
+          })
+            .focus(player.hand)
+            .toggleButton(new HandButton().set((c) => (c.autoShow = false)).setParentChit(player.hand)),
+        ]);
+
+        (player.hand.orderedChildren.get(0) as Card).flipped = true;
+      },
+    );
 
     // set up the board
     const rows = [...new Array(H)].map(() =>

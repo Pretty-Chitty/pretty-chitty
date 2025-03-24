@@ -286,15 +286,23 @@ export class ChitRenderInstance {
   }
 
   private _galleryItem?: ChitGalleryItemInstance;
-  public createGalleryItem() {
-    if (!this._galleryItem) {
-      this._galleryItem = new ChitGalleryItemInstance(this, this.chit);
+  public createGalleryItem(item: ChitGalleryItemInstance) {
+    if (this._galleryItem === item) {
+      return;
     }
+
+    this.destroyGalleryItem();
+    this._galleryItem = item;
+  }
+
+  get currentGalleryItem() {
     return this._galleryItem;
   }
+
   public destroyGalleryItem() {
     if (this._galleryItem) {
-      // this._galleryItem.
+      this._galleryItem.destroy();
+      this._galleryItem = undefined;
     }
   }
 

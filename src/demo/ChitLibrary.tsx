@@ -35,9 +35,7 @@ import { CardMesh } from "../library/utilities/CardMesh";
 
 export * from "../library/utilities/BaseTable";
 
-export class Table extends Chit {
-  @ChildOutlet(new Vector3(-4, 4, 0)) public hand = new Hand();
-}
+export class Table extends Chit {}
 
 export class Row extends Chit {}
 
@@ -218,6 +216,7 @@ export class MyPlayer extends PlayerChit {
   // @ChildOutlet public token = new Card2();
   @ChildOutlet public counter = new CounterChit().set((c) => c.bindToPlayer(this));
   @ChildOutlet public counter2 = new BagChit().set((c) => (c.color = "#ca5275"));
+  @ChildOutlet(new Vector3(-4, 4, 0)) public hand = new Hand();
 
   override getSparks(): SparkChit[] {
     return [this.counter, this.counter2];

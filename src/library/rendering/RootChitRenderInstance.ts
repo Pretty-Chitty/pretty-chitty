@@ -355,6 +355,17 @@ export class RootChitRenderInstance extends ChitRenderInstance {
         const instances = chitRenderInstances.filter((c) => chitRenderInstanceDistances[c.clickbox.id] >= 0);
         const items = chitsToGalleryItems(instances.map((instance) => instance.chit));
         if (items.length >= 2) {
+          items.forEach((item) => {
+            const orig = item.onClick;
+            if (orig) {
+              item.onClick = () => {
+                orig();
+                if (this.galleryState) {
+                  this.galleryState.source.value = undefined;
+                }
+              };
+            }
+          });
           this.galleryState.source.value = new GalleryItemRawSource(items);
           return;
         }
@@ -370,7 +381,19 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
   public showGallery(source: GalleryItemSource) {
     if (this.galleryState) {
-      this.galleryState.source.value = source;
+      const s = this.galleryState.source;
+      s.value = source;
+      return () => {
+        if (s.value === source) {
+          s.value = undefined;
+        }
+      };
+    }
+    return () => {};
+  }
+  public hideGallery(source: GalleryItemSource) {
+    if (this.galleryState && this.galleryState.source.value === source) {
+      this.galleryState.source.value = undefined;
     }
   }
 

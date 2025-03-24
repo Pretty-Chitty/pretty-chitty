@@ -6,9 +6,12 @@ import { Connection } from "../Connection";
 import { ConnectionObject } from "../ConnectionObject";
 import { Game } from "../Game";
 import { ServerTime } from "../serverTransport/ServerTime";
+import { ClientPrompts } from "./ClientPrompts";
 
 export class ClientTime extends ConnectionObject {
   private lastSerializedState: { [chitId: string]: string } = {};
+
+  public clientPrompt?: ClientPrompts<any, any>;
 
   constructor(
     public connection: Connection,
@@ -84,10 +87,19 @@ export class ClientTime extends ConnectionObject {
         this.clientTimeState.targetClock.value < this.maxClock.value.clock
       ) {
         this.clientTimeState.targetClock.value++;
+      } else if (!this.clientTimeState.isWaitingOnAnimations.value) {
+        // some other use has reset...
+        this.clientTimeState.targetClock.value = this.maxClock.value.clock;
       } else {
         this.processNewTargetClock();
       }
     }
+  }
+
+  private _states: { [stateId: number]: string } = {};
+  private inflateSerializedResponse(newState: { [state: number]: string }, chitStates: { [id: string]: number }) {
+    Object.assign(this._states, newState);
+    return Object.fromEntries(Object.entries(chitStates).map(([key, value]) => [key, this._states[value]]));
   }
 
   private async processNewTargetClock() {
@@ -106,43 +118,45 @@ export class ClientTime extends ConnectionObject {
       this.clientTimeState.isLoading.value = false;
     }
 
-    const result = await this.serverTime.serializeDelta(currentClock, this.clientTimeState.targetClock.value);
+    const response = await this.serverTime.serializeDelta(this.clientTimeState.targetClock.value);
+    const serializedChits = this.inflateSerializedResponse(response.newStates, response.chits);
 
     // make sure nothing changed while we were waiting...
     if (this.clientTimeState.targetClock.value === newTargetClock && currentClock === this.currentClock.value) {
       // first make sure all chits exist (because they may link to each other)
-      Object.entries(result.chits).forEach(([id, value]) => {
+      Object.entries(serializedChits).forEach(([id, value]) => {
         let chit = this.chitLookup[id];
         if (!chit) {
-          chit = this.chitLookup[id] = Chit.deflate(value, this.game);
+          const c = Chit.deflate(value, this.game);
+          if (c) {
+            chit = this.chitLookup[id] = c;
+          }
         }
       });
 
-      // if root "pass" is different, mark all chits as "deleted"
-      if (this.currentClock.value.pass !== result.clockDetails.pass) {
-        Object.values(this.chitLookup).forEach((chit) => {
-          if (chit.id && !result.chits[chit.id]) {
-            chit.removeFromParent();
-          }
-        });
-      }
+      Object.values(this.chitLookup).forEach((chit) => {
+        if (chit.id && !serializedChits[chit.id]) {
+          chit.removeFromParent();
+          delete this.lastSerializedState[chit.id];
+        }
+      });
 
-      this.currentClock.value = result.clockDetails;
+      this.currentClock.value = response.clockDetails;
 
       // now actually load the new state
       const changedIds = new Set(
-        Object.entries(result.chits)
-          .filter(([id, value]) => this.lastSerializedState[id] !== value)
+        Object.entries(serializedChits)
+          .filter(([id, value]) => this.chitLookup[id] && this.lastSerializedState[id] !== value)
           .map(([id]) => id),
       );
 
-      const chits: Chit[] = Object.entries(result.chits)
-        .filter(([id, value]) => this.lastSerializedState[id] !== value)
+      const chits: Chit[] = Object.entries(serializedChits)
+        .filter(([id, value]) => this.chitLookup[id] && this.lastSerializedState[id] !== value)
         .map(([id]) => this.chitLookup[id]);
 
       chits.forEach((chit) => chit.beginDeserializing());
 
-      Object.entries(result.chits)
+      Object.entries(serializedChits)
         .filter(([id]) => changedIds.has(id))
         .forEach(([id, value]) => {
           const chit = this.chitLookup[id];
@@ -159,29 +173,6 @@ export class ClientTime extends ConnectionObject {
       const animationKey = `minimumAnimationDuration${Date.now()}`;
       this.clientTimeState.setAnimationState(animationKey, true);
       setTimeout(() => this.clientTimeState.setAnimationState(animationKey, false), 100);
-
-      // if (
-      //   this.currentClock.value.clock >= 2 &&
-      //   this.clientTimeState.animationSpeedMultiplier.value !==
-      //     this.clientTimeState.animationSpeedMultiplier.value
-      // ) {
-      //   const checkForAnimationEnd = () => {
-      //     if (!this.clientTimeState.isWaitingOnAnimations.value) {
-      //       this.clientTimeState.animationSpeedMultiplier.value =
-      //         this.clientTimeState.animationSpeedMultiplier.value;
-      //     } else if (this.currentClock.value.clock >= this.clientTimeState.targetClock.value) {
-      //       setTimeout(
-      //         () =>
-      //           (this.clientTimeState.animationSpeedMultiplier.value =
-      //             this.clientTimeState.animationSpeedMultiplier.value),
-      //         100,
-      //       );
-      //     } else {
-      //       setTimeout(checkForAnimationEnd, 100);
-      //     }
-      //   };
-      //   checkForAnimationEnd();
-      // }
     }
   }
 }

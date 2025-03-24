@@ -9,30 +9,37 @@ export class ChitGalleryItemInstance implements GalleryItem {
   private cbs: UpdateHandler[] = [];
   id: string;
   onClick?: (() => void) | undefined;
+  unsubscribe: () => void;
 
-  constructor(
-    private chitRenderInstance: ChitRenderInstance,
-    private chit: Chit,
-  ) {
+  constructor(private chit: Chit) {
     this.id = chit.id ?? "no id";
 
-    if (chit.onClick) {
-      this.onClick = () => {
-        if (chit.onClick) {
-          chit.onClick();
-        }
-      };
-    }
+    this.onClick = () => {
+      if (chit.onClick) {
+        chit.onClick();
+      }
+    };
+
+    // handle refreshes.
+    this.unsubscribe = chit.onChange("deserialized parent", () => {
+      if (chit.renderInstance) {
+        chit.renderInstance.createGalleryItem(this);
+      }
+    });
+    chit.renderInstance?.createGalleryItem(this);
   }
 
   createMesh() {
+    const renderInstance = this.chit.renderInstance;
     const g = new Group();
-    const mesh = this.chitRenderInstance.group.clone(true) ?? new Group();
-    mesh.visible = true;
-    mesh.rotation.set(0, 0, 0);
-    mesh.position.set(0, 0, 0);
-    g.add(mesh);
-    g.rotation.setFromVector3(this.chitRenderInstance.galleryRotation());
+    if (renderInstance) {
+      const mesh = renderInstance.group.clone(true) ?? new Group();
+      mesh.visible = true;
+      mesh.rotation.set(0, 0, 0);
+      mesh.position.set(0, 0, 0);
+      g.add(mesh);
+      g.rotation.setFromVector3(renderInstance.galleryRotation());
+    }
     return g;
   }
 
@@ -45,5 +52,9 @@ export class ChitGalleryItemInstance implements GalleryItem {
 
   update() {
     this.cbs.forEach((cb) => cb());
+  }
+
+  destroy() {
+    this.unsubscribe();
   }
 }

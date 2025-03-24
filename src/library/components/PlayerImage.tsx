@@ -3,13 +3,13 @@ import { Box, SxProps } from "@mui/material";
 import { PlayerChit } from "../game/PlayerChit";
 
 export default function PlayerImage({ player, size = 50, sx }: { player: PlayerChit; size?: number; sx?: SxProps }) {
-  const BORDER_RATIO = 0 / 12;
+  const BORDER_RATIO = player.color === "transparent" ? 0 : 1 / 12;
   const IMAGE_SIZE = Math.ceil(size * (1 - BORDER_RATIO * 2));
   return (
     <Box
       sx={{
         background: player.color,
-        border: `${size * BORDER_RATIO}px solid #fff`,
+        border: `${size * BORDER_RATIO}px solid ${player.color}`,
         borderRadius: 2,
         overflow: "hidden",
         position: "relative",

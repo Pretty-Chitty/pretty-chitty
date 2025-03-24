@@ -15,7 +15,6 @@ import PanelSpark from "./PanelSpark";
 import { useChit } from "../hooks/useChits";
 import { ZINDEX_PANEL_CUTOUTS, ZINDEX_SPARKS } from "../utilities/zIndex";
 import { usePanelScale } from "../hooks/usePanelScale";
-import { isA } from "vitest-mock-extended";
 
 const Cutout = `data:image/svg+xml;base64,${base64.encode(
   `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -101,7 +100,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
 
   const timeController = useTimeController();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
+  const [_targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
   const [live] = useEventChannelState(timeState.live);
 
@@ -168,9 +167,10 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
 
       if (live) {
         setTargetClock(maxClock.clock);
+        chits.forEach((chit) => chit.renderInstance?.rootRenderInstance.resetMarks());
       }
     },
-    [selectedIndex, chits.length, setSelectedIndex, maxClock, setTargetClock, live],
+    [selectedIndex, chits, setSelectedIndex, maxClock, setTargetClock, live],
   );
 
   return (

@@ -10,6 +10,7 @@ import { SparkChit } from "../game/SparkChit";
 import { UpdatingCanvasImage } from "./UpdatingCanvasImage";
 import { StaticImage } from "../utilities/StaticImage";
 import { RootChit } from "../game/RootChit";
+import { usePlayerId } from "../hooks/usePlayer";
 
 function PlayerInfoCell({ spark, size }: { size: number; spark: SparkChit }) {
   const theme = useGameTheme();
@@ -117,9 +118,21 @@ function PlayerInfoRow({ headers, player }: { player: PlayerChit; headers?: bool
 
 export default function TopBarPlayers() {
   const theme = useGameTheme();
+  const playerId = usePlayerId();
   const root = useChit<RootChit<PlayerChit>>("root");
   const playerChits = useChits<PlayerChit>(root?.players.map((p) => p.id ?? "") ?? []);
   const promptStatuses = useChits<PlayerPromptStatus>(playerChits.map((p) => p.promptStatus.id ?? ""));
+
+  // make sure the current player is first
+  promptStatuses.sort((a, b) => {
+    if ((a.parent as PlayerChit).playerId === playerId) {
+      return -1;
+    }
+    if ((b.parent as PlayerChit).playerId === playerId) {
+      return 1;
+    }
+    return (a.id ?? "").localeCompare(b.id ?? "");
+  });
 
   const playersWithMessages = promptStatuses.filter((p) => p.latestPromptMessage).map((p) => p.parent as PlayerChit);
   const message = promptStatuses
@@ -131,9 +144,9 @@ export default function TopBarPlayers() {
     <TopBarDropdown
       label={
         <Stack direction={"row"} sx={{ pt: 1, pb: 1, maxWidth: "100%" }}>
-          {playersWithMessages.map((player) => (
+          {playersWithMessages.reverse().map((player, index) => (
             <PlayerImage
-              sx={{ ml: -1 }}
+              sx={{ ml: index === 0 ? -1 : -3 }}
               size={theme.topBarHeight - theme.spacing * 2}
               key={player.id}
               player={player}
