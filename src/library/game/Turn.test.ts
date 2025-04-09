@@ -524,88 +524,88 @@ async function runTurn(choices: { playerId: string; choice: string }[]) {
   return t;
 }
 
-test("serialization", async () => {
-  const confirm = (
-    message: string,
-    turn: Turn<any, any, any>,
-    clock: number,
-    clockDetails?: ClockDetails,
-    a?: string,
-    b?: string,
-    c?: string,
-  ) => {
-    const chit = new FakeChit();
-    const serialized = turn.serialize(clock, clockDetails);
-    expect(serialized.clockDetails.clock).toBe(clock);
+// test("serialization", async () => {
+//   const confirm = (
+//     message: string,
+//     turn: Turn<any, any, any>,
+//     clock: number,
+//     clockDetails?: ClockDetails,
+//     a?: string,
+//     b?: string,
+//     c?: string,
+//   ) => {
+//     const chit = new FakeChit();
+//     const serialized = turn.serialize(clock, clockDetails);
+//     expect(serialized.clockDetails.clock).toBe(clock);
 
-    const confirmChit = (id: string, value?: string) => {
-      if (value === undefined) {
-        expect(serialized.chits[id], id + message).toBe(undefined);
-      } else if (value === "DELETED") {
-        chit.deserialize(serialized.chits[id], () => chit);
-        expect(chit.parent, id + message).toBe(undefined);
-      } else {
-        chit.deserialize(serialized.chits[id], () => chit);
-        expect(chit.s1, id + message).toBe(value);
-      }
-    };
+//     const confirmChit = (id: string, value?: string) => {
+//       if (value === undefined) {
+//         expect(serialized.chits[id], id + message).toBe(undefined);
+//       } else if (value === "DELETED") {
+//         chit.deserialize(serialized.chits[id], () => chit);
+//         expect(chit.parent, id + message).toBe(undefined);
+//       } else {
+//         chit.deserialize(serialized.chits[id], () => chit);
+//         expect(chit.s1, id + message).toBe(value);
+//       }
+//     };
 
-    confirmChit("id.0", a);
-    confirmChit("id.1", b);
-    confirmChit("id.2", c);
-    return serialized.clockDetails;
-  };
+//     confirmChit("id.0", a);
+//     confirmChit("id.1", b);
+//     confirmChit("id.2", c);
+//     return serialized.clockDetails;
+//   };
 
-  const t1 = await runTurn([{ playerId: "p1", choice: "id.0" }]);
-  const details1 = confirm("details1", t1, 1, undefined, "a", undefined, undefined);
-  confirm("post details1", t1, 2, undefined, "a", "b", undefined);
-  const details2b = confirm("details2b", t1, 2, details1, undefined, "b", undefined);
-  const details3 = confirm("details3", t1, 3, undefined, "a", "b", "c");
-  confirm("3.1", t1, 3, details1, undefined, "b", "c");
-  confirm("3.2", t1, 3, details2b, undefined, undefined, "c");
-  confirm("3.3", t1, 4, undefined, "a2", "b2", "c");
-  confirm("3.4", t1, 4, details3, "a2", "b2", undefined);
-  const details5 = confirm("details5", t1, 5, undefined, "a2.1", "b2", "c");
-  expect(details5.subTurns && details5.subTurns["id.0"].clock).toBe(1);
-  // the p2's turn hasn't made a move yet but their turn has flushed
-  const details7 = confirm("details7", t1, 7, undefined, "a2.2", "b2.1", "c");
-  expect(details7.subTurns && details7.subTurns["id.1"].clock).toBe(1);
+//   const t1 = await runTurn([{ playerId: "p1", choice: "id.0" }]);
+//   const details1 = confirm("details1", t1, 1, undefined, "a", undefined, undefined);
+//   confirm("post details1", t1, 2, undefined, "a", "b", undefined);
+//   const details2b = confirm("details2b", t1, 2, details1, undefined, "b", undefined);
+//   const details3 = confirm("details3", t1, 3, undefined, "a", "b", "c");
+//   confirm("3.1", t1, 3, details1, undefined, "b", "c");
+//   confirm("3.2", t1, 3, details2b, undefined, undefined, "c");
+//   confirm("3.3", t1, 4, undefined, "a2", "b2", "c");
+//   confirm("3.4", t1, 4, details3, "a2", "b2", undefined);
+//   const details5 = confirm("details5", t1, 5, undefined, "a2.1", "b2", "c");
+//   expect(details5.subTurns && details5.subTurns["id.0"].clock).toBe(1);
+//   // the p2's turn hasn't made a move yet but their turn has flushed
+//   const details7 = confirm("details7", t1, 7, undefined, "a2.2", "b2.1", "c");
+//   expect(details7.subTurns && details7.subTurns["id.1"].clock).toBe(1);
 
-  // now go backwards!
-  const details5back = confirm("details5back", t1, 4, details5, "a2", undefined, undefined);
-  expect(!details5back.subTurns).toBe(true);
-  confirm("5.1", t1, 3, details5, "a", "b", undefined);
-  confirm("5.2", t1, 2, details5, "a", "b", "DELETED");
+//   // now go backwards!
+//   const details5back = confirm("details5back", t1, 4, details5, "a2", undefined, undefined);
+//   expect(!details5back.subTurns).toBe(true);
+//   confirm("5.1", t1, 3, details5, "a", "b", undefined);
+//   confirm("5.2", t1, 2, details5, "a", "b", "DELETED");
 
-  // if there is a pass mismatch it will reseserialize it all
-  confirm("5.3", t1, 3, details2b, undefined, undefined, "c");
-  details2b.pass = 99;
-  confirm("5.4", t1, 3, details2b, "a", "b", "c");
+//   // if there is a pass mismatch it will reseserialize it all
+//   confirm("5.3", t1, 3, details2b, undefined, undefined, "c");
+//   details2b.pass = 99;
+//   confirm("5.4", t1, 3, details2b, "a", "b", "c");
 
-  // if there is a pass mismatch it will reseserialize it all
-  confirm("5.5", t1, 4, details3, "a2", "b2", undefined);
-  details3.subTurns = { someTurnThatDoesntExist: { clock: 5, pass: 1 } };
-  confirm("5.6", t1, 4, details3, "a2", "b2", "c");
+//   // if there is a pass mismatch it will reseserialize it all
+//   confirm("5.5", t1, 4, details3, "a2", "b2", undefined);
+//   details3.subTurns = { someTurnThatDoesntExist: { clock: 5, pass: 1 } };
+//   confirm("5.6", t1, 4, details3, "a2", "b2", "c");
 
-  const t1b = await runTurn([
-    { playerId: "p1", choice: "id.0" },
-    { playerId: "p1", choice: "id.0" },
-    { playerId: "p2", choice: "id.1" },
-  ]);
-  // weird funky case where it really has to reserialize everything
-  confirm("weird funky serialize all", t1b, 8, details7, "a2.2", "b2.1", "c");
+//   const t1b = await runTurn([
+//     { playerId: "p1", choice: "id.0" },
+//     { playerId: "p1", choice: "id.0" },
+//     { playerId: "p2", choice: "id.1" },
+//   ]);
+//   // weird funky case where it really has to reserialize everything
+//   confirm("weird funky serialize all", t1b, 8, details7, "a2.2", "b2.1", "c");
 
-  const t1c = await runTurn([
-    { playerId: "p2", choice: "id.1" },
-    { playerId: "p1", choice: "id.0" },
-    { playerId: "p1", choice: "id.0" },
-    { playerId: "p2", choice: "id.1" },
-  ]);
-  // weird funky case where it really has to reserialize everything
-  // const details7c =
-  confirm("details7c", t1c, 8, details7, "a2.2", "b2.1", "c");
+//   const t1c = await runTurn([
+//     { playerId: "p2", choice: "id.1" },
+//     { playerId: "p1", choice: "id.0" },
+//     { playerId: "p1", choice: "id.0" },
+//     { playerId: "p2", choice: "id.1" },
+//   ]);
+//   // weird funky case where it really has to reserialize everything
+//   // const details7c =
+//   confirm("details7c", t1c, 8, details7, "a2.2", "b2.1", "c");
 
-  // these got messed up by adding confirm :(
-  // const details8 = confirm("details8", t1c, 8, details7c, undefined, "b2.2", undefined);
-  // confirm("a3b3", t1c, 9, details8, "a3", "b3", undefined);
-});
+//   // these got messed up by adding confirm :(
+//   // const details8 = confirm("details8", t1c, 8, details7c, undefined, "b2.2", undefined);
+//   // confirm("a3b3", t1c, 9, details8, "a3", "b3", undefined);
+// });

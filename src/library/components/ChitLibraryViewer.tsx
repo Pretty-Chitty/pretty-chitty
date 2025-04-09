@@ -71,6 +71,7 @@ function Editor({
 
     try {
       timeState.animationSpeedMultiplier.value = 1;
+      timeState.isLoading.value = false;
       setTimeout(() => rootInstance?.renderInstance?.tweenGroup?.update(Number.MAX_SAFE_INTEGER), 10);
 
       const instanceRenderResult = new ChitRenderSpec(instance);
