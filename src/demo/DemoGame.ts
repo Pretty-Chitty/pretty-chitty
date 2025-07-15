@@ -19,6 +19,8 @@ import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
 
 export class DemoGame implements Game<MyPlayer, Root> {
+  galleryItemWidth = 150;
+  galleryItemSpacing = 20;
   name = "Demo Game";
 
   showGrid = true;

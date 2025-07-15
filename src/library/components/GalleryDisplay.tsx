@@ -6,10 +6,12 @@ import { GalleryItem, GalleryViewer } from "./GalleryViewer";
 import { useRef } from "react";
 import useSize from "@react-hook/size";
 import { ZINDEX_GALLERY_INVISIBLE, ZINDEX_GALLERY_VISIBLE } from "../utilities/zIndex";
+import { useGame } from "../hooks/useGame";
 
 const DELAY = 300;
 
 export function GalleryDisplay() {
+  const game = useGame();
   const ref = useRef(null);
   const [hasItemsDelayed, setHasItemsDelayed] = useState(false);
   const [width, height] = useSize(ref);
@@ -63,8 +65,8 @@ export function GalleryDisplay() {
               setSource(undefined);
             }}
             items={items ?? []}
-            galleryItemWidth={150}
-            itemSpacing={20}
+            galleryItemWidth={game.galleryItemWidth}
+            itemSpacing={game.galleryItemSpacing}
             w={width}
             h={height}
           />
