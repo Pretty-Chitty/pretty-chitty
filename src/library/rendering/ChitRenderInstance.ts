@@ -134,6 +134,11 @@ export class ChitRenderInstance {
         if (!child.renderInstance) {
           const c = new ChitRenderInstance(child);
           c.init();
+
+          // move the new render instance immediately to where it belongs
+          c.offsetTween.duration(0);
+          c.zOffsetTween.duration(0);
+          c.rotationTween.duration(0);
         } else {
           child.renderInstance.refresh();
         }
@@ -164,12 +169,21 @@ export class ChitRenderInstance {
     }
 
     const c = new ChitRenderInstance(chit);
-    c.init();
     this.rootRenderInstance.markHasChitsEntering();
 
     if (existingRenderInstance) {
-      existingRenderInstance.refresh();
+      const refreshParent = (chitRenderInstance: ChitRenderInstance) => {
+        if (chitRenderInstance.parentRenderInstance) {
+          refreshParent(chitRenderInstance.parentRenderInstance);
+        }
+        chitRenderInstance.refresh();
+      };
+      refreshParent(existingRenderInstance);
     }
+
+    // initializing before the existing renderer has a chance to remove itself will possibly cause weird behavior
+    // for attached children chits
+    c.init();
   }
 
   public get absorbsClickEventsForChildren() {
@@ -391,6 +405,10 @@ export class ChitRenderInstance {
       }
 
       const scale = Math.max(Math.abs(cameraSpace.x), Math.abs(cameraSpace.y));
+      if (!Number.isFinite(scale) || scale === 0) {
+        return undefined;
+      }
+
       let multiplier = scale > 1 ? 1 : 1 / scale;
 
       // figure out what camera space means at Z=0
@@ -411,9 +429,19 @@ export class ChitRenderInstance {
     }
   }
 
+  private _isMovingToNewViewer = false;
   protected moveToNewViewer() {
+    if (this._isMovingToNewViewer) {
+      return;
+    }
+
+    this._isMovingToNewViewer = true;
     // no matter what, this instance is going to be useless - we don't want to potentially update mid-destroy
     this.unsubscribeToOnChange();
+    this.childrenRenderInstances.forEach((child) => {
+      child.chit.renderInstance = undefined;
+      child.moveToNewViewer();
+    });
 
     const rootRenderInstance = this.rootRenderInstance;
     rootRenderInstance.markHasChitsLeaving();
@@ -681,7 +709,7 @@ export class ChitRenderInstance {
     if (this.renderSpec) {
       origin =
         this.renderSpec.ownerOrigin === OwnerOriginPosition.Default
-          ? this.chit.parentOutlet ?? OwnerOriginPosition.MiddleCenter
+          ? (this.chit.parentOutlet ?? OwnerOriginPosition.MiddleCenter)
           : this.renderSpec.ownerOrigin;
     }
 
