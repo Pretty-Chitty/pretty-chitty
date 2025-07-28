@@ -121,7 +121,7 @@ export default function TopBarPlayers() {
   const playerId = usePlayerId();
   const root = useChit<RootChit<PlayerChit>>("root");
   const playerChits = useChits<PlayerChit>(root?.players.map((p) => p.id ?? "") ?? []);
-  const promptStatuses = useChits<PlayerPromptStatus>(playerChits.map((p) => p.promptStatus.id ?? ""));
+  const promptStatuses = useChits<PlayerPromptStatus>(playerChits.map((p) => p.promptStatus.id ?? "")).concat();
 
   // make sure the current player is first
   promptStatuses.sort((a, b) => {

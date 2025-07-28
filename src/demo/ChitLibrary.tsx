@@ -126,6 +126,9 @@ export class Card extends Chit {
       spec.splay.columnOrientation = "increasing";
       spec.splay.zPerIndexMultiplier = 0.01;
     }
+
+    // make sure it reports it out?
+    spec.setOutletPositionFromCanvas(ts);
   }
 }
 
@@ -134,7 +137,7 @@ export class Card2 extends Chit {
   public thingy = false;
 
   public override render(spec: ChitRenderSpec): void {
-    const boxGeometry = new BoxGeometry(1, 1, 0.25);
+    const boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
 
     const ts = new TestStack2();
     ts.subTitle = "yo ho ho";

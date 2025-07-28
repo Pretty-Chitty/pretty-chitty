@@ -7,4 +7,5 @@ export interface IUpdatingCanvas {
   onUpdate(cb: () => void): () => void;
   get texture(): Texture;
   get material(): Material;
+  get outlets(): { [id: string]: { x: number; y: number } };
 }

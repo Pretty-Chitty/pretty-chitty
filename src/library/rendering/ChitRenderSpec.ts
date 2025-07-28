@@ -24,6 +24,7 @@ import { SplayCounter, SplayCounterOptions } from "./SplayCounter";
 import { fixBbox } from "../utilities/BboxUtils";
 import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
 import { GalleryItemChitChildrenSource } from "../game/GalleryItemChitChildrenSource";
+import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 
 // prettier-ignore
 export enum OwnerOriginPosition {
@@ -94,6 +95,24 @@ export class ChitRenderSpec {
 
   public setOutletPosition(key: string, x: number, y: number, z: number = 0) {
     this.outletPositions[key] = new Vector3(x, y, z);
+  }
+
+  public setOutletPositionFromCanvas(renderStack: IUpdatingCanvas | ParameterizedCanvas) {
+    if (renderStack instanceof ParameterizedCanvas) {
+      renderStack = renderStack.get();
+    }
+
+    const bb = new Box3();
+    bb.expandByObject(this.object);
+
+    const w = bb.max.x - bb.min.x,
+      h = bb.max.y - bb.min.y,
+      scaleX = w / renderStack.width,
+      scaleY = h / renderStack.height;
+
+    Object.entries(renderStack.outlets).forEach(([key, coords]) => {
+      this.setOutletPosition(key, coords.x * scaleX + bb.min.x, (renderStack.height - coords.y) * scaleY + bb.min.y, 0);
+    });
   }
 
   public addCounterToOrderedOutlet(

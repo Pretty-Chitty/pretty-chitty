@@ -5,9 +5,15 @@ import { PlayerChit } from "../../game/PlayerChit";
 import imageColorOverlayer from "./ImageColorOverlayer";
 
 export type GetImage = (url: string) => ImageResult | undefined;
+export type ReportOutlet = (id: string, coord: { x: number; y: number }) => void;
 
 export abstract class CanvasOperation {
-  abstract render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage): void;
+  abstract render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    getImage: GetImage,
+    reportOutlet: ReportOutlet,
+  ): void;
 }
 
 export type RenderCallback = (context: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => void;
@@ -17,8 +23,13 @@ export class LayeredCanvasOperation extends CanvasOperation {
     super();
   }
 
-  override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
-    this.layers.forEach((layer) => layer.render(context, { ...bounds }, getImage));
+  override render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    getImage: GetImage,
+    reportOutlet: ReportOutlet,
+  ) {
+    this.layers.forEach((layer) => layer.render(context, { ...bounds }, getImage, reportOutlet));
   }
 }
 
@@ -30,7 +41,12 @@ export class ColorCanvasOperation extends CanvasOperation {
     super();
   }
 
-  override render(context: CanvasRenderingContext2D, bounds: RenderBounds) {
+  override render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    _getImage?: GetImage,
+    _reportOutlet?: ReportOutlet,
+  ) {
     context.fillStyle = this.color;
     context.globalAlpha = this.opacity;
     context.fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
@@ -48,14 +64,19 @@ export class VerticalStackCanvasOperation extends CanvasOperation {
     super();
   }
 
-  override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
+  override render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    getImage: GetImage,
+    reportOutlet: ReportOutlet,
+  ) {
     const items = this.items.filter((item) => item);
     const totalDefinedSize = items.reduce((total, item) => total + (item.size || 0), 0);
     const itemsWithoutDefinedSize = items.filter((item) => item.size === undefined);
     const itemSizeWithoutDefinition = Math.round((bounds.h - totalDefinedSize) / itemsWithoutDefinedSize.length);
 
     items.forEach((item) => {
-      item.layer?.render(context, { ...bounds, h: item.size ?? itemSizeWithoutDefinition }, getImage);
+      item.layer?.render(context, { ...bounds, h: item.size ?? itemSizeWithoutDefinition }, getImage, reportOutlet);
       bounds.y += item.size ?? itemSizeWithoutDefinition;
     });
   }
@@ -66,16 +87,40 @@ export class HorizontalStackCanvasOperation extends CanvasOperation {
     super();
   }
 
-  override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
+  override render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    getImage: GetImage,
+    reportOutlet: ReportOutlet,
+  ) {
     const items = this.items.filter((item) => item);
     const totalDefinedSize = items.reduce((total, item) => total + (item.size || 0), 0);
     const itemsWithoutDefinedSize = items.filter((item) => item.size === undefined);
     const itemSizeWithoutDefinition = Math.round((bounds.w - totalDefinedSize) / itemsWithoutDefinedSize.length);
 
     items.forEach((item) => {
-      item.layer?.render(context, { ...bounds, w: item.size ?? itemSizeWithoutDefinition }, getImage);
+      item.layer?.render(context, { ...bounds, w: item.size ?? itemSizeWithoutDefinition }, getImage, reportOutlet);
       bounds.x += item.size ?? itemSizeWithoutDefinition;
     });
+  }
+}
+
+export class OutletCanvasOperation extends CanvasOperation {
+  constructor(
+    private id: string,
+    private child: CanvasOperation,
+  ) {
+    super();
+  }
+
+  override render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    getImage: GetImage,
+    reportOutlet: ReportOutlet,
+  ) {
+    reportOutlet(this.id, { x: bounds.x + bounds.w / 2, y: bounds.y + bounds.h / 2 });
+    this.child.render(context, bounds, getImage, reportOutlet);
   }
 }
 
@@ -94,7 +139,12 @@ export class PadCanvasOperation extends CanvasOperation {
     super();
   }
 
-  override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
+  override render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    getImage: GetImage,
+    reportOutlet: ReportOutlet,
+  ) {
     this.item.render(
       context,
       {
@@ -104,6 +154,7 @@ export class PadCanvasOperation extends CanvasOperation {
         h: bounds.h - (this.pads.top ?? 0) - (this.pads.bottom ?? 0),
       },
       getImage,
+      reportOutlet,
     );
   }
 }
@@ -127,7 +178,12 @@ export class TextCanvasOperation extends CanvasOperation {
     super();
   }
 
-  override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
+  override render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    getImage: GetImage,
+    reportOutlet: ReportOutlet,
+  ) {
     const startX = bounds.x,
       startY = bounds.y;
 
@@ -169,7 +225,12 @@ export class TextCanvasOperation extends CanvasOperation {
     }
 
     if (this.options.before) {
-      this.options.before.render(context, { x: startX, y: startY, w: bounds.x - startX, h: bounds.h }, getImage);
+      this.options.before.render(
+        context,
+        { x: startX, y: startY, w: bounds.x - startX, h: bounds.h },
+        getImage,
+        reportOutlet,
+      );
     }
     if (this.options.after) {
       this.options.after.render(
@@ -181,6 +242,7 @@ export class TextCanvasOperation extends CanvasOperation {
           h: bounds.h,
         },
         getImage,
+        reportOutlet,
       );
     }
   }
@@ -316,7 +378,12 @@ export class ImageCanvasOperation extends CanvasOperation {
     }
   }
 
-  override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
+  override render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    getImage: GetImage,
+    _reportOutlet: ReportOutlet,
+  ) {
     const image = getImage(this.imageSpec.primary.file);
     if (image) {
       // context.drawImage(image.image, bounds.x, bounds.y);
@@ -365,7 +432,12 @@ export class PlayerCanvasOperation extends CanvasOperation {
     context.drawImage(sourceImage, sx, sy, sw, sh, x, y, w, h);
   }
 
-  override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
+  override render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    getImage: GetImage,
+    _reportOutlet: ReportOutlet,
+  ) {
     context.fillStyle = this.player.color;
     context.globalAlpha = 1;
     context.fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
@@ -384,7 +456,12 @@ export class CallbackCanvasOperation extends CanvasOperation {
     super();
   }
 
-  override render(context: CanvasRenderingContext2D, bounds: RenderBounds) {
+  override render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    _getImage?: GetImage,
+    _reportOutlet?: ReportOutlet,
+  ) {
     this.cb(context, bounds.x, bounds.y, bounds.w, bounds.h);
   }
 }

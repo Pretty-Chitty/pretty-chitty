@@ -8,6 +8,7 @@ import {
   ImageCanvasOperation,
   ImageSpec,
   LayeredCanvasOperation,
+  OutletCanvasOperation,
   PadCanvasOperation,
   PlayerCanvasOperation,
   RenderCallback,
@@ -79,6 +80,15 @@ export function Layered({ children }: { children: ReactNode | ReactNode[] } & De
 // eslint-disable-next-line no-empty-pattern
 export function Spacer({}: DefaultProps): ReactNode {
   return <></>;
+}
+
+/**
+ * Creates a named outlet for a region on the canvas
+ * @param args
+ * @returns
+ */
+export function Outlet({ name, children }: { name: string; children: ReactNode } & DefaultProps): ReactNode {
+  return <WrappedCanvasOperation operation={new OutletCanvasOperation(name, unwrapCanvasNode(children))} />;
 }
 
 /**

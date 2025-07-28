@@ -33,6 +33,27 @@ function TextPropEditor({ entry, obj }: { entry: string; obj: ObjectWithProps })
   );
 }
 
+function ArrayPropEditor({ entry, obj }: { entry: string; obj: ObjectWithProps }) {
+  const [value, setValue] = useState((obj as any)[entry]);
+
+  const set = (val: string[]) => setValue(val);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(createEffectProps(obj, entry, value), [obj, entry, value]);
+
+  return (
+    <TextField
+      fullWidth
+      id={entry}
+      label={entry}
+      variant="standard"
+      type="text"
+      value={value.join(",") ?? ""}
+      onChange={(e) => set(e.target.value.split(","))}
+    />
+  );
+}
+
 function NumberPropEditor({ entry, obj }: { entry: string; obj: ObjectWithProps }) {
   const [value, setValue] = useState((obj as any)[entry]);
   const set = (val: number) => setValue(val);
@@ -103,6 +124,9 @@ function PropEditor({ entry, obj }: { entry: string; obj: ObjectWithProps }) {
   }
   if (entry !== "parent" && value instanceof ObjectWithProps) {
     ComponentType = SubObjectPropEditor;
+  }
+  if (Array.isArray(value)) {
+    ComponentType = ArrayPropEditor;
   }
 
   if (ComponentType) {

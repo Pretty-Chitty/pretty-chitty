@@ -29,6 +29,10 @@ type TextureReferences = {
   unusedSince: number;
   canvas: CanvasStack;
 };
+type Coord = {
+  x: number;
+  y: number;
+};
 
 export class CanvasStack implements IUpdatingCanvas {
   public canvas: HTMLCanvasElement;
@@ -39,6 +43,7 @@ export class CanvasStack implements IUpdatingCanvas {
   private loadedUrls = new Set<string>();
 
   private static imageCache = new ImageCache(50); // 50? Is that good? No idea.
+  private _outlets: { [id: string]: Coord } = {};
 
   /** @internal */
   onUpdate(cb: () => void): () => void {
@@ -69,8 +74,16 @@ export class CanvasStack implements IUpdatingCanvas {
 
   /** @internal */
   render(): void {
+    this._outlets = {};
     this.context.clearRect(0, 0, this.width, this.height);
-    this.operation.render(this.context, { x: 0, y: 0, w: this.width, h: this.height }, this.loadUrl.bind(this));
+    this.operation.render(
+      this.context,
+      { x: 0, y: 0, w: this.width, h: this.height },
+      this.loadUrl.bind(this),
+      (id: string, coords: Coord) => {
+        this._outlets[id] = coords;
+      },
+    );
     this.cbs.forEach((cb) => cb());
   }
 
@@ -90,6 +103,10 @@ export class CanvasStack implements IUpdatingCanvas {
     this.context = context;
 
     this.render();
+  }
+
+  get outlets() {
+    return this._outlets;
   }
 
   get material(): Material {

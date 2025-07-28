@@ -429,6 +429,13 @@ export class ChitRenderInstance {
     }
   }
 
+  private detach() {
+    this.childrenRenderInstances.forEach((child) => {
+      child.chit.renderInstance = undefined;
+      child.detach();
+    });
+  }
+
   private _isMovingToNewViewer = false;
   protected moveToNewViewer() {
     if (this._isMovingToNewViewer) {
@@ -438,10 +445,7 @@ export class ChitRenderInstance {
     this._isMovingToNewViewer = true;
     // no matter what, this instance is going to be useless - we don't want to potentially update mid-destroy
     this.unsubscribeToOnChange();
-    this.childrenRenderInstances.forEach((child) => {
-      child.chit.renderInstance = undefined;
-      child.moveToNewViewer();
-    });
+    this.detach();
 
     const rootRenderInstance = this.rootRenderInstance;
     rootRenderInstance.markHasChitsLeaving();

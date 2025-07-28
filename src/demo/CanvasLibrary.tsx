@@ -16,6 +16,8 @@ export class TestStack3 extends ParameterizedCanvas {
   width = 200;
   height = 200;
 
+  things: string[] = ["one", "two", "three"];
+
   render() {
     if (this.title.length < 5) {
       throw "wtf";
@@ -25,9 +27,9 @@ export class TestStack3 extends ParameterizedCanvas {
       <Horizontal>
         <Layered>
           <Color hex="#ff000033" />
-          <Image image={walk} />
+          {/* <Image image={walk} /> */}
           <Text fill="#336" font="17px sans-serif">
-            {this.title}????
+            {this.things.length} {this.things.map((t) => t.toUpperCase()).join(" --- ")}
           </Text>
         </Layered>
         <Image fill image={metropolis} />

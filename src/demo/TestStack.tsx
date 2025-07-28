@@ -1,6 +1,15 @@
 import React from "react";
 
-import { Pad, Vertical, Spacer, Layered, Color, Text, Image } from "../library/utilities/CanvasStack/ReactCanvas";
+import {
+  Pad,
+  Vertical,
+  Spacer,
+  Layered,
+  Color,
+  Text,
+  Image,
+  Outlet,
+} from "../library/utilities/CanvasStack/ReactCanvas";
 import { ParameterizedCanvas } from "../library/utilities/ParameterizedCanvas";
 import { metropolis, serverroom } from "./assets/network_overload";
 
@@ -26,6 +35,7 @@ export class TestStack extends ParameterizedCanvas {
     return (
       <Layered>
         <Color val={img.borderColor} />
+
         <Pad amount={20}>
           <Vertical>
             <>
@@ -48,7 +58,8 @@ export class TestStack extends ParameterizedCanvas {
 
             <Spacer size={35} />
             <Color hex="#F09" size={10} />
-            <Pad amount={10}>
+
+            <Pad amount={10} left={50}>
               <Text
                 align="center"
                 fill="#000"
@@ -59,7 +70,9 @@ export class TestStack extends ParameterizedCanvas {
                       <Color hex="#999" />
                       <Pad amount={35}>
                         <Color hex="#00F" />
-                        <Thingy num={11} />
+                        <Outlet name="testoutlet">
+                          <Thingy num={11} />
+                        </Outlet>
                       </Pad>
                     </Pad>
                   </>

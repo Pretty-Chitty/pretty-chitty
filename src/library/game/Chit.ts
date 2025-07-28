@@ -43,8 +43,12 @@ export class Chit extends ObjectWithProps {
     return [];
   }
 
-  public add<T extends Chit>(chit: T): T {
-    this.orderedChildren.add(chit);
+  public add<T extends Chit>(chit: T, outlet?: string): T {
+    if (!outlet) {
+      this.orderedChildren.add(chit);
+    } else {
+      chit.setParent(this, outlet);
+    }
     return chit;
   }
 

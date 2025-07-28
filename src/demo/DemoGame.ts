@@ -50,7 +50,8 @@ export class DemoGame implements Game<MyPlayer, Root> {
         c.y = i % H;
         rows[c.y].add(c);
 
-        c.add(new Card2());
+        const c2 = new Card2();
+        c.add(c2, "testoutlet");
       }),
     );
     setup.flush();
