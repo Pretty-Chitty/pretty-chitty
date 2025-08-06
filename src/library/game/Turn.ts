@@ -179,8 +179,15 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     // find any chits that we previously serialized that we no longer see
     // these should be marked as deleted now
     const chitsToDelete = Object.keys(this.lastChitStates)
-      .filter((id) => !seenIds.has(id))
+      .filter((id) => !seenIds.has(id) && this.lastChitStates[id] !== Chit.deletedIfSerialized())
       .map((id) => this.findChit(id));
+
+    // make sure any missing items that were previously also missing are still deleted
+    Object.keys(this.lastChitStates)
+      .filter((id) => !seenIds.has(id) && this.lastChitStates[id] == Chit.deletedIfSerialized())
+      .forEach((id) => {
+        newStates[id] = Chit.deletedIfSerialized();
+      });
 
     // find all chits without parents - all of their descendants are safe to be purged
     chitsToDelete

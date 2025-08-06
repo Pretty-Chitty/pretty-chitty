@@ -109,9 +109,9 @@ export class Card extends Chit {
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0; // (this.something / 90) % (Math.PI * 2);
     spec.rotateY = this.flipped ? Math.PI : 0;
     spec.offsetZ = this.flipped ? 0.1 : 0;
-    spec.offsetX = this.x * 1.25;
-    spec.offsetY = this.y * 2.5;
-    spec.offsetZ = this.tapped ? 0.25 : 0 + (this.flipped ? 3.1 : 0);
+    // spec.offsetX = this.x * 1.25;
+    // spec.offsetY = this.y * 2.5;
+    // spec.offsetZ = this.tapped ? 0.25 : 0 + (this.flipped ? 3.1 : 0);
     spec.zLiftRotationMultiplier = 3;
 
     if (this.parent instanceof Deck) {
@@ -125,6 +125,10 @@ export class Card extends Chit {
       spec.galleryRotateZ = (2 * Math.PI * (this.parentOutletIndex ?? 0)) / 10;
       spec.splay.columnOrientation = "increasing";
       spec.splay.zPerIndexMultiplier = 0.01;
+    } else {
+      spec.splay.enabled = true;
+      spec.splay.rows = 3;
+      spec.splay.columns = 3;
     }
 
     // make sure it reports it out?

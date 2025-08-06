@@ -76,6 +76,7 @@ class GalleryController {
   private itemWidth = 100;
   private itemHeight = 100;
 
+  public tweenDuration = 250;
   private changed = false;
   private itemSpacing = 100;
   private itemsPerPage = 1;
@@ -311,7 +312,7 @@ class GalleryController {
         this.positionItem(builtItem);
 
         builtItem.enteredTween = new Tween({ x: 0 })
-          .to({ x: 1 }, 250)
+          .to({ x: 1 }, this.tweenDuration)
           .easing(Easing.Quadratic.Out)
           .onUpdate((obj) => {
             builtItem.enteredAmount = obj.x;
@@ -337,7 +338,7 @@ class GalleryController {
       }
 
       item.enteredTween = new Tween({ x: item.enteredAmount })
-        .to({ x: 0 }, 250)
+        .to({ x: 0 }, this.tweenDuration)
         .easing(Easing.Quadratic.In)
         .onUpdate((obj) => {
           item.enteredAmount = obj.x;
@@ -363,7 +364,7 @@ class GalleryController {
         item.targetIndex = index + itemIndexOffset;
 
         item.tween = new Tween({ x: item.index })
-          .to({ x: item.targetIndex }, 250)
+          .to({ x: item.targetIndex }, this.tweenDuration)
           .easing(Easing.Quadratic.InOut)
           .onUpdate((obj) => {
             item.index = obj.x;
@@ -388,6 +389,7 @@ export function GalleryViewer({
   galleryItemWidth = 200,
   onClose,
   itemSpacing = 50,
+  tweenDuration = 250,
   w = 0,
   h = 0,
   galleryItemHeight = h * 0.7,
@@ -397,6 +399,7 @@ export function GalleryViewer({
   h: number;
   itemSpacing: number;
   paused?: boolean;
+  tweenDuration?: number;
   galleryItemWidth?: number;
   galleryItemHeight?: number;
   onClose?: () => void;
@@ -405,6 +408,8 @@ export function GalleryViewer({
   const refContainer = useRef<HTMLCanvasElement>(null);
   const renderer = useWebGlRenderer(w, h);
   const [galleryController] = useState(new GalleryController(new Scene()));
+
+  galleryController.tweenDuration = tweenDuration;
 
   useEffect(() => {
     galleryController.setSize(w, h, galleryItemWidth, galleryItemHeight, itemSpacing);

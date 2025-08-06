@@ -38,17 +38,17 @@ export class DemoGame implements Game<MyPlayer, Root> {
     const H = 3;
 
     // set up the board
-    const rows = [...new Array(H)].map(() =>
-      new Row().set((row) => {
-        rootChit.mainBoard.add(row);
-      }),
-    );
+    // const rows = [...new Array(H)].map(() =>
+    //   new Row().set((row) => {
+    //     rootChit.mainBoard.add(row);
+    //   }),
+    // );
 
     const pieces = [...new Array(W * H)].map((d, i) =>
       new Card().set((c) => {
         c.x = Math.floor(i / H);
         c.y = i % H;
-        rows[c.y].add(c);
+        rootChit.mainBoard.add(c);
 
         const c2 = new Card2();
         c.add(c2, "testoutlet");
@@ -57,8 +57,32 @@ export class DemoGame implements Game<MyPlayer, Root> {
     setup.flush();
 
     await setup.createTurn([rootChit], players[0], async (turn) => {
+      const c = new Card();
+      rootChit.mainBoard.add(c);
+      turn.flush();
+      c.removeFromParent();
+      turn.flush();
+      pieces[2].removeFromParent();
+      turn.flush();
+      pieces[4].removeFromParent();
+      turn.flush();
+      pieces[6].removeFromParent();
+      turn.flush();
+
       await turn.pick(
-        Chit.pick(pieces, (c) => {
+        Chit.pick([pieces[1], pieces[0]], (c) => {
+          const target = players[Math.floor(Math.random() * players.length)];
+          target.add(c);
+        }),
+      );
+    });
+
+    pieces[3].removeFromParent();
+    setup.flush();
+
+    await setup.createTurn([rootChit], players[0], async (turn) => {
+      await turn.pick(
+        Chit.pick([pieces[1], pieces[0]], (c) => {
           const target = players[Math.floor(Math.random() * players.length)];
           target.add(c);
         }),

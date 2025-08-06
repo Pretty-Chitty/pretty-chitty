@@ -554,7 +554,7 @@ export class ChitRenderInstance {
     }
   }
 
-  private positionKey() {
+  private positionKey(clickBox3: Box3) {
     return [
       !!this.chit.onClick,
       this.parentRenderInstance?.id,
@@ -574,6 +574,8 @@ export class ChitRenderInstance {
       this.renderSpec?.rotateX,
       this.renderSpec?.rotateY,
       this.renderSpec?.rotateZ,
+      ...clickBox3.min.toArray(),
+      ...clickBox3.max.toArray(),
       this.renderSpec?.splay.toString(),
     ].join("___");
   }
@@ -614,7 +616,7 @@ export class ChitRenderInstance {
     this.centerY = this.sizeY / 2 + box3.min.y;
     this.centerZ = this.sizeZ / 2 + box3.min.z;
 
-    const newKey = this.positionKey();
+    const newKey = this.positionKey(clickBox3);
     const keyChanged = newKey !== this._lastUpdateBoudingBoxKey;
     if (keyChanged) {
       this._lastUpdateBoudingBoxKey = newKey;
