@@ -14,6 +14,7 @@ export const ORDERED_CHILDREN = "orderedChildren";
 
 export type ChitClick = () => void;
 
+let CHIT_CREATED_ORDER = 0;
 export class Chit extends ObjectWithProps {
   /** @internal */
   @NonEditable public type: string = "chit";
@@ -112,10 +113,16 @@ export class Chit extends ObjectWithProps {
   /** @internal */
   @NonEditable public renderInstance?: ChitRenderInstance;
   @NonEditable private _version = 0;
+  @NonEditable private _createdOrder = ++CHIT_CREATED_ORDER;
 
   /** @internal */
   public get version() {
     return this._version;
+  }
+
+  /** @internal */
+  public get createdOrder() {
+    return this._createdOrder;
   }
 
   @NonEditable private _game?: Game<any, any>;
@@ -307,7 +314,7 @@ export class Chit extends ObjectWithProps {
       newValue.children.push(this);
 
       if (newValue.renderInstance) {
-        newValue.renderInstance?.childAdded(this, this.renderInstance);
+        newValue.renderInstance.childAdded(this, this.renderInstance);
       } else {
         this.renderInstance = undefined;
       }

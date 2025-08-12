@@ -148,6 +148,17 @@ export class ChitPick<T extends Chit> extends Pick {
     return result;
   }
 
+  focus(chit?: Chit | Chit[]): this {
+    if (!chit) {
+      this.focusChits.push(...this.chits);
+    } else if (Array.isArray(chit)) {
+      this.focusChits.push(...chit);
+    } else {
+      this.focusChits.push(chit);
+    }
+    return this;
+  }
+
   /** @internal */
   deserializeDetails(
     { c, f, b }: { c: string[]; f: string[]; b?: any },

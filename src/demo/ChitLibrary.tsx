@@ -140,6 +140,53 @@ export class Card2 extends Chit {
   public something: number = 2;
   public thingy = false;
 
+  @ChildOutlet
+  public card3 = new Card3();
+
+  public override render(spec: ChitRenderSpec): void {
+    const boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
+
+    const ts = new TestStack2();
+    ts.subTitle = "yo ho ho";
+    ts.title = "and a bottle" + this.something * 2;
+
+    const side = new MeshPhongMaterial({
+      color: 0x999999,
+    });
+
+    const mesh = new Mesh(boxGeometry, [
+      side,
+      side,
+      side,
+      side,
+      // new MeshPhongMaterial({
+      //   bumpMap: ts.get().texture,
+      //   bumpScale: 1,
+      //   map: ts.get().texture,
+      // }),
+      StaticImage.material(cityscape),
+      side,
+    ]);
+    mesh.castShadow = true;
+    spec.object = mesh;
+
+    spec.ownerOrigin = this.thingy ? OwnerOriginPosition.BottomRight : OwnerOriginPosition.Default;
+    // spec.offsetX = !this.thingy ? 0.6 : 0;
+
+    // spec.rotateZ = Math.PI / 2.5 + (this.something / 360) * (Math.PI * 2) + (this.thingy ? Math.PI : 0);
+
+    spec.splay.enabled = true;
+    spec.splay.rows = 5;
+    spec.splay.columnOrientation = "increasing";
+    spec.splay.rowOrientation = "decreasing";
+    spec.splay.columns = 3;
+    spec.splay.spacingMultiplier = 1;
+  }
+}
+export class Card3 extends Chit {
+  public something: number = 2;
+  public thingy = false;
+
   public override render(spec: ChitRenderSpec): void {
     const boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
 

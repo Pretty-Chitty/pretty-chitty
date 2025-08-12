@@ -100,6 +100,7 @@ export class ChitRenderInstance {
       this.group.position.y = 20; // how high?
     }
 
+    this.log("Render instance on owning chit is attached");
     chit.renderInstance = this;
 
     // handle refreshes.
@@ -128,17 +129,23 @@ export class ChitRenderInstance {
     this.bboxGroup.add(this.clickbox);
   }
 
+  private log(message: string) {
+    if (localStorage.verbose) {
+      console.log(`${new Date().getTime()} [ChitRenderInstance] ${this.chit} ${this.id} ${message}`);
+    }
+  }
+
   public init() {
+    this.log("init");
     this.chit.children.forEach((child) => {
       if (child.canRender()) {
         if (!child.renderInstance) {
+          this.log(`Found child to init: ${child.id}`);
           const c = new ChitRenderInstance(child);
           c.init();
 
           // move the new render instance immediately to where it belongs
-          c.offsetTween.duration(0);
-          c.zOffsetTween.duration(0);
-          c.rotationTween.duration(0);
+          this.zeroTween();
         } else {
           child.renderInstance.refresh();
         }
@@ -146,6 +153,12 @@ export class ChitRenderInstance {
     });
 
     this.refresh();
+  }
+
+  zeroTween() {
+    this.offsetTween.duration(0);
+    this.zOffsetTween.duration(0);
+    this.rotationTween.duration(0);
   }
 
   public galleryRotation() {
@@ -187,7 +200,7 @@ export class ChitRenderInstance {
   }
 
   public get absorbsClickEventsForChildren() {
-    return this.renderSpec?.showChildrenAsGallery ?? false;
+    return this.renderSpec?.isShowingChildrenAsGallery ?? false;
   }
 
   public get tweenGroup(): TweenGroup | undefined {
@@ -321,6 +334,7 @@ export class ChitRenderInstance {
   }
 
   public destroy() {
+    this.log("destroy");
     this.invalidateRootRenderInstance();
     this.unsubscribeToOnChange();
     this.rotationTween.stop();
@@ -339,12 +353,29 @@ export class ChitRenderInstance {
     }
   }
 
+  private shouldMoveToNewViewer() {
+    if (this.chit.renderInstance !== this) {
+      return true;
+    }
+
+    const rootRenderInstance = this.rootRenderInstance;
+    const targetParentRenderInstance = this.chit.parent?.renderInstance;
+    if (
+      rootRenderInstance &&
+      targetParentRenderInstance?.rootRenderInstance &&
+      rootRenderInstance !== targetParentRenderInstance?.rootRenderInstance
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   protected refresh() {
     if (this.checkPreDestroy()) {
       return;
     }
 
-    if (this.chit.renderInstance !== this) {
+    if (this.shouldMoveToNewViewer()) {
       this.moveToNewViewer();
       return;
     }
@@ -430,10 +461,18 @@ export class ChitRenderInstance {
   }
 
   private detach() {
-    this.childrenRenderInstances.forEach((child) => {
-      child.chit.renderInstance = undefined;
-      child.detach();
-    });
+    if (this.chit.renderInstance === this) {
+      this.log("detaching");
+      this.chit.renderInstance = undefined;
+      // this.childrenRenderInstances.forEach((child) => child.detach());
+    }
+
+    if (!this.chit.renderInstance && this.chit.parent?.renderInstance) {
+      this.chit.parent.renderInstance.childAdded(this.chit);
+
+      // TODO: this is okay since adding a child has side effects
+      (this.chit.renderInstance as unknown as ChitRenderInstance).zeroTween();
+    }
   }
 
   private _isMovingToNewViewer = false;
@@ -443,9 +482,16 @@ export class ChitRenderInstance {
     }
 
     this._isMovingToNewViewer = true;
+
+    this.log("needs to move to a new viewer");
+
     // no matter what, this instance is going to be useless - we don't want to potentially update mid-destroy
     this.unsubscribeToOnChange();
     this.detach();
+
+    if (this.parentRenderInstance?._isMovingToNewViewer) {
+      return;
+    }
 
     const rootRenderInstance = this.rootRenderInstance;
     rootRenderInstance.markHasChitsLeaving();
@@ -669,16 +715,24 @@ export class ChitRenderInstance {
   }
 
   protected addChild(child: ChitRenderInstance) {
+    this.log(`Child added: ${child.chit} ${child.id}`);
     this.childrenRenderInstances.push(child);
+    if (this._isMovingToNewViewer) {
+      this.log("While adding child to myself, I am already moving to a new viewer");
+      child.chit.renderInstance = undefined;
+      child.detach();
+    }
   }
 
   protected removeChild(child: ChitRenderInstance) {
+    this.log("Child removed");
     this.childrenRenderInstances = this.childrenRenderInstances.filter((d) => d !== child);
   }
 
   private isDestroying = false;
   protected checkPreDestroy() {
     if (!this.chit.parent && !this.isDestroying) {
+      this.log("about to destroy, will move off screen");
       this.isDestroying = true;
       this.chit.renderInstance = undefined;
       this.rootGroup?.attach(this.group);
@@ -730,6 +784,7 @@ export class ChitRenderInstance {
     }
 
     if (!this.parentRenderInstance) {
+      this.log("no parent render instance, destroying");
       this.destroy();
     }
   }
@@ -790,6 +845,8 @@ export class ChitRenderInstance {
         duration,
         this.renderSpec.offsetSpeed * Math.min(this.renderSpec.maxDistanceForSpeed, distanceMoved),
       );
+
+      this.log("offset tween: " + distanceMoved + " " + duration);
     }
 
     // rotation has to change
@@ -807,6 +864,8 @@ export class ChitRenderInstance {
       nonZRotations = Math.min(nonZRadiansDistance / (2 * Math.PI), 2 * Math.PI);
 
       duration = Math.max(duration, this.renderSpec.rotationSpeed * rotations);
+
+      this.log("rotation tween: " + nonZRotations + " " + duration);
     }
 
     if (offsetEasing) {
@@ -862,6 +921,8 @@ export class ChitRenderInstance {
               }),
           ),
       );
+
+      this.log("zOffset tween: " + peak.z + " " + duration);
     }
   }
 

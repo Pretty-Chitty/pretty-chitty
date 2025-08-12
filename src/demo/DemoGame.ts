@@ -13,7 +13,20 @@ import {
 import { Mesh, MeshPhongMaterial, PlaneGeometry } from "three";
 
 import { FlipButton, HandButton, PassButton } from "./ButtonLibrary";
-import { BagChit, Card, Card2, CounterChit, Deck, Hand, MyPlayer, Root, Row, SideBoards, Table } from "./ChitLibrary";
+import {
+  BagChit,
+  Card,
+  Card2,
+  Card3,
+  CounterChit,
+  Deck,
+  Hand,
+  MyPlayer,
+  Root,
+  Row,
+  SideBoards,
+  Table,
+} from "./ChitLibrary";
 import * as CanvasLibrary from "./CanvasLibrary";
 import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
@@ -24,7 +37,21 @@ export class DemoGame implements Game<MyPlayer, Root> {
   name = "Demo Game";
 
   showGrid = true;
-  chitLibrary = { Card, Card2, Table, SideBoards, Root, Deck, MyPlayer, PlayerAid, CounterChit, BagChit, Row, Hand };
+  chitLibrary = {
+    Card3,
+    Card,
+    Card2,
+    Table,
+    SideBoards,
+    Root,
+    Deck,
+    MyPlayer,
+    PlayerAid,
+    CounterChit,
+    BagChit,
+    Row,
+    Hand,
+  };
   canvasLibrary = CanvasLibrary;
   buttonLibrary = { FlipButton, PassButton, HandButton };
 
@@ -70,7 +97,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
       turn.flush();
 
       await turn.pick(
-        Chit.pick([pieces[1], pieces[0]], (c) => {
+        Chit.pick([pieces[8], pieces[7]], (c) => {
           const target = players[Math.floor(Math.random() * players.length)];
           target.add(c);
         }),

@@ -86,11 +86,15 @@ export class ChitRenderSpec {
     return this;
   }
 
+  /** @internal */
+  public isShowingChildrenAsGallery = false;
+
   public showChildrenAsGallery() {
     this.chit.onClick = () => {
       this.chit.renderInstance?.rootRenderInstance.showGallery(new GalleryItemChitChildrenSource(this.chit));
     };
     this.highlight.visible = false;
+    this.isShowingChildrenAsGallery = true;
   }
 
   public setOutletPosition(key: string, x: number, y: number, z: number = 0) {

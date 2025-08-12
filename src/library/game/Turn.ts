@@ -148,12 +148,18 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     let sawChange = false;
 
     // first ensure they all are locked and all have ids
+    const chitsToAddIdsTo: Chit[] = [];
     Chit.walk(this.chitsToLock, (c) => {
       if (!c.id) {
-        c.id = `${this.id}.${this.newChitCounter++}`; // TODO: I thought chit type should be part of the ID?
-        c.lock(this);
-        this.chitLookup[c.id] = c; // it's possible that this is kicking out an "old" version of this chit from a previous pass
+        chitsToAddIdsTo.push(c);
       }
+    });
+
+    chitsToAddIdsTo.sort((a, b) => a.createdOrder - b.createdOrder);
+    chitsToAddIdsTo.forEach((c) => {
+      c.id = `${this.id}.${this.newChitCounter++}`;
+      c.lock(this);
+      this.chitLookup[c.id] = c; // it's possible that this is kicking out an "old" version of this chit from a previous pass
     });
 
     // now (once per chit) we serialize the state if it changed
@@ -202,6 +208,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
             if (c.id) {
               seenIds.add(c.id);
               this.lastChitStates[c.id] = Chit.deletedIfSerialized();
+              newStates[c.id] = Chit.deletedIfSerialized();
+              chit.unlock(this);
             }
           });
         }
