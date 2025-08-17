@@ -4,6 +4,7 @@ export type { Game } from "./game/Game";
 export { GameButton, DynamicGameButton, ToggleGalleryButton } from "./game/GameButton";
 export type { ButtonCallback } from "./game/GameButton";
 export { GameDeck } from "./game/GameDeck";
+export { GameBag } from "./game/GameBag";
 export { GameTheme } from "./game/GameTheme";
 export { OrderedOutlet } from "./game/OrderedOutlet";
 export { PanelChit } from "./game/PanelChit";

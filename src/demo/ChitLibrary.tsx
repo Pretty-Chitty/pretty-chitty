@@ -32,12 +32,48 @@ import { PlayerAid } from "./PlayerAid";
 import { cityscape, cityscape2 } from "./assets/network_overload";
 import { Ordered } from "../library/utilities/Annotations";
 import { CardMesh } from "../library/utilities/CardMesh";
+import { GameBag } from "../library/game/GameBag";
 
 export * from "../library/utilities/BaseTable";
 
 export class Table extends Chit {}
 
 export class Row extends Chit {}
+
+export class Bag extends GameBag<Card2> {
+  tapped = false;
+
+  constructor() {
+    super();
+
+    this.chitGenerator = () => new Card2();
+  }
+
+  public override render(spec: ChitRenderSpec): void {
+    const boxGeometry = new BoxGeometry(1, 1, 1);
+
+    const ts = new TestStack().set((obj) => {
+      obj.subTitle = "This is the deck";
+    });
+
+    const face = new MeshPhongMaterial({
+      bumpMap: ts.get().texture,
+      bumpScale: 1,
+      map: ts.get().texture,
+    });
+
+    const side = new MeshPhongMaterial({
+      color: 0xbbbbbb,
+    });
+
+    spec.object = new Mesh(boxGeometry, [side, side, side, side, face, side]);
+    spec.offsetX = 2;
+    spec.rotateZ = this.tapped ? Math.PI / 2 : 0;
+    spec.object.castShadow = true;
+
+    spec.offsetY = 1;
+  }
+}
 
 export class Deck extends GameDeck<Card> {
   tapped = false;
@@ -141,7 +177,7 @@ export class Card2 extends Chit {
   public thingy = false;
 
   @ChildOutlet
-  public card3 = new Card3();
+  public card3: Card3 | undefined = undefined; // new Card3();
 
   public override render(spec: ChitRenderSpec): void {
     const boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
@@ -270,7 +306,7 @@ export class MyPlayer extends PlayerChit {
   // @ChildOutlet public token = new Card2();
   @ChildOutlet public counter = new CounterChit().set((c) => c.bindToPlayer(this));
   @ChildOutlet public counter2 = new BagChit().set((c) => (c.color = "#ca5275"));
-  @ChildOutlet(new Vector3(-4, 4, 0)) public hand = new Hand();
+  @ChildOutlet(new Vector3(-4, 0, 0)) public hand = new Hand();
 
   override getSparks(): SparkChit[] {
     return [this.counter, this.counter2];

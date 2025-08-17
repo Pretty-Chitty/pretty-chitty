@@ -1,6 +1,5 @@
-import { NonEditable, Ordered } from "../utilities/Annotations";
+import { NonEditable } from "../utilities/Annotations";
 import { Chit } from "./Chit";
-import { Turn } from "./Turn";
 
 export type Stage<T> = {
   type: "draw" | "discard";

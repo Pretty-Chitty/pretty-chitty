@@ -79,6 +79,16 @@ export class Chit extends ObjectWithProps {
     return this._parent;
   }
 
+  // if a chit comes from a "bag" or something, this will be the "parent" that it should effectively go to or come from
+  /** @internal */
+  @NonEditable private _parentFallback?: Chit;
+  public get parentFallback(): Chit | undefined {
+    return this._parentFallback;
+  }
+  public set parentFallback(newValue: Chit | undefined) {
+    this._parentFallback = newValue;
+  }
+
   @NonEditable private _lastParent?: Chit;
 
   /** @internal */
@@ -335,7 +345,7 @@ export class Chit extends ObjectWithProps {
   }
 
   private get serializationProps() {
-    return [...this.props, "id", "_parent", "_parentOutlet", "_parentOutletIndex"];
+    return [...this.props, "id", "_parent", "_parentOutlet", "_parentOutletIndex", "_parentFallback"];
   }
 
   /** @internal */
@@ -405,6 +415,7 @@ export class Chit extends ObjectWithProps {
     });
 
     this.id = j.id;
+    this._parentFallback = inflateValue(j._parentFallback);
     this.setParent(inflateValue(j._parent), j._parentOutlet, j._parentOutletIndex);
   }
 

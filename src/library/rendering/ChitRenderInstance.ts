@@ -83,22 +83,7 @@ export class ChitRenderInstance {
 
   constructor(public chit: Chit) {
     this.id = `cri${++ChitRenderInstance.ID_COUNTER}`;
-
-    if (chit.renderInstance && chit.parent?.renderInstance?.rootRenderInstance) {
-      const intersection = this.attemptToFindPlaneZ0(chit.parent?.renderInstance?.rootRenderInstance, chit);
-      if (intersection) {
-        this.group.position.y = intersection.y;
-        this.group.position.x = intersection.x;
-      }
-    } else if (chit.lastParent?.type === "spark" && chit.parent?.renderInstance?.rootRenderInstance) {
-      const intersection = this.attemptToFindPlaneZ0(chit.parent?.renderInstance?.rootRenderInstance, chit.lastParent);
-      if (intersection) {
-        this.group.position.y = intersection.y;
-        this.group.position.x = intersection.x;
-      }
-    } else {
-      this.group.position.y = 20; // how high?
-    }
+    this.group.visible = false;
 
     this.log("Render instance on owning chit is attached");
     chit.renderInstance = this;
@@ -125,8 +110,25 @@ export class ChitRenderInstance {
     };
 
     this.handleHierarchy();
+
+    // start it from where it should be - be it a spark chit or a bag or an old parent chit
+    const positionEntranceChit = chit.lastParent ?? chit.parentFallback;
+    if (this.rootRenderInstance) {
+      const oldParent = this.group.parent;
+      const intersection = this.attemptToFindPlaneZ0(this.rootRenderInstance, positionEntranceChit);
+      if (intersection && oldParent) {
+        this.group.removeFromParent();
+        this.group.position.set(intersection.x, intersection.y, intersection.z);
+        oldParent.attach(this.group);
+      }
+    }
+
     this.bboxGroup.add(this.bbox);
     this.bboxGroup.add(this.clickbox);
+  }
+
+  public get effectiveParent() {
+    return this.chit.parent ?? this.chit.parentFallback;
   }
 
   private log(message: string) {
@@ -359,7 +361,7 @@ export class ChitRenderInstance {
     }
 
     const rootRenderInstance = this.rootRenderInstance;
-    const targetParentRenderInstance = this.chit.parent?.renderInstance;
+    const targetParentRenderInstance = this.effectiveParent?.renderInstance;
     if (
       rootRenderInstance &&
       targetParentRenderInstance?.rootRenderInstance &&
@@ -382,6 +384,7 @@ export class ChitRenderInstance {
 
     this.rootRenderInstance.markDirty();
 
+    const visibilityBefore = this.group.visible;
     this.fixVisibility();
 
     if (this.renderSpec) {
@@ -395,6 +398,12 @@ export class ChitRenderInstance {
     this.renderSpec = renderSpec;
     this.innateObjectZ = this.renderSpec.object?.position?.z ?? 0;
     this.innateOrnamentZs = this.renderSpec.ornaments.map((o) => o.position?.z ?? 0);
+
+    // no need to animate anything invisible...
+    if (!visibilityBefore && !this.group.visible) {
+      renderSpec.offsetSpeed = 0;
+      renderSpec.rotationSpeed = 0;
+    }
 
     this.handleHierarchy();
 
@@ -422,8 +431,12 @@ export class ChitRenderInstance {
     return screenCoords;
   }
 
-  protected attemptToFindPlaneZ0(rootRenderInstance: RootChitRenderInstance, chit: Chit): Vector3 | undefined {
-    const screenCoordsOfNewLocation = chit.screenCoordinates();
+  protected attemptToFindPlaneZ0(rootRenderInstance: RootChitRenderInstance, chit?: Chit): Vector3 | undefined {
+    if (rootRenderInstance === chit?.renderInstance?.rootRenderInstance) {
+      return chit.renderInstance.group.getWorldPosition(new Vector3());
+    }
+
+    const screenCoordsOfNewLocation = chit ? chit.screenCoordinates() : new Vector2(0, 0);
     if (rootRenderInstance && rootRenderInstance.rootGroup && screenCoordsOfNewLocation) {
       // find the current screen coordinates of its new home and map it to "camera space"
       const cameraSpace = rootRenderInstance.convertScreenSpaceToCameraSpace(
@@ -467,8 +480,8 @@ export class ChitRenderInstance {
       // this.childrenRenderInstances.forEach((child) => child.detach());
     }
 
-    if (!this.chit.renderInstance && this.chit.parent?.renderInstance) {
-      this.chit.parent.renderInstance.childAdded(this.chit);
+    if (!this.chit.renderInstance && this.effectiveParent?.renderInstance) {
+      this.effectiveParent.renderInstance.childAdded(this.chit);
 
       // TODO: this is okay since adding a child has side effects
       (this.chit.renderInstance as unknown as ChitRenderInstance).zeroTween();
@@ -737,12 +750,36 @@ export class ChitRenderInstance {
       this.chit.renderInstance = undefined;
       this.rootGroup?.attach(this.group);
       const { position } = this.group;
+      if (!this.group.visible) {
+        this.destroy();
+        return this.isDestroying;
+      }
+
+      // where is this going?
+      const positionExitChit = this.chit.parent ?? this.chit.parentFallback;
+      const target = {
+        x: position.x,
+        y: position.y + (this.rootRenderInstance?.cameraWrapper.visibleGameHeight ?? 10),
+      };
+      let duration = 500;
+      if (this.rootRenderInstance) {
+        const oldParent = this.group.parent;
+        const intersection = this.attemptToFindPlaneZ0(this.rootRenderInstance, positionExitChit);
+        if (intersection && oldParent) {
+          target.x = intersection.x;
+          target.y = intersection.y;
+
+          const distance = Math.sqrt(Math.pow(target.x - position.x, 2) + Math.pow(target.y - position.y, 2));
+
+          duration =
+            (this.renderSpec ? this.renderSpec.offsetSpeed : 500) *
+            Math.min(this.renderSpec ? this.renderSpec.maxDistanceForSpeed : 10, distance);
+        }
+      }
+
       this.offsetTween = this.createTween({ x: position.x, y: position.y }, (tween) =>
         tween
-          .to(
-            { x: position.x, y: position.y + (this.rootRenderInstance?.cameraWrapper.visibleGameHeight ?? 10) },
-            500 * this.animationSpeedMultiplier,
-          )
+          .to(target, duration)
           .onUpdate((obj) => {
             position.x = obj.x;
             position.y = obj.y;
@@ -758,7 +795,7 @@ export class ChitRenderInstance {
   }
 
   protected handleHierarchy() {
-    const targetParentRenderInstance = this.chit.parent?.renderInstance;
+    const targetParentRenderInstance = this.effectiveParent?.renderInstance;
     if (this.parentRenderInstance !== targetParentRenderInstance) {
       this.parentRenderInstance?.removeChild(this);
       targetParentRenderInstance?.addChild(this);
@@ -869,7 +906,10 @@ export class ChitRenderInstance {
     }
 
     if (offsetEasing) {
-      this.group.visible = true;
+      // what the heck is this
+      if (duration > 1) {
+        this.group.visible = true;
+      }
       this.offsetTween = this.createTween({ x: position.x, y: position.y }, (tween) =>
         tween
           .to(targetOffset, duration * this.animationSpeedMultiplier)
@@ -927,7 +967,7 @@ export class ChitRenderInstance {
   }
 
   protected fixVisibility() {
-    this.group.visible = this.chit.parent?.shouldRenderChild(this.chit) ?? true;
+    this.group.visible = this.chit.parent ? this.chit.parent.shouldRenderChild(this.chit) : true;
   }
 
   public createTween<T extends Record<string, any>>(props: T, cb: (tween: Tween<T>) => void): Tween<T> {

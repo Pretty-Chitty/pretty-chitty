@@ -21,6 +21,7 @@ import {
   CounterChit,
   Deck,
   Hand,
+  Bag,
   MyPlayer,
   Root,
   Row,
@@ -42,6 +43,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     Card,
     Card2,
     Table,
+    Bag,
     SideBoards,
     Root,
     Deck,
@@ -71,6 +73,9 @@ export class DemoGame implements Game<MyPlayer, Root> {
     //   }),
     // );
 
+    const b = new Bag();
+    rootChit.mainBoard.add(b);
+
     const pieces = [...new Array(W * H)].map((d, i) =>
       new Card().set((c) => {
         c.x = Math.floor(i / H);
@@ -83,18 +88,28 @@ export class DemoGame implements Game<MyPlayer, Root> {
     );
     setup.flush();
 
+    players[1].add(pieces[1]);
+    setup.flush();
+
+    pieces[0].add(b.draw());
+    setup.flush();
+    pieces[1].add(b.draw());
+    setup.flush();
+    pieces[2].add(new Card2());
+    setup.flush();
+
     await setup.createTurn([rootChit], players[0], async (turn) => {
-      const c = new Card();
-      rootChit.mainBoard.add(c);
-      turn.flush();
-      c.removeFromParent();
-      turn.flush();
-      pieces[2].removeFromParent();
-      turn.flush();
-      pieces[4].removeFromParent();
-      turn.flush();
-      pieces[6].removeFromParent();
-      turn.flush();
+      // const c = new Card();
+      // rootChit.mainBoard.add(c);
+      // turn.flush();
+      // c.removeFromParent();
+      // turn.flush();
+      // pieces[2].removeFromParent();
+      // turn.flush();
+      // pieces[4].removeFromParent();
+      // turn.flush();
+      // pieces[6].removeFromParent();
+      // turn.flush();
 
       await turn.pick(
         Chit.pick([pieces[8], pieces[7]], (c) => {
