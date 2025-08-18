@@ -126,7 +126,7 @@ export class LightWrapper {
     const adjust = (x: number, y: number, z: number) => {
       const v = new Vector3(x, y, z);
       const cameraPoint = v.project(camera);
-      b.expandByPoint(new Vector2(cameraPoint.x, cameraPoint.y));
+      b.expandByPoint(new Vector2(cameraPoint.x * 2, cameraPoint.y * 2));
     };
 
     [this.bbox.min.x, this.bbox.max.x].forEach((x) =>

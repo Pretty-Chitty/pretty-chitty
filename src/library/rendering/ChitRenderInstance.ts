@@ -200,6 +200,7 @@ export class ChitRenderInstance {
     // initializing before the existing renderer has a chance to remove itself will possibly cause weird behavior
     // for attached children chits
     c.init();
+    this.notifyBoundingBoxChanged();
   }
 
   public get absorbsClickEventsForChildren() {
@@ -707,7 +708,6 @@ export class ChitRenderInstance {
       this.clickbox.position.y = (clickBox3.max.y - clickBox3.min.y) / 2 + clickBox3.min.y;
 
       const targetOffset = { x: this.renderSpec.offsetX, y: this.renderSpec.offsetY, z: this.renderSpec.offsetZ };
-
       this.handleOffsetForSplay(targetOffset);
 
       this.bboxGroup.position.set(targetOffset.x, targetOffset.y, targetOffset.z);
@@ -748,6 +748,7 @@ export class ChitRenderInstance {
   protected removeChild(child: ChitRenderInstance) {
     this.log("Child removed");
     this.childrenRenderInstances = this.childrenRenderInstances.filter((d) => d !== child);
+    this.notifyBoundingBoxChanged();
   }
 
   private isDestroying = false;

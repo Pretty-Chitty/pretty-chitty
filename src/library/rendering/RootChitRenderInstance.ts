@@ -1,7 +1,7 @@
 import { Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { ChitRenderInstance } from "./ChitRenderInstance";
 import { Chit } from "../game/Chit";
-import { Box3, Group, Material, Mesh, Raycaster, Vector2, Vector3 } from "three";
+import { Box3, Group, Material, Mesh, Object3D, Raycaster, Vector2, Vector3 } from "three";
 import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
 import { LightWrapper } from "./LightWrapper";
 import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
@@ -59,7 +59,15 @@ export class RootChitRenderInstance extends ChitRenderInstance {
       // find our bounds
       const bbox = new Box3();
       this.bboxGroup.updateWorldMatrix(false, true);
-      bbox.setFromObject(this.bboxGroup);
+
+      const recurse = (obj: Object3D) => {
+        if (obj.children.length > 0) {
+          obj.children.forEach(recurse);
+        } else if (obj.scale.length() > 0) {
+          bbox.expandByObject(obj);
+        }
+      };
+      recurse(this.bboxGroup);
 
       if (Number.isFinite(bbox.max.x)) {
         this.cameraWrapper.adjust(bbox);
