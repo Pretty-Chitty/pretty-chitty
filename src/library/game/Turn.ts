@@ -157,7 +157,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     chitsToAddIdsTo.sort((a, b) => a.createdOrder - b.createdOrder);
     chitsToAddIdsTo.forEach((c) => {
-      c.id = `${this.id}.${this.newChitCounter++}`;
+      c.id = `${this.id}.${c.chitTypeName()}${this.newChitCounter++}`;
       c.lock(this);
       this.chitLookup[c.id] = c; // it's possible that this is kicking out an "old" version of this chit from a previous pass
     });

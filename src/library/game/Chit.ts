@@ -108,7 +108,16 @@ export class Chit extends ObjectWithProps {
 
   /** @internal */
   toString() {
-    return `${Object.getPrototypeOf(this).constructor.name} ${this.id}`;
+    return `${this.chitTypeName()} ${this.id}`;
+  }
+
+  /** @internal */
+  chitTypeName() {
+    const result = Object.getPrototypeOf(this).constructor.name;
+    if (this.parentFallback) {
+      return `${result}.${this.parentFallback.id}`;
+    }
+    return result;
   }
 
   //
