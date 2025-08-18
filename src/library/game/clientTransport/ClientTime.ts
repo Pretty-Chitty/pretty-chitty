@@ -118,6 +118,10 @@ export class ClientTime extends ConnectionObject {
       this.clientTimeState.isLoading.value = false;
     }
 
+    // make sure our async operations don't get interrupted by auto-advancing the timeline
+    const animationKey = `minimumAnimationDuration${Date.now()}`;
+    this.clientTimeState.setAnimationState(animationKey, true);
+
     const response = await this.serverTime.serializeDelta(this.clientTimeState.targetClock.value);
     const serializedChits = this.inflateSerializedResponse(response.newStates, response.chits);
 
@@ -176,9 +180,9 @@ export class ClientTime extends ConnectionObject {
 
       // sometimes deserializing chits does not result in animations (maybe a pure texture change?)
       // in that case, we need to make sure that the clock moves forward
-      const animationKey = `minimumAnimationDuration${Date.now()}`;
-      this.clientTimeState.setAnimationState(animationKey, true);
       setTimeout(() => this.clientTimeState.setAnimationState(animationKey, false), 100);
+    } else {
+      this.clientTimeState.setAnimationState(animationKey, false);
     }
   }
 }

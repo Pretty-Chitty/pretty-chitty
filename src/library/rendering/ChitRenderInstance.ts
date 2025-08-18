@@ -752,7 +752,7 @@ export class ChitRenderInstance {
 
   private isDestroying = false;
   protected checkPreDestroy() {
-    if (!this.chit.parent && !this.isDestroying) {
+    if (!this.chit.parent && !this.isDestroying && !this.chit.parentFallback) {
       this.log("about to destroy, will move off screen");
       this.isDestroying = true;
       this.chit.renderInstance = undefined;
