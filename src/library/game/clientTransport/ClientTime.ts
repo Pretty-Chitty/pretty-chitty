@@ -136,7 +136,13 @@ export class ClientTime extends ConnectionObject {
 
       Object.values(this.chitLookup).forEach((chit) => {
         if (chit.id && !serializedChits[chit.id]) {
-          chit.removeFromParent();
+          if (chit.parentFallback) {
+            chit.beginDeserializing();
+            chit.setParent(chit.parentFallback, chit.parentOutlet);
+            chit.doneDeserializing();
+          } else {
+            chit.removeFromParent();
+          }
           delete this.lastSerializedState[chit.id];
         }
       });

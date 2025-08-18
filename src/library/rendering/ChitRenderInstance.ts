@@ -101,6 +101,7 @@ export class ChitRenderInstance {
         }
       }
     });
+
     const cb2 = chit.onChange("onClick", () => {
       this.refresh();
     });
@@ -400,7 +401,7 @@ export class ChitRenderInstance {
     this.innateOrnamentZs = this.renderSpec.ornaments.map((o) => o.position?.z ?? 0);
 
     // no need to animate anything invisible...
-    if (!visibilityBefore && !this.group.visible) {
+    if (!visibilityBefore && !this.group.visible && !this.chit.lastParent) {
       renderSpec.offsetSpeed = 0;
       renderSpec.rotationSpeed = 0;
     }
@@ -502,6 +503,10 @@ export class ChitRenderInstance {
     this.unsubscribeToOnChange();
     this.detach();
 
+    const renderSpec = this.createRenderSpec();
+    this.chit.render(renderSpec);
+    this.renderSpec = renderSpec;
+
     if (this.parentRenderInstance?._isMovingToNewViewer) {
       return;
     }
@@ -510,7 +515,6 @@ export class ChitRenderInstance {
     rootRenderInstance.markHasChitsLeaving();
 
     const rootGroup = this.rootGroup;
-    const renderSpec = this.renderSpec;
     if (rootGroup && rootRenderInstance && renderSpec) {
       let intersection = this.attemptToFindPlaneZ0(rootRenderInstance, this.chit);
       if (!intersection) {

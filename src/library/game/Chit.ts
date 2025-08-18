@@ -416,6 +416,11 @@ export class Chit extends ObjectWithProps {
 
     this.id = j.id;
     this._parentFallback = inflateValue(j._parentFallback);
+
+    if (this._version === 1 && this._parentFallback) {
+      this.setParent(this._parentFallback, j._parentOutlet);
+    }
+
     this.setParent(inflateValue(j._parent), j._parentOutlet, j._parentOutletIndex);
   }
 

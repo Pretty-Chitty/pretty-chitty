@@ -86,7 +86,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
         c.add(c2, "testoutlet");
       }),
     );
-    setup.flush();
+    // setup.flush();
 
     players[1].add(pieces[1]);
     setup.flush();
