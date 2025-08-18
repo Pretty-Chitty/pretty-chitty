@@ -426,6 +426,10 @@ export class ChitRenderInstance {
   }
 
   public screenCoordinates(): Vector2 | undefined {
+    if (!this.group.visible) {
+      return undefined;
+    }
+
     const vector = this.bbox.localToWorld(new Vector3());
     vector.project(this.rootRenderInstance.camera);
     const screenCoords = this.rootRenderInstance.convertCameraSpaceToScreenSpace(vector.x, vector.y);

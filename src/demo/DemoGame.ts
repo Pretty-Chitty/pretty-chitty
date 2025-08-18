@@ -91,12 +91,12 @@ export class DemoGame implements Game<MyPlayer, Root> {
     players[1].add(pieces[1]);
     setup.flush();
 
-    pieces[0].add(b.draw());
-    setup.flush();
+    // pieces[0].add(b.draw());
+    // setup.flush();
     pieces[1].add(b.draw());
     setup.flush();
-    pieces[2].add(new Card2());
-    setup.flush();
+    // pieces[2].add(new Card2());
+    // setup.flush();
 
     await setup.createTurn([rootChit], players[0], async (turn) => {
       // const c = new Card();

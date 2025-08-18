@@ -67,7 +67,7 @@ export class Bag extends GameBag<Card2> {
     });
 
     spec.object = new Mesh(boxGeometry, [side, side, side, side, face, side]);
-    spec.offsetX = 2;
+    spec.offsetX = 20;
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0;
     spec.object.castShadow = true;
 

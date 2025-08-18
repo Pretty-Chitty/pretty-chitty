@@ -1,6 +1,5 @@
 import { NonEditable } from "../utilities/Annotations";
 import { Chit } from "./Chit";
-import { Turn } from "./Turn";
 
 const OUTLET_NAME = "bag";
 
@@ -23,28 +22,24 @@ export class GameBag<T extends Chit> extends Chit {
 
     const chit = this.chitGenerator();
     chit.parentFallback = this;
-    // chit.setParent(this, OUTLET_NAME);
-    // turn.flush();
     return chit;
   }
 
-  drawMultiple(count: number, turn: Turn<any, any, any>): T[] {
+  drawMultiple(count: number): T[] {
     if (!this.chitGenerator) {
       throw "No chit generator defined";
     }
     const generator = this.chitGenerator;
 
     const chits = [...new Array(count)].map(() => generator().set((c) => c.setParent(this, OUTLET_NAME)));
-    // turn.flush();
     return chits;
   }
 
-  discard(chit: T | T[], turn: Turn<any, any, any>): void {
+  discard(chit: T | T[]): void {
     if (Array.isArray(chit)) {
       chit.forEach((c) => c.setParent(this, OUTLET_NAME));
     } else {
       chit.setParent(this, OUTLET_NAME);
     }
-    turn.flush();
   }
 }
