@@ -326,7 +326,10 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     players.forEach((player) => (player.promptStatus.latestPromptMessage = "Waiting for turn to complete"));
 
     const turns = players.map((player) =>
-      this.createTurn(chits(player), player, (turn: Turn<A, P, R>) => action(player, turn)),
+      this.createTurn(chits(player), player, (turn: Turn<A, P, R>) => action(player, turn)).then((a: A) => {
+        player.promptStatus.latestPromptMessage = undefined;
+        return a;
+      }),
     );
 
     return await Promise.all(turns);
@@ -727,6 +730,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       resolution.response = prompt.response;
       this.unresolvedPrompt = undefined;
     }
+
+    // it is possible our state got reset out from under us and the response we have (which is a pointer)
+    // to an object -- MAY be writing to the OLD state
+    this.state.setOrCreatePromptResponse(this.decisionIndex, resolution);
+
     this.player.promptStatus.latestPromptResponseTime = this.absoluteClock(this.player.id);
     this.player.promptStatus.latestPromptMessage = undefined;
     this.decisionIndex++;

@@ -43,10 +43,12 @@ export class Row extends Chit {}
 export class Bag extends GameBag<Card2> {
   tapped = false;
 
+  public chitGenerator(): Card2 {
+    return new Card2();
+  }
+
   constructor() {
     super();
-
-    this.chitGenerator = () => new Card2();
   }
 
   public override render(spec: ChitRenderSpec): void {

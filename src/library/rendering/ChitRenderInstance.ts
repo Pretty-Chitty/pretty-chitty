@@ -555,13 +555,14 @@ export class ChitRenderInstance {
       const planeGeometry = new PlaneGeometry(w, h);
 
       const outline = new OutlineCanvas().set((obj) => {
-        const DPI = 250;
+        const DPI = highlight.dpi;
         obj.width = w * DPI;
         obj.height = h * DPI;
         obj.lineWidth = highlight.width * DPI;
         obj.innerLineWidth = highlight.innerWidth * DPI;
         obj.outerColor = highlight.color;
         obj.innerColor = highlight.innerColor;
+        obj.radius = highlight.radius * DPI;
       });
 
       const face = new MeshBasicMaterial({
@@ -976,7 +977,11 @@ export class ChitRenderInstance {
   }
 
   protected fixVisibility() {
-    this.group.visible = this.chit.parent ? this.chit.parent.shouldRenderChild(this.chit) : true;
+    this.group.visible = this.chit.parent
+      ? this.chit.parent.shouldRenderChild(this.chit)
+      : this.chit.parentFallback
+        ? this.chit.parentFallback.shouldRenderChild(this.chit)
+        : true;
   }
 
   public createTween<T extends Record<string, any>>(props: T, cb: (tween: Tween<T>) => void): Tween<T> {

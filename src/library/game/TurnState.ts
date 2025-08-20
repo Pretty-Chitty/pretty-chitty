@@ -46,6 +46,19 @@ export class TurnState {
       throw new MismatchError();
     }
   }
+  public setOrCreatePromptResponse(index: number, response: PromptResponse): void {
+    if (index < this.decisions.length) {
+      const result = this.decisions[index];
+      if (result.type !== "prompt") {
+        throw new MismatchError();
+      }
+      this.decisions[index] = response;
+    } else if (index === this.decisions.length) {
+      this.decisions.push(response);
+    } else {
+      throw new MismatchError();
+    }
+  }
 
   public getOrCreateRng(index: number): number {
     if (index < this.decisions.length) {

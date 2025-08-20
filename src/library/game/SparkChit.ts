@@ -5,20 +5,21 @@ import { NonEditable } from "../utilities/Annotations";
 import { PlayerChit } from "./PlayerChit";
 import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
+import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 
 export class SparkChit extends Chit {
   /** @internal */
   @NonEditable type = "spark";
 
   public color: string = "";
-  public get icon(): PlayerChit | ImageSpec | undefined {
+  public get icon(): PlayerChit | ImageSpec | IUpdatingCanvas | undefined {
     if (this._boundPlayer) {
       return this._boundPlayer;
     }
     return undefined;
   }
 
-  public get headerIcon(): PlayerChit | ImageSpec | undefined {
+  public get headerIcon(): PlayerChit | ImageSpec | IUpdatingCanvas | undefined {
     return this.icon;
   }
 

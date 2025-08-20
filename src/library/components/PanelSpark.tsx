@@ -10,6 +10,7 @@ import { Image, Player } from "../utilities/CanvasStack/ReactCanvas";
 import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 import { UpdatingCanvasImage } from "./UpdatingCanvasImage";
 import { PlayerChit } from "../game/PlayerChit";
+import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
 
 class IconCanvas extends ParameterizedCanvas {
   constructor(
@@ -39,7 +40,7 @@ class PlayerCanvas extends ParameterizedCanvas {
   }
 }
 
-export default function PanelSpark({ chit, paused }: { chit: SparkChit; paused: boolean }) {
+export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; chit: SparkChit; paused: boolean }) {
   const ref = useRef<HTMLElement>(null);
   const timeState = useTimeState();
   const sparkChit = useChit<SparkChit>(chit.id ?? "no id");
@@ -56,7 +57,7 @@ export default function PanelSpark({ chit, paused }: { chit: SparkChit; paused: 
   if (ref) {
     chit.element = ref;
   }
-  const HEIGHT = 20;
+  const HEIGHT = theme.sparkSize;
 
   useEffect(() => {
     if (targetValue !== value) {
@@ -82,12 +83,16 @@ export default function PanelSpark({ chit, paused }: { chit: SparkChit; paused: 
     return;
   }
 
+  const icon = chit.icon;
+
   const image =
     chit.icon instanceof PlayerChit
       ? new PlayerCanvas(HEIGHT * 3, HEIGHT * 3, chit.icon).get()
-      : new IconCanvas(HEIGHT * 3, HEIGHT * 3, chit.icon).get();
+      : "onUpdate" in icon && typeof icon.onUpdate === "function"
+        ? icon
+        : new IconCanvas(HEIGHT * 3, HEIGHT * 3, icon as ImageSpec).get();
 
-  const color = (chit.color.length > 0 ? chit.color : chit.icon?.color) ?? "#ffffff";
+  const color = (chit.color.length > 0 ? chit.color : (icon as ImageSpec)?.color) ?? "#ffffff";
 
   if (value === Number.MIN_SAFE_INTEGER) {
     return null;
@@ -122,13 +127,14 @@ export default function PanelSpark({ chit, paused }: { chit: SparkChit; paused: 
         borderBottomRightRadius: "10px",
         borderLeftWidth: 0,
         overflow: "hidden",
+        zIndex,
       }}
     >
       <UpdatingCanvasImage
         image={image}
         style={{ position: "absolute", left: BORDER_WIDTH * 2, top: 0, width: HEIGHT, height: HEIGHT }}
       />
-      <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{value}</Typography>
+      <Typography sx={{ fontSize: theme.sparkFontSize, fontWeight: 700 }}>{value}</Typography>
     </Box>
   );
 }

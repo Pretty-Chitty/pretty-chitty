@@ -187,6 +187,12 @@ export class Chit extends ObjectWithProps {
   }
 
   public functionallyIdentical(other: Chit) {
+    const myProto = Object.getPrototypeOf(this);
+    const otherProto = Object.getPrototypeOf(other);
+    if (myProto !== otherProto) {
+      return false;
+    }
+
     const compare = (a: any, b: any): boolean => {
       if (a === b) {
         return true;

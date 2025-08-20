@@ -60,13 +60,10 @@ function ViewerWrapper({
 
   return (
     <>
-      <Stack direction={"row-reverse"} sx={{ position: "absolute", zIndex: ZINDEX_SPARKS }}>
-        {sparks
-          .concat()
-          .reverse()
-          .map((spark) => (
-            <PanelSpark key={spark.id} chit={spark} paused={paused} />
-          ))}
+      <Stack direction={"row"} flexWrap={"wrap"} sx={{ position: "absolute", zIndex: ZINDEX_SPARKS }}>
+        {sparks.map((spark, i) => (
+          <PanelSpark zIndex={ZINDEX_SPARKS + sparks.length - i} key={spark.id} chit={spark} paused={paused} />
+        ))}
       </Stack>
       <Viewer paused={paused} chit={chit} w={w} h={h} panCallback={panCallback} />
     </>

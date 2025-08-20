@@ -44,6 +44,8 @@ export class GameTheme {
   public sparkBorderWidth = 4;
   public sparkBorderColor = "rgba(0,0,0,0.3)";
   public sparkFlashColor = "#0ff";
+  public sparkSize = 20;
+  public sparkFontSize = 12;
 
   static withDefaults(primaryColor: string, highlight: string) {
     const result = new GameTheme();

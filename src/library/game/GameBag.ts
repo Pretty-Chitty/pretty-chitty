@@ -3,11 +3,11 @@ import { Chit } from "./Chit";
 
 const OUTLET_NAME = "bag";
 
-export class GameBag<T extends Chit> extends Chit {
+export abstract class GameBag<T extends Chit> extends Chit {
   /** @internal */
   @NonEditable type = "bag";
 
-  public chitGenerator?: () => T;
+  public abstract chitGenerator(): T;
 
   /** @internal */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -16,22 +16,13 @@ export class GameBag<T extends Chit> extends Chit {
   }
 
   draw(): T {
-    if (!this.chitGenerator) {
-      throw "No chit generator defined";
-    }
-
     const chit = this.chitGenerator();
     chit.parentFallback = this;
     return chit;
   }
 
   drawMultiple(count: number): T[] {
-    if (!this.chitGenerator) {
-      throw "No chit generator defined";
-    }
-    const generator = this.chitGenerator;
-
-    const chits = [...new Array(count)].map(() => generator().set((c) => c.setParent(this, OUTLET_NAME)));
+    const chits = [...new Array(count)].map(() => this.chitGenerator().set((c) => c.setParent(this, OUTLET_NAME)));
     return chits;
   }
 

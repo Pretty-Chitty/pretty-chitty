@@ -11,6 +11,8 @@ import { UpdatingCanvasImage } from "./UpdatingCanvasImage";
 import { StaticImage } from "../utilities/StaticImage";
 import { RootChit } from "../game/RootChit";
 import { usePlayerId } from "../hooks/usePlayer";
+import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
+import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 
 function PlayerInfoCell({ spark, size }: { size: number; spark: SparkChit }) {
   const theme = useGameTheme();
@@ -51,13 +53,21 @@ function HeaderCell({ spark }: { spark: SparkChit }) {
     return <Box sx={{ width: `${spark.width}px`, pl: 1, pr: 1 }} />;
   }
 
-  const image = new StaticImage(spark.headerIcon);
-  image.width = spark.width - theme.spacing * 2;
-  image.height = spark.width - theme.spacing * 2;
+  let im: IUpdatingCanvas | undefined;
+  const icon = spark.headerIcon;
+
+  if ("onUpdate" in icon && typeof icon.onUpdate === "function") {
+    im = icon;
+  } else {
+    const image = new StaticImage(icon as ImageSpec);
+    image.width = spark.width - theme.spacing * 2;
+    image.height = spark.width - theme.spacing * 2;
+    im = image.get();
+  }
 
   return (
     <Box sx={{ width: `${spark.width}px`, pl: 1, pr: 1 }}>
-      <UpdatingCanvasImage image={image.get()} />
+      <UpdatingCanvasImage image={im} style={{ width: `${spark.width - theme.spacing * 2}px` }} />
     </Box>
   );
 }

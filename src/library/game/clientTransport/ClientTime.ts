@@ -142,7 +142,7 @@ export class ClientTime extends ConnectionObject {
         if (chit.id && !serializedChits[chit.id]) {
           if (chit.parentFallback) {
             chit.beginDeserializing();
-            chit.setParent(chit.parentFallback, chit.parentOutlet);
+            chit.setParent(chit.parentFallback, chit.parentOutlet ?? "graveyard");
             chit.doneDeserializing();
           } else {
             chit.removeFromParent();
