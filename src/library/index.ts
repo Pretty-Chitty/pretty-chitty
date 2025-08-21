@@ -1,4 +1,5 @@
 export { Chit } from "./game/Chit";
+export type { HiddenPropertySerializationRule } from "./game/Chit";
 export { DropdownChit } from "./game/DropdownChit";
 export type { Game } from "./game/Game";
 export { GameButton, DynamicGameButton, ToggleGalleryButton } from "./game/GameButton";

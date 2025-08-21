@@ -14,6 +14,11 @@ export const ORDERED_CHILDREN = "orderedChildren";
 
 export type ChitClick = () => void;
 
+export type HiddenPropertySerializationRule = {
+  fields: "all" | string[];
+  playerIds: string[];
+};
+
 let CHIT_CREATED_ORDER = 0;
 export class Chit extends ObjectWithProps {
   /** @internal */
@@ -439,8 +444,17 @@ export class Chit extends ObjectWithProps {
     this.setParent(inflateValue(j._parent), j._parentOutlet, j._parentOutletIndex);
   }
 
+  /**
+   * Let chits decide who can see what.  (Allow privacy of chits)
+   * @param _playerIds
+   * @returns
+   */
+  public hiddenPropertiesForSerialization(_playerIds: string[]): HiddenPropertySerializationRule[] | undefined {
+    return undefined;
+  }
+
   /** @internal */
-  public serialize(): string {
+  public serialize(playerIds?: string[]): string {
     return JSON.stringify(
       this.serializationProps.reduce(
         (acc, key) => {
@@ -450,6 +464,7 @@ export class Chit extends ObjectWithProps {
         },
         {
           __chitType: Object.getPrototypeOf(this).constructor.name,
+          __hiddenProps: playerIds ? this.hiddenPropertiesForSerialization(playerIds) : undefined,
         } as { [key: string]: any },
       ),
     );
@@ -460,6 +475,37 @@ export class Chit extends ObjectWithProps {
   // Static methods
   //
   //
+
+  /** @internal */
+  public static fixVisibility(serialized: string, playerId: string) {
+    const data = JSON.parse(serialized);
+    if (data.__hiddenProps) {
+      const hiddenPropRules = data.__hiddenProps as HiddenPropertySerializationRule[];
+      const rule = hiddenPropRules.find((rule) => rule.playerIds.indexOf(playerId) !== -1);
+      if (rule) {
+        if (rule.fields === "all") {
+          Object.keys(data)
+            .filter((a) => a !== "id" && !a.startsWith("_") && !data[a].___orderedOutlet)
+            .forEach((key) => {
+              delete data[key];
+            });
+        } else {
+          rule.fields
+            .filter((k) => {
+              if (data[k].___orderedOutlet) {
+                throw new Error("Cannot mask ordered outlets");
+              }
+            })
+            .forEach((key) => {
+              delete data[key];
+            });
+        }
+        delete data.__hiddenProps;
+        return JSON.stringify(data);
+      }
+    }
+    return serialized;
+  }
 
   /*
    * Creates a new chit from the serialized spec.

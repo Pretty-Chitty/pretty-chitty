@@ -37,7 +37,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   /** @internal */
   public paused = Promise.resolve();
 
-  private newChitCounter = 0;
+  private newChitCounter: { [type: string]: number } = {};
   private chitLookup: ChitLookup = {};
   private lockedChitStates: ChitStateLookup = {};
   private lastChitStates: ChitStateLookup = {};
@@ -69,6 +69,9 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   }
 
   /** @internal */
+  private _playerIds: string[];
+
+  /** @internal */
   constructor(
     public id: string,
     /** @internal */
@@ -95,7 +98,23 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
       c.lock(this);
       this.chitLookup[c.id] = c;
-      this.lastChitStates[c.id] = this.lockedChitStates[c.id] = c.serialize();
+    });
+
+    // this has to be done after we capture and lock the chits, but we need player ids so we can properly serialize
+    // chits
+    this._playerIds = this.rootChit.players.map((p) => {
+      if (!p.id) {
+        throw new Error("Cannot create turns for players without IDs");
+      }
+      return p.id;
+    });
+
+    // now serialize all chits in their "locked" state
+    Object.values(this.chitLookup).forEach((c) => {
+      if (!c.id) {
+        throw new Error("Cannot serialize a chit without an id");
+      }
+      this.lastChitStates[c.id] = this.lockedChitStates[c.id] = c.serialize(this._playerIds);
     });
   }
 
@@ -157,7 +176,10 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     chitsToAddIdsTo.sort((a, b) => a.createdOrder - b.createdOrder);
     chitsToAddIdsTo.forEach((c) => {
-      c.id = `${this.id}.${c.chitTypeName()}${this.newChitCounter++}`;
+      const type = c.chitTypeName();
+      const counter = (this.newChitCounter[type] || 0) + 1;
+      this.newChitCounter[type] = counter;
+      c.id = `${this.id}.${type}${counter}`;
       c.lock(this);
       this.chitLookup[c.id] = c; // it's possible that this is kicking out an "old" version of this chit from a previous pass
     });
@@ -169,7 +191,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
       if (!seenIds.has(c.id)) {
         seenIds.add(c.id);
-        const serialized = c.serialize();
+        const serialized = c.serialize(this._playerIds);
         const lastState = this.lastChitStates[c.id];
         if (serialized !== lastState) {
           this.lastChitStates[c.id] = newStates[c.id] = serialized;
@@ -914,7 +936,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.lastChitStates = { ...this.lockedChitStates }; // reset our known chit states
     this.clockSteps = [];
     this.decisionIndex = 0;
-    this.newChitCounter = 0;
+    this.newChitCounter = {};
     this.unresolvedPrompt = undefined;
     this.activeSubTurns = [];
     this.pass++;

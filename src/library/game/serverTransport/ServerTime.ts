@@ -6,6 +6,7 @@ import { Match } from "../Match";
 import { PlayerChit } from "../PlayerChit";
 import { RootChit } from "../RootChit";
 import { ClientTime } from "../clientTransport/ClientTime";
+import { Chit } from "../Chit";
 
 export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends ConnectionObject {
   private clientTime: ClientTime;
@@ -48,7 +49,7 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
         let state = this.stateLookups[value];
         if (state === undefined) {
           state = this.stateLookups[key] = ++this.stateCounter;
-          newStates[this.stateCounter] = value;
+          newStates[this.stateCounter] = Chit.fixVisibility(value, this.playerId);
         }
         chitIdToStateCounter[key] = state;
       });

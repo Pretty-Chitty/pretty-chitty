@@ -33,6 +33,7 @@ import { cityscape, cityscape2 } from "./assets/network_overload";
 import { Ordered } from "../library/utilities/Annotations";
 import { CardMesh } from "../library/utilities/CardMesh";
 import { GameBag } from "../library/game/GameBag";
+import { HiddenPropertySerializationRule } from "../library/game/Chit";
 
 export * from "../library/utilities/BaseTable";
 
@@ -69,7 +70,7 @@ export class Bag extends GameBag<Card2> {
     });
 
     spec.object = new Mesh(boxGeometry, [side, side, side, side, face, side]);
-    spec.offsetX = 20;
+    spec.offsetX = -2;
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0;
     spec.object.castShadow = true;
 
@@ -117,7 +118,7 @@ export class Hand extends Chit {
 }
 
 export class Card extends Chit {
-  public something: number = 2;
+  public something?: number = 2;
   public tapped: boolean = false;
   public flipped: boolean = false;
   public x = 0;
@@ -132,11 +133,20 @@ export class Card extends Chit {
   @Ordered(new Vector3(-0.5, 0, 0))
   public tokenList2 = new OrderedOutlet("tokenList2", this);
 
+  public override hiddenPropertiesForSerialization(playerIds: string[]): HiddenPropertySerializationRule[] | undefined {
+    return [
+      {
+        fields: "all",
+        playerIds: playerIds.filter((p) => this.parent?.id !== p),
+      },
+    ];
+  }
+
   public override render(spec: ChitRenderSpec): void {
     const ts = new TestStack().set((obj) => {
       obj.subTitle = "This is a ...";
-      obj.title = this.something.toString();
-      obj.subTitle2 = this.something;
+      obj.title = this.something?.toString() ?? "NO TITLE";
+      obj.subTitle2 = this?.something ?? 999;
     });
 
     spec.object = new CardMesh(1, 2, ts.material, new MeshPhongMaterial({ color: 0xff0000 }), {
@@ -150,6 +160,11 @@ export class Card extends Chit {
     // spec.offsetX = this.x * 1.25;
     // spec.offsetY = this.y * 2.5;
     // spec.offsetZ = this.tapped ? 0.25 : 0 + (this.flipped ? 3.1 : 0);
+
+    if (this.something === undefined) {
+      spec.rotateY = Math.PI;
+    }
+
     spec.zLiftRotationMultiplier = 3;
 
     if (this.parent instanceof Deck) {
