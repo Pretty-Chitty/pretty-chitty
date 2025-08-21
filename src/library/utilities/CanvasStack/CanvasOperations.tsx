@@ -465,3 +465,48 @@ export class CallbackCanvasOperation extends CanvasOperation {
     this.cb(context, bounds.x, bounds.y, bounds.w, bounds.h);
   }
 }
+
+/**
+ * Renders children into a rounded rectangle mask.
+ * Any drawing outside the rounded rect is clipped.
+ */
+export class RoundedRectCanvasOperation extends CanvasOperation {
+  constructor(
+    private children: CanvasOperation[],
+    private radius: number,
+  ) {
+    super();
+  }
+
+  override render(
+    context: CanvasRenderingContext2D,
+    bounds: RenderBounds,
+    getImage: GetImage,
+    reportOutlet: ReportOutlet,
+  ) {
+    context.save();
+
+    // Create rounded rect path
+    const { x, y, w, h } = bounds;
+    const r = Math.max(0, Math.min(this.radius, Math.min(w, h) / 2));
+    context.beginPath();
+    context.moveTo(x + r, y);
+    context.lineTo(x + w - r, y);
+    context.quadraticCurveTo(x + w, y, x + w, y + r);
+    context.lineTo(x + w, y + h - r);
+    context.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    context.lineTo(x + r, y + h);
+    context.quadraticCurveTo(x, y + h, x, y + h - r);
+    context.lineTo(x, y + r);
+    context.quadraticCurveTo(x, y, x + r, y);
+    context.closePath();
+    context.clip();
+
+    // Render children
+    for (const child of this.children) {
+      child.render(context, bounds, getImage, reportOutlet);
+    }
+
+    context.restore();
+  }
+}

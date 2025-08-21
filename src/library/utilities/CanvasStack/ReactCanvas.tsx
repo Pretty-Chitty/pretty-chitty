@@ -12,6 +12,7 @@ import {
   PadCanvasOperation,
   PlayerCanvasOperation,
   RenderCallback,
+  RoundedRectCanvasOperation,
   StackItem,
   TextCanvasOperation,
   VerticalStackCanvasOperation,
@@ -246,4 +247,20 @@ export function Text({
  */
 export function Raw({ cb }: { cb: RenderCallback } & DefaultProps): ReactNode {
   return <WrappedCanvasOperation operation={new CallbackCanvasOperation(cb)} />;
+}
+
+/**
+ * Renders children into a rounded rectangle mask.
+ * @param args
+ * @returns
+ */
+export function RoundedRect({
+  radius,
+  children,
+}: {
+  radius: number;
+  children: ReactNode | ReactNode[];
+} & DefaultProps): ReactNode {
+  const childOps = Array.isArray(children) ? children.map(unwrapCanvasNode) : [unwrapCanvasNode(children)];
+  return <WrappedCanvasOperation operation={new RoundedRectCanvasOperation(childOps, radius)} />;
 }
