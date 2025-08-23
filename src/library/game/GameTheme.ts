@@ -46,8 +46,10 @@ export class GameTheme {
   public sparkFlashColor = "#0ff";
   public sparkSize = 20;
   public sparkFontSize = 12;
+  public topBarDropShadowColor = "rgba(0,0,0,0.7)";
+  public topBarPlayerDropShadowColor = "rgba(0,0,0,0.2)";
 
-  static withDefaults(primaryColor: string, highlight: string) {
+  static withDefaults(primaryColor: string, highlight: string, textColor: string = "#ffffff") {
     const result = new GameTheme();
     result.chitInnerHighlightColor = highlight;
     result.chitHighlightColor = Color(highlight).alpha(0.2).hexa();
@@ -56,10 +58,18 @@ export class GameTheme {
     result.actionBarColor = Color(primaryColor).mix(Color(highlight), 0.4).hex();
     result.fullResetColor = highlight;
     result.barHighlightTextColor = highlight;
-    result.barTopDropdownColor = Color(primaryColor).lighten(0.1).alpha(0.9).hexa();
+    result.barTopDropdownColor = Color(primaryColor).mix(Color(highlight), 0.1).alpha(0.9).hexa();
     result.barTextHighlightColor = highlight;
 
     result.endGameBackgroundColor = result.barTopDropdownColor;
+
+    result.barTextColor = Color(textColor).alpha(0.9).hexa();
+    result.barTextHighlightColor = Color(textColor).mix(Color(highlight), 0.5).alpha(0.9).hexa();
+    result.barBreak = Color(textColor).alpha(0.3).hexa();
+    result.barActiveTextColor = Color(textColor).alpha(0.9).hexa();
+    result.barTopLineColor = Color(textColor).alpha(0.1).hexa();
+    result.endGameTextColor = Color(textColor).alpha(1).hexa();
+
     return result;
   }
 }

@@ -78,7 +78,7 @@ export default function TopBarDropdown({
           right: 0,
           background: theme.barTopDropdownColor,
           zIndex: ZINDEX_TOP_BAR_BODY,
-          boxShadow: "3px 3px 30px rgba(0,0,0,0.7)",
+          boxShadow: `3px 3px 30px ${theme.topBarDropShadowColor}`,
           borderBottomRightRadius: 10,
           borderBottomLeftRadius: 10,
           maxHeight: `calc(60vh - ${theme.topBarHeight}px - 10px)`,

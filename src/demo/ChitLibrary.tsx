@@ -142,11 +142,19 @@ export class Card extends Chit {
     ];
   }
 
-  public functionallyIdentical(other: Chit): boolean {
+  public functionallyIdentical(_other: Chit): boolean {
     return false;
   }
 
+  public override showDetailsOnLongPress() {
+    return true;
+  }
+
   public override render(spec: ChitRenderSpec): void {
+    // if (!this.isClickable) {
+    //   return;
+    // }
+
     const ts = new TestStack().set((obj) => {
       obj.subTitle = "This is a ...";
       obj.title = this.something?.toString() ?? "NO TITLE";

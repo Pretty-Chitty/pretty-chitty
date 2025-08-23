@@ -57,7 +57,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
   canvasLibrary = CanvasLibrary;
   buttonLibrary = { FlipButton, PassButton, HandButton };
 
-  theme = GameTheme.withDefaults("#2d3142", "#ef8354");
+  theme = GameTheme.withDefaults("#ffeedd", "#ef8354", "#001122");
 
   async run(players: MyPlayer[], setup: Turn<any, MyPlayer, Root>, rootChit: Root) {
     players[0].color = "#ed00cb";

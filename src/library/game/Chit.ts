@@ -179,6 +179,20 @@ export class Chit extends ObjectWithProps {
     this.notifyChange("onClick");
   }
 
+  /**
+   * Returns true if the chit is currently clickable
+   */
+  public get isClickable(): boolean {
+    return !!this.onClick;
+  }
+
+  /**
+   * @returns true if this chit should show up in a gallery if long clicked
+   */
+  public showDetailsOnLongPress(): boolean {
+    return false;
+  }
+
   @NonEditable private _lockedBy?: Turn<any, any, any>;
 
   public get currentTurn(): Turn<any, any, any> {

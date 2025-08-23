@@ -310,13 +310,19 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     return tween;
   }
 
-  public handleClick(x: number, y: number, distance: number, precision: number) {
+  private findEligibleRenderInstances(
+    filter: (c: Chit) => boolean,
+    x: number,
+    y: number,
+    distance: number,
+    precision: number,
+  ): Chit[] {
+    const result = new Map<Chit, number>();
     const chitRenderInstances: ChitRenderInstance[] = [];
     const threeJsToChitLookup: { [threejsId: number]: Chit } = {};
-    const chitRenderInstanceDistances: { [id: number]: number } = {};
 
     this.chit.walk((c) => {
-      if (c.onClick && c.renderInstance) {
+      if (filter(c) && c.renderInstance) {
         chitRenderInstances.push(c.renderInstance);
         threeJsToChitLookup[c.renderInstance.clickbox.id] = c;
 
@@ -350,18 +356,21 @@ export class RootChitRenderInstance extends ChitRenderInstance {
         for (let i = 0; i < intersects.length; i++) {
           const id = intersects[i].object.id;
           const c = threeJsToChitLookup[id];
-          if (c && c.onClick) {
-            chitRenderInstanceDistances[id] = Math.min(chitRenderInstanceDistances[id] ?? r, r);
+          if (filter(c)) {
+            result.set(c, Math.min(result.get(c) ?? r, r));
           }
         }
       }
     }
+    return [...result.keys()];
+  }
 
-    const keys = Object.keys(chitRenderInstanceDistances);
-    if (keys.length > 0) {
-      if (this.galleryState && keys.length >= 2) {
-        const instances = chitRenderInstances.filter((c) => chitRenderInstanceDistances[c.clickbox.id] >= 0);
-        const items = chitsToGalleryItems(instances.map((instance) => instance.chit));
+  public handleClick(x: number, y: number, distance: number, precision: number) {
+    const chits = this.findEligibleRenderInstances((c) => !!c.onClick, x, y, distance, precision);
+
+    if (chits.length > 0) {
+      if (this.galleryState && chits.length >= 2) {
+        const items = chitsToGalleryItems(chits);
         if (items.length >= 2) {
           items.forEach((item) => {
             const orig = item.onClick;
@@ -379,11 +388,18 @@ export class RootChitRenderInstance extends ChitRenderInstance {
         }
       }
 
-      const id = parseInt(keys[0]);
-      const chit = threeJsToChitLookup[id];
+      const chit = chits[0];
       if (chit && chit.onClick) {
         chit.onClick();
       }
+    }
+  }
+
+  public handleLongClick(x: number, y: number, distance: number, precision: number) {
+    const chits = this.findEligibleRenderInstances((c) => !!c.showDetailsOnLongPress(), x, y, distance, precision);
+    if (this.galleryState && chits.length > 0) {
+      const items = chitsToGalleryItems(chits);
+      this.galleryState.source.value = new GalleryItemRawSource(items);
     }
   }
 

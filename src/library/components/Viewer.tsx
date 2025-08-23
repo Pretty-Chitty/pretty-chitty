@@ -189,7 +189,11 @@ export default function Viewer({
       hammer.get("longtap").recognizeWith("singletap");
       hammer.get("singletap").requireFailure("longtap");
 
-      hammer.on("longtap", (ev) => console.log("longtap", ev));
+      hammer.on("longtap", (ev) => {
+        const pos = fixPosition(ev);
+        const isMouse = ev.pointerType === "mouse";
+        chitRenderInstance.handleLongClick(pos.x, pos.y, isMouse ? 3 : 6, isMouse ? 1.5 : 3);
+      });
       hammer.on("singletap", (ev) => {
         const pos = fixPosition(ev);
         const isMouse = ev.pointerType === "mouse";
