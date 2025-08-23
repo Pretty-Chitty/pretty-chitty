@@ -142,6 +142,10 @@ export class Card extends Chit {
     ];
   }
 
+  public functionallyIdentical(other: Chit): boolean {
+    return false;
+  }
+
   public override render(spec: ChitRenderSpec): void {
     const ts = new TestStack().set((obj) => {
       obj.subTitle = "This is a ...";
@@ -156,6 +160,8 @@ export class Card extends Chit {
       castShadow: true,
       receiveShadow: true,
     });
+
+    spec.galleryMaximumHeight = 100;
 
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0; // (this.something / 90) % (Math.PI * 2);
     spec.rotateY = this.flipped ? Math.PI : 0;

@@ -318,6 +318,9 @@ export class ChitRenderInstance {
 
   private _galleryItem?: ChitGalleryItemInstance;
   public createGalleryItem(item: ChitGalleryItemInstance) {
+    item.maximumWidth = this.renderSpec?.galleryMaximumWidth;
+    item.maximumHeight = this.renderSpec?.galleryMaximumHeight;
+
     if (this._galleryItem === item) {
       return;
     }

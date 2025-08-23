@@ -115,7 +115,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
         Chit.pick([pieces[8], pieces[7]], (c) => {
           const target = players[Math.floor(Math.random() * players.length)];
           target.add(c);
-        }),
+        }).toggleButton(new HandButton()),
       );
     });
 

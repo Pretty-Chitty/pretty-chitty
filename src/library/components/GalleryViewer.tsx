@@ -25,6 +25,9 @@ export interface GalleryItem {
   createMesh(): Object3D;
   onClick?: () => void;
 
+  maximumWidth?: number;
+  maximumHeight?: number;
+
   /**
    * This takes a callback that gets updated any time the gallery item needs to be refreshed (new texture or mesh or whatnot).
    * It returns a callback that can be invoked to unsubscribe this callback
@@ -261,14 +264,14 @@ class GalleryController {
     mesh.position.add(item.center);
   }
 
-  scaleItem(item: BuiltItem) {
+  scaleItem(item: BuiltItem, maximumWidth?: number, maximumHeight?: number) {
     const box3 = new Box3();
     box3.expandByObject(item.mesh);
     if (!box3.isEmpty()) {
       const size = box3.getSize(new Vector3());
       const center = box3.getCenter(new Vector3());
-      const xScale = this.itemWidth / size.x;
-      const yScale = this.itemHeight / size.y;
+      const xScale = Math.min(this.itemWidth, maximumWidth ?? Number.MAX_SAFE_INTEGER) / size.x;
+      const yScale = Math.min(this.itemHeight, maximumHeight ?? Number.MAX_SAFE_INTEGER) / size.y;
       const scale = Math.min(xScale, yScale);
       item.mesh.scale.set(scale, scale, scale);
       item.center = center.multiplyScalar(scale).negate();
@@ -300,11 +303,11 @@ class GalleryController {
             this.changed = true;
             builtItem.mesh = item.createMesh();
             this.scene.add(builtItem.mesh);
-            this.scaleItem(builtItem);
+            this.scaleItem(builtItem, item.maximumWidth, item.maximumHeight);
             this.positionItem(builtItem);
           }),
         });
-        this.scaleItem(builtItem);
+        this.scaleItem(builtItem, item.maximumWidth, item.maximumHeight);
 
         // Also add your mesh to the scene:
         builtItem.mesh.removeFromParent();
