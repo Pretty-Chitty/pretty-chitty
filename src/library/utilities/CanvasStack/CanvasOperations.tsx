@@ -3,6 +3,7 @@ import { RenderBounds } from "./CanvasStack";
 import { ImageResult } from "./ImageCache";
 import { PlayerChit } from "../../game/PlayerChit";
 import imageColorOverlayer from "./ImageColorOverlayer";
+import { RenderOptionsParameters, RichTextRenderer } from "./RichTextRenderer";
 
 export type GetImage = (url: string) => ImageResult | undefined;
 export type ReportOutlet = (id: string, coord: { x: number; y: number }) => void;
@@ -170,6 +171,66 @@ export interface TextOptions {
   after?: CanvasOperation;
 }
 
+export class MarkdownCanvasOperation extends CanvasOperation {
+  constructor(
+    private text: string,
+    private iconMap: IconMap,
+    private params: RenderOptionsParameters,
+  ) {
+    super();
+  }
+
+  override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
+    const iconMap: {
+      [iconName: string]: { image: HTMLImageElement; x: number; y: number; width: number; height: number };
+    } = {};
+
+    Object.keys(this.iconMap).forEach((icon) => {
+      const spec = this.iconMap[icon];
+      if ((spec as any as PlayerChit)?.type === "player") {
+        const p = spec as any as PlayerChit;
+        if (p.imageUrl) {
+          const image = getImage(p.imageUrl);
+          if (image) {
+            iconMap[icon] = { image: image.image, x: 0, y: 0, width: image.image.width, height: image.image.height };
+          }
+        }
+      } else {
+        const s = spec as any as ImageSpec;
+        const image = getImage(s.primary.file);
+        if (image) {
+          iconMap[icon] = {
+            image: image.image,
+            x: s.primary.bounds.x,
+            y: s.primary.bounds.y,
+            width: s.primary.bounds.width,
+            height: s.primary.bounds.height,
+          };
+        } else {
+          const micro = getImage(s.micro.file);
+          if (micro) {
+            iconMap[icon] = {
+              image: micro.image,
+              x: s.micro.bounds.x,
+              y: s.micro.bounds.y,
+              width: s.micro.bounds.width,
+              height: s.micro.bounds.height,
+            };
+          }
+        }
+      }
+    });
+
+    new RichTextRenderer().render(context, this.text, {
+      maxWidth: bounds.w,
+      x: bounds.x,
+      y: bounds.y,
+      ...this.params,
+      iconMap,
+    });
+  }
+}
+
 export class TextCanvasOperation extends CanvasOperation {
   constructor(
     private text: string,
@@ -264,6 +325,10 @@ export type ImageSpec = {
   primary: ImageFileInfo;
   micro: ImageFileInfo;
 } & ImageColorSpec;
+
+export type IconMap = {
+  [iconName: string]: ImageSpec | PlayerChit;
+};
 
 export type ImageColorSpec = {
   color: number;

@@ -1,10 +1,17 @@
 import React from "react";
 
-import { Color, Horizontal, Image, Layered, Text, Vertical } from "../library/utilities/CanvasStack/ReactCanvas";
+import {
+  Color,
+  Horizontal,
+  Image,
+  Layered,
+  MultiLineText,
+  Text,
+  Vertical,
+} from "../library/utilities/CanvasStack/ReactCanvas";
 import { ParameterizedCanvas } from "../library/utilities/ParameterizedCanvas";
 
 import { metropolis } from "./assets/network_overload";
-import { walk } from "./assets/icons";
 
 // in other modules
 export * from "./TestStack";
@@ -28,9 +35,18 @@ export class TestStack3 extends ParameterizedCanvas {
         <Layered>
           <Color hex="#ff000033" />
           {/* <Image image={walk} /> */}
-          <Text fill="#336" font="17px sans-serif">
-            {this.things.length} {this.things.map((t) => t.toUpperCase()).join(" --- ")}
-          </Text>
+
+          <Vertical>
+            <Text size={10} fill="#336" font="17px sans-serif">
+              Test that {this.things.length}
+            </Text>
+            <MultiLineText fontFamily="sans-serif" fontSize={17} lineHeight={0.9} icons={{ city: metropolis }}>
+              {`Test that is **a** ABCDEO that
+
+
+*is* **a** multi :city: :city2: test`}
+            </MultiLineText>
+          </Vertical>
         </Layered>
         <Image fill image={metropolis} />
       </Horizontal>

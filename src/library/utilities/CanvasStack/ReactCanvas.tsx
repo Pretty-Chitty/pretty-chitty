@@ -5,9 +5,11 @@ import {
   CanvasOperation,
   ColorCanvasOperation,
   HorizontalStackCanvasOperation,
+  IconMap,
   ImageCanvasOperation,
   ImageSpec,
   LayeredCanvasOperation,
+  MarkdownCanvasOperation,
   OutletCanvasOperation,
   PadCanvasOperation,
   PlayerCanvasOperation,
@@ -18,6 +20,7 @@ import {
   VerticalStackCanvasOperation,
 } from "./CanvasOperations";
 import { PlayerChit } from "../../game/PlayerChit";
+import { RenderOptionsParameters } from "./RichTextRenderer";
 
 export interface DefaultProps {
   size?: number;
@@ -235,6 +238,31 @@ export function Text({
           offsetY,
           contextOptions: { fillStyle: fill, strokeStyle: stroke, font, shadowBlur, shadowColor },
         })
+      }
+    />
+  );
+}
+
+/**
+ * Renders text in an area.  The body of this tag should be the text you want rendered.
+ * @param args
+ * @returns
+ */
+export function MultiLineText(
+  params: {
+    children?: string | any[] | any;
+    icons?: IconMap;
+  } & DefaultProps &
+    RenderOptionsParameters,
+): ReactNode {
+  return (
+    <WrappedCanvasOperation
+      operation={
+        new MarkdownCanvasOperation(
+          Array.isArray(params.children) ? params.children.join("") : String(params.children),
+          params.icons ?? {},
+          params,
+        )
       }
     />
   );
