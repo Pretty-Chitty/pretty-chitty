@@ -83,6 +83,7 @@ export default function TopBarDropdown({
           borderBottomLeftRadius: 10,
           maxHeight: `calc(60vh - ${theme.topBarHeight}px - 10px)`,
           overflow: "auto",
+          fontSize: 14,
           p: 1,
         }}
       >
