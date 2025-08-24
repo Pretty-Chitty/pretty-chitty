@@ -116,8 +116,8 @@ export class DemoGame implements Game<MyPlayer, Root> {
       // turn.flush();
 
       await turn.pick(
-        Chit.pick([pieces[8], pieces[7]], (c) => {
-          const target = players[Math.floor(Math.random() * players.length)];
+        Chit.pick([pieces[8], pieces[7]], async (c) => {
+          const target = players[Math.floor((await turn.rng()) * players.length)];
           target.add(c);
         }).toggleButton(new HandButton()),
       );
@@ -128,8 +128,8 @@ export class DemoGame implements Game<MyPlayer, Root> {
 
     await setup.createTurn([rootChit], players[0], async (turn) => {
       await turn.pick(
-        Chit.pick([pieces[1], pieces[0]], (c) => {
-          const target = players[Math.floor(Math.random() * players.length)];
+        Chit.pick([pieces[1], pieces[0]], async (c) => {
+          const target = players[Math.floor((await turn.rng()) * players.length)];
           target.add(c);
         }),
       );

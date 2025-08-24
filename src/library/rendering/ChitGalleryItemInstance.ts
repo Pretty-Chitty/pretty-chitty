@@ -2,6 +2,7 @@ import { Group } from "three";
 import { GalleryItem } from "../components/GalleryViewer";
 import { Chit } from "../game/Chit";
 import { IconMap } from "../utilities/CanvasStack/CanvasOperations";
+import { RichTextRenderOptionsParameters } from "../utilities/CanvasStack/RichTextRenderer";
 
 type UpdateHandler = () => void;
 
@@ -16,6 +17,7 @@ export class ChitGalleryItemInstance implements GalleryItem {
 
   summary?: string;
   summaryIconMap?: IconMap;
+  summaryRenderingOptions?: RichTextRenderOptionsParameters;
 
   constructor(private chit: Chit) {
     this.id = chit.id ?? "no id";

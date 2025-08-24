@@ -12,6 +12,7 @@ import { SplayCounter, SplayCounterOptions } from "./SplayCounter";
 import { fixBbox } from "../utilities/BboxUtils";
 import { GalleryItemChitChildrenSource } from "../game/GalleryItemChitChildrenSource";
 import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
+import { RichTextRenderOptionsParameters } from "../utilities/CanvasStack/RichTextRenderer";
 
 // prettier-ignore
 export enum OwnerOriginPosition {
@@ -56,6 +57,7 @@ export class ChitRenderSpec {
 
   public summary: string | undefined;
   public summaryIconMap: IconMap | undefined;
+  public summaryRenderingOptions: RichTextRenderOptionsParameters | undefined;
 
   public showDetailsOnLongPress = false;
 

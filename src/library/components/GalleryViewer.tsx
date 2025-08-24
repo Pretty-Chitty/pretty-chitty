@@ -22,6 +22,7 @@ import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
 import { IconMap, MarkdownCanvasOperation } from "../utilities/CanvasStack/CanvasOperations";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { GameTheme } from "../game/GameTheme";
+import { RichTextRenderOptionsParameters } from "../utilities/CanvasStack/RichTextRenderer";
 
 let ID_COUNTER = 1;
 
@@ -37,6 +38,7 @@ export interface GalleryItem {
 
   summary?: string;
   summaryIconMap?: IconMap;
+  summaryRenderingOptions?: RichTextRenderOptionsParameters;
 
   /**
    * This takes a callback that gets updated any time the gallery item needs to be refreshed (new texture or mesh or whatnot).
@@ -302,13 +304,21 @@ class GalleryController {
     }
 
     const height = (this.h - this.itemHeight) / 2 - this.theme.spacing * 2;
+
+    const specs: RichTextRenderOptionsParameters = {
+      align: "center",
+      color: this.theme.dialogForegroundColor,
+      ...(item.item.summaryRenderingOptions ?? {}),
+    };
+    if (!specs.fontSize) {
+      specs.fontSize = this.theme.dialogFontSize;
+    }
+    specs.fontSize *= window.devicePixelRatio;
+
     const stack = new CanvasStack(
       this.itemWidth * window.devicePixelRatio,
       height * window.devicePixelRatio,
-      new MarkdownCanvasOperation(summary, item.item.summaryIconMap ?? {}, {
-        fontSize: this.theme.dialogFontSize * window.devicePixelRatio,
-        color: this.theme.dialogForegroundColor,
-      }),
+      new MarkdownCanvasOperation(summary, item.item.summaryIconMap ?? {}, specs),
     );
     stack.render();
     const material = stack.material;

@@ -3,7 +3,7 @@ import { RenderBounds } from "./CanvasStack";
 import { ImageResult } from "./ImageCache";
 import { PlayerChit } from "../../game/PlayerChit";
 import imageColorOverlayer from "./ImageColorOverlayer";
-import { RenderOptionsParameters, RichTextRenderer } from "./RichTextRenderer";
+import { RichTextRenderOptionsParameters, RichTextRenderer } from "./RichTextRenderer";
 
 export type GetImage = (url: string) => ImageResult | undefined;
 export type ReportOutlet = (id: string, coord: { x: number; y: number }) => void;
@@ -175,7 +175,7 @@ export class MarkdownCanvasOperation extends CanvasOperation {
   constructor(
     private text: string,
     private iconMap: IconMap,
-    private params: RenderOptionsParameters,
+    private params: RichTextRenderOptionsParameters,
   ) {
     super();
   }

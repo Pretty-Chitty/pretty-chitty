@@ -20,7 +20,7 @@ import {
   VerticalStackCanvasOperation,
 } from "./CanvasOperations";
 import { PlayerChit } from "../../game/PlayerChit";
-import { RenderOptionsParameters } from "./RichTextRenderer";
+import { RichTextRenderOptionsParameters } from "./RichTextRenderer";
 
 export interface DefaultProps {
   size?: number;
@@ -253,7 +253,7 @@ export function MultiLineText(
     children?: string | any[] | any;
     icons?: IconMap;
   } & DefaultProps &
-    RenderOptionsParameters,
+    RichTextRenderOptionsParameters,
 ): ReactNode {
   return (
     <WrappedCanvasOperation

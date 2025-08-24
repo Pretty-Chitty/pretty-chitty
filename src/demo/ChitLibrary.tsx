@@ -172,6 +172,7 @@ export class Card extends Chit {
       someicon: walk,
       tunnel: tunnel,
     };
+    spec.summaryRenderingOptions = { align: "left" };
 
     spec.galleryMaximumHeight = 2000;
 

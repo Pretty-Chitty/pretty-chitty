@@ -14,7 +14,7 @@ export interface IconMap {
   [name: string]: SpriteRef | undefined;
 }
 
-export type RenderOptionsParameters = {
+export type RichTextRenderOptionsParameters = {
   fontFamily?: string;
   fontSize?: number;
   lineHeight?: number; // multiplier (e.g., 1.25)
@@ -25,7 +25,7 @@ export type RenderOptionsParameters = {
   iconScale?: number; // 1.0 = same height as text
 };
 
-export interface RenderOptions extends RenderOptionsParameters {
+export interface RenderOptions extends RichTextRenderOptionsParameters {
   x?: number;
   y?: number;
   maxWidth: number; // required

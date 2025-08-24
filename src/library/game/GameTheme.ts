@@ -36,7 +36,7 @@ export class GameTheme {
   public panelSelectionCutoutBackground = "#ffffff";
   public panelSelectionCutoutSelected = "#66d5c1";
 
-  public dialogBackgroundColor = "rgba(0,0,0,0.8)";
+  public dialogBackgroundColor = "rgba(0,0,0,0.5)";
   public dialogForegroundColor = "#ffffff";
   public dialogFontSize = 14;
 
