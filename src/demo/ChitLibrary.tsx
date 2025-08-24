@@ -34,6 +34,7 @@ import { Ordered } from "../library/utilities/Annotations";
 import { CardMesh } from "../library/utilities/CardMesh";
 import { GameBag } from "../library/game/GameBag";
 import { HiddenPropertySerializationRule } from "../library/game/Chit";
+import { tunnel, walk } from "./assets/icons";
 
 export * from "../library/utilities/BaseTable";
 
@@ -146,15 +147,12 @@ export class Card extends Chit {
     return false;
   }
 
-  public override showDetailsOnLongPress() {
-    return true;
-  }
-
   public override render(spec: ChitRenderSpec): void {
     // if (!this.isClickable) {
     //   return;
     // }
 
+    spec.showDetailsOnLongPress = true;
     const ts = new TestStack().set((obj) => {
       obj.subTitle = "This is a ...";
       obj.title = this.something?.toString() ?? "NO TITLE";
@@ -169,7 +167,13 @@ export class Card extends Chit {
       receiveShadow: true,
     });
 
-    spec.galleryMaximumHeight = 100;
+    spec.summary = `Test ${this.something} :someicon: :abc: :tunnel:`;
+    spec.summaryIconMap = {
+      someicon: walk,
+      tunnel: tunnel,
+    };
+
+    spec.galleryMaximumHeight = 2000;
 
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0; // (this.something / 90) % (Math.PI * 2);
     spec.rotateY = this.flipped ? Math.PI : 0;
@@ -215,6 +219,9 @@ export class Card2 extends Chit {
 
   public override render(spec: ChitRenderSpec): void {
     const boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
+
+    spec.showDetailsOnLongPress = true;
+    spec.galleryMaximumWidth = 100;
 
     const ts = new TestStack2();
     ts.subTitle = "yo ho ho";
@@ -263,6 +270,8 @@ export class Card3 extends Chit {
     const ts = new TestStack2();
     ts.subTitle = "yo ho ho";
     ts.title = "and a bottle" + this.something * 2;
+
+    spec.showDetailsOnLongPress = true;
 
     const side = new MeshPhongMaterial({
       color: 0x999999,

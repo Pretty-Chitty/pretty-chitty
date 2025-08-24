@@ -1,6 +1,7 @@
 import { Group } from "three";
 import { GalleryItem } from "../components/GalleryViewer";
 import { Chit } from "../game/Chit";
+import { IconMap } from "../utilities/CanvasStack/CanvasOperations";
 
 type UpdateHandler = () => void;
 
@@ -10,8 +11,11 @@ export class ChitGalleryItemInstance implements GalleryItem {
   onClick?: (() => void) | undefined;
   unsubscribe: () => void;
 
-  maximumWidth?: number | undefined;
-  maximumHeight?: number | undefined;
+  maximumWidth?: number;
+  maximumHeight?: number;
+
+  summary?: string;
+  summaryIconMap?: IconMap;
 
   constructor(private chit: Chit) {
     this.id = chit.id ?? "no id";

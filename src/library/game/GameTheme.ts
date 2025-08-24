@@ -38,6 +38,7 @@ export class GameTheme {
 
   public dialogBackgroundColor = "rgba(0,0,0,0.8)";
   public dialogForegroundColor = "#ffffff";
+  public dialogFontSize = 14;
 
   public sparkForegroundColor = "#222";
   public sparkDuration = 200;

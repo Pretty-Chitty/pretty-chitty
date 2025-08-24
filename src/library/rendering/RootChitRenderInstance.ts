@@ -396,7 +396,13 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   }
 
   public handleLongClick(x: number, y: number, distance: number, precision: number) {
-    const chits = this.findEligibleRenderInstances((c) => !!c.showDetailsOnLongPress(), x, y, distance, precision);
+    const chits = this.findEligibleRenderInstances(
+      (c) => !!c.renderInstance?.showDetailsOnLongPress(),
+      x,
+      y,
+      distance,
+      precision,
+    );
     if (this.galleryState && chits.length > 0) {
       const items = chitsToGalleryItems(chits);
       this.galleryState.source.value = new GalleryItemRawSource(items);

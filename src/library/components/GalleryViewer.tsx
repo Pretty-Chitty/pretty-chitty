@@ -3,8 +3,11 @@ import {
   Box3,
   DirectionalLight,
   Fog,
+  Group,
+  Mesh,
   Object3D,
   PerspectiveCamera,
+  PlaneGeometry,
   Raycaster,
   Scene,
   Vector3,
@@ -15,6 +18,10 @@ import Hammer from "@egjs/hammerjs";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 import { Easing, Tween } from "@tweenjs/tween.js";
 import { addWheelListener, removeWheelListener } from "wheel";
+import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
+import { IconMap, MarkdownCanvasOperation } from "../utilities/CanvasStack/CanvasOperations";
+import { useGameTheme } from "../hooks/useGameTheme";
+import { GameTheme } from "../game/GameTheme";
 
 let ID_COUNTER = 1;
 
@@ -27,6 +34,9 @@ export interface GalleryItem {
 
   maximumWidth?: number;
   maximumHeight?: number;
+
+  summary?: string;
+  summaryIconMap?: IconMap;
 
   /**
    * This takes a callback that gets updated any time the gallery item needs to be refreshed (new texture or mesh or whatnot).
@@ -52,6 +62,7 @@ type BuiltItem = {
   enteredAmount: number;
   targetIndex: number;
   item: GalleryItem;
+  group: Object3D;
   mesh: Object3D;
   center: Vector3;
   height: number;
@@ -62,7 +73,10 @@ type BuiltItem = {
 };
 
 class GalleryController {
-  constructor(public scene: Scene) {
+  constructor(
+    public scene: Scene,
+    private theme: GameTheme,
+  ) {
     this.camera = new PerspectiveCamera(25, 10, 0.1, 20000);
     this.camera.position.z = 500;
 
@@ -239,29 +253,29 @@ class GalleryController {
   positionItem(item: BuiltItem) {
     const index = item.index;
     const initialOffset = -(this.frontStageWidth / 2 - this.itemWidth / 2);
-    const mesh = item.mesh;
-    mesh.position.x = initialOffset + index * (this.itemWidth + this.itemSpacing) + this.offsetX;
+    const group = item.group;
+    group.position.x = initialOffset + index * (this.itemWidth + this.itemSpacing) + this.offsetX;
 
-    mesh.position.y = (1 - item.enteredAmount) * -this.h; // 5 is height of display?
+    group.position.y = (1 - item.enteredAmount) * -this.h; // 5 is height of display?
 
     const largestX = initialOffset + (this.itemsPerPage - 1) * (this.itemWidth + this.itemSpacing);
-    if (mesh.position.x > largestX) {
-      const overshot = mesh.position.x - largestX;
-      mesh.position.x = largestX + Math.pow(overshot, 0.94);
-      mesh.position.z = -overshot;
-      mesh.rotation.x = -overshot / 3000 - this.offsetAngle;
-    } else if (mesh.position.x < initialOffset) {
-      const overshot = Math.abs(initialOffset - mesh.position.x);
-      mesh.position.x = initialOffset - Math.pow(overshot, 0.94);
-      mesh.position.z = -overshot;
-      mesh.rotation.x = -overshot / 3000 - this.offsetAngle;
+    if (group.position.x > largestX) {
+      const overshot = group.position.x - largestX;
+      group.position.x = largestX + Math.pow(overshot, 0.94);
+      group.position.z = -overshot;
+      group.rotation.x = -overshot / 3000 - this.offsetAngle;
+    } else if (group.position.x < initialOffset) {
+      const overshot = Math.abs(initialOffset - group.position.x);
+      group.position.x = initialOffset - Math.pow(overshot, 0.94);
+      group.position.z = -overshot;
+      group.rotation.x = -overshot / 3000 - this.offsetAngle;
     } else {
-      mesh.position.z = 0;
-      mesh.rotation.x = -this.offsetAngle;
+      group.position.z = 0;
+      group.rotation.x = -this.offsetAngle;
     }
 
-    mesh.rotation.x -= Math.min(1, item.depth / this.w);
-    mesh.position.add(item.center);
+    group.rotation.x -= Math.min(1, item.depth / this.w);
+    group.position.add(item.center);
   }
 
   scaleItem(item: BuiltItem, maximumWidth?: number, maximumHeight?: number) {
@@ -281,6 +295,34 @@ class GalleryController {
     }
   }
 
+  updateHelpText(item: BuiltItem) {
+    const summary = item.item.summary;
+    if (!summary) {
+      return;
+    }
+
+    const height = (this.h - this.itemHeight) / 2 - this.theme.spacing * 2;
+    const stack = new CanvasStack(
+      this.itemWidth * window.devicePixelRatio,
+      height * window.devicePixelRatio,
+      new MarkdownCanvasOperation(summary, item.item.summaryIconMap ?? {}, {
+        fontSize: this.theme.dialogFontSize * window.devicePixelRatio,
+        color: this.theme.dialogForegroundColor,
+      }),
+    );
+    stack.render();
+    const material = stack.material;
+    material.transparent = true;
+    material.depthWrite = true;
+
+    const face = new PlaneGeometry(this.itemWidth, height);
+    const m = new Mesh(face, material);
+    m.renderOrder = 2;
+    m.position.set(0, -this.itemHeight * 0.5 - height / 2 - this.theme.spacing, 0);
+
+    item.group.add(m);
+  }
+
   public setItems(items: GalleryItem[]) {
     this.changed = true;
     const itemIndexOffset = items.length < this.itemsPerPage ? (this.itemsPerPage - items.length) / 2 : 0;
@@ -293,26 +335,37 @@ class GalleryController {
           item,
           enteredAmount: 0,
           mesh: item.createMesh(),
+          group: new Group(),
           index: i + itemIndexOffset,
           center: new Vector3(),
           height: 0,
           depth: 0,
           targetIndex: i + itemIndexOffset,
           unsubscribe: item.registerUpdateHandler(() => {
+            builtItem.group.removeFromParent();
             builtItem.mesh.removeFromParent();
             this.changed = true;
+
+            builtItem.group = new Group();
             builtItem.mesh = item.createMesh();
-            this.scene.add(builtItem.mesh);
+            builtItem.group.add(builtItem.mesh);
+
+            this.scene.add(builtItem.group);
+
             this.scaleItem(builtItem, item.maximumWidth, item.maximumHeight);
             this.positionItem(builtItem);
+            this.updateHelpText(builtItem);
           }),
         });
         this.scaleItem(builtItem, item.maximumWidth, item.maximumHeight);
 
         // Also add your mesh to the scene:
         builtItem.mesh.removeFromParent();
-        this.scene.add(builtItem.mesh);
+        builtItem.group.removeFromParent();
+        builtItem.group.add(builtItem.mesh);
+        this.scene.add(builtItem.group);
         this.positionItem(builtItem);
+        this.updateHelpText(builtItem);
 
         builtItem.enteredTween = new Tween({ x: 0 })
           .to({ x: 1 }, this.tweenDuration)
@@ -410,7 +463,8 @@ export function GalleryViewer({
   const [id] = useState(`GalleryViewer${ID_COUNTER++}`);
   const refContainer = useRef<HTMLCanvasElement>(null);
   const renderer = useWebGlRenderer(w, h);
-  const [galleryController] = useState(new GalleryController(new Scene()));
+  const theme = useGameTheme();
+  const [galleryController] = useState(new GalleryController(new Scene(), theme));
 
   galleryController.tweenDuration = tweenDuration;
 

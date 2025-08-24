@@ -8,12 +8,14 @@ import useSize from "@react-hook/size";
 import { ZINDEX_GALLERY_INVISIBLE, ZINDEX_GALLERY_VISIBLE } from "../utilities/zIndex";
 import { useGame } from "../hooks/useGame";
 import { useTimeState } from "../hooks/useTimeController";
+import { useGameTheme } from "../hooks/useGameTheme";
 
 const DELAY = 300;
 
 export function GalleryDisplay() {
   const game = useGame();
   const timeState = useTimeState();
+  const theme = useGameTheme();
   const [animationSpeedMultiplier] = useEventChannelState(timeState.animationSpeedMultiplier);
   const ref = useRef(null);
   const [hasItemsDelayed, setHasItemsDelayed] = useState(false);
@@ -57,7 +59,7 @@ export function GalleryDisplay() {
         right: 0,
         bottom: 0,
         zIndex: hasItemsDelayed ? ZINDEX_GALLERY_VISIBLE : ZINDEX_GALLERY_INVISIBLE,
-        background: hasItems ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0)",
+        background: hasItems ? theme.dialogBackgroundColor : "rgba(0,0,0,0)",
         transition: `background linear ${(DELAY / 1000) * animationSpeedMultiplier}s`,
       }}
     >

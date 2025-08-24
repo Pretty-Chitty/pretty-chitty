@@ -6,5 +6,5 @@ export class HighlightSpec {
   public color: string = "#f00";
   public innerColor: string = "#d00";
   public innerWidth: number = 0.045;
-  public zOffset: number = 0.001;
+  public zOffset: number = 0.002;
 }

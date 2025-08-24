@@ -852,9 +852,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     this.destroyed = true;
     this.activeSubTurns.forEach((turn) => turn.destroy());
-    Chit.walk(this.chitsToLock, (c) => {
-      c.unlock(this);
-    });
+    Object.values(this.chitLookup).forEach((chit) => chit.unlock(this));
     if (this.unresolvedPrompt && this.player) {
       this.player.promptStatus.latestPrompt.value = undefined;
       this.unresolvedPrompt.destroy();
@@ -869,9 +867,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private cleanUp() {
     this.completed = true;
     this.flush();
-    Chit.walk(this.chitsToLock, (c) => {
-      c.unlock(this);
-    });
+    Object.values(this.chitLookup).forEach((chit) => chit.unlock(this));
   }
 
   /** @internal */

@@ -320,6 +320,8 @@ export class ChitRenderInstance {
   public createGalleryItem(item: ChitGalleryItemInstance) {
     item.maximumWidth = this.renderSpec?.galleryMaximumWidth;
     item.maximumHeight = this.renderSpec?.galleryMaximumHeight;
+    item.summary = this.renderSpec?.summary;
+    item.summaryIconMap = this.renderSpec?.summaryIconMap;
 
     if (this._galleryItem === item) {
       return;
@@ -375,6 +377,10 @@ export class ChitRenderInstance {
       return true;
     }
     return false;
+  }
+
+  public showDetailsOnLongPress() {
+    return this.renderSpec?.showDetailsOnLongPress ?? false;
   }
 
   protected refresh() {

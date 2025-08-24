@@ -1,16 +1,5 @@
 import React from "react";
-import {
-  Box3,
-  BoxGeometry,
-  DoubleSide,
-  Group,
-  Mesh,
-  MeshBasicMaterial,
-  MeshPhongMaterial,
-  Object3D,
-  PlaneGeometry,
-  Vector3,
-} from "three";
+import { Box3, Group, Mesh, MeshPhongMaterial, Object3D, PlaneGeometry, Vector3 } from "three";
 import { CameraSpec } from "./CameraSpec";
 import { Chit } from "../game/Chit";
 import { LightSpec } from "./LightSpec";
@@ -18,11 +7,9 @@ import { HighlightSpec } from "./HighlightSpec";
 import { Splay } from "./Splay";
 import { OrderedOutlet } from "../game/OrderedOutlet";
 import { ParameterizedCanvas } from "../utilities/ParameterizedCanvas";
-import { TextOptions } from "../utilities/CanvasStack/CanvasOperations";
-import { Text } from "../utilities/CanvasStack/ReactCanvas";
+import { IconMap } from "../utilities/CanvasStack/CanvasOperations";
 import { SplayCounter, SplayCounterOptions } from "./SplayCounter";
 import { fixBbox } from "../utilities/BboxUtils";
-import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
 import { GalleryItemChitChildrenSource } from "../game/GalleryItemChitChildrenSource";
 import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 
@@ -66,6 +53,11 @@ export class ChitRenderSpec {
   public lightSpec?: LightSpec = undefined;
   public highlight = new HighlightSpec();
   public splay = new Splay();
+
+  public summary: string | undefined;
+  public summaryIconMap: IconMap | undefined;
+
+  public showDetailsOnLongPress = false;
 
   constructor(public readonly chit: Chit) {
     this.object.visible = false;

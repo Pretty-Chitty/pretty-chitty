@@ -21,6 +21,8 @@ export type { Stage } from "./game/GameDeck";
 export type { IChitLibrary, GameResult, IButtonLibrary, ICanvasLibrary } from "./game/Game";
 export type { Picks } from "./game/Turn";
 
+export type { IconMap } from "./utilities/CanvasStack/RichTextRenderer";
+
 export { MatchViewer } from "./components/MatchViewer";
 export { ClientTrustMatchViewer } from "./components/ClientTrustMatchViewer";
 

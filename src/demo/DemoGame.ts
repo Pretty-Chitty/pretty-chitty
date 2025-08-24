@@ -32,8 +32,12 @@ import * as CanvasLibrary from "./CanvasLibrary";
 import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
 
+const theme = GameTheme.withDefaults("#ffeedd", "#ef8354", "#001122");
+theme.dialogBackgroundColor = "#ef8354cc";
+theme.dialogForegroundColor = "#000000ee";
+
 export class DemoGame implements Game<MyPlayer, Root> {
-  galleryItemWidth = 150;
+  galleryItemWidth = 300;
   galleryItemSpacing = 20;
   name = "Demo Game";
 
@@ -57,7 +61,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
   canvasLibrary = CanvasLibrary;
   buttonLibrary = { FlipButton, PassButton, HandButton };
 
-  theme = GameTheme.withDefaults("#ffeedd", "#ef8354", "#001122");
+  theme = theme;
 
   async run(players: MyPlayer[], setup: Turn<any, MyPlayer, Root>, rootChit: Root) {
     players[0].color = "#ed00cb";
