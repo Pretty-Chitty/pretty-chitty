@@ -144,12 +144,21 @@ function Editor({
   const [match, setMatch] = useState<Match<any, any> | null>(null);
 
   useEffect(() => {
-    const FIRST_NAMES = ["Fred", "Steve", "Paul"];
-    const LAST_NAMES = ["Johnson", "Dennis", "Green"];
+    const FIRST_NAMES = ["Fred", "Steve", "Paul", "Josh", "Sara", "Miles"];
+    const LAST_NAMES = ["Johnson", "Dennis", "Green", "Breckman", "Stevens", "Smith"];
     const storage = new LocalMatchStorage(matchInformation);
     const players = [];
-    for (let i = 0; i < 2; i++) {
-      players.push(new PlayerInfo(`p${i}`, `${FIRST_NAMES[i % 3]} ${LAST_NAMES[i % 3]}`));
+    let playerCount = parseInt(matchInformation);
+    if (!Number.isFinite(playerCount)) {
+      playerCount = 2;
+    }
+    for (let i = 0; i < playerCount; i++) {
+      players.push(
+        new PlayerInfo(
+          `p${i}`,
+          `${FIRST_NAMES[(i + playerCount) % FIRST_NAMES.length]} ${LAST_NAMES[i % LAST_NAMES.length]}`,
+        ),
+      );
     }
     const match = new Match(game, players, storage);
     let cancelled = false;
@@ -241,7 +250,7 @@ export default function Playground({ game }: { game: Game<any, any> }) {
   });
   const [buttons, setButtons] = useState<ReactNode | null>(null);
 
-  const items = ["a"];
+  const items = ["2", "3", "4", "5", "1", "6", "7", "8", "9", "10"];
 
   return (
     <SelectableItemAndStage

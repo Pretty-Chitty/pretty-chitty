@@ -1,4 +1,5 @@
 import React from "react";
+import Color from "color";
 import { Dialog, useTheme } from "@mui/material";
 import { ReactNode } from "react";
 import { useGameTheme } from "../hooks/useGameTheme";
@@ -31,7 +32,7 @@ export default function GameDialog({
       slotProps={{
         backdrop: {
           sx: {
-            backgroundColor: theme.dialogBackgroundColor,
+            backgroundColor: Color(theme.dialogBackgroundColor).alpha(0.8).hexa(),
           },
         },
       }}
