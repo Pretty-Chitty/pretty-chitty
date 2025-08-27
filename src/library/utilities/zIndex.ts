@@ -4,6 +4,8 @@ export const ZINDEX_BOTTOM_BAR_BUTTON_LABEL = 2;
 export const ZINDEX_PANEL_CUTOUTS = 3;
 export const ZINDEX_PROMPT_CONTROLS = 3;
 export const ZINDEX_SPARKS = 10;
+
+export const ZINDEX_CONTEXT_GALLERY_DISPLAY = 140;
 export const ZINDEX_MATCH_END_DISPLAY = 150;
 export const ZINDEX_GALLERY_VISIBLE = 160;
 export const ZINDEX_TOP_BAR_HEADER = 210;

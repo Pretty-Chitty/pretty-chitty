@@ -15,6 +15,10 @@ export class GameTheme {
 
   public actionBarColor = "#3a1957";
   public actionBarAnimationDuration = "0.3s";
+  public actionBarContextColor = "#3a1957";
+  public actionBarContextAnimationDuration = "0.3s";
+  public actionBarContextShadow = "rgba(0,0,0,0.2)";
+
   public barTextColor = "rgba(255,255,255,0.6)";
   public barTextHighlightColor = "rgba(255,255,255,0.6)";
   public barBreak = "rgba(255,255,255,0.3)";
@@ -57,6 +61,7 @@ export class GameTheme {
     result.backgroundColor = Color(primaryColor).darken(0.5).hex();
     result.barColor = primaryColor;
     result.actionBarColor = Color(primaryColor).mix(Color(highlight), 0.4).hex();
+    result.actionBarContextColor = primaryColor;
     result.fullResetColor = highlight;
     result.barHighlightTextColor = highlight;
     result.barTopDropdownColor = Color(primaryColor).mix(Color(highlight), 0.1).alpha(0.9).hexa();

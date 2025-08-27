@@ -181,7 +181,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       this.newChitCounter[type] = counter;
       c.id = `${this.id}.${type}${counter}`;
       c.lock(this);
+
+      const existing = this.chitLookup[c.id];
       this.chitLookup[c.id] = c; // it's possible that this is kicking out an "old" version of this chit from a previous pass
+      if (existing) {
+        existing.unlock(this);
+      }
     });
 
     // now (once per chit) we serialize the state if it changed

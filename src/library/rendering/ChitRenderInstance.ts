@@ -92,7 +92,9 @@ export class ChitRenderInstance {
     const cb1 = chit.onChange("deserialized parent", () => {
       try {
         this.refresh();
-        this.rootRenderInstance.markHasPendingChange();
+        if (this.renderSpec?.worthSlidingToPanelToShowChange) {
+          this.rootRenderInstance.markHasPendingChange();
+        }
       } catch (e) {
         if (e instanceof DestroyedError) {
           // eat it
@@ -185,7 +187,9 @@ export class ChitRenderInstance {
     }
 
     const c = new ChitRenderInstance(chit);
-    this.rootRenderInstance.markHasChitsEntering();
+    if (c.renderSpec?.worthSlidingToPanelToShowChange) {
+      this.rootRenderInstance.markHasChitsEntering();
+    }
 
     if (existingRenderInstance) {
       const refreshParent = (chitRenderInstance: ChitRenderInstance) => {
@@ -527,7 +531,9 @@ export class ChitRenderInstance {
     }
 
     const rootRenderInstance = this.rootRenderInstance;
-    rootRenderInstance.markHasChitsLeaving();
+    if (this.renderSpec?.worthSlidingToPanelToShowChange) {
+      rootRenderInstance.markHasChitsLeaving();
+    }
 
     const rootGroup = this.rootGroup;
     if (rootGroup && rootRenderInstance && renderSpec) {

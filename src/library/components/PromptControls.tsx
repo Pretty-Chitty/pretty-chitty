@@ -12,6 +12,7 @@ import Markdown from "react-markdown";
 import { ZINDEX_PROMPT_CONTROLS } from "../utilities/zIndex";
 import { GameButton, ToggleGalleryButton } from "../game/GameButton";
 import { useGalleryState } from "../hooks/useGalleryState";
+import { ContextGalleryDisplay } from "./ContextGalleryDisplay";
 
 function GameButtonWrapper({ button }: { button: GameButton }) {
   const galleryState = useGalleryState();
@@ -107,7 +108,10 @@ export default function PromptControls() {
         />
       )}
       <Box flex={1} />
-      {prompt?.buttons.map((button, idx) => <GameButtonWrapper key={idx} button={button} />)}
+      {prompt?.buttons.map((button, idx) => (
+        <GameButtonWrapper key={idx} button={button} />
+      ))}
+      <ContextGalleryDisplay size={theme.bottomBarHeight - theme.spacing * 2} />
     </Stack>
   );
 }

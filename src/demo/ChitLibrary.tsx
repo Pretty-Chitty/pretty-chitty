@@ -167,6 +167,10 @@ export class Card extends Chit {
       receiveShadow: true,
     });
 
+    if (!this.something) {
+      spec.worthSlidingToPanelToShowChange = false;
+    }
+
     spec.summary = `Test ${this.something} :someicon: :abc: :tunnel:`;
     spec.summaryIconMap = {
       someicon: walk,
@@ -223,6 +227,7 @@ export class Card2 extends Chit {
 
     spec.showDetailsOnLongPress = true;
     spec.galleryMaximumWidth = 100;
+    spec.worthSlidingToPanelToShowChange = false;
 
     const ts = new TestStack2();
     ts.subTitle = "yo ho ho";
@@ -354,6 +359,10 @@ export class MyPlayer extends PlayerChit {
 
   override getSparks(): SparkChit[] {
     return [this.counter, this.counter2];
+  }
+
+  override render(spec: ChitRenderSpec): void {
+    spec.worthSlidingToPanelToShowChange = false;
   }
 }
 

@@ -90,9 +90,15 @@ export class DemoGame implements Game<MyPlayer, Root> {
         c.add(c2, "testoutlet");
       }),
     );
-    // setup.flush();
+    setup.flush();
 
     players[1].add(pieces[1]);
+    setup.flush();
+
+    players[2].add(pieces[2]);
+    setup.flush();
+
+    players[3].add(pieces[3]);
     setup.flush();
 
     // pieces[0].add(b.draw());
@@ -119,7 +125,9 @@ export class DemoGame implements Game<MyPlayer, Root> {
         Chit.pick([pieces[8], pieces[7]], async (c) => {
           const target = players[Math.floor((await turn.rng()) * players.length)];
           target.add(c);
-        }).toggleButton(new HandButton()),
+        })
+          .toggleButton(new HandButton())
+          .context(pieces[7]),
       );
     });
 

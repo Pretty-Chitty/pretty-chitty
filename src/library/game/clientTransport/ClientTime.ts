@@ -48,7 +48,7 @@ export class ClientTime extends ConnectionObject {
   private chitLookup: { [id: string]: Chit } = {};
   public maxClock = new EventChannel<ClockDetails>({ clock: 0, pass: -1 });
   public rootChit = new EventChannel<Chit | undefined>(undefined);
-  private startTime = 0;
+  private startTime = 1;
 
   public readonly findChit: (id: string) => Chit = (id: string) => {
     const result = this.chitLookup[id];

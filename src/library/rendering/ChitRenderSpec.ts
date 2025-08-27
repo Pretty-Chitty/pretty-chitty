@@ -59,6 +59,12 @@ export class ChitRenderSpec {
   public summaryIconMap: IconMap | undefined;
   public summaryRenderingOptions: RichTextRenderOptionsParameters | undefined;
 
+  /**
+   * Lets the system know that changes to this object aren't worth flipping to a panel to show that change
+   * Note: you might also have to set this on parents or children of the objects you are concerned with
+   */
+  public worthSlidingToPanelToShowChange = true;
+
   public showDetailsOnLongPress = false;
 
   constructor(public readonly chit: Chit) {

@@ -1,7 +1,7 @@
 import { Chit } from "./Chit";
 import { GalleryItemChitChildrenSource } from "./GalleryItemChitChildrenSource";
 import { IButtonLibrary } from "./Game";
-import { Confirm, DynamicGameButton, GameButton, ToggleGalleryButton } from "./GameButton";
+import { Confirm, GameButton, ToggleGalleryButton } from "./GameButton";
 import { PickPrompt } from "./Prompt";
 import { MismatchError, Turn } from "./Turn";
 
@@ -12,6 +12,7 @@ export type PickSerialization = {
   message?: string;
   help?: string;
   details: any;
+  context?: string;
 };
 
 export abstract class Pick {
@@ -25,9 +26,12 @@ export abstract class Pick {
   /** @internal */
   public focusChits: Chit[] = [];
 
+  /** @internal */
+  public contextChit?: Chit;
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   /** @internal */
-  confirmLock(turn: Turn<any, any, any>) {
+  confirmLock(_turn: Turn<any, any, any>) {
     // do nothing
   }
 
@@ -68,6 +72,7 @@ export abstract class Pick {
       help: this.helpContents,
       message: this.messageContents,
       details: this.serializeDetails(),
+      context: this.contextChit ? this.contextChit.id : undefined,
     };
   }
 
@@ -86,6 +91,7 @@ export abstract class Pick {
     }
 
     if (p) {
+      p.contextChit = pick.context ? findChit(pick.context) : undefined;
       p.messageContents = pick.message;
       p.helpContents = pick.help;
       p.deserializeDetails(pick.details, findChit, buttonLibrary);
@@ -101,6 +107,11 @@ export abstract class Pick {
     } else {
       this.focusChits.push(chit);
     }
+    return this;
+  }
+
+  context(chit: Chit | undefined): this {
+    this.contextChit = chit;
     return this;
   }
 

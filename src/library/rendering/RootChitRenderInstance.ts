@@ -6,7 +6,7 @@ import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
 import { LightWrapper } from "./LightWrapper";
 import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
 import { GalleryState } from "../game/GalleryState";
-import { GalleryItem, GalleryItemSource } from "../components/GalleryViewer";
+import { GalleryItemSource } from "../components/GalleryViewer";
 import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
 import { GalleryItemRawSource } from "../game/GalleryItemRawSource";
 

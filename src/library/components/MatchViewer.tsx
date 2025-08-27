@@ -87,6 +87,7 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
       <Box flex={1} style={{ display: "flex", position: "relative" }}>
         <MatchEndDisplay />
         <GalleryDisplay />
+
         {!errorMessage && rootChit && <PanelContents rootChit={rootChit} />}
         {errorMessage}
       </Box>
