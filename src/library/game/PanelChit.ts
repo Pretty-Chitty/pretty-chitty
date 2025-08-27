@@ -27,7 +27,7 @@ export class PanelChit extends Chit {
   @NonEditable type = "panel";
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getLayout(width: number, height: number): PanelLayout {
+  getLayout(width: number, height: number, playerId: string): PanelLayout {
     return [
       {
         height: 1,
@@ -36,8 +36,8 @@ export class PanelChit extends Chit {
     ];
   }
 
-  getFlatLayout(width: number, height: number, scale = 1): PanelLayoutResult[] {
-    const layout = this.getLayout(width * scale, height * scale);
+  getFlatLayout(width: number, height: number, scale = 1, playerId: string): PanelLayoutResult[] {
+    const layout = this.getLayout(width * scale, height * scale, playerId);
 
     const flatten = (layout: PanelLayout, x: number, y: number, w: number, h: number): PanelLayoutResult[] => {
       if (layout instanceof Chit || (Array.isArray(layout) && layout[0] instanceof Chit)) {

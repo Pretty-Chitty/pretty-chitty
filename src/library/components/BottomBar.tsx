@@ -9,7 +9,6 @@ import TimeControlBar from "./TimeControlBar";
 import PromptControls from "./PromptControls";
 import { usePanelScale, usePanelSetScale } from "../hooks/usePanelScale";
 import { useGame } from "../hooks/useGame";
-import { useGalleryState } from "../hooks/useGalleryState";
 
 function BaseBottomBar({ children }: { children: ReactNode | ReactNode[] }) {
   const theme = useGameTheme();
@@ -45,19 +44,18 @@ export default function BottomBar() {
     );
   }
 
+  const zooms = [0.33, 1, 3];
+  const labels = ["0.5x", "Grid", "3x"];
   function toggleZoom() {
-    if (scale > 1) {
-      if (timeState.isLoading.value === false) {
-        timeState.isLoading.value = true;
-        setTimeout(() => {
-          timeState.isLoading.value = false;
-        }, 200);
-      }
-
-      setScale(1);
-    } else {
-      setScale(3);
+    if (timeState.isLoading.value === false) {
+      timeState.isLoading.value = true;
+      setTimeout(() => {
+        timeState.isLoading.value = false;
+      }, 200);
     }
+
+    const currentIndex = zooms.indexOf(scale);
+    setScale(zooms[(currentIndex + 1) % zooms.length]);
   }
 
   return (
@@ -65,7 +63,11 @@ export default function BottomBar() {
       <Stack direction="row" sx={{ width: "100%", height: "100%", pl: 1, pr: 1 }}>
         {/* <BottomBarButton icon={Chat} label={"Chat"} /> */}
         {game.showGrid && (
-          <BottomBarButton highlight={scale > 1} icon={CalendarViewMonth} label={"Grid"} onClick={toggleZoom} />
+          <BottomBarButton
+            icon={CalendarViewMonth}
+            label={labels[zooms.indexOf(scale)] ?? "Grid"}
+            onClick={toggleZoom}
+          />
         )}
         <BottomBarButton icon={Speed} label={"Timeline"} onClick={() => setLive(false)} />
         <Box flex={1} />

@@ -60,6 +60,11 @@ export class ChitRenderSpec {
   public summaryRenderingOptions: RichTextRenderOptionsParameters | undefined;
 
   /**
+   * The active player that is playing this match
+   */
+  public renderedForPlayerId: string | undefined;
+
+  /**
    * Lets the system know that changes to this object aren't worth flipping to a panel to show that change
    * Note: you might also have to set this on parents or children of the objects you are concerned with
    */

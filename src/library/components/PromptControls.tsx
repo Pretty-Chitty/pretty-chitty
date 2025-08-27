@@ -42,6 +42,7 @@ export default function PromptControls() {
   const [showHelp, setShowHelp] = useState(false);
   const timeState = useTimeState();
   const playerId = usePlayerId();
+  const [speed] = useEventChannelState(timeState.animationSpeedMultiplier);
   const clientPrompt = useClientPrompts();
   const [prompt] = useEventChannelState(clientPrompt.currentPrompt);
   const [promptSpec] = useEventChannelState(clientPrompt.getPromptEventChannelForPlayer(playerId));
@@ -79,7 +80,7 @@ export default function PromptControls() {
         transform: expandedBecauseOfPrompt
           ? `translateX(${expanded ? "0px" : "calc(100% - 55px)"})`
           : "translateX(100%)",
-        transition: `transform ease-in-out ${theme.actionBarAnimationDuration}`,
+        transition: `transform ease-in-out ${theme.actionBarAnimationDuration * speed}s`,
         pr: 1,
         right: 0,
         boxShadow: "-2px -2px 10px 0px rgba(0,0,0,0.2)",

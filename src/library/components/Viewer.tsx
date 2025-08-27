@@ -9,6 +9,7 @@ import Hammer from "@egjs/hammerjs";
 import { addWheelListener, removeWheelListener } from "wheel";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 import { useGalleryState } from "../hooks/useGalleryState";
+import { usePlayerId } from "../hooks/usePlayer";
 
 let ID_COUNTER = 1;
 
@@ -27,6 +28,7 @@ export default function Viewer({
   paused?: boolean;
   panCallback?: (direction: "left" | "right") => void;
 }) {
+  const playerId = usePlayerId();
   const [id] = useState(`Viewer${ID_COUNTER++}`);
   const timeState = useTimeState();
   const [animationSpeedMultiplier] = useEventChannelState(timeState.animationSpeedMultiplier);
@@ -72,6 +74,7 @@ export default function Viewer({
       }
 
       const newInstance = new R(chit);
+      newInstance.playerId = playerId;
       newInstance.convertCameraSpaceToScreenSpace = (x: number, y: number) => {
         const el = refContainer.current as unknown as HTMLElement;
         if (!el) {
@@ -97,7 +100,7 @@ export default function Viewer({
       setChitRenderInstance(newInstance);
       scene.add(newInstance.rootGroup);
     }
-  }, [refContainer, animationSpeedMultiplier, chit, chitRenderInstance, scene, R, galleryState]);
+  }, [refContainer, playerId, animationSpeedMultiplier, chit, chitRenderInstance, scene, R, galleryState]);
 
   // make sure "wireframes" gets set correctly on the render instance
   useEffect(() => {

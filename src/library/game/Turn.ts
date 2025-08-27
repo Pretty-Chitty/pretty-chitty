@@ -185,6 +185,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       const existing = this.chitLookup[c.id];
       this.chitLookup[c.id] = c; // it's possible that this is kicking out an "old" version of this chit from a previous pass
       if (existing) {
+        existing.removeFromParent(); // do not want to leave stray references to this cloned chit around!
         existing.unlock(this);
       }
     });

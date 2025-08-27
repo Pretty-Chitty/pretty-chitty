@@ -621,6 +621,7 @@ export class ChitRenderInstance {
 
   protected createRenderSpec() {
     const renderSpec = new ChitRenderSpec(this.chit);
+    renderSpec.renderedForPlayerId = this.rootRenderInstance.playerId;
 
     // attach theme stuff to the spec as defaults
     renderSpec.highlight.color = this.chit.game?.theme.chitHighlightColor ?? renderSpec.highlight.color;

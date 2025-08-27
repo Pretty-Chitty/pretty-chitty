@@ -6,7 +6,7 @@ import { useEventChannelState } from "../hooks/useEventChannelState";
 import BottomBarButton from "./BottomBarButton";
 import { useGameTheme } from "../hooks/useGameTheme";
 
-const SPEEDS = [1, 0.5, 0.25, 0.125, 2];
+const SPEEDS = [1, 2 / 3, 0.5, 0.25, 0.125, 2];
 
 export default function TimeControlBar() {
   const theme = useGameTheme();

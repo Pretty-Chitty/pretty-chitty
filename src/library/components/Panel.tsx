@@ -15,6 +15,7 @@ import PanelSpark from "./PanelSpark";
 import { useChit } from "../hooks/useChits";
 import { ZINDEX_PANEL_CUTOUTS, ZINDEX_SPARKS } from "../utilities/zIndex";
 import { usePanelScale } from "../hooks/usePanelScale";
+import { usePlayerId } from "../hooks/usePlayer";
 
 const Cutout = `data:image/svg+xml;base64,${base64.encode(
   `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -267,6 +268,7 @@ export default function Panel({
 }) {
   const [layout, setLayout] = useState<PanelLayoutResult[]>([]);
   const scale = usePanelScale();
+  const playerId = usePlayerId();
 
   useEffect(() => {
     if (!chit) {
@@ -274,12 +276,12 @@ export default function Panel({
     }
 
     if (chit instanceof PanelChit) {
-      const newLayout = chit.getFlatLayout(w, h, scale);
+      const newLayout = chit.getFlatLayout(w, h, scale, playerId);
       setLayout(newLayout);
     } else {
       setLayout([{ chit, x: 0, y: 0, w, h }]);
     }
-  }, [chit, w, h, setLayout, scale]);
+  }, [chit, w, h, setLayout, scale, playerId]);
 
   if (layout.length > 1) {
     return (

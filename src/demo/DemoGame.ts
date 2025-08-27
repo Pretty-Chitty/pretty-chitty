@@ -98,7 +98,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     players[2].add(pieces[2]);
     setup.flush();
 
-    players[3].add(pieces[3]);
+    players[0].add(pieces[3]);
     setup.flush();
 
     // pieces[0].add(b.draw());

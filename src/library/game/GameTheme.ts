@@ -14,9 +14,9 @@ export class GameTheme {
   public backgroundGradientAngle = 150;
 
   public actionBarColor = "#3a1957";
-  public actionBarAnimationDuration = "0.3s";
+  public actionBarAnimationDuration = 0.3;
   public actionBarContextColor = "#3a1957";
-  public actionBarContextAnimationDuration = "0.3s";
+  public actionBarContextAnimationDuration = 0.3;
   public actionBarContextShadow = "rgba(0,0,0,0.2)";
 
   public barTextColor = "rgba(255,255,255,0.6)";
