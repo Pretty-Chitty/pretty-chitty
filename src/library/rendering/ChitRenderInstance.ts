@@ -164,6 +164,7 @@ export class ChitRenderInstance {
     this.offsetTween.duration(0);
     this.zOffsetTween.duration(0);
     this.rotationTween.duration(0);
+    this.childrenRenderInstances.forEach((child) => child.zeroTween());
   }
 
   public galleryRotation() {

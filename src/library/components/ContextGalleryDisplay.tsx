@@ -4,7 +4,7 @@ import { GalleryItem, GalleryViewer } from "./GalleryViewer";
 import { useRef } from "react";
 import { ZINDEX_CONTEXT_GALLERY_DISPLAY } from "../utilities/zIndex";
 import { useGameTheme } from "../hooks/useGameTheme";
-import { useClientPrompts, useTimeState } from "../hooks/useTimeController";
+import { useAnimationSpeedMultiplier, useClientPrompts } from "../hooks/useTimeController";
 import { PickPrompt } from "../game/Prompt";
 import { Chit } from "../game/Chit";
 import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
@@ -13,8 +13,7 @@ import { useEventChannelState } from "../hooks/useEventChannelState";
 export function ContextGalleryDisplay({ size }: { size: number }) {
   const theme = useGameTheme();
   const ref = useRef(null);
-  const timeState = useTimeState();
-  const [speed] = useEventChannelState(timeState.animationSpeedMultiplier);
+  const speed = useAnimationSpeedMultiplier();
   const clientPrompts = useClientPrompts();
   const [currentPrompt] = useEventChannelState(clientPrompts.currentPrompt);
   const [items, setItems] = useState<GalleryItem[]>([]);

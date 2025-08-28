@@ -10,6 +10,7 @@ import { RootChit } from "../game/RootChit";
 import { DropdownChit } from "../game/DropdownChit";
 import { ArrowBack } from "@material-ui/icons";
 import { ZINDEX_TOP_BAR_HEADER } from "../utilities/zIndex";
+import { usePlayerId } from "../hooks/usePlayer";
 
 function BaseTopBar({ children }: { children: ReactNode | ReactNode[] }) {
   const theme = useGameTheme();
@@ -28,13 +29,14 @@ function BaseTopBar({ children }: { children: ReactNode | ReactNode[] }) {
 
 function DropdownChitWrapper({ chitId }: { chitId: string | undefined }) {
   const chit = useChit<DropdownChit>(chitId ?? "");
+  const playerId = usePlayerId();
 
   if (!chitId) {
     return null;
   }
 
   if (chit) {
-    return <TopBarDropdown label={chit.renderLabel()}>{chit.renderBody()}</TopBarDropdown>;
+    return <TopBarDropdown label={chit.renderLabel(playerId)}>{chit.renderBody(playerId)}</TopBarDropdown>;
   }
   return null;
 }

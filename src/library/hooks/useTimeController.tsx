@@ -8,6 +8,7 @@ import { ClientPrompts } from "../game/clientTransport/ClientPrompts";
 import { usePlayerId } from "./usePlayer";
 import { ClientStatus } from "../game/clientTransport/ClientStatus";
 import { useGame } from "./useGame";
+import { useEventChannelState } from "./useEventChannelState";
 
 export class TimeState {
   public targetClock: number = 1;
@@ -48,6 +49,15 @@ export function useClientStatus() {
     throw new Error("Connection is required");
   }
   return result.clientStatus;
+}
+export function useAnimationSpeedMultiplier() {
+  const result = useContext(TimeControllerContext);
+  const [speed] = useEventChannelState(result.clientTimeState.animationSpeedMultiplier);
+  const [override] = useEventChannelState(result.clientTimeState.animationSpeedOverrideMultiplier);
+  if (override) {
+    return override;
+  }
+  return speed;
 }
 
 export function TimeControllerProvider({ children }: { children: ReactNode }) {

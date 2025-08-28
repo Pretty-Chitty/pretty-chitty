@@ -7,11 +7,11 @@ export abstract class DropdownChit extends Chit {
   /** @internal */
   @NonEditable type = "dropdown";
 
-  abstract renderLabel(): string | ReactNode;
-  abstract renderBody(): string | ReactNode | ReactNode[];
+  abstract renderLabel(playerId: string): string | ReactNode;
+  abstract renderBody(playerId: string): string | ReactNode | ReactNode[];
 
   /** @internal */
   render() {
-    return <TopBarDropdown label={this.renderLabel()}>{this.renderBody()}</TopBarDropdown>;
+    return <TopBarDropdown label={this.renderLabel("")}>{this.renderBody("")}</TopBarDropdown>;
   }
 }

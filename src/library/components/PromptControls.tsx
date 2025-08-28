@@ -5,7 +5,7 @@ import BottomBarButton from "./BottomBarButton";
 import { useGameTheme } from "../hooks/useGameTheme";
 import BottomBarBreak from "./BottomBarBreak";
 import { useEventChannelState } from "../hooks/useEventChannelState";
-import { useClientPrompts, useTimeState } from "../hooks/useTimeController";
+import { useAnimationSpeedMultiplier, useClientPrompts, useTimeState } from "../hooks/useTimeController";
 import { usePlayerId } from "../hooks/usePlayer";
 import GameDialog from "./GameDialog";
 import Markdown from "react-markdown";
@@ -42,7 +42,7 @@ export default function PromptControls() {
   const [showHelp, setShowHelp] = useState(false);
   const timeState = useTimeState();
   const playerId = usePlayerId();
-  const [speed] = useEventChannelState(timeState.animationSpeedMultiplier);
+  const speed = useAnimationSpeedMultiplier();
   const clientPrompt = useClientPrompts();
   const [prompt] = useEventChannelState(clientPrompt.currentPrompt);
   const [promptSpec] = useEventChannelState(clientPrompt.getPromptEventChannelForPlayer(playerId));

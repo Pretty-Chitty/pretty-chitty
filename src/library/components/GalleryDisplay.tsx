@@ -7,16 +7,15 @@ import { useRef } from "react";
 import useSize from "@react-hook/size";
 import { ZINDEX_GALLERY_INVISIBLE, ZINDEX_GALLERY_VISIBLE } from "../utilities/zIndex";
 import { useGame } from "../hooks/useGame";
-import { useTimeState } from "../hooks/useTimeController";
+import { useAnimationSpeedMultiplier } from "../hooks/useTimeController";
 import { useGameTheme } from "../hooks/useGameTheme";
 
 const DELAY = 300;
 
 export function GalleryDisplay() {
   const game = useGame();
-  const timeState = useTimeState();
   const theme = useGameTheme();
-  const [animationSpeedMultiplier] = useEventChannelState(timeState.animationSpeedMultiplier);
+  const animationSpeedMultiplier = useAnimationSpeedMultiplier();
   const ref = useRef(null);
   const [hasItemsDelayed, setHasItemsDelayed] = useState(false);
   const [width, height] = useSize(ref);

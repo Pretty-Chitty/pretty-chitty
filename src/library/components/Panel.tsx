@@ -7,7 +7,7 @@ import Viewer from "./Viewer";
 import { PanelLayoutResult, PanelChit } from "../game/PanelChit";
 import { useGameTheme } from "../hooks/useGameTheme";
 
-import { useTimeController, useTimeState } from "../hooks/useTimeController";
+import { useAnimationSpeedMultiplier, useTimeController, useTimeState } from "../hooks/useTimeController";
 import { usePanelStates } from "../hooks/usePanelStates";
 import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
 import { useEventChannelState } from "../hooks/useEventChannelState";
@@ -102,7 +102,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   const [maxClock] = useEventChannelState(timeController.maxClock);
   const [live] = useEventChannelState(timeState.live);
 
-  const [timeMultiplier] = useEventChannelState(timeController.clientTimeState.animationSpeedMultiplier);
+  const timeMultiplier = useAnimationSpeedMultiplier();
 
   const [isSliding, setIsSliding] = useState(false);
   const [isLoading] = useEventChannelState(timeState.isLoading);

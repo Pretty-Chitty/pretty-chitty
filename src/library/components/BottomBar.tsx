@@ -32,7 +32,7 @@ export default function BottomBar() {
   const scale = usePanelScale();
   const setScale = usePanelSetScale();
   const timeState = useTimeState();
-  const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
+  const [targetClock] = useEventChannelState(timeState.targetClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
   const [live, setLive] = useEventChannelState(timeState.live);
 
@@ -73,14 +73,7 @@ export default function BottomBar() {
         <Box flex={1} />
         <PromptControls />
         {targetClock < maxClock.clock && (
-          <BottomBarButton
-            icon={SkipNext}
-            label={"Live"}
-            onClick={() => {
-              setTargetClock(maxClock.clock);
-              setLive(true);
-            }}
-          />
+          <BottomBarButton icon={SkipNext} label={"Live"} onClick={() => timeState.goLive(maxClock.clock)} />
         )}
       </Stack>
     </BaseBottomBar>

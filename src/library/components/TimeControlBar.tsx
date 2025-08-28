@@ -15,7 +15,6 @@ export default function TimeControlBar() {
   const [speed, setSpeed] = useEventChannelState(timeState.animationSpeedMultiplier);
   const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
-  const [, setLive] = useEventChannelState(timeState.live);
 
   const toggleSpeed = () => {
     const currentIndex = SPEEDS.indexOf(speed);
@@ -50,14 +49,7 @@ export default function TimeControlBar() {
           whileHolding={(n: number) => setTargetClock(targetClock + n)}
         />
         <Box flex={1} />
-        <BottomBarButton
-          icon={SkipNext}
-          label={"Live"}
-          onClick={() => {
-            setTargetClock(maxClock.clock);
-            setLive(true);
-          }}
-        />
+        <BottomBarButton icon={SkipNext} label={"Live"} onClick={() => timeState.goLive(maxClock.clock)} />
       </Stack>
     </Box>
   );

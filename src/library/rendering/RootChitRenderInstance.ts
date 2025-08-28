@@ -271,6 +271,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   }
   public set animationSpeedMultiplier(newValue: number) {
     this._animationSpeedMultiplier = newValue;
+    this.zeroTween();
   }
 
   protected override handleHierarchy() {

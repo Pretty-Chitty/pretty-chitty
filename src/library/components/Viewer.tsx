@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import React, { useEffect, useRef, useState } from "react";
 import { Chit } from "../game/Chit";
 import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
-import { useTimeState } from "../hooks/useTimeController";
+import { useAnimationSpeedMultiplier, useTimeState } from "../hooks/useTimeController";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import Hammer from "@egjs/hammerjs";
 import { addWheelListener, removeWheelListener } from "wheel";
@@ -31,7 +31,7 @@ export default function Viewer({
   const playerId = usePlayerId();
   const [id] = useState(`Viewer${ID_COUNTER++}`);
   const timeState = useTimeState();
-  const [animationSpeedMultiplier] = useEventChannelState(timeState.animationSpeedMultiplier);
+  const animationSpeedMultiplier = useAnimationSpeedMultiplier();
   const [isLoading] = useEventChannelState(timeState.isLoading);
   const refContainer = useRef(null);
   const renderer = useWebGlRenderer(w, h);
