@@ -44,8 +44,10 @@ export default function BottomBar() {
     );
   }
 
-  const zooms = [0.33, 1, 3];
-  const labels = ["0.5x", "Grid", "3x"];
+  const isLarge = window.innerWidth > 800;
+  const zooms = isLarge ? [0.33, 1, 3] : [1, 3];
+  const labels = isLarge ? ["0.5x", "Grid", "3x"] : ["Grid", "3x"];
+
   function toggleZoom() {
     if (timeState.isLoading.value === false) {
       timeState.isLoading.value = true;

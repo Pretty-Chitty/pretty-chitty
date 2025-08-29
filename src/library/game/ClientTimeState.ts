@@ -29,7 +29,7 @@ export class ClientTimeState {
   public goLive(clock: number) {
     this.live.value = true;
     this.targetClock.value = clock;
-    this.animationSpeedOverrideMultiplier.value = 0.00001;
+    this.animationSpeedOverrideMultiplier.value = 0.075;
     setTimeout(() => {
       this.animationSpeedOverrideMultiplier.value = undefined;
     }, 250);

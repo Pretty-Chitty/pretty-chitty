@@ -354,10 +354,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     players.forEach((player) => (player.promptStatus.latestPromptMessage = "Waiting for turn to complete"));
 
     const turns = players.map((player) =>
-      this.createTurn(chits(player), player, (turn: Turn<A, P, R>) => action(player, turn)).then((a: A) => {
-        player.promptStatus.latestPromptMessage = undefined;
-        return a;
-      }),
+      this.createTurn(chits(player), player, (turn: Turn<A, P, R>) => action(player, turn)),
     );
 
     return await Promise.all(turns);
@@ -871,6 +868,9 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   }
 
   private cleanUp() {
+    if (this.player) {
+      this.player.promptStatus.latestPromptMessage = undefined;
+    }
     this.completed = true;
     this.flush();
     Object.values(this.chitLookup).forEach((chit) => chit.unlock(this));

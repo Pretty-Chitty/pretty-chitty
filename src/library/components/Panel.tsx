@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import base64 from "base-64";
 import { Box, Stack } from "@mui/material";
 import { useDebounce } from "@react-hook/debounce";
@@ -57,6 +57,11 @@ function ViewerWrapper({
 }) {
   const chitInstance = useChit(chit.id ?? "nochit");
 
+  // if time is overridden, we don't want to pause ourselves (ever)
+  // it's likely trying to play "catchup" and will go very very fast
+  const timeState = useTimeState();
+  const [override] = useEventChannelState(timeState.animationSpeedOverrideMultiplier);
+
   const sparks = chitInstance?.getSparks("panel") ?? [];
 
   return (
@@ -66,7 +71,7 @@ function ViewerWrapper({
           <PanelSpark zIndex={ZINDEX_SPARKS + sparks.length - i} key={spark.id} chit={spark} paused={paused} />
         ))}
       </Stack>
-      <Viewer paused={paused} chit={chit} w={w} h={h} panCallback={panCallback} />
+      <Viewer paused={override ? false : paused} chit={chit} w={w} h={h} panCallback={panCallback} />
     </>
   );
 }
