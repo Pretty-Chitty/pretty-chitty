@@ -137,36 +137,72 @@ export class CameraWrapperPerspective {
     const fovRadsY = (this.camera.fov * Math.PI) / 180;
     const fovRadsX = fovRadsY * this.camera.aspect;
 
-    // let extraVerticalPadding = 0 + this.cameraTopPadding,
-    //     fovYDiff = 0;
-    // if (extraVerticalPadding) {
-    //   let newFov = fovRadsY * (1 - (extraVerticalPadding / this.height));
-    //   fovYDiff = fovRadsY - newFov;
-    //   fovRadsY = newFov;
-    // }
-
     const xTan = Math.tan(fovRadsX / 2);
     const yTan = Math.tan(fovRadsY / 2);
 
-    const gameHalfWidth = (this.bbox.max.x - this.bbox.min.x) / 2;
-    const gameHalfHeight = (this.bbox.max.y - this.bbox.min.y) / 2;
+    // content sizes (world units)
+    const contentWidth = this.bbox.max.x - this.bbox.min.x;
+    const contentHeight = this.bbox.max.y - this.bbox.min.y;
+    const gameHalfWidth = contentWidth / 2;
+    const gameHalfHeight = contentHeight / 2;
     const gameAreaX = this.bbox.min.x + gameHalfWidth;
     const gameAreaY = this.bbox.min.y + gameHalfHeight;
 
-    const distanceX = gameHalfWidth / xTan;
-    const distanceY = gameHalfHeight / yTan;
+    // We only support per-side pixel paddings now.
+    const padLeftPx = this.cameraSpec.paddingLeft;
+    const padRightPx = this.cameraSpec.paddingRight;
+    const padTopPx = this.cameraSpec.paddingTop + this.cameraSpec.extraPaddingTop;
+    const padBottomPx = this.cameraSpec.paddingBottom;
 
-    let distance = Math.max(
-      this.cameraSpec.minCameraDistance,
-      Math.max(distanceX, distanceY),
-      // + (this.bbox.max.z - this.bbox.min.z),
-    );
+    const useHorizontalPx = padLeftPx > 0 || padRightPx > 0;
+    const useVerticalPx = padTopPx > 0 || padBottomPx > 0;
 
-    this.wiggleRoomX = (1 - (Math.atan(gameHalfWidth / distance) * 2) / fovRadsX) * this.width;
-    this.wiggleRoomY = (1 - (Math.atan(gameHalfHeight / distance) * 2) / fovRadsY) * this.height;
+    // Compute required distances for X and Y using pixel padding when present.
+    let distanceX: number;
+    if (useHorizontalPx && this.width > 0) {
+      const padPxTotal = Math.max(0, padLeftPx + padRightPx);
+      const fractionPx = Math.min(0.999, padPxTotal / this.width); // clamp
+      distanceX = gameHalfWidth / xTan / (1 - fractionPx);
+    } else {
+      distanceX = gameHalfWidth / xTan;
+    }
 
-    distance *= 1 + this.cameraSpec.padding;
+    let distanceY: number;
+    if (useVerticalPx && this.height > 0) {
+      const padPxTotal = Math.max(0, padTopPx + padBottomPx);
+      const fractionPx = Math.min(0.999, padPxTotal / this.height);
+      distanceY = gameHalfHeight / yTan / (1 - fractionPx);
+    } else {
+      distanceY = gameHalfHeight / yTan;
+    }
 
+    let distance = Math.max(this.cameraSpec.minCameraDistance, Math.max(distanceX, distanceY));
+
+    // Now compute padded half-sizes for wiggleRoom and center shift.
+    let paddedHalfWidthUsed: number;
+    let paddedHalfHeightUsed: number;
+
+    if (useHorizontalPx && this.width > 0) {
+      const padPxTotal = Math.max(0, padLeftPx + padRightPx);
+      const visibleWorldPerPixelX = (2 * xTan * distance) / this.width;
+      paddedHalfWidthUsed = gameHalfWidth + (padPxTotal * visibleWorldPerPixelX) / 2;
+    } else {
+      paddedHalfWidthUsed = gameHalfWidth;
+    }
+
+    if (useVerticalPx && this.height > 0) {
+      const padPxTotal = Math.max(0, padTopPx + padBottomPx);
+      const visibleWorldPerPixelY = (2 * yTan * distance) / this.height;
+      paddedHalfHeightUsed = gameHalfHeight + (padPxTotal * visibleWorldPerPixelY) / 2;
+    } else {
+      paddedHalfHeightUsed = gameHalfHeight;
+    }
+
+    // wiggleRoom should consider padded sizes
+    this.wiggleRoomX = (1 - (Math.atan(paddedHalfWidthUsed / distance) * 2) / fovRadsX) * this.width;
+    this.wiggleRoomY = (1 - (Math.atan(paddedHalfHeightUsed / distance) * 2) / fovRadsY) * this.height;
+
+    // visible sizes in world units
     this.visibleGameWidth = xTan * distance * 2;
     this.visibleGameHeight = yTan * distance * 2;
 
@@ -194,23 +230,36 @@ export class CameraWrapperPerspective {
       this.camera.updateProjectionMatrix();
     }
 
-    // this.chitsBoundingBox.position.z = 0; // why did this get reset?
-    this.camera.position.x = gameAreaX + distance * Math.sin(this.cameraSpec.horizontalRadiansRotation);
-    this.camera.position.y = gameAreaY + distance * Math.sin(this.cameraSpec.verticalRadiansRotation);
+    // shift center to account for asymmetric pixel padding
+    let centerShiftX = 0;
+    let centerShiftY = 0;
+
+    if (useHorizontalPx && this.width > 0) {
+      const padPxDiff = padRightPx - padLeftPx;
+      centerShiftX = (padPxDiff * xTan * distance) / this.width;
+    }
+
+    if (useVerticalPx && this.height > 0) {
+      const padPxDiff = padTopPx - padBottomPx;
+      centerShiftY = (padPxDiff * yTan * distance) / this.height;
+    }
+
+    const adjustedCenterX = gameAreaX + centerShiftX;
+    const adjustedCenterY = gameAreaY + centerShiftY;
+
+    // position camera and look at adjusted center
+    this.camera.position.x = adjustedCenterX + distance * Math.sin(this.cameraSpec.horizontalRadiansRotation);
+    this.camera.position.y = adjustedCenterY + distance * Math.sin(this.cameraSpec.verticalRadiansRotation);
     this.camera.position.z =
       distance *
       Math.cos(this.cameraSpec.horizontalRadiansRotation) *
       Math.cos(this.cameraSpec.verticalRadiansRotation);
-    this.camera.lookAt(gameAreaX, gameAreaY, 0);
+    this.camera.lookAt(adjustedCenterX, adjustedCenterY, 0);
 
     if (this.current.z) {
       this.camera.position.x -= (this.current.x / this.current.z / this.width) * this.visibleGameWidth;
       this.camera.position.y += (this.current.y / this.current.z / this.height) * this.visibleGameHeight;
     }
-
-    // if (fovYDiff) {
-    //   this.camera.position.y += distance * Math.tan(fovYDiff / 2);
-    // }
 
     if (!this.firstPositionedCamera || Math.abs(Date.now() - this.firstPositionedCamera) < 100) {
       this.firstPositionedCamera ??= Date.now();
@@ -225,7 +274,7 @@ export class CameraWrapperPerspective {
         .setFromEuler(currentRotation)
         .distanceTo(new Vector3().setFromEuler(newRotation));
 
-    // stupid, but now it can be reset
+    // restore previous camera position/rotation now that we've computed new ones; we'll tween from current -> new
     this.camera.position.set(currentPosition.x, currentPosition.y, currentPosition.z);
     this.camera.rotation.set(currentRotation.x, currentRotation.y, currentRotation.z);
 

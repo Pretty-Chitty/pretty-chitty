@@ -168,7 +168,6 @@ export class DemoGame implements Game<MyPlayer, Root> {
     spec.ornaments.push(m);
 
     spec.camera = new CameraSpec();
-    spec.camera.padding = 0.1;
     spec.camera.targetFov = 45;
 
     spec.lightSpec = LightSpec.realistic();

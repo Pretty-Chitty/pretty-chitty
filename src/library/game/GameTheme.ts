@@ -47,6 +47,7 @@ export class GameTheme {
   public sparkForegroundColor = "#222";
   public sparkDuration = 200;
   public sparkBorderWidth = 4;
+  public sparkPadding = 2;
   public sparkBorderColor = "rgba(0,0,0,0.3)";
   public sparkFlashColor = "#0ff";
   public sparkSize = 20;

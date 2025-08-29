@@ -19,12 +19,14 @@ export default function Viewer({
   wireframes,
   w = 0,
   h = 0,
+  paddingTop = 0,
   panCallback,
 }: {
   chit: Chit;
   wireframes?: boolean;
   w: number;
   h: number;
+  paddingTop?: number;
   paused?: boolean;
   panCallback?: (direction: "left" | "right") => void;
 }) {
@@ -58,6 +60,11 @@ export default function Viewer({
   useEffect(() => {
     chitRenderInstance?.setSize(w, h);
   }, [chitRenderInstance, w, h]);
+
+  // handle padding
+  useEffect(() => {
+    chitRenderInstance?.setPaddingTop(paddingTop);
+  }, [chitRenderInstance, w, h, paddingTop]);
 
   // handle hooking the root render instance onto the scene
   const R = RootChitRenderInstance;

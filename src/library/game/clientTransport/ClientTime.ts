@@ -114,9 +114,6 @@ export class ClientTime extends ConnectionObject {
       this.clientTimeState.targetClock.value = 1;
       return;
     }
-    if (newTargetClock > this.startTime) {
-      this.clientTimeState.isLoading.value = false;
-    }
 
     // make sure our async operations don't get interrupted by auto-advancing the timeline
     const animationKey = `minimumAnimationDuration${Date.now()}`;
@@ -127,6 +124,10 @@ export class ClientTime extends ConnectionObject {
 
     // make sure nothing changed while we were waiting...
     if (this.clientTimeState.targetClock.value === newTargetClock && currentClock === this.currentClock.value) {
+      if (newTargetClock > this.startTime) {
+        this.clientTimeState.isLoading.value = false;
+      }
+
       // first make sure all chits exist (because they may link to each other)
       Object.entries(serializedChits).forEach(([id, value]) => {
         let chit = this.chitLookup[id];

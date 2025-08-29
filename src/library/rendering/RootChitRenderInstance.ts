@@ -9,6 +9,7 @@ import { GalleryState } from "../game/GalleryState";
 import { GalleryItemSource } from "../components/GalleryViewer";
 import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
 import { GalleryItemRawSource } from "../game/GalleryItemRawSource";
+import { CameraSpec } from "./CameraSpec";
 
 export type AnimationState = "leaving" | "entering" | "pending" | "inactive";
 
@@ -284,8 +285,20 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     this._rootGroup.add(this.bboxGroup);
     this._rootGroup.add(this.lightWrapper.group);
 
-    this.cameraWrapper.setCameraSpec(this.renderSpec?.camera);
+    let camera = this.renderSpec?.camera;
+    if (!camera) {
+      camera = new CameraSpec();
+    }
+    camera.extraPaddingTop = this.paddingTop;
+
+    this.cameraWrapper.setCameraSpec(camera);
     this.lightWrapper.setLightSpec(this.renderSpec?.lightSpec);
+  }
+
+  private paddingTop = 0;
+  public setPaddingTop(paddingTop: number) {
+    this.paddingTop = paddingTop;
+    this.refresh();
   }
 
   public get tweenGroup(): TweenGroup | undefined {
