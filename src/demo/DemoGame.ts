@@ -95,11 +95,11 @@ export class DemoGame implements Game<MyPlayer, Root> {
     players[1].add(pieces[1]);
     setup.flush();
 
-    players[2].add(pieces[2]);
-    setup.flush();
+    // players[2].add(pieces[2]);
+    // setup.flush();
 
-    players[0].add(pieces[3]);
-    setup.flush();
+    // players[0].add(pieces[3]);
+    // setup.flush();
 
     // pieces[0].add(b.draw());
     // setup.flush();

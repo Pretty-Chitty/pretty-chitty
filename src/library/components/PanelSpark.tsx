@@ -116,8 +116,8 @@ export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; c
         transition: flashed ? "background linear 0.02s" : `background linear ${DURATION / 1000}s`,
         color: theme.sparkForegroundColor,
         p: `${theme.spacing * 0.75}px`,
-        pt: `${theme.sparkPadding}px`,
-        pb: `${theme.sparkPadding}px`,
+        pt: 0,
+        pb: 0,
         pl: `${theme.spacing * 0.75 + HEIGHT + BORDER_WIDTH * 2}px`,
         top: -BORDER_WIDTH,
         marginLeft: `${-BORDER_WIDTH * 2}px`,
@@ -134,7 +134,9 @@ export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; c
         image={image}
         style={{ position: "absolute", left: BORDER_WIDTH * 2, top: 0, width: HEIGHT, height: HEIGHT }}
       />
-      <Typography sx={{ fontSize: theme.sparkFontSize, fontWeight: 700 }}>{value}</Typography>
+      <Typography sx={{ lineHeight: `${HEIGHT}px`, fontSize: theme.sparkFontSize, fontWeight: 700 }}>
+        {value}
+      </Typography>
     </Box>
   );
 }

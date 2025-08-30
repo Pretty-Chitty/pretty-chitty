@@ -122,9 +122,6 @@ export default function Viewer({
     if (!chitRenderInstance || !renderer || !canvas) {
       return;
     }
-    if (paused) {
-      return;
-    }
 
     const context = canvas.getContext("2d");
     if (!context) {
@@ -137,7 +134,9 @@ export default function Viewer({
       if (!cancelled) {
         try {
           // console.log(renderNextFrame);
-          requestAnimationFrame(animate);
+          if (!paused) {
+            requestAnimationFrame(animate);
+          }
           if (chitRenderInstance && (renderNextFrame === undefined || renderNextFrame || chitRenderInstance.dirty)) {
             renderer.render(scene, chitRenderInstance.camera);
             context.drawImage(renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);

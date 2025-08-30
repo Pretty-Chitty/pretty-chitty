@@ -157,54 +157,231 @@ export class CameraWrapperPerspective {
     const useHorizontalPx = padLeftPx > 0 || padRightPx > 0;
     const useVerticalPx = padTopPx > 0 || padBottomPx > 0;
 
-    // Compute required distances for X and Y using pixel padding when present.
-    let distanceX: number;
-    if (useHorizontalPx && this.width > 0) {
-      const padPxTotal = Math.max(0, padLeftPx + padRightPx);
-      const fractionPx = Math.min(0.999, padPxTotal / this.width); // clamp
-      distanceX = gameHalfWidth / xTan / (1 - fractionPx);
-    } else {
-      distanceX = gameHalfWidth / xTan;
+    // Compute required distances by projecting bbox corners into screen pixels and iterating
+    // until the per-side pixel paddings are satisfied. This directly ensures "N px from the
+    // closest point" behavior regardless of camera tilt.
+    let centerShiftX = 0;
+    let centerShiftY = 0;
+    let distance: number;
+
+    // initial, conservative estimates (no angle) as a starting point for the solver
+    {
+      let distanceX: number;
+      if (useHorizontalPx && this.width > 0) {
+        const padPxTotal = Math.max(0, padLeftPx + padRightPx);
+        const fractionPx = Math.min(0.999, padPxTotal / this.width); // clamp
+        distanceX = gameHalfWidth / xTan / (1 - fractionPx);
+      } else {
+        distanceX = gameHalfWidth / xTan;
+      }
+
+      let distanceY: number;
+      if (useVerticalPx && this.height > 0) {
+        const padPxTotal = Math.max(0, padTopPx + padBottomPx);
+        const fractionPx = Math.min(0.999, padPxTotal / this.height);
+        distanceY = gameHalfHeight / yTan / (1 - fractionPx);
+      } else {
+        distanceY = gameHalfHeight / yTan;
+      }
+
+      distance = Math.max(this.cameraSpec.minCameraDistance, Math.max(distanceX, distanceY));
     }
 
-    let distanceY: number;
-    if (useVerticalPx && this.height > 0) {
-      const padPxTotal = Math.max(0, padTopPx + padBottomPx);
-      const fractionPx = Math.min(0.999, padPxTotal / this.height);
-      distanceY = gameHalfHeight / yTan / (1 - fractionPx);
+    // If padding occupies an excessive fraction of the viewport, fall back to ignoring per-side padding.
+    const padHorizontalFraction = this.width > 0 ? Math.max(0, padLeftPx + padRightPx) / this.width : 0;
+    const padVerticalFraction = this.height > 0 ? Math.max(0, padTopPx + padBottomPx) / this.height : 0;
+    const ignorePaddingBecauseTooLarge = padHorizontalFraction > 0.8 || padVerticalFraction > 0.8;
+
+    if (ignorePaddingBecauseTooLarge) {
+      // Fallback: ignore per-side pixel padding entirely and compute distance from content size only.
+      centerShiftX = 0;
+      centerShiftY = 0;
+      distance = Math.max(this.cameraSpec.minCameraDistance, gameHalfWidth / xTan, gameHalfHeight / yTan);
+
+      const fallbackPaddedHalfWidth = gameHalfWidth;
+      const fallbackPaddedHalfHeight = gameHalfHeight;
+
+      // wiggleRoom should consider padded sizes (fallback)
+      this.wiggleRoomX = (1 - (Math.atan(fallbackPaddedHalfWidth / distance) * 2) / fovRadsX) * this.width;
+      this.wiggleRoomY = (1 - (Math.atan(fallbackPaddedHalfHeight / distance) * 2) / fovRadsY) * this.height;
+
+      // visible sizes in world units (fallback)
+      this.visibleGameWidth = xTan * distance * 2;
+      this.visibleGameHeight = yTan * distance * 2;
     } else {
-      distanceY = gameHalfHeight / yTan;
+      // helper: project a world point into pixel coords for a camera defined by (adjustedCenter, distance)
+      const projectPointToPixels = (
+        p: Vector3,
+        adjustedCenterX: number,
+        adjustedCenterY: number,
+        distanceVal: number,
+      ) => {
+        const sinH = Math.sin(this.cameraSpec.horizontalRadiansRotation);
+        const sinV = Math.sin(this.cameraSpec.verticalRadiansRotation);
+        const cosH = Math.cos(this.cameraSpec.horizontalRadiansRotation);
+        const cosV = Math.cos(this.cameraSpec.verticalRadiansRotation);
+
+        const camX = adjustedCenterX + distanceVal * sinH;
+        const camY = adjustedCenterY + distanceVal * sinV;
+        const camZ = distanceVal * cosH * cosV;
+        const camPos = new Vector3(camX, camY, camZ);
+
+        const lookAt = new Vector3(adjustedCenterX, adjustedCenterY, 0);
+        const forward = new Vector3().subVectors(lookAt, camPos).normalize();
+
+        // world up is +Z (scene plane is at z=0)
+        const worldUp = new Vector3(0, 0, 1);
+        const right = new Vector3().crossVectors(forward, worldUp).normalize();
+        const up = new Vector3().crossVectors(right, forward).normalize();
+
+        const v = new Vector3().subVectors(p, camPos);
+        const x_cam = v.dot(right);
+        const y_cam = v.dot(up);
+        const z_cam = Math.max(0.0001, v.dot(forward));
+
+        // NDC coords
+        const ndcX = x_cam / (z_cam * xTan);
+        const ndcY = y_cam / (z_cam * yTan);
+
+        const px = (ndcX + 1) * 0.5 * this.width;
+        const py = (1 - ndcY) * 0.5 * this.height; // y screen: 0 top
+
+        return { px, py, z_cam, camPos, forward };
+      };
+
+      // iterative solver: adjust distance and centerShift until projected bbox fits inside padded viewport
+      for (let iter = 0; iter < 10; iter++) {
+        const adjustedCenterX = gameAreaX + centerShiftX;
+        const adjustedCenterY = gameAreaY + centerShiftY;
+
+        // project corners
+        const pA = projectPointToPixels(
+          new Vector3(this.bbox.min.x, this.bbox.min.y, 0),
+          adjustedCenterX,
+          adjustedCenterY,
+          distance,
+        );
+        const pB = projectPointToPixels(
+          new Vector3(this.bbox.min.x, this.bbox.max.y, 0),
+          adjustedCenterX,
+          adjustedCenterY,
+          distance,
+        );
+        const pC = projectPointToPixels(
+          new Vector3(this.bbox.max.x, this.bbox.min.y, 0),
+          adjustedCenterX,
+          adjustedCenterY,
+          distance,
+        );
+        const pD = projectPointToPixels(
+          new Vector3(this.bbox.max.x, this.bbox.max.y, 0),
+          adjustedCenterX,
+          adjustedCenterY,
+          distance,
+        );
+
+        const leftPx = Math.min(pA.px, pB.px, pC.px, pD.px);
+        const rightPx = Math.max(pA.px, pB.px, pC.px, pD.px);
+        const topPx = Math.min(pA.py, pB.py, pC.py, pD.py);
+        const bottomPx = Math.max(pA.py, pB.py, pC.py, pD.py);
+
+        const contentPxWidth = Math.max(1, rightPx - leftPx);
+        const contentPxHeight = Math.max(1, bottomPx - topPx);
+
+        const allowedPxWidth = Math.max(1, this.width - Math.max(0, padLeftPx + padRightPx));
+        const allowedPxHeight = Math.max(1, this.height - Math.max(0, padTopPx + padBottomPx));
+
+        // scale factor required to fit content into allowed pixel area
+        const factorX = allowedPxWidth / contentPxWidth;
+        const factorY = allowedPxHeight / contentPxHeight;
+        const scale = Math.min(factorX, factorY, 1);
+
+        // pixel center shift to bring content into the padded center region
+        const desiredCenterPxX = Math.max(0, padLeftPx) + allowedPxWidth / 2;
+        const desiredCenterPxY = Math.max(0, padTopPx) + allowedPxHeight / 2;
+        const currentCenterPxX = (leftPx + rightPx) / 2;
+        const currentCenterPxY = (topPx + bottomPx) / 2;
+        const pixelShiftX = desiredCenterPxX - currentCenterPxX;
+        const pixelShiftY = desiredCenterPxY - currentCenterPxY;
+
+        // Debug: per-iteration projected corner pixels and padding/fit diagnostics (safe: vars defined above)
+        try {
+          // eslint-disable-next-line no-console
+          console.debug("[CameraDebug] iter", iter, {
+            corners: {
+              A: { px: pA.px, py: pA.py, z: pA.z_cam },
+              B: { px: pB.px, py: pB.py, z: pB.z_cam },
+              C: { px: pC.px, py: pC.py, z: pC.z_cam },
+              D: { px: pD.px, py: pD.py, z: pD.z_cam },
+            },
+            bounds: { leftPx, rightPx, topPx, bottomPx },
+            contentPx: { width: contentPxWidth, height: contentPxHeight },
+            allowedPx: { width: allowedPxWidth, height: allowedPxHeight, padLeftPx, padRightPx, padTopPx, padBottomPx },
+            scale,
+            pixelShift: { x: pixelShiftX, y: pixelShiftY },
+            centerPx: { currentCenterPxX, currentCenterPxY, desiredCenterPxX, desiredCenterPxY },
+          });
+        } catch (e) {
+          /* swallow debug errors */
+        }
+
+        // convert pixel shifts to world units using depth at the center (approx)
+        const centerProj = projectPointToPixels(
+          new Vector3(gameAreaX + centerShiftX, gameAreaY + centerShiftY, 0),
+          adjustedCenterX,
+          adjustedCenterY,
+          distance,
+        );
+        const depthCenter = Math.max(0.0001, centerProj.z_cam);
+        const worldPerPixelCenterX = (2 * xTan * depthCenter) / this.width;
+        const worldPerPixelCenterY = (2 * yTan * depthCenter) / this.height;
+
+        // update center shifts (move content in world units according to pixelShift)
+        centerShiftX += pixelShiftX * worldPerPixelCenterX;
+        // pixel Y increases downwards; positive pixelShiftY means move content down => increase centerShiftY
+        centerShiftY += pixelShiftY * worldPerPixelCenterY;
+
+        // update distance based on scale (projection scales roughly proportional to 1/distance)
+        const newDistance = Math.max(this.cameraSpec.minCameraDistance, distance / Math.max(1e-6, scale));
+
+        const centerDelta = Math.abs(pixelShiftX) + Math.abs(pixelShiftY);
+
+        distance = newDistance;
+
+        // convergence heuristics
+        if (scale >= 1 - 1e-3 && centerDelta < 0.5) {
+          break;
+        }
+      }
+
+      // After convergence compute final padded half-sizes (approx using center depth)
+      // Debug: report final solver state
+      try {
+        // eslint-disable-next-line no-console
+        console.debug("[CameraDebug] final", {
+          distance,
+          centerShift: { x: centerShiftX, y: centerShiftY },
+          viewport: { width: this.width, height: this.height },
+          paddingPx: { left: padLeftPx, right: padRightPx, top: padTopPx, bottom: padBottomPx },
+        });
+      } catch (e) {
+        /* swallow debug errors */
+      }
+
+      const visibleWorldPerPixelX = (2 * xTan * Math.max(0.0001, distance)) / this.width;
+      const visibleWorldPerPixelY = (2 * yTan * Math.max(0.0001, distance)) / this.height;
+
+      const paddedHalfWidthUsed = gameHalfWidth + (Math.max(0, padLeftPx + padRightPx) * visibleWorldPerPixelX) / 2;
+      const paddedHalfHeightUsed = gameHalfHeight + (Math.max(0, padTopPx + padBottomPx) * visibleWorldPerPixelY) / 2;
+
+      // wiggleRoom should consider padded sizes
+      this.wiggleRoomX = (1 - (Math.atan(paddedHalfWidthUsed / distance) * 2) / fovRadsX) * this.width;
+      this.wiggleRoomY = (1 - (Math.atan(paddedHalfHeightUsed / distance) * 2) / fovRadsY) * this.height;
+
+      // visible sizes in world units
+      this.visibleGameWidth = xTan * distance * 2;
+      this.visibleGameHeight = yTan * distance * 2;
     }
-
-    let distance = Math.max(this.cameraSpec.minCameraDistance, Math.max(distanceX, distanceY));
-
-    // Now compute padded half-sizes for wiggleRoom and center shift.
-    let paddedHalfWidthUsed: number;
-    let paddedHalfHeightUsed: number;
-
-    if (useHorizontalPx && this.width > 0) {
-      const padPxTotal = Math.max(0, padLeftPx + padRightPx);
-      const visibleWorldPerPixelX = (2 * xTan * distance) / this.width;
-      paddedHalfWidthUsed = gameHalfWidth + (padPxTotal * visibleWorldPerPixelX) / 2;
-    } else {
-      paddedHalfWidthUsed = gameHalfWidth;
-    }
-
-    if (useVerticalPx && this.height > 0) {
-      const padPxTotal = Math.max(0, padTopPx + padBottomPx);
-      const visibleWorldPerPixelY = (2 * yTan * distance) / this.height;
-      paddedHalfHeightUsed = gameHalfHeight + (padPxTotal * visibleWorldPerPixelY) / 2;
-    } else {
-      paddedHalfHeightUsed = gameHalfHeight;
-    }
-
-    // wiggleRoom should consider padded sizes
-    this.wiggleRoomX = (1 - (Math.atan(paddedHalfWidthUsed / distance) * 2) / fovRadsX) * this.width;
-    this.wiggleRoomY = (1 - (Math.atan(paddedHalfHeightUsed / distance) * 2) / fovRadsY) * this.height;
-
-    // visible sizes in world units
-    this.visibleGameWidth = xTan * distance * 2;
-    this.visibleGameHeight = yTan * distance * 2;
 
     const currentPosition = this.camera.position.clone(),
       currentRotation = this.camera.rotation.clone();
@@ -230,31 +407,56 @@ export class CameraWrapperPerspective {
       this.camera.updateProjectionMatrix();
     }
 
-    // shift center to account for asymmetric pixel padding
-    let centerShiftX = 0;
-    let centerShiftY = 0;
-
-    if (useHorizontalPx && this.width > 0) {
-      const padPxDiff = padRightPx - padLeftPx;
-      centerShiftX = (padPxDiff * xTan * distance) / this.width;
-    }
-
-    if (useVerticalPx && this.height > 0) {
-      const padPxDiff = padTopPx - padBottomPx;
-      centerShiftY = (padPxDiff * yTan * distance) / this.height;
-    }
+    // centerShiftX/centerShiftY are computed by the angle-aware solver above.
+    // If padding is not used they will be zero; no further adjustment needed here.
 
     const adjustedCenterX = gameAreaX + centerShiftX;
     const adjustedCenterY = gameAreaY + centerShiftY;
 
-    // position camera and look at adjusted center
-    this.camera.position.x = adjustedCenterX + distance * Math.sin(this.cameraSpec.horizontalRadiansRotation);
-    this.camera.position.y = adjustedCenterY + distance * Math.sin(this.cameraSpec.verticalRadiansRotation);
-    this.camera.position.z =
-      distance *
-      Math.cos(this.cameraSpec.horizontalRadiansRotation) *
-      Math.cos(this.cameraSpec.verticalRadiansRotation);
-    this.camera.lookAt(adjustedCenterX, adjustedCenterY, 0);
+    // Safety guard: ensure camera's Z (depth) is positive so camera looks toward scene plane.
+    // If rotation causes camZ <= 0 (camera pointing below horizon / behind plane) increase distance slightly until valid.
+    {
+      const sinH = Math.sin(this.cameraSpec.horizontalRadiansRotation);
+      const sinV = Math.sin(this.cameraSpec.verticalRadiansRotation);
+      const cosH = Math.cos(this.cameraSpec.horizontalRadiansRotation);
+      const cosV = Math.cos(this.cameraSpec.verticalRadiansRotation);
+
+      // iterative bump to ensure camZ > 0 (prevent black/empty renders)
+      let camZ = distance * cosH * cosV;
+      if (camZ <= 0) {
+        let attempts = 0;
+        while (camZ <= 0 && attempts < 20) {
+          distance = Math.max(this.cameraSpec.minCameraDistance, distance * 1.15);
+          camZ = distance * cosH * cosV;
+          attempts++;
+        }
+      }
+
+      // position camera and look at adjusted center
+      this.camera.position.x = adjustedCenterX + distance * sinH;
+      this.camera.position.y = adjustedCenterY + distance * sinV;
+      this.camera.position.z = distance * cosH * cosV;
+      this.camera.lookAt(adjustedCenterX, adjustedCenterY, 0);
+
+      // Debug: camera state to help diagnose black frames / clipping
+      try {
+        // eslint-disable-next-line no-console
+        console.debug("[CameraDebug] cameraState", {
+          pos: this.camera.position.toArray(),
+          lookAt: [adjustedCenterX, adjustedCenterY, 0],
+          near: this.camera.near,
+          far: this.camera.far,
+          distance,
+          camZ,
+          rotation: {
+            horizontalRadians: this.cameraSpec.horizontalRadiansRotation,
+            verticalRadians: this.cameraSpec.verticalRadiansRotation,
+          },
+        });
+      } catch (e) {
+        /* swallow debug errors */
+      }
+    }
 
     if (this.current.z) {
       this.camera.position.x -= (this.current.x / this.current.z / this.width) * this.visibleGameWidth;
