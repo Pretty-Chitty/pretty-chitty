@@ -84,7 +84,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
       new Card().set((c) => {
         c.x = Math.floor(i / H);
         c.y = i % H;
-        rootChit.mainBoard.add(c);
+        rootChit.add(c);
 
         const c2 = new Card2();
         c.add(c2, "testoutlet");

@@ -306,6 +306,7 @@ export default function Panel({
         {layout.map((cell) => (
           <Panel key={cell.id} chit={cell.chit} x={x + cell.x} y={y + cell.y} w={cell.w} h={cell.h} />
         ))}
+        {!Array.isArray(chit) && <SinglePanel chit={chit} x={0} y={0} w={200} h={200} />}
       </>
     );
   }

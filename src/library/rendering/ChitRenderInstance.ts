@@ -179,6 +179,10 @@ export class ChitRenderInstance {
   }
 
   public childAdded(chit: Chit, existingRenderInstance?: ChitRenderInstance) {
+    if (existingRenderInstance && (existingRenderInstance as RootChitRenderInstance).cameraWrapper) {
+      return;
+    }
+
     if (existingRenderInstance?.rootRenderInstance === this.rootRenderInstance) {
       return;
     }
@@ -755,6 +759,10 @@ export class ChitRenderInstance {
   }
 
   protected addChild(child: ChitRenderInstance) {
+    if ((child as RootChitRenderInstance).cameraWrapper) {
+      return;
+    }
+
     this.log(`Child added: ${child.chit} ${child.id}`);
     this.childrenRenderInstances.push(child);
     if (this._isMovingToNewViewer) {

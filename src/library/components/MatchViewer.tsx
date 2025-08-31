@@ -32,6 +32,7 @@ function PanelContents({ rootChit }: { rootChit: Chit }) {
   const theme = useGameTheme();
   const ref = useRef(null);
   const [width, height] = useSize(ref);
+
   return (
     <Box
       sx={{
