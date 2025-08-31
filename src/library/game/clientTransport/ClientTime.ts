@@ -87,6 +87,9 @@ export class ClientTime extends ConnectionObject {
         this.clientTimeState.targetClock.value < this.maxClock.value.clock
       ) {
         this.clientTimeState.targetClock.value++;
+      } else if (!isSamePass && !this.clientTimeState.isWaitingOnAnimations.value) {
+        this.clientTimeState.targetClock.value = this.maxClock.value.clock;
+        this.processNewTargetClock();
       } else if (!this.clientTimeState.isWaitingOnAnimations.value) {
         // some other use has reset...
         this.clientTimeState.targetClock.value = this.maxClock.value.clock;

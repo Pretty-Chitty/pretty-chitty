@@ -1,5 +1,5 @@
 import { EventChannel } from "../../utilities/EventChannel";
-import { ClockDetails } from "../ClockDetails";
+import { ClockDetails, samePasses } from "../ClockDetails";
 import { Connection } from "../Connection";
 import { ConnectionObject } from "../ConnectionObject";
 import { PlayerChit } from "../PlayerChit";
@@ -40,7 +40,14 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
     if (isLive && promptSpec && promptSpec == this._currentPromptSpec) {
       // do nothing - we have already inflated our prompt and it is still the correct prompt.  as long as we are "live" there is no
       // need to deflate it
-    } else if (isLive && promptSpec && currentTime === maxTime && currentTime > 0 && !isWaitingOnAnimations) {
+    } else if (
+      isLive &&
+      promptSpec &&
+      currentTime === maxTime &&
+      currentTime > 0 &&
+      !isWaitingOnAnimations &&
+      samePasses(this.clientTime.currentClock.value, this.clientTime.maxClock.value)
+    ) {
       if (this.currentPrompt.value) {
         this.currentPrompt.value.stageOut();
       }

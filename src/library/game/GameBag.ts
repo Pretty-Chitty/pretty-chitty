@@ -1,8 +1,6 @@
 import { NonEditable } from "../utilities/Annotations";
 import { Chit } from "./Chit";
 
-const OUTLET_NAME = "bag";
-
 export abstract class GameBag<T extends Chit> extends Chit {
   /** @internal */
   @NonEditable type = "bag";
@@ -22,15 +20,19 @@ export abstract class GameBag<T extends Chit> extends Chit {
   }
 
   drawMultiple(count: number): T[] {
-    const chits = [...new Array(count)].map(() => this.chitGenerator().set((c) => c.setParent(this, OUTLET_NAME)));
+    const chits = [...new Array(count)].map(() =>
+      this.chitGenerator().set((c) => {
+        c.parentFallback = this;
+      }),
+    );
     return chits;
   }
 
   discard(chit: T | T[]): void {
     if (Array.isArray(chit)) {
-      chit.forEach((c) => c.setParent(this, OUTLET_NAME));
+      chit.forEach((c) => c.removeFromParent());
     } else {
-      chit.setParent(this, OUTLET_NAME);
+      chit.removeFromParent();
     }
   }
 }

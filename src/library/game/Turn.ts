@@ -333,7 +333,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     this.activeSubTurns = this.activeSubTurns.filter((t) => t !== turn);
 
-    Chit.walk(chits, (chit) => {
+    Object.values(turn.chitLookup).forEach((chit) => {
       if (chit.id) {
         chit.lock(this);
         this.chitLookup[chit.id] = chit;
@@ -902,10 +902,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       clock: this.playerVisibleClockTime(playerId),
       pass: this.pass,
     };
-    if (this.activeSubTurns.length > 0) {
+    const visibleActiveTurns =
+      this.lastClockStep instanceof SubTurnsClockStep ? this.lastClockStep.visibleTurns(playerId) : [];
+    if (visibleActiveTurns.length > 0) {
       result.subTurns = {};
 
-      for (const turn of this.activeSubTurns) {
+      for (const turn of visibleActiveTurns) {
         result.subTurns[turn.id] = turn.clockDetails(playerId);
       }
     }
@@ -935,6 +937,14 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     if (this.player) {
       this.player.promptStatus.latestPrompt.value = undefined;
     }
+
+    this.chitLookup = {};
+    Chit.walk(this.chitsToLock, (c) => {
+      if (c.id) {
+        this.chitLookup[c.id] = c;
+      }
+    });
+
     this.lastChitStates = { ...this.lockedChitStates }; // reset our known chit states
     this.clockSteps = [];
     this.decisionIndex = 0;
