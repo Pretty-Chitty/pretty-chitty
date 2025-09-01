@@ -24,6 +24,7 @@ import {
   ChitRenderSpec,
   OrderedOutlet,
   StaticImage,
+  extrudeSVGToGeometry,
 } from "../library";
 
 import { TestStack } from "./TestStack";
@@ -35,6 +36,8 @@ import { CardMesh } from "../library/utilities/CardMesh";
 import { GameBag } from "../library/game/GameBag";
 import { HiddenPropertySerializationRule } from "../library/game/Chit";
 import { tunnel, walk } from "./assets/icons";
+
+import city_profile from "./city_profile.svg";
 
 export * from "../library/utilities/BaseTable";
 
@@ -54,7 +57,12 @@ export class Bag extends GameBag<Card2> {
   }
 
   public override render(spec: ChitRenderSpec): void {
-    const boxGeometry = new BoxGeometry(1, 1, 1);
+    // const boxGeometry = new BoxGeometry(1, 1, 1);
+
+    const geo = extrudeSVGToGeometry(city_profile, {
+      depth: 100,
+      zUp: false,
+    });
 
     const ts = new TestStack().set((obj) => {
       obj.subTitle = "This is the deck";
@@ -70,9 +78,10 @@ export class Bag extends GameBag<Card2> {
       color: 0xbbbbbb,
     });
 
-    spec.object = new Mesh(boxGeometry, [side, side, side, side, face, side]);
+    spec.object = new Mesh(geo, [side, face, face]);
     spec.offsetX = -2;
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0;
+
     spec.object.castShadow = true;
 
     spec.offsetY = 1;

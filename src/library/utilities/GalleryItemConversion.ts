@@ -1,12 +1,14 @@
-import { GalleryItem } from "../components/GalleryViewer";
 import { Chit } from "../game/Chit";
 import { ChitGalleryItemInstance } from "../rendering/ChitGalleryItemInstance";
 
 export function chitsToGalleryItems(chits: Chit[]) {
-  const result: GalleryItem[] = [];
+  const result: ChitGalleryItemInstance[] = [];
   const resultChits: Chit[] = [];
+  const dupeCounts: { [id: string]: number } = {};
   chits.forEach((chit) => {
-    if (resultChits.find((c) => c.functionallyIdentical(chit))) {
+    const dupe = resultChits.find((c) => c.functionallyIdentical(chit));
+    if (dupe && dupe.id) {
+      dupeCounts[dupe.id] = (dupeCounts[dupe.id] || 1) + 1;
       return;
     }
     resultChits.push(chit);
@@ -16,5 +18,13 @@ export function chitsToGalleryItems(chits: Chit[]) {
       result.push(new ChitGalleryItemInstance(chit));
     }
   });
+
+  for (const [id, count] of Object.entries(dupeCounts)) {
+    const dupe = result.find((item) => item.chit.id === id);
+    if (dupe) {
+      dupe.summary = `${count}x\n${dupe.summary || ""}`;
+    }
+  }
+
   return result;
 }

@@ -316,13 +316,13 @@ export default function Panel({
   }, [chit, w, h, setLayout, scale, playerId]);
 
   // we are just given a root chit
-  let renderHiddenRootChit = false;
+  let renderHiddenRootChit: Chit | undefined;
   if (!Array.isArray(chit) && chit instanceof RootChit) {
     // if we are showing the root chit, no reason to render a fake hidden chit
     if (layout.length === 1 && layout[0].chit === chit) {
-      renderHiddenRootChit = false;
+      renderHiddenRootChit = undefined;
     } else {
-      renderHiddenRootChit = true;
+      renderHiddenRootChit = chit;
     }
   }
 
@@ -335,7 +335,7 @@ export default function Panel({
 
         {renderHiddenRootChit && (
           <Box sx={{ display: "none" }}>
-            <SinglePanel paused={true} chit={chit} x={0} y={0} w={1} h={1} />
+            <SinglePanel paused={true} chit={renderHiddenRootChit} x={0} y={0} w={1} h={1} />
           </Box>
         )}
       </>

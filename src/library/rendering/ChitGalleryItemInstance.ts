@@ -19,7 +19,7 @@ export class ChitGalleryItemInstance implements GalleryItem {
   summaryIconMap?: IconMap;
   summaryRenderingOptions?: RichTextRenderOptionsParameters;
 
-  constructor(private chit: Chit) {
+  constructor(public chit: Chit) {
     this.id = chit.id ?? "no id";
 
     this.onClick = () => {

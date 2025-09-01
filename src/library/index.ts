@@ -54,3 +54,6 @@ export type { SplayCounterOptions } from "./rendering/SplayCounter";
 export { HighlightSpec } from "./rendering/HighlightSpec";
 export { LightSpec, Light } from "./rendering/LightSpec";
 export { Splay } from "./rendering/Splay";
+
+export type { ExtrudeFromSVGOptions } from "./utilities/SvgExtruder";
+export { extrudeSVGToGeometry } from "./utilities/SvgExtruder";
