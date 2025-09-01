@@ -304,26 +304,26 @@ export class CameraWrapperPerspective {
         const pixelShiftX = desiredCenterPxX - currentCenterPxX;
         const pixelShiftY = desiredCenterPxY - currentCenterPxY;
 
-        // Debug: per-iteration projected corner pixels and padding/fit diagnostics (safe: vars defined above)
-        try {
-          // eslint-disable-next-line no-console
-          console.debug("[CameraDebug] iter", iter, {
-            corners: {
-              A: { px: pA.px, py: pA.py, z: pA.z_cam },
-              B: { px: pB.px, py: pB.py, z: pB.z_cam },
-              C: { px: pC.px, py: pC.py, z: pC.z_cam },
-              D: { px: pD.px, py: pD.py, z: pD.z_cam },
-            },
-            bounds: { leftPx, rightPx, topPx, bottomPx },
-            contentPx: { width: contentPxWidth, height: contentPxHeight },
-            allowedPx: { width: allowedPxWidth, height: allowedPxHeight, padLeftPx, padRightPx, padTopPx, padBottomPx },
-            scale,
-            pixelShift: { x: pixelShiftX, y: pixelShiftY },
-            centerPx: { currentCenterPxX, currentCenterPxY, desiredCenterPxX, desiredCenterPxY },
-          });
-        } catch (e) {
-          /* swallow debug errors */
-        }
+        // // Debug: per-iteration projected corner pixels and padding/fit diagnostics (safe: vars defined above)
+        // try {
+        //   // eslint-disable-next-line no-console
+        //   console.debug("[CameraDebug] iter", iter, {
+        //     corners: {
+        //       A: { px: pA.px, py: pA.py, z: pA.z_cam },
+        //       B: { px: pB.px, py: pB.py, z: pB.z_cam },
+        //       C: { px: pC.px, py: pC.py, z: pC.z_cam },
+        //       D: { px: pD.px, py: pD.py, z: pD.z_cam },
+        //     },
+        //     bounds: { leftPx, rightPx, topPx, bottomPx },
+        //     contentPx: { width: contentPxWidth, height: contentPxHeight },
+        //     allowedPx: { width: allowedPxWidth, height: allowedPxHeight, padLeftPx, padRightPx, padTopPx, padBottomPx },
+        //     scale,
+        //     pixelShift: { x: pixelShiftX, y: pixelShiftY },
+        //     centerPx: { currentCenterPxX, currentCenterPxY, desiredCenterPxX, desiredCenterPxY },
+        //   });
+        // } catch (e) {
+        //   /* swallow debug errors */
+        // }
 
         // convert pixel shifts to world units using depth at the center (approx)
         const centerProj = projectPointToPixels(

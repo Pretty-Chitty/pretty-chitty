@@ -16,6 +16,7 @@ import { useChit } from "../hooks/useChits";
 import { ZINDEX_PANEL_CUTOUTS, ZINDEX_SPARKS } from "../utilities/zIndex";
 import { usePanelScale } from "../hooks/usePanelScale";
 import { usePlayerId } from "../hooks/usePlayer";
+import { RootChit } from "../game/RootChit";
 
 const Cutout = `data:image/svg+xml;base64,${base64.encode(
   `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -88,7 +89,21 @@ function ViewerWrapper({
   );
 }
 
-function SinglePanel({ chit, x, y, w, h }: { chit: Chit; x: number; y: number; w: number; h: number }) {
+function SinglePanel({
+  chit,
+  x,
+  y,
+  w,
+  h,
+  paused = false,
+}: {
+  chit: Chit;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  paused?: boolean;
+}) {
   const theme = useGameTheme();
   return (
     <Box
@@ -103,7 +118,7 @@ function SinglePanel({ chit, x, y, w, h }: { chit: Chit; x: number; y: number; w
       }}
     >
       <Box sx={{ width: "100%", height: "100%", position: "relative", borderRadius: "10px", overflow: "hidden" }}>
-        <ViewerWrapper chit={chit} w={w - theme.spacing} h={h - theme.spacing} paused={false} />
+        <ViewerWrapper chit={chit} w={w - theme.spacing} h={h - theme.spacing} paused={paused} />
       </Box>
     </Box>
   );
@@ -300,13 +315,29 @@ export default function Panel({
     }
   }, [chit, w, h, setLayout, scale, playerId]);
 
+  // we are just given a root chit
+  let renderHiddenRootChit = false;
+  if (!Array.isArray(chit) && chit instanceof RootChit) {
+    // if we are showing the root chit, no reason to render a fake hidden chit
+    if (layout.length === 1 && layout[0].chit === chit) {
+      renderHiddenRootChit = false;
+    } else {
+      renderHiddenRootChit = true;
+    }
+  }
+
   if (layout.length > 1) {
     return (
       <>
         {layout.map((cell) => (
           <Panel key={cell.id} chit={cell.chit} x={x + cell.x} y={y + cell.y} w={cell.w} h={cell.h} />
         ))}
-        {!Array.isArray(chit) && <SinglePanel chit={chit} x={0} y={0} w={200} h={200} />}
+
+        {renderHiddenRootChit && (
+          <Box sx={{ display: "none" }}>
+            <SinglePanel paused={true} chit={chit} x={0} y={0} w={1} h={1} />
+          </Box>
+        )}
       </>
     );
   }

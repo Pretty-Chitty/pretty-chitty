@@ -457,4 +457,11 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   public get cameraZoom() {
     return this.cameraWrapper.zoom;
   }
+
+  // override this stuff - we are never going to a new viewer
+  protected override moveToNewViewer(): void {}
+  protected override detach() {}
+  protected override shouldMoveToNewViewer(): boolean {
+    return false;
+  }
 }

@@ -372,7 +372,7 @@ export class ChitRenderInstance {
     }
   }
 
-  private shouldMoveToNewViewer() {
+  protected shouldMoveToNewViewer() {
     if (this.chit.renderInstance !== this) {
       return true;
     }
@@ -498,7 +498,7 @@ export class ChitRenderInstance {
     }
   }
 
-  private detach() {
+  protected detach() {
     if (this.chit.renderInstance === this) {
       this.log("detaching");
       this.chit.renderInstance = undefined;
