@@ -8,7 +8,7 @@ export type PanelLayoutCell = {
 
 export type PanelLayoutRow = {
   height: number;
-  contents: Chit | Chit[] | PanelLayoutCell[];
+  contents: PanelLayout;
 };
 
 export type PanelLayout = Chit | Chit[] | PanelLayoutCell[] | PanelLayoutRow[];

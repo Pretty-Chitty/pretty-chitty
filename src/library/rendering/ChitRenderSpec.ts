@@ -133,12 +133,15 @@ export class ChitRenderSpec {
     minimumToRender = 2,
     dpi: number = 100,
     position: "top" | "left" | "right" | "bottom" = "bottom",
+    margin: number = 0,
+    formatter: (value: number) => string = (value) => value.toString(),
   ) {
     if (ordered.length >= minimumToRender) {
       let offsetY = 0,
         offsetX = 0,
         itemWidth = 0.0001,
         itemHeight = 0.0001;
+      const label = formatter(ordered.length);
       const firstItem = ordered.get(0) as Chit;
       if (firstItem) {
         const fakeRenderSpec = new ChitRenderSpec(firstItem);
@@ -156,13 +159,16 @@ export class ChitRenderSpec {
       }
 
       if (!(canvas instanceof ParameterizedCanvas)) {
-        const w = ordered.length.toString().length * canvas.fontSize * dpi;
+        const w = label.length * canvas.fontSize * dpi;
         const h = canvas.fontSize * dpi;
 
-        canvas = new SplayCounter(Math.round(w), Math.round(h), canvas, dpi, ordered.length);
+        const c = new SplayCounter(Math.round(w), Math.round(h), canvas, dpi, label);
+        c.label = label;
+        canvas = c;
+      } else {
+        canvas.value = ordered.length;
       }
 
-      canvas.value = ordered.length;
       const w = canvas.width / dpi,
         h = canvas.height / dpi;
 
@@ -184,16 +190,16 @@ export class ChitRenderSpec {
 
       switch (position) {
         case "bottom":
-          offsetY -= h / 2;
+          offsetY -= h / 2 - margin;
           break;
         case "top":
-          offsetY += h / 2;
+          offsetY += h / 2 + margin;
           break;
         case "left":
-          offsetX -= w / 2;
+          offsetX -= w / 2 - margin;
           break;
         case "right":
-          offsetX += w / 2;
+          offsetX += w / 2 + margin;
           break;
       }
 

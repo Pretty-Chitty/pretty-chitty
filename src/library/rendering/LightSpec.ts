@@ -15,6 +15,7 @@ export class LightSpec {
   public shadowOpacity = 0.3;
   public shadowColor = 0x000000;
 
+  public shadowZDepth = 0.001;
   public lights: Light[] = [];
 
   // friendly default

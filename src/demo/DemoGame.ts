@@ -37,8 +37,6 @@ theme.dialogBackgroundColor = "#ef8354cc";
 theme.dialogForegroundColor = "#000000ee";
 
 export class DemoGame implements Game<MyPlayer, Root> {
-  galleryItemWidth = 300;
-  galleryItemSpacing = 20;
   name = "Demo Game";
 
   showGrid = true;

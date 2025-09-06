@@ -356,17 +356,17 @@ export class CameraWrapperPerspective {
 
       // After convergence compute final padded half-sizes (approx using center depth)
       // Debug: report final solver state
-      try {
-        // eslint-disable-next-line no-console
-        console.debug("[CameraDebug] final", {
-          distance,
-          centerShift: { x: centerShiftX, y: centerShiftY },
-          viewport: { width: this.width, height: this.height },
-          paddingPx: { left: padLeftPx, right: padRightPx, top: padTopPx, bottom: padBottomPx },
-        });
-      } catch (e) {
-        /* swallow debug errors */
-      }
+      // try {
+      //   // eslint-disable-next-line no-console
+      //   console.debug("[CameraDebug] final", {
+      //     distance,
+      //     centerShift: { x: centerShiftX, y: centerShiftY },
+      //     viewport: { width: this.width, height: this.height },
+      //     paddingPx: { left: padLeftPx, right: padRightPx, top: padTopPx, bottom: padBottomPx },
+      //   });
+      // } catch (e) {
+      //   /* swallow debug errors */
+      // }
 
       const visibleWorldPerPixelX = (2 * xTan * Math.max(0.0001, distance)) / this.width;
       const visibleWorldPerPixelY = (2 * yTan * Math.max(0.0001, distance)) / this.height;
@@ -438,24 +438,24 @@ export class CameraWrapperPerspective {
       this.camera.position.z = distance * cosH * cosV;
       this.camera.lookAt(adjustedCenterX, adjustedCenterY, 0);
 
-      // Debug: camera state to help diagnose black frames / clipping
-      try {
-        // eslint-disable-next-line no-console
-        console.debug("[CameraDebug] cameraState", {
-          pos: this.camera.position.toArray(),
-          lookAt: [adjustedCenterX, adjustedCenterY, 0],
-          near: this.camera.near,
-          far: this.camera.far,
-          distance,
-          camZ,
-          rotation: {
-            horizontalRadians: this.cameraSpec.horizontalRadiansRotation,
-            verticalRadians: this.cameraSpec.verticalRadiansRotation,
-          },
-        });
-      } catch (e) {
-        /* swallow debug errors */
-      }
+      // // Debug: camera state to help diagnose black frames / clipping
+      // try {
+      //   // eslint-disable-next-line no-console
+      //   console.debug("[CameraDebug] cameraState", {
+      //     pos: this.camera.position.toArray(),
+      //     lookAt: [adjustedCenterX, adjustedCenterY, 0],
+      //     near: this.camera.near,
+      //     far: this.camera.far,
+      //     distance,
+      //     camZ,
+      //     rotation: {
+      //       horizontalRadians: this.cameraSpec.horizontalRadiansRotation,
+      //       verticalRadians: this.cameraSpec.verticalRadiansRotation,
+      //     },
+      //   });
+      // } catch (e) {
+      //   /* swallow debug errors */
+      // }
     }
 
     if (this.current.z) {

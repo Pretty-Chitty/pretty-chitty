@@ -70,8 +70,9 @@ export function GalleryDisplay() {
             }}
             items={items ?? []}
             tweenDuration={DELAY * animationSpeedMultiplier * 0.8}
-            galleryItemWidth={game.galleryItemWidth}
-            itemSpacing={game.galleryItemSpacing}
+            galleryItemWidth={theme.galleryItemWidth}
+            galleryItemHeight={theme.galleryItemHeight}
+            itemSpacing={theme.galleryItemSpacing}
             w={width}
             h={height}
           />

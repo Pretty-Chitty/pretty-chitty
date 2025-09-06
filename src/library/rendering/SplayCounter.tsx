@@ -11,18 +11,18 @@ export type SplayCounterOptions = {
 };
 
 export class SplayCounter extends ParameterizedCanvas {
+  public value: number = 0;
   constructor(
     public width: number,
     public height: number,
     public textOptions: SplayCounterOptions,
     public dpi: number,
-    public value: number,
+    public label: string,
   ) {
     super();
   }
 
   protected render() {
-    const s = this.value.toString();
     return (
       <Text
         font={`${this.textOptions.fontSize * this.dpi}px ${this.textOptions.fontFamily ?? "sans-serif"}`}
@@ -30,7 +30,7 @@ export class SplayCounter extends ParameterizedCanvas {
         shadowColor={this.textOptions.shadow}
         shadowBlur={this.textOptions.fontSize * 0.1 * this.dpi}
       >
-        {s}
+        {this.label}
       </Text>
     );
   }

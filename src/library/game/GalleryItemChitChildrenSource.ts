@@ -16,7 +16,9 @@ export class GalleryItemChitChildrenSource implements GalleryItemSource {
   }
 
   get items(): GalleryItem[] {
-    return chitsToGalleryItems(this.backingObject.orderedChildren.copy());
+    const children = this.backingObject.children.concat();
+    children.sort((a, b) => a.createdOrder - b.createdOrder);
+    return chitsToGalleryItems(children);
   }
 
   private cbs: (() => void)[] = [];

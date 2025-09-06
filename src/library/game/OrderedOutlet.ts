@@ -26,6 +26,10 @@ export class OrderedOutlet<C extends Chit> {
     this.chits = chits;
   }
 
+  public last(): C | undefined {
+    return this.chits[this.chits.length - 1];
+  }
+
   public add(c: C) {
     if (this.parent?.isDeserializing) {
       return;
@@ -54,7 +58,7 @@ export class OrderedOutlet<C extends Chit> {
   //   return () => {};
   // }
 
-  public copy():C[] {
+  public copy(): C[] {
     return this.chits.concat();
   }
 

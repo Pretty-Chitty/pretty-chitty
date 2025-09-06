@@ -11,6 +11,7 @@ import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
 import useLocalStorageState from "use-local-storage-state";
 import { useTimeState } from "../hooks/useTimeController";
 import useSize from "@react-hook/size";
+import { PlayerProvider } from "../hooks/usePlayer";
 
 export interface IChitLibrary {
   [key: string]: new () => Chit;
@@ -21,7 +22,9 @@ function ResizingViewer({ wireframes, chit }: { wireframes: boolean; chit: Chit 
   const [width, height] = useSize(ref);
   return (
     <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0, overflow: "hidden" }} ref={ref}>
-      <Viewer w={width} h={height} wireframes={wireframes} chit={chit} />
+      <PlayerProvider playerId="abc">
+        <Viewer w={width} h={height} wireframes={wireframes} chit={chit} />
+      </PlayerProvider>
     </Box>
   );
 }

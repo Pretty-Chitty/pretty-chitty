@@ -31,9 +31,6 @@ export interface Game<P extends PlayerChit, R extends RootChit<P>> {
   get canvasLibrary(): ICanvasLibrary;
   get buttonLibrary(): IButtonLibrary;
 
-  get galleryItemWidth(): number;
-  get galleryItemSpacing(): number;
-
   readonly showGrid?: boolean;
 
   // validateConfiguration(): boolean;

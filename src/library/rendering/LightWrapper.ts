@@ -36,6 +36,7 @@ export class LightWrapper {
 
   setLightSpec(lightSpec?: LightSpec): void {
     this.lightSpec = lightSpec ?? new LightSpec();
+    this.shadowMesh.position.z = this.lightSpec.shadowZDepth;
     this.adjust(this.bbox);
   }
 

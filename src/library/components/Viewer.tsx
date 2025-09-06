@@ -210,7 +210,7 @@ export default function Viewer({
       });
       hammer.on("doubletap", (ev) => {
         const pos = fixPosition(ev);
-        chitRenderInstance.handleZoom(pos.x, pos.y, chitRenderInstance.cameraZoom === 1 ? 20 : -20, true);
+        chitRenderInstance.handleZoom(pos.x, pos.y, chitRenderInstance.cameraZoom <= 1.1 ? 20 : -20, true);
       });
 
       hammer.on("pinch", (ev) => {
@@ -240,7 +240,8 @@ export default function Viewer({
           dy = ev.deltaY - lastDeltaY;
 
         if (panCallback) {
-          const neededVelocity = chitRenderInstance.cameraZoom === 1 ? 0.3 : 1.5;
+          const isMouse = ev.pointerType === "mouse";
+          const neededVelocity = chitRenderInstance.cameraZoom <= 1.1 ? 0.3 : isMouse ? 7.5 : 2.5;
           if (Math.abs(ev.velocityX) > neededVelocity && ev.distance > 20 && Math.abs(ev.velocityY) < 0.2) {
             const direction = ev.velocityX > 0 ? "left" : "right";
             panCallback(direction);

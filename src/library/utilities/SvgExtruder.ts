@@ -1,7 +1,7 @@
-// Install: npm i three
 import * as THREE from "three";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import QuickLRU from "quick-lru";
 
 export interface ExtrudeFromSVGOptions {
   depth?: number;
@@ -15,6 +15,47 @@ export interface ExtrudeFromSVGOptions {
   center?: boolean;
   zUp?: boolean;
   filledPathsOnly?: boolean;
+
+  /** Pre-extrude SVG simplification tolerance (in SVG units). 0 disables. */
+  svgSimplifyTolerance?: number;
+  /** Subdivision per curve before simplifying (baseline polyline density). */
+  svgCurveDivisionsPreSimplify?: number;
+}
+
+/** --- NEW: module-level LRU cache (stores BufferGeometry) --- */
+const geomCache = new QuickLRU<string, THREE.BufferGeometry>({ maxSize: 100 });
+
+/** Stable stringify limited to our known option keys (order-insensitive). */
+function stableOptionsKey(
+  opts: Required<
+    Pick<
+      ExtrudeFromSVGOptions,
+      | "depth"
+      | "curveSegments"
+      | "bevelEnabled"
+      | "bevelThickness"
+      | "bevelSize"
+      | "bevelOffset"
+      | "bevelSegments"
+      | "scale"
+      | "center"
+      | "zUp"
+      | "filledPathsOnly"
+      | "svgSimplifyTolerance"
+      | "svgCurveDivisionsPreSimplify"
+    >
+  >,
+): string {
+  const entries = Object.entries(opts).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return entries.map(([k, v]) => `${k}:${typeof v === "number" ? v : v ? 1 : 0}`).join("|");
+}
+
+/** Tiny non-crypto hash for cache keys (djb2). */
+function hashString(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+  // force uint32 and base36 to keep key short
+  return (h >>> 0).toString(36);
 }
 
 export function extrudeSVGToGeometry(
@@ -31,6 +72,8 @@ export function extrudeSVGToGeometry(
     center = true,
     zUp = false,
     filledPathsOnly = true,
+    svgSimplifyTolerance = 0,
+    svgCurveDivisionsPreSimplify = 24,
   }: ExtrudeFromSVGOptions = {},
 ): THREE.BufferGeometry {
   // --- helpers ---
@@ -68,13 +111,10 @@ export function extrudeSVGToGeometry(
     geometry.attributes.uv.needsUpdate = true;
   };
 
-  // Tag groups using the KNOWN extrude axis: local Z
-  // Do this BEFORE any "zUp" rotation so Z really is the thickness axis.
   const tagGroupsFrontBackSides_Z = (geometry: THREE.BufferGeometry, eps = 1e-9): void => {
     const pos = geometry.getAttribute("position") as THREE.BufferAttribute;
-    const index = geometry.getIndex(); // may be null
+    const index = geometry.getIndex();
     geometry.clearGroups();
-
     const readZ = (vi: number) => pos.getZ(vi);
 
     if (index) {
@@ -87,14 +127,12 @@ export function extrudeSVGToGeometry(
           zc = readZ(c);
         const zMin = Math.min(za, zb, zc);
         const zMax = Math.max(za, zb, zc);
-
         let matIndex: number;
         if (Math.abs(zMax - zMin) <= eps) {
-          // cap triangle → decide front/back by sign of Z (front at larger Z)
           const zAvg = (za + zb + zc) / 3;
-          matIndex = zAvg >= 0 ? 0 : 1; // 0 = front cap (z ≈ +depth), 1 = back cap (z ≈ 0)
+          matIndex = zAvg >= 0 ? 0 : 1; // 0 front, 1 back
         } else {
-          matIndex = 2; // side wall
+          matIndex = 2; // sides
         }
         geometry.addGroup(i, 3, matIndex);
       }
@@ -105,7 +143,6 @@ export function extrudeSVGToGeometry(
           zc = readZ(i + 2);
         const zMin = Math.min(za, zb, zc);
         const zMax = Math.max(za, zb, zc);
-
         let matIndex: number;
         if (Math.abs(zMax - zMin) <= eps) {
           const zAvg = (za + zb + zc) / 3;
@@ -119,9 +156,115 @@ export function extrudeSVGToGeometry(
     (geometry as any).groupsNeedUpdate = true;
   };
 
-  // --- build ---
+  // --- SVG pre-simplification utilities (RDP) ---
+  const rdp = (pts: THREE.Vector2[], eps: number): THREE.Vector2[] => {
+    if (pts.length <= 2) return pts.slice();
+    const dist = (p: THREE.Vector2, a: THREE.Vector2, b: THREE.Vector2) => {
+      const abx = b.x - a.x,
+        aby = b.y - a.y;
+      const apx = p.x - a.x,
+        apy = p.y - a.y;
+      const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / (abx * abx + aby * aby || 1)));
+      const qx = a.x + t * abx,
+        qy = a.y + t * aby;
+      return Math.hypot(p.x - qx, p.y - qy);
+    };
+    let maxD = -1,
+      idx = -1;
+    const a = pts[0],
+      b = pts[pts.length - 1];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const d = dist(pts[i], a, b);
+      if (d > maxD) {
+        maxD = d;
+        idx = i;
+      }
+    }
+    if (maxD > eps) {
+      const left = rdp(pts.slice(0, idx + 1), eps);
+      const right = rdp(pts.slice(idx), eps);
+      return left.slice(0, -1).concat(right);
+    } else {
+      return [a, b];
+    }
+  };
+
+  const pathIsClosed = (p: THREE.Path, tol = 1e-6): boolean => {
+    const pts = p.getPoints(1);
+    if (pts.length < 2) return false;
+    const first = pts[0],
+      last = pts[pts.length - 1];
+    return Math.hypot(first.x - last.x, first.y - last.y) <= tol;
+  };
+
+  const simplifyShapePath = (sp: THREE.ShapePath, eps: number, divisionsPerCurve: number): THREE.ShapePath => {
+    const out = new THREE.ShapePath();
+    (out as any).color = (sp as any).color;
+    (out as any).userData = (sp as any).userData;
+
+    for (const sub of sp.subPaths) {
+      const divisions = Math.max(1, divisionsPerCurve);
+      const dense = sub.getPoints(divisions * Math.max(1, sub.curves.length));
+      if (dense.length < 2) continue;
+
+      const closed = pathIsClosed(sub);
+      let pts = dense;
+
+      if (closed) {
+        const first = dense[0],
+          last = dense[dense.length - 1];
+        if (first.distanceToSquared(last) > 1e-12) pts = dense.concat([dense[0].clone()]);
+      }
+      let simp = rdp(pts, eps);
+
+      if (closed) {
+        if (simp.length > 1 && simp[0].distanceToSquared(simp[simp.length - 1]) < 1e-12) {
+          simp = simp.slice(0, -1);
+        }
+        if (simp.length < 3) continue;
+      } else if (simp.length < 2) {
+        continue;
+      }
+
+      const np = new THREE.Path();
+      np.moveTo(simp[0].x, simp[0].y);
+      for (let i = 1; i < simp.length; i++) np.lineTo(simp[i].x, simp[i].y);
+      np.autoClose = closed;
+      out.subPaths.push(np);
+    }
+    return out;
+  };
+
+  // --- decode (so equivalent data-URLs normalize to same cache key) ---
+  const decodedSvg = decodeSvgDataUrl(svgString);
+
+  // --- NEW: build a cache key from decoded SVG + normalized options ---
+  const keyOptions = stableOptionsKey({
+    depth,
+    curveSegments,
+    bevelEnabled,
+    bevelThickness,
+    bevelSize,
+    bevelOffset,
+    bevelSegments,
+    scale,
+    center,
+    zUp,
+    filledPathsOnly,
+    svgSimplifyTolerance,
+    svgCurveDivisionsPreSimplify,
+  });
+  const cacheKey = `v1|${hashString(decodedSvg)}|${keyOptions}`;
+
+  // --- NEW: fast path from cache (return a clone to keep callers isolated) ---
+  const cached = geomCache.get(cacheKey);
+  if (cached) {
+    return cached.clone();
+  }
+
+  // --- parse + (optional) pre-simplify SVG paths ---
   const loader = new SVGLoader();
-  const data = loader.parse(decodeSvgDataUrl(svgString));
+  const data = loader.parse(decodedSvg);
 
   const extrudeSettings: THREE.ExtrudeGeometryOptions = {
     depth,
@@ -139,13 +282,15 @@ export function extrudeSVGToGeometry(
     const style = path.userData?.style ?? {};
     const hasFill = style.fill !== undefined && style.fill !== null && style.fill !== "none";
     if (!filledPathsOnly || hasFill) {
-      const shapes = SVGLoader.createShapes(path);
+      const pathForShapes =
+        svgSimplifyTolerance > 0 ? simplifyShapePath(path, svgSimplifyTolerance, svgCurveDivisionsPreSimplify) : path;
+
+      const shapes = SVGLoader.createShapes(pathForShapes);
+
       for (const shape of shapes) {
         const g = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-        // Keep scales positive; fix SVG Y-down by rotating π around X.
-        // In this local space, Z is the thickness axis (0..depth).
         g.scale(scale, scale, scale);
-        g.rotateX(Math.PI);
+        g.rotateX(Math.PI); // fix SVG Y-down; local Z is thickness axis
         parts.push(g);
       }
     }
@@ -157,26 +302,19 @@ export function extrudeSVGToGeometry(
 
   const geometry = mergeGeometries(parts, true);
 
-  // Centering doesn't affect group classification
   if (center) {
     geometry.computeBoundingBox();
     const bb = geometry.boundingBox!;
     geometry.translate(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + bb.max.y) / 2, -(bb.min.z + bb.max.z) / 2);
   }
 
-  // Compute normals BEFORE tagging (not required, but nice to have)
   geometry.computeVertexNormals();
-
-  // Tag groups while Z is still the thickness axis
   tagGroupsFrontBackSides_Z(geometry);
-
-  // UVs for caps (planar XY). Do after centering/tagging—order doesn’t matter here.
   applyPlanarUV_XY(geometry);
+  if (zUp) geometry.rotateX(Math.PI / 2);
 
-  // If desired, rotate to Z-up for your scene *after* grouping; groups remain valid.
-  if (zUp) {
-    geometry.rotateX(Math.PI / 2);
-  }
+  // --- NEW: store in cache (store a clone to protect cache entry) ---
+  geomCache.set(cacheKey, geometry.clone());
 
   return geometry;
 }

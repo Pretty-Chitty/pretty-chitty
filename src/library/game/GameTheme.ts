@@ -55,6 +55,10 @@ export class GameTheme {
   public topBarDropShadowColor = "rgba(0,0,0,0.7)";
   public topBarPlayerDropShadowColor = "rgba(0,0,0,0.2)";
 
+  public galleryItemWidth = 150;
+  public galleryItemHeight: number | undefined;
+  public galleryItemSpacing = 20;
+
   static withDefaults(primaryColor: string, highlight: string, textColor: string = "#ffffff") {
     const result = new GameTheme();
     result.chitInnerHighlightColor = highlight;
