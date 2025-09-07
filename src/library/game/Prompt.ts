@@ -4,7 +4,7 @@ import { Confirm, GameButton } from "./GameButton";
 import { ButtonPick, ChitPick, Pick } from "./Pick";
 import { MismatchError, Turn } from "./Turn";
 
-type PromptType = "SelectPrompt" | "ConfirmPrompt" | "PickPrompt";
+type PromptType = "SelectPrompt" | "ConfirmPrompt" | "PickPrompt" | "NoValidMovesPrompt";
 
 export type PromptSerialization = {
   type: PromptType;
@@ -105,6 +105,10 @@ export abstract class Prompt {
         p = new PickPrompt();
         break;
       }
+      case "NoValidMovesPrompt": {
+        p = new NoValidMovesPrompt();
+        break;
+      }
     }
 
     if (p) {
@@ -116,6 +120,46 @@ export abstract class Prompt {
 
     throw new Error(`Prompt type ${prompt.type} not known`);
   }
+}
+
+export class NoValidMovesPrompt extends Prompt {
+  type: PromptType = "NoValidMovesPrompt";
+
+  _message = "No valid moves available";
+  _help = "Undo and try a different action";
+
+  get message() {
+    return this._message;
+  }
+  set message(newMessage: string) {
+    this._message = newMessage;
+  }
+  get help() {
+    return this._help;
+  }
+  set help(newHelp: string) {
+    this._help = newHelp;
+  }
+
+  serializeDetails(): any {
+    return {
+      message: this._message,
+      help: this._help,
+    };
+  }
+
+  deserializeDetails(state: any): void {
+    this._message = state.message;
+    this._help = state.help;
+  }
+
+  resolveDetails() {
+    throw new Error("NoValidMovesPrompt cannot be resolved");
+  }
+
+  stageIn(): void {}
+
+  stageOut(): void {}
 }
 
 export class SelectPrompt extends Prompt {

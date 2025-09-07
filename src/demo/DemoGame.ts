@@ -121,12 +121,14 @@ export class DemoGame implements Game<MyPlayer, Root> {
 
       await turn.pick(
         Chit.pick([pieces[8], pieces[7]], async (c) => {
-          const target = players[Math.floor((await turn.rng()) * players.length)];
+          const target = players[0];
           target.add(c);
         })
           .toggleButton(new HandButton())
           .context(pieces[7]),
       );
+
+      await turn.noValidMoves("You did thing", "bad thing");
     });
 
     pieces[3].removeFromParent();

@@ -1,7 +1,7 @@
 import nextTick from "next-tick";
 import { Chit } from "./Chit";
 import { Match } from "./Match";
-import { PickPrompt, Prompt, SelectPrompt } from "./Prompt";
+import { NoValidMovesPrompt, PickPrompt, Prompt, SelectPrompt } from "./Prompt";
 import { PromptResponse, RngResponse, TurnState } from "./TurnState";
 import { ButtonPick, Pick } from "./Pick";
 import { Confirm, GameButton } from "./GameButton";
@@ -386,6 +386,26 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     }
 
     return prompt.selectedChit;
+  }
+
+  /**
+   * If a player has gotten themselves into a corner - i.e. no valid moves - this prompt will
+   * simply inform them of that and allow them to undo.
+   * @param message
+   * @param help
+   */
+  public async noValidMoves(message?: string, help?: string) {
+    const prompt = new NoValidMovesPrompt();
+    if (message) {
+      prompt.message = message;
+    }
+    if (help) {
+      prompt.help = help;
+    }
+
+    this.prepareForPrompt(prompt);
+
+    await this.waitForPromptResolution(prompt);
   }
 
   /**

@@ -190,13 +190,13 @@ export class ChitRenderSpec {
 
       switch (position) {
         case "bottom":
-          offsetY -= h / 2 - margin;
+          offsetY -= h / 2 + margin;
           break;
         case "top":
           offsetY += h / 2 + margin;
           break;
         case "left":
-          offsetX -= w / 2 - margin;
+          offsetX -= w / 2 + margin;
           break;
         case "right":
           offsetX += w / 2 + margin;
