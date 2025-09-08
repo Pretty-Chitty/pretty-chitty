@@ -259,7 +259,7 @@ export function extrudeSVGToGeometry(
   // --- NEW: fast path from cache (return a clone to keep callers isolated) ---
   const cached = geomCache.get(cacheKey);
   if (cached) {
-    return cached.clone();
+    return cached;
   }
 
   // --- parse + (optional) pre-simplify SVG paths ---
@@ -313,8 +313,10 @@ export function extrudeSVGToGeometry(
   applyPlanarUV_XY(geometry);
   if (zUp) geometry.rotateX(Math.PI / 2);
 
+  console.log("Triangle count:", geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3);
+
   // --- NEW: store in cache (store a clone to protect cache entry) ---
-  geomCache.set(cacheKey, geometry.clone());
+  geomCache.set(cacheKey, geometry);
 
   return geometry;
 }

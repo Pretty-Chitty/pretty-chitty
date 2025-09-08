@@ -152,6 +152,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
       this._height = h;
       this.cameraWrapper.setSize(w, h);
       this.lightWrapper.setSize(w, h);
+      this.dirty = true;
     }
   }
 
@@ -299,6 +300,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   public setPaddingTop(paddingTop: number) {
     this.paddingTop = paddingTop;
     this.refresh();
+    this.dirty = true;
   }
 
   public get tweenGroup(): TweenGroup | undefined {

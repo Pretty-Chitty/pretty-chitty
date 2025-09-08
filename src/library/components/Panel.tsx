@@ -185,6 +185,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   const isAnimating = Math.max(leavingIndex, enteringIndex, pendingIndex) >= 0;
   useEffect(() => {
     timeState.setAnimationState(key, isAnimating);
+    return () => timeState.setAnimationState(key, false);
   }, [key, isAnimating, timeState]);
 
   const panCallback = useCallback(

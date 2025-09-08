@@ -141,7 +141,7 @@ export default function Viewer({
             renderer.render(scene, chitRenderInstance.camera);
             context.drawImage(renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
             chitRenderInstance.dirty = false;
-            timeState.setAnimationState(id, true);
+            timeState.setAnimationState(id, !paused);
           } else {
             timeState.setAnimationState(id, false);
           }

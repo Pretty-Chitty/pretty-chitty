@@ -85,6 +85,11 @@ export class ChitRenderInstance {
     this.id = `cri${++ChitRenderInstance.ID_COUNTER}`;
     this.group.visible = false;
 
+    let currentPosition: Vector2 | undefined;
+    if (chit.renderInstance) {
+      currentPosition = chit.screenCoordinates();
+    }
+
     this.log("Render instance on owning chit is attached");
     chit.renderInstance = this;
 
@@ -115,7 +120,7 @@ export class ChitRenderInstance {
     this.handleHierarchy();
 
     // start it from where it should be - be it a spark chit or a bag or an old parent chit
-    const positionEntranceChit = chit.lastParent ?? chit.parentFallback;
+    const positionEntranceChit = chit.lastParent ?? chit.parentFallback ?? currentPosition;
     if (this.rootRenderInstance) {
       const oldParent = this.group.parent;
       const intersection = this.attemptToFindPlaneZ0(this.rootRenderInstance, positionEntranceChit);
@@ -456,12 +461,16 @@ export class ChitRenderInstance {
     return screenCoords;
   }
 
-  protected attemptToFindPlaneZ0(rootRenderInstance: RootChitRenderInstance, chit?: Chit): Vector3 | undefined {
-    if (rootRenderInstance === chit?.renderInstance?.rootRenderInstance) {
+  protected attemptToFindPlaneZ0(
+    rootRenderInstance: RootChitRenderInstance,
+    chit?: Chit | Vector2,
+  ): Vector3 | undefined {
+    if (chit instanceof Chit && rootRenderInstance === chit?.renderInstance?.rootRenderInstance) {
       return chit.renderInstance.group.getWorldPosition(new Vector3());
     }
 
-    const screenCoordsOfNewLocation = chit ? chit.screenCoordinates() : new Vector2(0, 0);
+    const screenCoordsOfNewLocation =
+      chit instanceof Vector2 ? chit : chit ? chit.screenCoordinates() : new Vector2(0, 0);
     if (rootRenderInstance && rootRenderInstance.rootGroup && screenCoordsOfNewLocation) {
       // find the current screen coordinates of its new home and map it to "camera space"
       const cameraSpace = rootRenderInstance.convertScreenSpaceToCameraSpace(
