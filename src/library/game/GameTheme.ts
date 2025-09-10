@@ -59,6 +59,10 @@ export class GameTheme {
   public galleryItemHeight: number | undefined;
   public galleryItemSpacing = 20;
 
+  public gallerySummaryBackgroundColor = "#000000";
+  public gallerySummaryBackgroundOpacity = 0.7;
+  public galleryBlur = 5;
+
   static withDefaults(primaryColor: string, highlight: string, textColor: string = "#ffffff") {
     const result = new GameTheme();
     result.chitInnerHighlightColor = highlight;

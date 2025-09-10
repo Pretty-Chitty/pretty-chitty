@@ -1,7 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useGame } from "../hooks/useGame";
 import { Box, CssBaseline, Stack, ThemeProvider, createTheme } from "@mui/material";
-import { TimeControllerProvider, useClientStatus, useTimeController } from "../hooks/useTimeController";
+import {
+  TimeControllerProvider,
+  useAnimationSpeedMultiplier,
+  useClientStatus,
+  useTimeController,
+} from "../hooks/useTimeController";
 import BottomBar from "./BottomBar";
 import { GameThemeProvider, useGameTheme } from "../hooks/useGameTheme";
 import { Game } from "../game/Game";
@@ -14,7 +19,7 @@ import TopBar from "./TopBar";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { MatchEndDisplay } from "./MatchEndDisplay";
 import { PanelScaleProvider } from "../hooks/usePanelScale";
-import { GalleryProvider } from "../hooks/useGalleryState";
+import { GalleryProvider, useGalleryState } from "../hooks/useGalleryState";
 import { GalleryDisplay } from "./GalleryDisplay";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -56,6 +61,41 @@ function PanelContents({ rootChit }: { rootChit: Chit }) {
   );
 }
 
+function BlurringGalleryWrapper({ children }: { children: React.ReactNode }) {
+  const galleryState = useGalleryState();
+  const [isShowingGallery, setIsShowingGallery] = useState(false);
+  const [source] = useEventChannelState(galleryState.source);
+  const theme = useGameTheme();
+  const animationSpeedMultiplier = useAnimationSpeedMultiplier();
+
+  useEffect(() => {
+    if (source) {
+      setIsShowingGallery(source.items.length > 0);
+      return source.registerUpdateHandler(() => {
+        setIsShowingGallery(source.items.length > 0);
+      });
+    } else {
+      setIsShowingGallery(false);
+    }
+  }, [source, setIsShowingGallery]);
+
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        flex: 1,
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        filter: isShowingGallery ? `blur(${theme.galleryBlur}px)` : "none",
+        transition: `filter ${0.3 * animationSpeedMultiplier}s`,
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
 function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
   const timeController = useTimeController();
   const clientStatus = useClientStatus();
@@ -89,7 +129,9 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
         <MatchEndDisplay />
         <GalleryDisplay />
 
-        {!errorMessage && rootChit && <PanelContents rootChit={rootChit} />}
+        <BlurringGalleryWrapper>
+          {!errorMessage && rootChit && <PanelContents rootChit={rootChit} />}
+        </BlurringGalleryWrapper>
         {errorMessage}
       </Box>
       <BottomBar />

@@ -19,7 +19,13 @@ import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 import { Easing, Tween } from "@tweenjs/tween.js";
 import { addWheelListener, removeWheelListener } from "wheel";
 import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
-import { IconMap, MarkdownCanvasOperation } from "../utilities/CanvasStack/CanvasOperations";
+import {
+  ColorCanvasOperation,
+  IconMap,
+  LayeredCanvasOperation,
+  MarkdownCanvasOperation,
+  PadCanvasOperation,
+} from "../utilities/CanvasStack/CanvasOperations";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { GameTheme } from "../game/GameTheme";
 import { RichTextRenderOptionsParameters } from "../utilities/CanvasStack/RichTextRenderer";
@@ -315,20 +321,31 @@ class GalleryController {
     }
     specs.fontSize *= window.devicePixelRatio;
 
-    const stack = new CanvasStack(
+    const pad = this.theme.spacing * window.devicePixelRatio;
+    const markdown = new MarkdownCanvasOperation(summary, item.item.summaryIconMap ?? {}, specs);
+    const ops = new LayeredCanvasOperation([
+      new ColorCanvasOperation(this.theme.gallerySummaryBackgroundColor, this.theme.gallerySummaryBackgroundOpacity),
+      new PadCanvasOperation({ top: pad, bottom: pad, left: pad, right: pad }, markdown),
+    ]);
+
+    const stack1 = new CanvasStack(this.itemWidth * window.devicePixelRatio, height * window.devicePixelRatio, ops);
+    stack1.render();
+    const stack2 = new CanvasStack(
       this.itemWidth * window.devicePixelRatio,
-      height * window.devicePixelRatio,
-      new MarkdownCanvasOperation(summary, item.item.summaryIconMap ?? {}, specs),
+      markdown.height + this.theme.spacing * 2 * window.devicePixelRatio,
+      ops,
     );
-    stack.render();
-    const material = stack.material;
+    stack2.render();
+
+    const material = stack2.material;
     material.transparent = true;
     material.depthWrite = true;
 
-    const face = new PlaneGeometry(this.itemWidth, height);
+    const finalHeight = stack2.height / window.devicePixelRatio;
+    const face = new PlaneGeometry(this.itemWidth, finalHeight);
     const m = new Mesh(face, material);
     m.renderOrder = 2;
-    m.position.set(0, -this.itemHeight * 0.5 - height / 2 - this.theme.spacing, 0);
+    m.position.set(0, -this.itemHeight * 0.5 - finalHeight / 2 - this.theme.spacing, 0);
 
     item.group.add(m);
   }

@@ -52,6 +52,7 @@ export class ColorCanvasOperation extends CanvasOperation {
     context.globalAlpha = this.opacity;
     context.fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
     context.fillStyle = "";
+    context.globalAlpha = 1;
   }
 }
 
@@ -180,6 +181,7 @@ export class MarkdownCanvasOperation extends CanvasOperation {
     super();
   }
 
+  public height = 0;
   override render(context: CanvasRenderingContext2D, bounds: RenderBounds, getImage: GetImage) {
     const iconMap: {
       [iconName: string]: { image: HTMLImageElement; x: number; y: number; width: number; height: number };
@@ -221,13 +223,14 @@ export class MarkdownCanvasOperation extends CanvasOperation {
       }
     });
 
-    new RichTextRenderer().render(context, this.text, {
+    const result = new RichTextRenderer().render(context, this.text, {
       maxWidth: bounds.w,
       x: bounds.x,
       y: bounds.y,
       ...this.params,
       iconMap,
     });
+    this.height = result.height;
   }
 }
 

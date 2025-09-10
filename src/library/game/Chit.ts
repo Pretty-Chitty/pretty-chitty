@@ -502,6 +502,7 @@ export class Chit extends ObjectWithProps {
               if (data[k].___orderedOutlet) {
                 throw new Error("Cannot mask ordered outlets");
               }
+              return true;
             })
             .forEach((key) => {
               delete data[key];

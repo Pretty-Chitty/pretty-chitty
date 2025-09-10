@@ -13,6 +13,7 @@ import { ZINDEX_PROMPT_CONTROLS } from "../utilities/zIndex";
 import { GameButton, ToggleGalleryButton } from "../game/GameButton";
 import { useGalleryState } from "../hooks/useGalleryState";
 import { ContextGalleryDisplay } from "./ContextGalleryDisplay";
+import { NoValidMovesPrompt } from "../game/Prompt";
 
 function GameButtonWrapper({ button }: { button: GameButton }) {
   const galleryState = useGalleryState();
@@ -55,6 +56,10 @@ export default function PromptControls() {
     if (!live) {
       setExpandedBecauseOfPrompt(false);
     } else if (prompt) {
+      if (prompt instanceof NoValidMovesPrompt) {
+        setShowHelp(true);
+      }
+
       setExpandedBecauseOfPrompt(true);
     } else {
       const to = setTimeout(() => setExpandedBecauseOfPrompt(false), promptSpec ? 4000 : 400);

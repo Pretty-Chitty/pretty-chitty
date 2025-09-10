@@ -501,6 +501,7 @@ export class RichTextRenderer {
     limit: number,
     hyphW: number,
   ): { first: string; rest: string; addHyphen: boolean } {
+    // Don't attempt if no space
     if (limit <= 0) return { first: "", rest: word, addHyphen: false };
 
     const fullW = this.measureText(ctx, word, styleKey, metrics);
@@ -508,25 +509,72 @@ export class RichTextRenderer {
       return { first: word, rest: "", addHyphen: false };
     }
 
-    // Binary search for largest prefix where prefix + "-" fits.
-    let lo = 1;
-    let hi = word.length - 1; // ensure at least 1 char remains for the rest
-    let best = 0;
+    // Never split within the first or last MIN_EDGE characters.
+    const MIN_EDGE = 3;
+    const n = word.length;
+    if (n <= MIN_EDGE * 2) {
+      // Word too short to hyphenate while respecting edge constraints.
+      return { first: "", rest: word, addHyphen: false };
+    }
 
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      const prefixW = this.measureText(ctx, word.slice(0, mid), styleKey, metrics);
+    const minFirst = MIN_EDGE;
+    const maxFirst = n - MIN_EDGE; // inclusive
+
+    // Prefer a near-50/50 split (balanced) subject to fitting in `limit`.
+    const mid = Math.floor(n / 2);
+
+    // Build candidate indices in increasing distance from mid, constrained to [minFirst, maxFirst].
+    const candidates: number[] = [];
+    for (let i = minFirst; i <= maxFirst; i++) candidates.push(i);
+    candidates.sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid));
+
+    for (const idx of candidates) {
+      const prefix = word.slice(0, idx);
+      const prefixW = this.measureText(ctx, prefix, styleKey, metrics);
       if (prefixW + hyphW <= limit) {
-        best = mid;
-        lo = mid + 1;
+        return { first: prefix, rest: word.slice(idx), addHyphen: true };
+      }
+    }
+
+    // If no balanced candidate fits, fallback to the largest prefix that fits within [minFirst, maxFirst].
+    let lo = minFirst;
+    let hi = maxFirst;
+    let best = 0;
+    while (lo <= hi) {
+      const midIdx = (lo + hi) >> 1;
+      const prefixW = this.measureText(ctx, word.slice(0, midIdx), styleKey, metrics);
+      if (prefixW + hyphW <= limit) {
+        best = midIdx;
+        lo = midIdx + 1;
       } else {
-        hi = mid - 1;
+        hi = midIdx - 1;
+      }
+    }
+
+    if (best > 0) {
+      return { first: word.slice(0, best), rest: word.slice(best), addHyphen: true };
+    }
+
+    // As a last resort, try splitting at any index (1..n-1) ignoring the MIN_EDGE constraint.
+    // This prevents infinite loops when a word cannot fit intact on a line but no balanced split was possible.
+    lo = 1;
+    hi = n - 1;
+    best = 0;
+    while (lo <= hi) {
+      const midIdx = (lo + hi) >> 1;
+      const prefixW = this.measureText(ctx, word.slice(0, midIdx), styleKey, metrics);
+      if (prefixW + hyphW <= limit) {
+        best = midIdx;
+        lo = midIdx + 1;
+      } else {
+        hi = midIdx - 1;
       }
     }
 
     if (best <= 0) {
       return { first: "", rest: word, addHyphen: false };
     }
+
     return { first: word.slice(0, best), rest: word.slice(best), addHyphen: true };
   }
 
@@ -574,10 +622,32 @@ export class RichTextRenderer {
       }
 
       // Try to fit with hyphen within the current limit.
-      let chunk = this.hyphenateChunk(ctx, remaining, styleKey, metrics, limit, hyphW);
+      const chunk = this.hyphenateChunk(ctx, remaining, styleKey, metrics, limit, hyphW);
 
-      // If nothing (not even "a-") fits in the remaining tail, start a fresh line and try again.
+      // If nothing (not even "a-") fits in the remaining tail, try to avoid infinite loops.
       if (!chunk.first) {
+        // If we're already on a fresh line (limit == maxWidth) and still nothing fits,
+        // force-placement of a single character so we always make progress.
+        // This is a last-resort fallback to prevent infinite loops when hyphenation
+        // can't produce any valid prefix for the current limit.
+        if (limit === maxWidth) {
+          const forcedChar = remaining.slice(0, 1);
+          const forcedW = this.measureText(ctx, forcedChar, styleKey, metrics);
+          line.segments.push({
+            kind: "text",
+            text: forcedChar,
+            width: forcedW,
+            style: { bold: run.bold, italic: run.italic },
+          });
+          cursorW += forcedW;
+          remaining = remaining.slice(1);
+          if (remaining.length > 0) {
+            pushLine();
+          }
+          continue;
+        }
+
+        // Otherwise move to a fresh line and try again.
         pushLine();
         continue;
       }
