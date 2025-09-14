@@ -72,6 +72,7 @@ type BuiltItem = {
   item: GalleryItem;
   group: Object3D;
   mesh: Object3D;
+  meshToShowOrHideIfCentered?: Object3D;
   center: Vector3;
   height: number;
   depth: number;
@@ -272,12 +273,23 @@ class GalleryController {
       group.position.x = largestX + Math.pow(overshot, 0.94);
       group.position.z = -overshot;
       group.rotation.x = -overshot / 3000 - this.offsetAngle;
+      if (item.meshToShowOrHideIfCentered) {
+        item.meshToShowOrHideIfCentered.position.x = overshot * 3;
+        item.meshToShowOrHideIfCentered.position.z = -overshot * 3;
+      }
     } else if (group.position.x < initialOffset) {
       const overshot = Math.abs(initialOffset - group.position.x);
       group.position.x = initialOffset - Math.pow(overshot, 0.94);
       group.position.z = -overshot;
       group.rotation.x = -overshot / 3000 - this.offsetAngle;
+      if (item.meshToShowOrHideIfCentered) {
+        item.meshToShowOrHideIfCentered.position.x = -overshot * 3;
+        item.meshToShowOrHideIfCentered.position.z = -overshot * 3;
+      }
     } else {
+      if (item.meshToShowOrHideIfCentered) {
+        item.meshToShowOrHideIfCentered.position.x = 0;
+      }
       group.position.z = 0;
       group.rotation.x = -this.offsetAngle;
     }
@@ -347,6 +359,7 @@ class GalleryController {
     m.renderOrder = 2;
     m.position.set(0, -this.itemHeight * 0.5 - finalHeight / 2 - this.theme.spacing, 0);
 
+    item.meshToShowOrHideIfCentered = m;
     item.group.add(m);
   }
 
