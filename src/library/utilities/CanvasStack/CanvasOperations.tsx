@@ -227,6 +227,7 @@ export class MarkdownCanvasOperation extends CanvasOperation {
       maxWidth: bounds.w,
       x: bounds.x,
       y: bounds.y,
+      height: bounds.h,
       ...this.params,
       iconMap,
     });

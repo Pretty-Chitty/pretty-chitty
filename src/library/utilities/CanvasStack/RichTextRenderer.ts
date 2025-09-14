@@ -1,5 +1,6 @@
 export type Align = "left" | "center" | "right";
 export type IconBaseline = "text" | "middle" | "bottom";
+export type VerticalAlign = "top" | "middle" | "bottom";
 
 /** A single sprite inside a larger sprite sheet image */
 export interface SpriteRef {
@@ -19,6 +20,7 @@ export type RichTextRenderOptionsParameters = {
   fontSize?: number;
   lineHeight?: number; // multiplier (e.g., 1.25)
   align?: Align;
+  verticalAlign?: VerticalAlign;
   color?: string;
   iconMap?: IconMap;
   iconBaseline?: IconBaseline;
@@ -29,6 +31,7 @@ export interface RenderOptions extends RichTextRenderOptionsParameters {
   x?: number;
   y?: number;
   maxWidth: number; // required
+  height?: number; // optional container height for vertical alignment
   debug?: boolean;
 }
 
@@ -73,10 +76,12 @@ export class RichTextRenderer {
       x = 0,
       y = 0,
       maxWidth,
+      height,
       fontFamily = "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
       fontSize = 16,
       lineHeight = 1.25,
       align = "left",
+      verticalAlign = "top",
       color = "#000",
       iconMap = {},
       iconBaseline = "text",
@@ -105,7 +110,15 @@ export class RichTextRenderer {
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = color;
 
-    let cursorY = y;
+    const totalHeight = lines.length * metrics.lineHeightPx;
+    // Compute initial Y based on vertical alignment if a container height was provided.
+    let startY = y;
+    if (verticalAlign === "middle" && typeof height === "number") {
+      startY = y + Math.round(Math.max(0, (height - totalHeight) / 2));
+    } else if (verticalAlign === "bottom" && typeof height === "number") {
+      startY = y + Math.round(Math.max(0, height - totalHeight));
+    }
+    let cursorY = startY;
     for (const line of lines) {
       let offsetX = 0;
       if (align === "center") offsetX = (maxWidth - line.width) / 2;
@@ -171,7 +184,7 @@ export class RichTextRenderer {
     return {
       height: lines.length * metrics.lineHeightPx,
       lines: lines.length,
-      lastBaselineY: y + (lines.length - 1) * metrics.lineHeightPx + metrics.fontSize,
+      lastBaselineY: startY + (lines.length - 1) * metrics.lineHeightPx + metrics.fontSize,
     };
   }
 
@@ -555,9 +568,9 @@ export class RichTextRenderer {
       return { first: word.slice(0, best), rest: word.slice(best), addHyphen: true };
     }
 
-    // As a last resort, try splitting at any index (1..n-1) ignoring the MIN_EDGE constraint.
+    // As a last resort, try splitting at an index >= 2 (avoid single-character prefixes).
     // This prevents infinite loops when a word cannot fit intact on a line but no balanced split was possible.
-    lo = 1;
+    lo = 2;
     hi = n - 1;
     best = 0;
     while (lo <= hi) {
@@ -631,16 +644,23 @@ export class RichTextRenderer {
         // This is a last-resort fallback to prevent infinite loops when hyphenation
         // can't produce any valid prefix for the current limit.
         if (limit === maxWidth) {
-          const forcedChar = remaining.slice(0, 1);
-          const forcedW = this.measureText(ctx, forcedChar, styleKey, metrics);
+          // Try to place two characters if possible to avoid single-letter line breaks like "A-\nstronomy".
+          const tryLen = Math.min(2, remaining.length);
+          let forced = remaining.slice(0, tryLen);
+          let forcedW = this.measureText(ctx, forced, styleKey, metrics);
+          // If two characters don't fit, fall back to a single character.
+          if (tryLen === 2 && forcedW + hyphW > limit) {
+            forced = remaining.slice(0, 1);
+            forcedW = this.measureText(ctx, forced, styleKey, metrics);
+          }
           line.segments.push({
             kind: "text",
-            text: forcedChar,
+            text: forced,
             width: forcedW,
             style: { bold: run.bold, italic: run.italic },
           });
           cursorW += forcedW;
-          remaining = remaining.slice(1);
+          remaining = remaining.slice(forced.length);
           if (remaining.length > 0) {
             pushLine();
           }
