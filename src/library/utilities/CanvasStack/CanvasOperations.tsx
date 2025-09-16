@@ -382,11 +382,11 @@ export class ImageCanvasOperation extends CanvasOperation {
 
     if (targetAspect > sourceAspect) {
       const newW = h * sourceAspect;
-      x += (w - newW) / 2;
+      x += Math.floor((w - newW) / 2);
       w = newW;
     } else {
       const newH = w / sourceAspect;
-      y += (h - newH) / 2;
+      y += Math.floor((h - newH) / 2);
       h = newH;
     }
 
@@ -400,7 +400,32 @@ export class ImageCanvasOperation extends CanvasOperation {
       const source = this.options.overlayColor
         ? imageColorOverlayer(sourceImage, this.options.overlayColor)
         : sourceImage;
-      context.drawImage(source, sx, sy, sw, sh, x, y, w, h);
+      // Round and clamp source rectangle to integer texel coordinates to avoid sampling
+      // pixels from neighboring sprites when the browser does linear filtering.
+      let sxi = Math.floor(sx);
+      let syi = Math.floor(sy);
+      let swi = Math.ceil(sw);
+      let shi = Math.ceil(sh);
+      const maxW = (source as any).width ?? (source as any).naturalWidth ?? 0;
+      const maxH = (source as any).height ?? (source as any).naturalHeight ?? 0;
+      if (sxi < 0) {
+        swi += sxi;
+        sxi = 0;
+      }
+      if (syi < 0) {
+        shi += syi;
+        syi = 0;
+      }
+      if (maxW && sxi + swi > maxW) {
+        swi = Math.max(0, maxW - sxi);
+      }
+      if (maxH && syi + shi > maxH) {
+        shi = Math.max(0, maxH - syi);
+      }
+      // If sw/sh rounded to zero, skip drawing.
+      if (swi > 0 && shi > 0) {
+        context.drawImage(source as any, sxi, syi, swi, shi, x, y, w, h);
+      }
     }
   }
 
@@ -443,7 +468,31 @@ export class ImageCanvasOperation extends CanvasOperation {
       const source = this.options.overlayColor
         ? imageColorOverlayer(sourceImage, this.options.overlayColor)
         : sourceImage;
-      context.drawImage(source, sx, sy, sw, sh, x, y, w, h);
+      // Round and clamp source rectangle to integer texel coordinates to avoid sampling
+      // pixels from neighboring sprites when the browser does linear filtering.
+      let sxiF = Math.floor(sx);
+      let syiF = Math.floor(sy);
+      let swiF = Math.ceil(sw);
+      let shiF = Math.ceil(sh);
+      const maxWF = (source as any).width ?? (source as any).naturalWidth ?? 0;
+      const maxHF = (source as any).height ?? (source as any).naturalHeight ?? 0;
+      if (sxiF < 0) {
+        swiF += sxiF;
+        sxiF = 0;
+      }
+      if (syiF < 0) {
+        shiF += syiF;
+        syiF = 0;
+      }
+      if (maxWF && sxiF + swiF > maxWF) {
+        swiF = Math.max(0, maxWF - sxiF);
+      }
+      if (maxHF && syiF + shiF > maxHF) {
+        shiF = Math.max(0, maxHF - syiF);
+      }
+      if (swiF > 0 && shiF > 0) {
+        context.drawImage(source as any, sxiF, syiF, swiF, shiF, x, y, w, h);
+      }
     }
   }
 

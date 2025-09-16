@@ -99,6 +99,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
           (turn) => this.game.run(players, turn, rootChit),
           [rootChit],
         );
+        rootChit.lock(this.turn.value);
         this.turn.value.fixPass();
         this.notify();
         this.result.value = await this.turn.value.execute();

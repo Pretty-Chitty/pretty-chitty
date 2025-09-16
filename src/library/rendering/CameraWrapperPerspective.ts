@@ -41,6 +41,11 @@ export class CameraWrapperPerspective {
     this.camera.updateProjectionMatrix();
   }
 
+  zeroTween() {
+    this.offsetTween.duration(0);
+    this.rotationTween.duration(0);
+  }
+
   destroy() {}
 
   public setCameraSpec(cameraSpec?: CameraSpec): void {

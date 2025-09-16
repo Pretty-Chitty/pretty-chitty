@@ -22,7 +22,7 @@ export function chitsToGalleryItems(chits: Chit[]) {
   for (const [id, count] of Object.entries(dupeCounts)) {
     const dupe = result.find((item) => item.chit.id === id);
     if (dupe) {
-      dupe.summary = `${count}x\n${dupe.summary || ""}`;
+      dupe.summary = `${count}x\n${dupe.originalSummary || ""}`;
     }
   }
 

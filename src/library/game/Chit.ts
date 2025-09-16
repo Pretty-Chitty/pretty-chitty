@@ -120,7 +120,7 @@ export class Chit extends ObjectWithProps {
   chitTypeName() {
     const result = Object.getPrototypeOf(this).constructor.name;
     if (this.parentFallback) {
-      return `${result}.${this.parentFallback.id}`;
+      return `${result}-${this.parentFallback.id}-`;
     }
     return result;
   }

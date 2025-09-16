@@ -335,6 +335,7 @@ export class ChitRenderInstance {
     item.maximumWidth = this.renderSpec?.galleryMaximumWidth;
     item.maximumHeight = this.renderSpec?.galleryMaximumHeight;
     item.summary = this.renderSpec?.summary;
+    item.originalSummary = item.summary;
     item.summaryIconMap = this.renderSpec?.summaryIconMap;
     item.summaryRenderingOptions = this.renderSpec?.summaryRenderingOptions;
 

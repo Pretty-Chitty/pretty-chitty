@@ -165,6 +165,7 @@ export default function Viewer({
         timeState.setAnimationState(id, false);
         chitRenderInstance.pause();
       } else {
+        chitRenderInstance.cameraWrapper.zeroTween();
         chitRenderInstance.resume();
       }
     }
@@ -281,9 +282,15 @@ export default function Viewer({
       });
 
       const wheelListener = (ev: any) => {
-        const dy = ev.wheelDeltaY as number;
-        chitRenderInstance.handleZoom(ev.layerX as number, ev.layerY as number, dy / 120, false);
-        ev.preventDefault();
+        if (panCallback && Math.abs(ev.deltaX) > 30 && Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) {
+          const direction = ev.deltaX > 0 ? "left" : "right";
+          panCallback(direction);
+          ev.preventDefault();
+        } else {
+          const dy = ev.wheelDeltaY as number;
+          chitRenderInstance.handleZoom(ev.layerX as number, ev.layerY as number, dy / 120, false);
+          ev.preventDefault();
+        }
       };
 
       addWheelListener(el, wheelListener);

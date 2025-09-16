@@ -70,6 +70,30 @@ export class OrderedOutlet<C extends Chit> {
     return this.chits.map(cb);
   }
 
+  public some(cb: (c: C) => boolean): boolean {
+    return this.chits.some(cb);
+  }
+
+  public every(cb: (c: C) => boolean): boolean {
+    return this.chits.every(cb);
+  }
+
+  public reduce<D>(cb: (acc: D, c: C) => D, initial: D): D {
+    return this.chits.reduce(cb, initial);
+  }
+
+  public findIndex(cb: (c: C) => boolean): number {
+    return this.chits.findIndex(cb);
+  }
+
+  public flatMap<D>(cb: (c: C) => D[]): D[] {
+    return this.chits.flatMap(cb);
+  }
+
+  public filter(cb: (c: C) => boolean): C[] {
+    return this.chits.filter(cb);
+  }
+
   public forEach(cb: (c: C) => void) {
     this.chits.forEach(cb);
   }
@@ -80,6 +104,10 @@ export class OrderedOutlet<C extends Chit> {
       throw new Error("Index out of bounds");
     }
     return result;
+  }
+
+  public tryGet(i: number): C | undefined {
+    return this.chits[i];
   }
 
   public remove(c: C | C[]) {

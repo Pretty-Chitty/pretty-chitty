@@ -15,6 +15,7 @@ export class ChitGalleryItemInstance implements GalleryItem {
   maximumWidth?: number;
   maximumHeight?: number;
 
+  originalSummary?: string;
   summary?: string;
   summaryIconMap?: IconMap;
   summaryRenderingOptions?: RichTextRenderOptionsParameters;
