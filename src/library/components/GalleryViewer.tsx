@@ -145,7 +145,6 @@ class GalleryController {
     this.light.lookAt(0, 0, 0);
 
     // reset the world
-    this.items.forEach((item) => this.positionItem(item));
     this.pan(0, true);
   }
 
@@ -162,11 +161,22 @@ class GalleryController {
       return null;
     }
 
-    const boundingBox = new Box3().setFromObject(item.mesh);
     const ndc = new Vector3((x / this.w) * 2 - 1, -(y / this.h) * 2 + 1, 0.5);
     ndc.unproject(this.camera);
     const raycaster = new Raycaster(this.camera.position, ndc.sub(this.camera.position).normalize());
-    if (!raycaster.ray.intersectBox(boundingBox, new Vector3())) {
+
+    // Check main mesh
+    const boundingBox = new Box3().setFromObject(item.mesh);
+    const hitMain = raycaster.ray.intersectBox(boundingBox, new Vector3());
+
+    // Check helpText/summary mesh if present
+    let hitHelpText = false;
+    if (item.meshToShowOrHideIfCentered) {
+      const helpTextBox = new Box3().setFromObject(item.meshToShowOrHideIfCentered);
+      hitHelpText = !!raycaster.ray.intersectBox(helpTextBox, new Vector3());
+    }
+
+    if (!hitMain && !hitHelpText) {
       return null;
     }
 
@@ -363,7 +373,9 @@ class GalleryController {
     item.group.add(m);
   }
 
+  private _rawItems: GalleryItem[] = [];
   public setItems(items: GalleryItem[]) {
+    this._rawItems = items;
     this.changed = true;
     const itemIndexOffset = items.length < this.itemsPerPage ? (this.itemsPerPage - items.length) / 2 : 0;
 
@@ -505,16 +517,36 @@ export function GalleryViewer({
   const renderer = useWebGlRenderer(w, h);
   const theme = useGameTheme();
   const [galleryController] = useState(new GalleryController(new Scene(), theme));
+  const [itemWidth, setItemWidth] = useState(galleryItemWidth);
+  const [itemHeight, setItemHeight] = useState(galleryItemHeight);
 
   galleryController.tweenDuration = tweenDuration;
 
   useEffect(() => {
-    galleryController.setSize(w, h, galleryItemWidth, galleryItemHeight, itemSpacing);
-  }, [galleryItemWidth, itemSpacing, galleryItemHeight, w, h, galleryController]);
+    galleryController.setSize(w, h, itemWidth, itemHeight, itemSpacing);
+  }, [itemWidth, itemSpacing, itemHeight, w, h, galleryController]);
 
   useEffect(() => {
     galleryController.setItems(items);
   }, [items, galleryController]);
+
+  useEffect(() => {
+    const allHaveMaxWidth = items.length > 0 && items.every((item) => item.maximumWidth);
+    const allHaveMaxHeight = items.length > 0 && items.every((item) => item.maximumHeight);
+
+    // TODO: wtf
+    if (allHaveMaxWidth) {
+      setItemWidth(Math.max(...items.map((item) => item.maximumWidth!)));
+    } else {
+      setItemWidth(galleryItemWidth);
+    }
+
+    if (allHaveMaxHeight) {
+      setItemHeight(Math.max(...items.map((item) => item.maximumHeight!)));
+    } else {
+      setItemHeight(galleryItemHeight);
+    }
+  }, [items, galleryItemWidth, galleryItemHeight, setItemWidth, setItemHeight]);
 
   useEffect(() => {
     const canvas = refContainer.current;

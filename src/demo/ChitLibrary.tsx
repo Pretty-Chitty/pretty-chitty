@@ -187,7 +187,7 @@ export class Card extends Chit {
     };
     spec.summaryRenderingOptions = { align: "left" };
 
-    spec.galleryMaximumHeight = 2000;
+    // spec.galleryMaximumHeight = 2000;
 
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0; // (this.something / 90) % (Math.PI * 2);
     spec.rotateY = this.flipped ? Math.PI : 0;
@@ -218,6 +218,8 @@ export class Card extends Chit {
       spec.splay.rows = 3;
       spec.splay.columns = 3;
     }
+
+    spec.galleryMaximumWidth = 300;
 
     // make sure it reports it out?
     spec.setOutletPositionFromCanvas(ts);
