@@ -1,5 +1,6 @@
-import { Scene, Vector2 } from "three";
+import { BoxGeometry, Mesh, MeshPhongMaterial, Scene, Vector2 } from "three";
 import { Box } from "@mui/material";
+
 import React, { useEffect, useRef, useState } from "react";
 import { Chit } from "../game/Chit";
 import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
@@ -10,6 +11,7 @@ import { addWheelListener, removeWheelListener } from "wheel";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 import { useGalleryState } from "../hooks/useGalleryState";
 import { usePlayerId } from "../hooks/usePlayer";
+import { EffectComposer, OutlinePass, OutputPass, RenderPass } from "../utilities/OutlinePass";
 
 let ID_COUNTER = 1;
 
@@ -37,6 +39,11 @@ export default function Viewer({
   const [isLoading] = useEventChannelState(timeState.isLoading);
   const refContainer = useRef(null);
   const renderer = useWebGlRenderer(w, h);
+
+  const [composer, setComposer] = useState<EffectComposer | undefined>(undefined);
+  const [renderPass, setRenderPass] = useState<RenderPass | undefined>(undefined);
+  const [outlinePass, setOutlinePass] = useState<OutlinePass | undefined>(undefined);
+
   const [scene] = useState<Scene>(new Scene());
   const galleryState = useGalleryState();
   const [chitRenderInstance, setChitRenderInstance] = useState<RootChitRenderInstance | null>(null);
@@ -119,7 +126,7 @@ export default function Viewer({
   // handle animation frames
   useEffect(() => {
     const canvas = refContainer.current as any as HTMLCanvasElement;
-    if (!chitRenderInstance || !renderer || !canvas) {
+    if (!chitRenderInstance || !renderer || !canvas || !composer) {
       return;
     }
 
@@ -138,7 +145,7 @@ export default function Viewer({
             requestAnimationFrame(animate);
           }
           if (chitRenderInstance && (renderNextFrame === undefined || renderNextFrame || chitRenderInstance.dirty)) {
-            renderer.render(scene, chitRenderInstance.camera);
+            composer.render();
             context.drawImage(renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
             chitRenderInstance.dirty = false;
             timeState.setAnimationState(id, !paused);
@@ -157,7 +164,7 @@ export default function Viewer({
       timeState.setAnimationState(id, false);
       cancelled = true;
     };
-  }, [id, timeState, renderer, scene, chitRenderInstance, paused, refContainer, w, h]);
+  }, [id, timeState, renderer, composer, scene, chitRenderInstance, paused, refContainer, w, h]);
 
   useEffect(() => {
     if (chitRenderInstance) {
@@ -170,6 +177,50 @@ export default function Viewer({
       }
     }
   }, [chitRenderInstance, id, paused, timeState]);
+
+  useEffect(() => {
+    if (renderer && !composer) {
+      setComposer(new EffectComposer(renderer));
+    }
+    if (renderer && composer) {
+      composer.setRenderer(renderer);
+    }
+  }, [composer, renderer]);
+
+  useEffect(() => {
+    if (composer && scene && chitRenderInstance && renderer) {
+      const newRenderPass = new RenderPass(scene, chitRenderInstance.camera);
+      // newRenderPass.clearDepth = true;
+      // newRenderPass.clearAlpha = 0.5;
+      composer.addPass(newRenderPass);
+      setRenderPass(newRenderPass);
+
+      const newOutlinePass = new OutlinePass(
+        new Vector2(w * window.devicePixelRatio, h * window.devicePixelRatio),
+        scene,
+        chitRenderInstance.camera,
+      );
+      newOutlinePass.edgeStrength = 10.0;
+      newOutlinePass.edgeGlow = 0.0;
+      newOutlinePass.edgeThickness = 3.0;
+      newOutlinePass.pulsePeriod = 0;
+      newOutlinePass.visibleEdgeColor.set("#000000");
+      newOutlinePass.hiddenEdgeColor.set("#cccccc");
+      const m = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
+      scene.add(m);
+      newOutlinePass.selectedObjects = [m]; // Hack to get around outlinePass skipping frame when no selected objects
+      // newOutlinePass.needsSwap = true; // Fix: ensure buffer is swapped so input is correct
+      composer.addPass(newOutlinePass);
+      setOutlinePass(newOutlinePass);
+
+      composer.addPass(new OutputPass());
+
+      return () => {
+        console.log("bad");
+        composer.passes = [];
+      };
+    }
+  }, [composer, scene, chitRenderInstance, w, h, renderer]);
 
   // hook up interactions
   useEffect(() => {

@@ -124,7 +124,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
           const target = players[0];
           target.add(c);
         })
-          .toggleButton(new HandButton())
+          // .toggleButton(new HandButton())
           .context(pieces[7]),
       );
 
