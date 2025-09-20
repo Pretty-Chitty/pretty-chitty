@@ -477,7 +477,6 @@ export class OutlinePass extends Pass {
   selectedObjects: Array<any>;
 
   visibleEdgeColor = new Color(1, 1, 1);
-  hiddenEdgeColor = new Color(0.1, 0.04, 0.02);
   edgeGlow = 0.0;
   usePatternTexture = false;
   edgeThickness = 1.0;
@@ -761,7 +760,6 @@ export class OutlinePass extends Pass {
 
       // Pulse colors
       this.tempPulseColor1.copy(this.visibleEdgeColor);
-      this.tempPulseColor2.copy(this.hiddenEdgeColor);
 
       if (this.pulsePeriod > 0) {
         const scalar = (1 + 0.25) / 2 + (Math.cos((performance.now() * 0.01) / this.pulsePeriod) * (1.0 - 0.25)) / 2;
@@ -780,11 +778,6 @@ export class OutlinePass extends Pass {
         this.tempPulseColor1.r,
         this.tempPulseColor1.g,
         this.tempPulseColor1.b,
-      );
-      (this.edgeDetectionMaterial.uniforms["hiddenEdgeColor"].value as any) = new Vector3(
-        this.tempPulseColor2.r,
-        this.tempPulseColor2.g,
-        this.tempPulseColor2.b,
       );
 
       renderer.setRenderTarget(this.renderTargetEdgeBuffer1);
@@ -889,7 +882,6 @@ export class OutlinePass extends Pass {
         maskTexture: { value: null },
         texSize: { value: new Vector2(0.5, 0.5) },
         visibleEdgeColor: { value: new Vector3(1.0, 1.0, 1.0) },
-        hiddenEdgeColor: { value: new Vector3(1.0, 1.0, 1.0) },
       } as any,
       vertexShader: `varying vec2 vUv;
         void main() {
@@ -900,7 +892,6 @@ export class OutlinePass extends Pass {
         uniform sampler2D maskTexture;
         uniform vec2 texSize;
         uniform vec3 visibleEdgeColor;
-        uniform vec3 hiddenEdgeColor;
         
         void main() {
           vec2 invSize = 1.0 / texSize;
@@ -915,8 +906,11 @@ export class OutlinePass extends Pass {
           float a1 = min(c1.g, c2.g);
           float a2 = min(c3.g, c4.g);
           float visibilityFactor = min(a1, a2);
-          vec3 edgeColor = 1.0 - visibilityFactor > 0.001 ? visibleEdgeColor : hiddenEdgeColor;
-          gl_FragColor = vec4(edgeColor, 1.0) * vec4(d);
+          if (1.0 - visibilityFactor > 0.001) {
+            gl_FragColor = vec4(visibleEdgeColor, 1.0) * vec4(d);
+          } else {
+            gl_FragColor = vec4(visibleEdgeColor, 1.0) * vec4(0);
+          }
         }`,
     });
   }

@@ -1,4 +1,4 @@
-import { BoxGeometry, Mesh, MeshPhongMaterial, Scene, Vector2 } from "three";
+import { BoxGeometry, Color, Mesh, MeshPhongMaterial, Scene, Vector2 } from "three";
 import { Box } from "@mui/material";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -200,13 +200,17 @@ export default function Viewer({
         scene,
         chitRenderInstance.camera,
       );
-      newOutlinePass.edgeStrength = 10.0;
+      newOutlinePass.edgeStrength = 20.0;
       newOutlinePass.edgeGlow = 0.0;
-      newOutlinePass.edgeThickness = 3.0;
+      newOutlinePass.edgeThickness = 0.5;
+      newOutlinePass.visibleEdgeColor = new Color(0x000000);
+      // newOutlinePass.hiddenEdgeColor = new Color(0x000000);
+      // newOutlinePass.hiddenEdgeAlpha = 0.1;
       newOutlinePass.pulsePeriod = 0;
-      newOutlinePass.visibleEdgeColor.set("#000000");
-      newOutlinePass.hiddenEdgeColor.set("#cccccc");
       const m = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
+      m.userData.outlineColor = new Color(0x0000ff);
+      m.position.set(0, 0, 1);
+
       scene.add(m);
       newOutlinePass.selectedObjects = [m]; // Hack to get around outlinePass skipping frame when no selected objects
       // newOutlinePass.needsSwap = true; // Fix: ensure buffer is swapped so input is correct
