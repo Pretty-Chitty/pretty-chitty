@@ -147,8 +147,12 @@ export class IDBasedOutlinePass extends OutlinePass {
         this.originalMaterials.set(object, object.material);
 
         // Only assign IDs to meshes that have userData.outlineColor
+        // Use userData.outlineId if specified, otherwise fall back to object.id
         // All others get ID 0 (background/black)
-        const meshID = object.userData?.outlineColor ? object.id : 0;
+        let meshID = 0;
+        if (object.userData?.outlineColor) {
+          meshID = object.userData?.outlineId !== undefined ? object.userData.outlineId : object.id;
+        }
 
         // Get or create ID material for this mesh
         let idMaterial = this.idMaterials.get(meshID);
@@ -191,10 +195,16 @@ export class IDBasedOutlinePass extends OutlinePass {
 
     this.renderScene.traverse((object: any) => {
       if (object.isMesh && object.userData?.outlineColor) {
-        outliningMeshes.push({
-          id: object.id,
-          color: object.userData.outlineColor
-        });
+        const meshID = object.userData?.outlineId !== undefined ? object.userData.outlineId : object.id;
+
+        // Check if we already have this ID (for grouped meshes)
+        const existing = outliningMeshes.find(m => m.id === meshID);
+        if (!existing) {
+          outliningMeshes.push({
+            id: meshID,
+            color: object.userData.outlineColor
+          });
+        }
       }
     });
 
