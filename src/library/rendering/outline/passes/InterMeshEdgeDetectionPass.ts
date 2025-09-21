@@ -20,17 +20,9 @@ export class InterMeshEdgeDetectionPass extends Pass {
   edgeDetectionMaterial: ShaderMaterial;
   private fsQuad: FullScreenQuad;
 
-  // Edge appearance
-  visibleEdgeColor = new Color(1, 1, 1);
-  interMeshEdgeColor = new Color(0.5, 0.5, 0.5); // Different color for inter-mesh edges
-  pulsePeriod = 0;
-  edgeMode = EdgeMode.SELECTED_ONLY;
-
   // Edge filtering
-  minEdgeStrength = 0.1; // Minimum edge strength to show
   backgroundThreshold = 0.01; // RGB threshold to consider a pixel as background
 
-  private tempPulseColor = new Color();
   private selectedIDs = new Set<number>();
 
   clear = true;
@@ -50,69 +42,45 @@ export class InterMeshEdgeDetectionPass extends Pass {
     (this.edgeDetectionMaterial.uniforms["texSize"].value as Vector2).set(width, height);
   }
 
-  setSelectedObjects(selectedObjects: Array<any>): void {
+  setOutliningMeshes(outliningMeshes: Array<{id: number, color: Color}>): void {
     this.selectedIDs.clear();
 
-    for (const selectedObject of selectedObjects) {
-      selectedObject.traverse((object: any) => {
-        if (object.isMesh) {
-          this.selectedIDs.add(object.id);
-        }
-      });
-    }
-
-    this.updateSelectedIDsUniform();
-  }
-
-  private updateSelectedIDsUniform(): void {
-    const maxSelectedObjects = 64;
-    const selectedIDColors = new Float32Array(maxSelectedObjects * 3);
+    // Store ID to color mapping
+    const maxMeshes = 64;
+    const idColors = new Float32Array(maxMeshes * 3); // RGB for each mesh
+    const idList = new Float32Array(maxMeshes * 3); // ID encoded as RGB for each mesh
 
     let index = 0;
-    for (const id of this.selectedIDs) {
-      if (index >= maxSelectedObjects) break;
+    for (const mesh of outliningMeshes) {
+      if (index >= maxMeshes) break;
 
-      const r = ((id >> 16) & 0xff) / 255.0;
-      const g = ((id >> 8) & 0xff) / 255.0;
-      const b = (id & 0xff) / 255.0;
+      this.selectedIDs.add(mesh.id);
 
-      selectedIDColors[index * 3] = r;
-      selectedIDColors[index * 3 + 1] = g;
-      selectedIDColors[index * 3 + 2] = b;
+      // Store the outline color for this mesh
+      idColors[index * 3] = mesh.color.r;
+      idColors[index * 3 + 1] = mesh.color.g;
+      idColors[index * 3 + 2] = mesh.color.b;
+
+      // Store the ID encoded as RGB
+      const r = ((mesh.id >> 16) & 0xff) / 255.0;
+      const g = ((mesh.id >> 8) & 0xff) / 255.0;
+      const b = (mesh.id & 0xff) / 255.0;
+
+      idList[index * 3] = r;
+      idList[index * 3 + 1] = g;
+      idList[index * 3 + 2] = b;
+
       index++;
     }
 
-    this.edgeDetectionMaterial.uniforms["selectedIDColors"].value = selectedIDColors;
-    this.edgeDetectionMaterial.uniforms["numSelectedIDs"].value = Math.min(this.selectedIDs.size, maxSelectedObjects);
+    this.edgeDetectionMaterial.uniforms["meshOutlineColors"].value = idColors;
+    this.edgeDetectionMaterial.uniforms["meshIDColors"].value = idList;
+    this.edgeDetectionMaterial.uniforms["numOutlineMeshes"].value = Math.min(outliningMeshes.length, maxMeshes);
   }
 
-  private updatePulseColor(): void {
-    this.tempPulseColor.copy(this.visibleEdgeColor);
-
-    if (this.pulsePeriod > 0) {
-      const scalar = (1 + 0.25) / 2 + (Math.cos((performance.now() * 0.01) / this.pulsePeriod) * (1.0 - 0.25)) / 2;
-      this.tempPulseColor.multiplyScalar(scalar);
-    }
-  }
 
   render(renderer: WebGLRenderer, writeBuffer: WebGLRenderTarget): void {
-    this.updatePulseColor();
-
-    // Update uniforms
-    (this.edgeDetectionMaterial.uniforms["visibleEdgeColor"].value as Vector3).set(
-      this.tempPulseColor.r,
-      this.tempPulseColor.g,
-      this.tempPulseColor.b,
-    );
-
-    (this.edgeDetectionMaterial.uniforms["interMeshEdgeColor"].value as Vector3).set(
-      this.interMeshEdgeColor.r,
-      this.interMeshEdgeColor.g,
-      this.interMeshEdgeColor.b,
-    );
-
-    this.edgeDetectionMaterial.uniforms["edgeMode"].value = this.getModeValue();
-    this.edgeDetectionMaterial.uniforms["minEdgeStrength"].value = this.minEdgeStrength;
+    // Update uniforms that still exist
     this.edgeDetectionMaterial.uniforms["backgroundThreshold"].value = this.backgroundThreshold;
 
     renderer.setRenderTarget(writeBuffer);
@@ -120,27 +88,15 @@ export class InterMeshEdgeDetectionPass extends Pass {
     this.fsQuad.render(renderer);
   }
 
-  private getModeValue(): number {
-    switch (this.edgeMode) {
-      case EdgeMode.SELECTED_ONLY: return 0;
-      case EdgeMode.ALL_MESHES: return 1;
-      case EdgeMode.MESH_BOUNDARIES: return 2;
-      case EdgeMode.SELECTED_AND_BOUNDARIES: return 3;
-      default: return 0;
-    }
-  }
 
   private createEdgeDetectionMaterial(): ShaderMaterial {
     return new ShaderMaterial({
       uniforms: {
         idTexture: { value: null },
         texSize: { value: new Vector2(0.5, 0.5) },
-        visibleEdgeColor: { value: new Vector3(1.0, 1.0, 1.0) },
-        interMeshEdgeColor: { value: new Vector3(0.5, 0.5, 0.5) },
-        selectedIDColors: { value: new Float32Array(64 * 3) },
-        numSelectedIDs: { value: 0 },
-        edgeMode: { value: 0 },
-        minEdgeStrength: { value: 0.1 },
+        meshOutlineColors: { value: new Float32Array(64 * 3) }, // RGB color for each outlined mesh
+        meshIDColors: { value: new Float32Array(64 * 3) }, // ID encoded as RGB for each outlined mesh
+        numOutlineMeshes: { value: 0 },
         backgroundThreshold: { value: 0.01 },
       },
       vertexShader: `varying vec2 vUv;
@@ -151,19 +107,16 @@ export class InterMeshEdgeDetectionPass extends Pass {
       fragmentShader: `
         uniform sampler2D idTexture;
         uniform vec2 texSize;
-        uniform vec3 visibleEdgeColor;
-        uniform vec3 interMeshEdgeColor;
-        uniform float[192] selectedIDColors; // 64 * 3 (RGB components)
-        uniform int numSelectedIDs;
-        uniform int edgeMode; // 0=selected_only, 1=all_meshes, 2=mesh_boundaries, 3=selected_and_boundaries
-        uniform float minEdgeStrength;
+        uniform float[192] meshOutlineColors; // 64 * 3 (RGB outline colors)
+        uniform float[192] meshIDColors; // 64 * 3 (RGB encoded IDs)
+        uniform int numOutlineMeshes;
         uniform float backgroundThreshold;
         varying vec2 vUv;
 
         // Compare two RGB colors (object IDs) with tolerance
         bool colorsMatch(vec3 color1, vec3 color2) {
           vec3 diff = abs(color1 - color2);
-          return diff.r < 0.001 && diff.g < 0.001 && diff.b < 0.001; // Much tighter tolerance
+          return diff.r < 0.001 && diff.g < 0.001 && diff.b < 0.001;
         }
 
         // Check if a color represents background (black/near-black)
@@ -171,107 +124,73 @@ export class InterMeshEdgeDetectionPass extends Pass {
           return color.r < backgroundThreshold && color.g < backgroundThreshold && color.b < backgroundThreshold;
         }
 
-        // Check if a color represents a selected object
-        bool isSelected(vec3 color) {
-          if (isBackground(color)) return false;
+        // Find the outline color for a given mesh ID color, returns vec4(outlineColor, 1.0) or vec4(0,0,0,0) if not outlined
+        vec4 getOutlineColor(vec3 idColor) {
+          if (isBackground(idColor)) return vec4(0.0, 0.0, 0.0, 0.0);
 
-          for (int i = 0; i < numSelectedIDs && i < 64; i++) {
-            vec3 selectedColor = vec3(
-              selectedIDColors[i * 3],
-              selectedIDColors[i * 3 + 1],
-              selectedIDColors[i * 3 + 2]
+          for (int i = 0; i < numOutlineMeshes && i < 64; i++) {
+            vec3 meshIDColor = vec3(
+              meshIDColors[i * 3],
+              meshIDColors[i * 3 + 1],
+              meshIDColors[i * 3 + 2]
             );
 
-            if (colorsMatch(color, selectedColor)) {
-              return true;
+            if (colorsMatch(idColor, meshIDColor)) {
+              vec3 outlineColor = vec3(
+                meshOutlineColors[i * 3],
+                meshOutlineColors[i * 3 + 1],
+                meshOutlineColors[i * 3 + 2]
+              );
+              return vec4(outlineColor, 1.0);
             }
           }
-          return false;
+          return vec4(0.0, 0.0, 0.0, 0.0);
         }
 
         void main() {
           vec2 invSize = 1.0 / texSize;
+          float thickness = 4.0; // Thicker outlines
 
-          // Sample the center pixel and neighbors
+          // Sample the center pixel
           vec4 center = texture2D(idTexture, vUv);
-          vec4 right = texture2D(idTexture, vUv + vec2(invSize.x, 0.0));
-          vec4 left = texture2D(idTexture, vUv - vec2(invSize.x, 0.0));
-          vec4 up = texture2D(idTexture, vUv + vec2(0.0, invSize.y));
-          vec4 down = texture2D(idTexture, vUv - vec2(0.0, invSize.y));
+          vec4 centerOutlineColor = getOutlineColor(center.rgb);
 
-          bool centerIsBackground = isBackground(center.rgb);
-          bool centerIsSelected = isSelected(center.rgb);
+          // Only process pixels that belong to outlined meshes OR are near them
+          if (centerOutlineColor.a > 0.5) {
+            // Check immediate neighbors first (most common case)
+            vec4 right = texture2D(idTexture, vUv + vec2(invSize.x, 0.0));
+            vec4 left = texture2D(idTexture, vUv - vec2(invSize.x, 0.0));
+            vec4 up = texture2D(idTexture, vUv + vec2(0.0, invSize.y));
+            vec4 down = texture2D(idTexture, vUv - vec2(0.0, invSize.y));
 
-          bool isEdge = false;
-          vec3 edgeColor = visibleEdgeColor;
-
-          if (edgeMode == 0) {
-            // SELECTED_ONLY: Only edges around selected objects
-            if (centerIsSelected) {
-              if (!colorsMatch(center.rgb, right.rgb) ||
-                  !colorsMatch(center.rgb, left.rgb) ||
-                  !colorsMatch(center.rgb, up.rgb) ||
-                  !colorsMatch(center.rgb, down.rgb)) {
-                isEdge = true;
-                edgeColor = visibleEdgeColor;
-              }
+            if (!colorsMatch(center.rgb, right.rgb) ||
+                !colorsMatch(center.rgb, left.rgb) ||
+                !colorsMatch(center.rgb, up.rgb) ||
+                !colorsMatch(center.rgb, down.rgb)) {
+              gl_FragColor = centerOutlineColor;
+              return;
             }
-          }
-          else if (edgeMode == 1) {
-            // ALL_MESHES: Edges between any different mesh IDs
-            if (!centerIsBackground) {
-              if (!colorsMatch(center.rgb, right.rgb) ||
-                  !colorsMatch(center.rgb, left.rgb) ||
-                  !colorsMatch(center.rgb, up.rgb) ||
-                  !colorsMatch(center.rgb, down.rgb)) {
-                isEdge = true;
-                edgeColor = centerIsSelected ? visibleEdgeColor : interMeshEdgeColor;
-              }
-            }
-          }
-          else if (edgeMode == 2) {
-            // MESH_BOUNDARIES: Edges between meshes and background
-            if (!centerIsBackground) {
-              if (isBackground(right.rgb) || isBackground(left.rgb) ||
-                  isBackground(up.rgb) || isBackground(down.rgb)) {
-                isEdge = true;
-                edgeColor = interMeshEdgeColor;
-              }
-            }
-          }
-          else if (edgeMode == 3) {
-            // SELECTED_AND_BOUNDARIES: Both selected outlines and mesh boundaries
-            if (centerIsSelected) {
-              // Selected objects: show edges when they border anything different (including other selected objects)
-              if (!colorsMatch(center.rgb, right.rgb) ||
-                  !colorsMatch(center.rgb, left.rgb) ||
-                  !colorsMatch(center.rgb, up.rgb) ||
-                  !colorsMatch(center.rgb, down.rgb)) {
-                isEdge = true;
-                edgeColor = visibleEdgeColor;
-              }
-            } else if (!centerIsBackground) {
-              // Non-selected objects: show edges when they border background or different objects
-              bool hasDifferentNeighbor = !colorsMatch(center.rgb, right.rgb) ||
-                                        !colorsMatch(center.rgb, left.rgb) ||
-                                        !colorsMatch(center.rgb, up.rgb) ||
-                                        !colorsMatch(center.rgb, down.rgb);
 
-              bool hasBackgroundNeighbor = isBackground(right.rgb) || isBackground(left.rgb) ||
-                                         isBackground(up.rgb) || isBackground(down.rgb);
+            // Check slightly further out for thickness (8 directions)
+            vec4 neighbors[8];
+            neighbors[0] = texture2D(idTexture, vUv + vec2(thickness * invSize.x, 0.0));
+            neighbors[1] = texture2D(idTexture, vUv + vec2(-thickness * invSize.x, 0.0));
+            neighbors[2] = texture2D(idTexture, vUv + vec2(0.0, thickness * invSize.y));
+            neighbors[3] = texture2D(idTexture, vUv + vec2(0.0, -thickness * invSize.y));
+            neighbors[4] = texture2D(idTexture, vUv + vec2(thickness * invSize.x, thickness * invSize.y));
+            neighbors[5] = texture2D(idTexture, vUv + vec2(-thickness * invSize.x, thickness * invSize.y));
+            neighbors[6] = texture2D(idTexture, vUv + vec2(thickness * invSize.x, -thickness * invSize.y));
+            neighbors[7] = texture2D(idTexture, vUv + vec2(-thickness * invSize.x, -thickness * invSize.y));
 
-              if (hasDifferentNeighbor || hasBackgroundNeighbor) {
-                isEdge = true;
-                edgeColor = interMeshEdgeColor;
+            for (int i = 0; i < 8; i++) {
+              if (!colorsMatch(center.rgb, neighbors[i].rgb)) {
+                gl_FragColor = centerOutlineColor;
+                return;
               }
             }
           }
 
-          if (isEdge) {
-            gl_FragColor = vec4(edgeColor, 1.0);
-          } else {
-            gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
-          }
+          gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
         }`,
     });
   }

@@ -14,10 +14,7 @@ import { Camera } from "./types";
 import { InterMeshEdgeDetectionPass, EdgeMode } from "./passes/InterMeshEdgeDetectionPass";
 
 export class IDBasedOutlinePass extends OutlinePass {
-  // Additional properties for ID-based detection
-  interMeshEdgeColor = new Color(0.5, 0.5, 0.5);
-  edgeMode = EdgeMode.SELECTED_ONLY;
-  showInterMeshEdges = false;
+  // Simplified properties for userData-based outlining
 
   // ID rendering
   private renderTargetIDBuffer!: WebGLRenderTarget;
@@ -48,16 +45,7 @@ export class IDBasedOutlinePass extends OutlinePass {
     this.idBasedEdgeDetectionPass = new InterMeshEdgeDetectionPass();
   }
 
-  setShowInterMeshEdges(show: boolean): void {
-    this.showInterMeshEdges = show;
-    if (show && this.selectedObjects.length > 0) {
-      this.edgeMode = EdgeMode.SELECTED_AND_BOUNDARIES;
-    } else if (show) {
-      this.edgeMode = EdgeMode.ALL_MESHES;
-    } else {
-      this.edgeMode = EdgeMode.SELECTED_ONLY;
-    }
-  }
+  // Simplified API - no more edge modes, just outline meshes with userData.outlineColor
 
   override setSize(width: number, height: number): void {
     super.setSize(width, height);
@@ -71,7 +59,15 @@ export class IDBasedOutlinePass extends OutlinePass {
     deltaTime: number,
     maskActive: boolean,
   ): void {
-    if (this.selectedObjects.length === 0 && !this.showInterMeshEdges) {
+    // Check if any meshes have userData.outlineColor
+    let hasOutlinedMeshes = false;
+    this.renderScene.traverse((object: any) => {
+      if (object.isMesh && object.userData?.outlineColor) {
+        hasOutlinedMeshes = true;
+      }
+    });
+
+    if (!hasOutlinedMeshes) {
       if (this.renderToScreen) {
         this.renderIDCopyToScreen(renderer, readBuffer);
       }
@@ -87,17 +83,26 @@ export class IDBasedOutlinePass extends OutlinePass {
     // Step 2: Use ID-based edge detection instead of the original method
     this.performIDBasedEdgeDetection(renderer);
 
-    // Step 3: Simple composition - copy original scene first, then add edges
+    // Step 3: Safe composition using temporary buffer to avoid feedback loops
+    // First copy original scene to a temp buffer
     this.fsQuad.material = this.materialCopy;
     (this.copyUniforms["tDiffuse"].value as any) = readBuffer.texture;
-    renderer.setRenderTarget(readBuffer);
+    renderer.setRenderTarget(this.renderTargetBlurBuffer1); // Use blur buffer as temp
     this.fsQuad.render(renderer);
 
-    // Add edges with proper alpha blending to preserve edge colors
+    // Then composite temp + edges to final buffer
+    renderer.setRenderTarget(readBuffer);
+    renderer.clear();
+
+    // Copy temp buffer to output
+    (this.copyUniforms["tDiffuse"].value as any) = this.renderTargetBlurBuffer1.texture;
+    this.fsQuad.render(renderer);
+
+    // Add edges with proper alpha blending
     renderer.autoClear = false;
     const gl = renderer.getContext();
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); // Standard alpha blending
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     (this.copyUniforms["tDiffuse"].value as any) = this.renderTargetEdgeBuffer1.texture;
     this.fsQuad.render(renderer);
@@ -141,9 +146,9 @@ export class IDBasedOutlinePass extends OutlinePass {
         // Store original material
         this.originalMaterials.set(object, object.material);
 
-        // Use the actual mesh ID that will be consistent with selected objects
-        const meshID = object.id;
-
+        // Only assign IDs to meshes that have userData.outlineColor
+        // All others get ID 0 (background/black)
+        const meshID = object.userData?.outlineColor ? object.id : 0;
 
         // Get or create ID material for this mesh
         let idMaterial = this.idMaterials.get(meshID);
@@ -181,22 +186,20 @@ export class IDBasedOutlinePass extends OutlinePass {
   }
 
   private performIDBasedEdgeDetection(renderer: WebGLRenderer): void {
-    // Configure the ID-based edge detection
-    this.idBasedEdgeDetectionPass.visibleEdgeColor.copy(this.visibleEdgeColor);
-    this.idBasedEdgeDetectionPass.interMeshEdgeColor.copy(this.interMeshEdgeColor);
-    this.idBasedEdgeDetectionPass.pulsePeriod = this.pulsePeriod;
-    this.idBasedEdgeDetectionPass.edgeMode = this.edgeMode;
+    // Collect all meshes with userData.outlineColor
+    const outliningMeshes: Array<{id: number, color: Color}> = [];
 
-    // Use convenience toggle if set - now enable the actual inter-mesh detection
-    if (this.showInterMeshEdges && this.selectedObjects.length > 0) {
-      this.idBasedEdgeDetectionPass.edgeMode = EdgeMode.SELECTED_AND_BOUNDARIES;
-    } else if (this.showInterMeshEdges) {
-      this.idBasedEdgeDetectionPass.edgeMode = EdgeMode.ALL_MESHES;
-    }
-
+    this.renderScene.traverse((object: any) => {
+      if (object.isMesh && object.userData?.outlineColor) {
+        outliningMeshes.push({
+          id: object.id,
+          color: object.userData.outlineColor
+        });
+      }
+    });
 
     this.idBasedEdgeDetectionPass.setIDTexture(this.renderTargetIDBuffer.texture);
-    this.idBasedEdgeDetectionPass.setSelectedObjects(this.selectedObjects);
+    this.idBasedEdgeDetectionPass.setOutliningMeshes(outliningMeshes);
     this.idBasedEdgeDetectionPass.setTextureSize(
       Math.round(this.resolution.x / this.downSampleRatio),
       Math.round(this.resolution.y / this.downSampleRatio)

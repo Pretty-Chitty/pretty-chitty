@@ -201,31 +201,27 @@ export default function Viewer({
         chitRenderInstance.camera,
       );
 
-      // Test ID-based outline with bright settings and black inter-mesh edges
-      newOutlinePass.edgeStrength = 100.0;  // Increased from 50
-      newOutlinePass.edgeGlow = 1.0;        // Increased from 0
-      newOutlinePass.edgeThickness = 5.0;   // Increased from 2
-      newOutlinePass.visibleEdgeColor = new Color(1, 0, 0);     // Bright red for selected objects
-      newOutlinePass.interMeshEdgeColor = new Color(0, 0, 0);   // Black for inter-mesh edges
+      // Configure outline pass for userData-based outlining with thicker outlines
+      newOutlinePass.edgeStrength = 200.0; // Increased intensity
+      newOutlinePass.edgeGlow = 2.0; // Increased glow
+      newOutlinePass.edgeThickness = 10.0; // Much thicker edges
       newOutlinePass.pulsePeriod = 0;
-      newOutlinePass.downSampleRatio = 1;   // No downsampling for debugging
+      newOutlinePass.downSampleRatio = 1;
 
-      // Enable inter-mesh edge detection
-      newOutlinePass.setShowInterMeshEdges(true);
+      console.log("ID-based OutlinePass ready with userData-based outlining");
 
-      console.log("ID-based OutlinePass ready with inter-mesh edge detection");
-
+      // Test meshes with different outline colors
       const m = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
-      m.userData.outlineColor = new Color(0x0000ff);
+      m.userData.outlineColor = new Color(1, 0, 0); // Red outline
       m.position.set(0, 0, 1);
       scene.add(m);
 
       const m2 = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
-      m2.userData.outlineColor = new Color(0x0000ff);
+      m2.userData.outlineColor = new Color(0, 0, 1); // Blue outline
       m2.position.set(1, 1, 1.05);
       scene.add(m2);
 
-      newOutlinePass.selectedObjects = [m, m2];
+      // No need to set selectedObjects - the system automatically finds meshes with userData.outlineColor
 
       // The EnhancedOutlineEffectComposer is a complete effect, so add it as a single pass
       composer.addPass(newOutlinePass);
