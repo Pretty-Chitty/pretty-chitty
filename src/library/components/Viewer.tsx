@@ -11,7 +11,7 @@ import { addWheelListener, removeWheelListener } from "wheel";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 import { useGalleryState } from "../hooks/useGalleryState";
 import { usePlayerId } from "../hooks/usePlayer";
-import { EffectComposer, OutlinePass, OutputPass, RenderPass } from "../rendering/outline";
+import { EffectComposer, IDBasedOutlinePass, OutputPass, RenderPass } from "../rendering/outline";
 
 let ID_COUNTER = 1;
 
@@ -42,7 +42,7 @@ export default function Viewer({
 
   const [composer, setComposer] = useState<EffectComposer | undefined>(undefined);
   const [renderPass, setRenderPass] = useState<RenderPass | undefined>(undefined);
-  const [outlinePass, setOutlinePass] = useState<OutlinePass | undefined>(undefined);
+  const [outlinePass, setOutlinePass] = useState<IDBasedOutlinePass | undefined>(undefined);
 
   const [scene] = useState<Scene>(new Scene());
   const galleryState = useGalleryState();
@@ -195,18 +195,25 @@ export default function Viewer({
       composer.addPass(newRenderPass);
       setRenderPass(newRenderPass);
 
-      const newOutlinePass = new OutlinePass(
+      const newOutlinePass = new IDBasedOutlinePass(
         new Vector2(w * window.devicePixelRatio, h * window.devicePixelRatio),
         scene,
         chitRenderInstance.camera,
       );
-      newOutlinePass.edgeStrength = 20.0;
-      newOutlinePass.edgeGlow = 0.0;
-      newOutlinePass.edgeThickness = 0.5;
-      newOutlinePass.visibleEdgeColor = new Color(0x000000);
-      // newOutlinePass.hiddenEdgeColor = new Color(0x000000);
-      // newOutlinePass.hiddenEdgeAlpha = 0.1;
+
+      // Test ID-based outline with bright settings and black inter-mesh edges
+      newOutlinePass.edgeStrength = 100.0;  // Increased from 50
+      newOutlinePass.edgeGlow = 1.0;        // Increased from 0
+      newOutlinePass.edgeThickness = 5.0;   // Increased from 2
+      newOutlinePass.visibleEdgeColor = new Color(1, 0, 0);     // Bright red for selected objects
+      newOutlinePass.interMeshEdgeColor = new Color(0, 0, 0);   // Black for inter-mesh edges
       newOutlinePass.pulsePeriod = 0;
+      newOutlinePass.downSampleRatio = 1;   // No downsampling for debugging
+
+      // Enable inter-mesh edge detection
+      newOutlinePass.setShowInterMeshEdges(true);
+
+      console.log("ID-based OutlinePass ready with inter-mesh edge detection");
 
       const m = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
       m.userData.outlineColor = new Color(0x0000ff);
@@ -218,8 +225,9 @@ export default function Viewer({
       m2.position.set(1, 1, 1.05);
       scene.add(m2);
 
-      newOutlinePass.selectedObjects = [m, m2]; // Hack to get around outlinePass skipping frame when no selected objects
-      // newOutlinePass.needsSwap = true; // Fix: ensure buffer is swapped so input is correct
+      newOutlinePass.selectedObjects = [m, m2];
+
+      // The EnhancedOutlineEffectComposer is a complete effect, so add it as a single pass
       composer.addPass(newOutlinePass);
       setOutlinePass(newOutlinePass);
 
