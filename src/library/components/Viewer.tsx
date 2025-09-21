@@ -11,7 +11,7 @@ import { addWheelListener, removeWheelListener } from "wheel";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 import { useGalleryState } from "../hooks/useGalleryState";
 import { usePlayerId } from "../hooks/usePlayer";
-import { EffectComposer, OutlinePass, OutputPass, RenderPass } from "../utilities/OutlinePass";
+import { EffectComposer, OutlinePass, OutputPass, RenderPass } from "../rendering/outline";
 
 let ID_COUNTER = 1;
 
@@ -207,12 +207,18 @@ export default function Viewer({
       // newOutlinePass.hiddenEdgeColor = new Color(0x000000);
       // newOutlinePass.hiddenEdgeAlpha = 0.1;
       newOutlinePass.pulsePeriod = 0;
+
       const m = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
       m.userData.outlineColor = new Color(0x0000ff);
       m.position.set(0, 0, 1);
-
       scene.add(m);
-      newOutlinePass.selectedObjects = [m]; // Hack to get around outlinePass skipping frame when no selected objects
+
+      const m2 = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
+      m2.userData.outlineColor = new Color(0x0000ff);
+      m2.position.set(1, 1, 1.05);
+      scene.add(m2);
+
+      newOutlinePass.selectedObjects = [m, m2]; // Hack to get around outlinePass skipping frame when no selected objects
       // newOutlinePass.needsSwap = true; // Fix: ensure buffer is swapped so input is correct
       composer.addPass(newOutlinePass);
       setOutlinePass(newOutlinePass);
