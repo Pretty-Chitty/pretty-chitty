@@ -8,6 +8,7 @@ import {
   RGBAFormat,
   MeshBasicMaterial,
   DoubleSide,
+  PerspectiveCamera,
 } from "three";
 import { OutlinePass } from "./OutlinePass";
 import { Camera } from "./types";

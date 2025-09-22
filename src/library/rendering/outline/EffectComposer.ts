@@ -153,7 +153,11 @@ export class EffectComposer {
       this._width = size.width;
       this._height = size.height;
 
-      renderTarget = this.renderTarget1.clone();
+      renderTarget = this.renderTarget?.clone() ?? new WebGLRenderTarget(
+        Math.max(1, Math.floor(this._width * this._pixelRatio)),
+        Math.max(1, Math.floor(this._height * this._pixelRatio)),
+        this._rtParams,
+      );
       renderTarget.setSize(
         Math.max(1, Math.floor(this._width * this._pixelRatio)),
         Math.max(1, Math.floor(this._height * this._pixelRatio)),
@@ -171,7 +175,9 @@ export class EffectComposer {
       this._height = renderTarget.height;
     }
 
-    this.renderTarget.dispose();
+    if (this.renderTarget) {
+      this.renderTarget.dispose();
+    }
     this.renderTarget = renderTarget;
   }
 
