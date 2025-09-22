@@ -12,6 +12,7 @@ import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 import { useGalleryState } from "../hooks/useGalleryState";
 import { usePlayerId } from "../hooks/usePlayer";
 import { render } from "react-dom";
+import { SceneWrapper } from "../rendering/outline";
 
 let ID_COUNTER = 1;
 
@@ -41,6 +42,7 @@ export default function Viewer({
   const rendererWrapper = useWebGlRenderer(w, h);
 
   const [scene] = useState<Scene>(new Scene());
+  const [sceneWrapper] = useState<SceneWrapper>(new SceneWrapper(scene));
   const galleryState = useGalleryState();
   const [chitRenderInstance, setChitRenderInstance] = useState<RootChitRenderInstance | null>(null);
 
@@ -141,8 +143,14 @@ export default function Viewer({
             requestAnimationFrame(animate);
           }
           if (chitRenderInstance && (renderNextFrame === undefined || renderNextFrame || chitRenderInstance.dirty)) {
-            rendererWrapper.render(scene, chitRenderInstance.camera);
-            context.drawImage(rendererWrapper.renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
+            rendererWrapper.render(sceneWrapper, chitRenderInstance.camera);
+            context.drawImage(
+              rendererWrapper.renderer.domElement,
+              0,
+              0,
+              w * window.devicePixelRatio,
+              h * window.devicePixelRatio,
+            );
             chitRenderInstance.dirty = false;
             timeState.setAnimationState(id, !paused);
           } else {
@@ -160,7 +168,7 @@ export default function Viewer({
       timeState.setAnimationState(id, false);
       cancelled = true;
     };
-  }, [id, timeState, rendererWrapper, scene, chitRenderInstance, paused, refContainer, w, h]);
+  }, [id, timeState, rendererWrapper, sceneWrapper, chitRenderInstance, paused, refContainer, w, h]);
 
   useEffect(() => {
     if (chitRenderInstance) {
@@ -174,19 +182,25 @@ export default function Viewer({
     }
   }, [chitRenderInstance, id, paused, timeState]);
 
+  // Cleanup sceneWrapper on unmount
+  useEffect(() => {
+    return () => {
+      sceneWrapper.dispose();
+    };
+  }, [sceneWrapper]);
 
   // TODO: temp
   useEffect(() => {
     if (rendererWrapper && scene) {
       // Test meshes with different outline colors and grouping
       const m = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
-      m.userData.outlineColor = new Color(0, 0, 0); // Black outline
+      m.userData.outlineColor = new Color(0, 1, 1); // Black outline
       m.userData.outlineId = 100; // Custom group ID
       m.position.set(0, 0, 1);
       scene.add(m);
 
       const m2 = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
-      m2.userData.outlineColor = new Color(0, 0, 0); // Same black outline
+      m2.userData.outlineColor = new Color(0, 1, 1); // Same black outline
       m2.userData.outlineId = 100; // Same group ID - will be treated as one mesh
       m2.position.set(1, 1, 1.05);
       scene.add(m2);
@@ -199,7 +213,6 @@ export default function Viewer({
       scene.add(m3);
     }
   }, [scene, rendererWrapper]);
-
 
   // hook up interactions
   useEffect(() => {

@@ -29,6 +29,7 @@ import {
 import { useGameTheme } from "../hooks/useGameTheme";
 import { GameTheme } from "../game/GameTheme";
 import { RichTextRenderOptionsParameters } from "../utilities/CanvasStack/RichTextRenderer";
+import { SceneWrapper } from "../rendering/outline";
 
 let ID_COUNTER = 1;
 
@@ -83,7 +84,7 @@ type BuiltItem = {
 
 class GalleryController {
   constructor(
-    public scene: Scene,
+    public sceneWrapper: SceneWrapper,
     private theme: GameTheme,
   ) {
     this.camera = new PerspectiveCamera(25, 10, 0.1, 20000);
@@ -91,9 +92,9 @@ class GalleryController {
 
     this.light = new DirectionalLight(0xffffff, 1);
     this.light.position.copy(this.camera.position);
-    scene.add(this.light);
+    sceneWrapper.scene.add(this.light);
     const ambient = new AmbientLight(0xffffff, 1);
-    scene.add(ambient);
+    sceneWrapper.scene.add(ambient);
   }
 
   public camera: PerspectiveCamera;
@@ -139,7 +140,7 @@ class GalleryController {
     this.camera.position.z = Math.cos(this.offsetAngle) * z;
     this.camera.position.y = Math.sin(this.offsetAngle) * z;
     this.camera.lookAt(new Vector3(this.camera.position.x, 0, 0));
-    this.scene.fog = new Fog(0x000000, z, z + w);
+    this.sceneWrapper.scene.fog = new Fog(0x000000, z, z + w);
 
     this.light.position.copy(this.camera.position);
     this.light.lookAt(0, 0, 0);
@@ -402,7 +403,7 @@ class GalleryController {
             builtItem.mesh = item.createMesh();
             builtItem.group.add(builtItem.mesh);
 
-            this.scene.add(builtItem.group);
+            this.sceneWrapper.scene.add(builtItem.group);
 
             this.scaleItem(builtItem, item.maximumWidth, item.maximumHeight);
             this.positionItem(builtItem);
@@ -415,7 +416,7 @@ class GalleryController {
         builtItem.mesh.removeFromParent();
         builtItem.group.removeFromParent();
         builtItem.group.add(builtItem.mesh);
-        this.scene.add(builtItem.group);
+        this.sceneWrapper.scene.add(builtItem.group);
         this.positionItem(builtItem);
         this.updateHelpText(builtItem);
 
@@ -516,7 +517,7 @@ export function GalleryViewer({
   const refContainer = useRef<HTMLCanvasElement>(null);
   const rendererWrapper = useWebGlRenderer(w, h);
   const theme = useGameTheme();
-  const [galleryController] = useState(new GalleryController(new Scene(), theme));
+  const [galleryController] = useState(new GalleryController(new SceneWrapper(new Scene()), theme));
   const [itemWidth, setItemWidth] = useState(galleryItemWidth);
   const [itemHeight, setItemHeight] = useState(galleryItemHeight);
 
@@ -558,7 +559,7 @@ export function GalleryViewer({
       requestAnimationFrame(animate);
 
       if (galleryController.render()) {
-        rendererWrapper.render(galleryController.scene, galleryController.camera);
+        rendererWrapper.render(galleryController.sceneWrapper, galleryController.camera);
 
         if (ctx) {
           ctx.clearRect(0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
@@ -639,6 +640,13 @@ export function GalleryViewer({
       removeWheelListener(el, wheelListener);
     };
   }, [galleryController, onClose]);
+
+  // Cleanup sceneWrapper on unmount
+  useEffect(() => {
+    return () => {
+      galleryController.sceneWrapper.dispose();
+    };
+  }, [galleryController]);
 
   if (!w || !h) {
     return null;

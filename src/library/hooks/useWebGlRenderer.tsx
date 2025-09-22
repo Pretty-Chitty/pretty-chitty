@@ -1,6 +1,6 @@
 import React, { useContext, createContext, ReactNode, useEffect, useState } from "react";
 import { WebGLRenderer, Vector2, Scene } from "three";
-import { EffectComposer, IDBasedOutlinePass, OutputPass, RenderPass, Camera } from "../rendering/outline";
+import { EffectComposer, IDBasedOutlinePass, OutputPass, RenderPass, Camera, SceneWrapper } from "../rendering/outline";
 
 const WebGlRendererContext = createContext<{
   used: { [key: string]: WebGLRendererWrapper };
@@ -45,10 +45,13 @@ class WebGLRendererWrapper {
     this.setSize(width, height);
   }
 
-  render(scene: Scene, camera: Camera) {
-    this.renderPass.scene = scene;
+  render(sceneWrapper: SceneWrapper, camera: Camera) {
+    // Update shadow meshes for outlined objects
+    sceneWrapper.update();
+
+    this.renderPass.scene = sceneWrapper.scene;
     this.renderPass.camera = camera;
-    this.outlinePass.renderScene = scene;
+    this.outlinePass.renderScene = sceneWrapper.outlineShadowScene;
     this.outlinePass.renderCamera = camera;
 
     // Pass the depth buffer from the main render to the outline pass
