@@ -16,11 +16,7 @@ export class EffectComposer {
 
   private _rtParams: RTParams;
 
-  renderTarget1: WebGLRenderTarget;
-  renderTarget2: WebGLRenderTarget;
-
-  writeBuffer: WebGLRenderTarget;
-  readBuffer: WebGLRenderTarget;
+  renderTarget: WebGLRenderTarget;
 
   renderToScreen = true;
   passes: Pass[] = [];
@@ -67,12 +63,7 @@ export class EffectComposer {
       this._height = renderTarget.height;
     }
 
-    this.renderTarget1 = renderTarget;
-    this.renderTarget2 = renderTarget.clone();
-    this.renderTarget2.texture.name = `EffectComposer.rt2.${this.textureId}`;
-
-    this.writeBuffer = this.renderTarget1;
-    this.readBuffer = this.renderTarget2;
+    this.renderTarget = renderTarget;
 
     this.copyPass = new ShaderPass(CopyShader, this.textureId);
   }
@@ -99,27 +90,16 @@ export class EffectComposer {
     const effectiveWidth = Math.max(1, Math.floor(this._width * this._pixelRatio));
     const effectiveHeight = Math.max(1, Math.floor(this._height * this._pixelRatio));
 
-    this.renderTarget1.dispose();
-    this.renderTarget2.dispose();
+    this.renderTarget.dispose();
 
-    this.renderTarget1 = new WebGLRenderTarget(effectiveWidth, effectiveHeight, this._rtParams);
-    this.renderTarget1.texture.name = `EffectComposer.rt1.${this.textureId}`;
-    this.renderTarget2 = this.renderTarget1.clone();
-    this.renderTarget2.texture.name = `EffectComposer.rt2.${this.textureId}`;
-
-    this.writeBuffer = this.renderTarget1;
-    this.readBuffer = this.renderTarget2;
+    this.renderTarget = new WebGLRenderTarget(effectiveWidth, effectiveHeight, this._rtParams);
+    this.renderTarget.texture.name = `EffectComposer.rt.${this.textureId}`;
 
     for (let i = 0; i < this.passes.length; i++) {
       this.passes[i].setSize(effectiveWidth, effectiveHeight);
     }
   }
 
-  private swapBuffers(): void {
-    const tmp = this.readBuffer;
-    this.readBuffer = this.writeBuffer;
-    this.writeBuffer = tmp;
-  }
 
   addPass(pass: Pass): void {
     this.passes.push(pass);
@@ -152,19 +132,7 @@ export class EffectComposer {
       if (!pass.enabled) continue;
 
       pass.renderToScreen = this.renderToScreen && this.isLastEnabledPass(i);
-      pass.render(this.renderer, this.writeBuffer, this.readBuffer, dt, maskActive);
-
-      if (pass.needsSwap) {
-        if (maskActive) {
-          const context = this.renderer.getContext();
-          const stencil = (this.renderer.state as any).buffers.stencil;
-
-          stencil.setFunc(context.NOTEQUAL, 1, 0xffffffff);
-          this.copyPass.render(this.renderer, this.writeBuffer, this.readBuffer);
-          stencil.setFunc(context.EQUAL, 1, 0xffffffff);
-        }
-        this.swapBuffers();
-      }
+      pass.render(this.renderer, this.renderTarget, this.renderTarget, dt, maskActive);
 
       if (pass instanceof MaskPass) {
         maskActive = true;
@@ -203,13 +171,8 @@ export class EffectComposer {
       this._height = renderTarget.height;
     }
 
-    this.renderTarget1.dispose();
-    this.renderTarget2.dispose();
-    this.renderTarget1 = renderTarget;
-    this.renderTarget2 = renderTarget.clone();
-
-    this.writeBuffer = this.renderTarget1;
-    this.readBuffer = this.renderTarget2;
+    this.renderTarget.dispose();
+    this.renderTarget = renderTarget;
   }
 
   setSize(width: number, height: number): void {
@@ -219,8 +182,7 @@ export class EffectComposer {
     const effectiveWidth = this._width * this._pixelRatio;
     const effectiveHeight = this._height * this._pixelRatio;
 
-    this.renderTarget1.setSize(effectiveWidth, effectiveHeight);
-    this.renderTarget2.setSize(effectiveWidth, effectiveHeight);
+    this.renderTarget.setSize(effectiveWidth, effectiveHeight);
 
     for (let i = 0; i < this.passes.length; i++) {
       this.passes[i].setSize(effectiveWidth, effectiveHeight);
@@ -233,7 +195,6 @@ export class EffectComposer {
   }
 
   dispose() {
-    this.renderTarget1.dispose();
-    this.renderTarget2.dispose();
+    this.renderTarget.dispose();
   }
 }
