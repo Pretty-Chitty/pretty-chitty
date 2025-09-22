@@ -40,12 +40,11 @@ export class OutlinePass extends Pass {
 
   sceneDepthTexture: any = null;
 
+
   maskBufferMaterial!: MeshBasicMaterial;
   renderTargetMaskBuffer!: WebGLRenderTarget;
 
-  depthMaterial!: MeshDepthMaterial;
   prepareMaskMaterial!: ShaderMaterial;
-  renderTargetDepthBuffer!: WebGLRenderTarget;
 
   renderTargetMaskDownSampleBuffer!: WebGLRenderTarget;
 
@@ -97,10 +96,6 @@ export class OutlinePass extends Pass {
     this.maskBufferMaterial = new MeshBasicMaterial({ color: 0xffffff });
     this.maskBufferMaterial.side = DoubleSide;
 
-    this.depthMaterial = new MeshDepthMaterial();
-    this.depthMaterial.side = DoubleSide;
-    this.depthMaterial.depthPacking = RGBADepthPacking;
-    this.depthMaterial.blending = NoBlending;
 
     this.prepareMaskMaterial = this.createPrepareMaskMaterial();
     this.prepareMaskMaterial.side = DoubleSide;
@@ -143,9 +138,6 @@ export class OutlinePass extends Pass {
     this.renderTargetMaskBuffer.texture.name = "OutlinePass.mask";
     this.renderTargetMaskBuffer.texture.generateMipmaps = false;
 
-    this.renderTargetDepthBuffer = new WebGLRenderTarget(this.resolution.x, this.resolution.y, pars);
-    this.renderTargetDepthBuffer.texture.name = "OutlinePass.depth";
-    this.renderTargetDepthBuffer.texture.generateMipmaps = false;
 
     this.renderTargetMaskDownSampleBuffer = new WebGLRenderTarget(resx, resy, pars);
     this.renderTargetMaskDownSampleBuffer.texture.name = "OutlinePass.depthDownSample";
@@ -183,13 +175,13 @@ export class OutlinePass extends Pass {
     return str.replace(/DEPTH_TO_VIEW_Z/g, `${type}DepthToViewZ`);
   }
 
+
   setSceneDepthTexture(depthTexture: any): void {
     this.sceneDepthTexture = depthTexture;
   }
 
   dispose(): void {
     this.renderTargetMaskBuffer.dispose();
-    this.renderTargetDepthBuffer.dispose();
     this.renderTargetMaskDownSampleBuffer.dispose();
     this.renderTargetBlurBuffer1.dispose();
     this.renderTargetBlurBuffer2.dispose();
@@ -283,20 +275,10 @@ export class OutlinePass extends Pass {
       return;
     }
 
-    if (!this.sceneDepthTexture) {
-      console.warn(
-        "OutlinePass: sceneDepthTexture not set. Call setSceneDepthTexture() with your main scene's depth buffer.",
-      );
-      if (this.renderToScreen) {
-        this.renderCopyToScreen(renderer, readBuffer);
-      }
-      return;
-    }
 
     this.saveRenderState(renderer);
     this.setupRenderState(renderer, maskActive);
 
-    this.renderDepthBuffer(renderer);
     this.prepareMask(renderer);
     this.downsampleMask(renderer);
     this.performEdgeDetection(renderer);
@@ -326,20 +308,6 @@ export class OutlinePass extends Pass {
     renderer.autoClear = true;
   }
 
-  private renderDepthBuffer(renderer: WebGLRenderer): void {
-    this.changeVisibilityOfNonSelectedObjects(false);
-
-    const currentBackground = this.renderScene.background;
-    this.renderScene.background = null;
-
-    this.renderScene.overrideMaterial = this.depthMaterial;
-    renderer.setRenderTarget(this.renderTargetDepthBuffer);
-    renderer.clear();
-    renderer.render(this.renderScene, this.renderCamera);
-
-    this.changeVisibilityOfNonSelectedObjects(true);
-    this.renderScene.background = currentBackground;
-  }
 
   private prepareMask(renderer: WebGLRenderer): void {
     this.updateTextureMatrix();
@@ -350,7 +318,7 @@ export class OutlinePass extends Pass {
       (this.renderCamera as any).near,
       (this.renderCamera as any).far,
     );
-    (this.prepareMaskMaterial.uniforms["sceneDepthTexture"].value as any) = this.sceneDepthTexture;
+    (this.prepareMaskMaterial.uniforms["depthTexture"].value as any) = this.sceneDepthTexture;
     (this.prepareMaskMaterial.uniforms["textureMatrix"].value as Matrix4) = this.textureMatrix;
 
     renderer.setRenderTarget(this.renderTargetMaskBuffer);
@@ -453,7 +421,7 @@ export class OutlinePass extends Pass {
   private createPrepareMaskMaterial(): ShaderMaterial {
     return new ShaderMaterial({
       uniforms: {
-        sceneDepthTexture: { value: null },
+        depthTexture: { value: null },
         cameraNearFar: { value: new Vector2(0.5, 0.5) },
         textureMatrix: { value: null },
       },
@@ -475,15 +443,12 @@ export class OutlinePass extends Pass {
       fragmentShader: `#include <packing>
         varying vec4 vPosition;
         varying vec4 projTexCoord;
-        uniform sampler2D sceneDepthTexture;
+        uniform sampler2D depthTexture;
         uniform vec2 cameraNearFar;
         void main() {
-          float currentViewZ = -vPosition.z;
-          float sceneDepth = unpackRGBAToDepth(texture2DProj( sceneDepthTexture, projTexCoord ));
-          float sceneViewZ = - DEPTH_TO_VIEW_Z( sceneDepth, cameraNearFar.x, cameraNearFar.y );
-
-          float depthDifference = abs(currentViewZ - sceneViewZ);
-          float depthTest = (depthDifference < 0.001) ? 1.0 : 0.0;
+          float depth = unpackRGBAToDepth(texture2DProj( depthTexture, projTexCoord ));
+          float viewZ = - DEPTH_TO_VIEW_Z( depth, cameraNearFar.x, cameraNearFar.y );
+          float depthTest = (-vPosition.z > viewZ) ? 1.0 : 0.0;
           gl_FragColor = vec4(0.0, depthTest, 1.0, 1.0);
         }`,
     });
