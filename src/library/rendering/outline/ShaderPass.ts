@@ -1,10 +1,4 @@
-import {
-  ShaderMaterial,
-  UniformsUtils,
-  WebGLRenderer,
-  WebGLRenderTarget,
-  IUniform,
-} from "three";
+import { ShaderMaterial, UniformsUtils, WebGLRenderer, WebGLRenderTarget, IUniform } from "three";
 import { Pass } from "./types";
 import { FullScreenQuad } from "./FullScreenQuad";
 import { CopyShader } from "./shaders";
@@ -15,9 +9,9 @@ export class ShaderPass extends Pass {
   material: ShaderMaterial;
   private fsQuad: FullScreenQuad;
 
-  constructor(shader: ShaderMaterial | typeof CopyShader, textureID?: string) {
+  constructor(shader: ShaderMaterial | typeof CopyShader, textureID: string) {
     super();
-    this.textureID = textureID ?? "tDiffuse";
+    this.textureID = textureID;
 
     if (shader instanceof ShaderMaterial) {
       this.uniforms = shader.uniforms as Record<string, IUniform>;

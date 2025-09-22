@@ -1,12 +1,4 @@
-import {
-  Scene,
-  Vector2,
-  Color,
-  WebGLRenderer,
-  WebGLRenderTarget,
-  LinearFilter,
-  RGBAFormat,
-} from "three";
+import { Scene, Vector2, Color, WebGLRenderer, WebGLRenderTarget, LinearFilter, RGBAFormat } from "three";
 import { Pass, Camera } from "../types";
 import { ShaderPass } from "../ShaderPass";
 import { CopyShader } from "../shaders";
@@ -61,6 +53,7 @@ export class EnhancedOutlineEffectComposer extends Pass {
   needsSwap = true;
 
   constructor(
+    private textureId: string,
     resolution: Vector2,
     scene: Scene,
     camera: Camera,
@@ -112,7 +105,7 @@ export class EnhancedOutlineEffectComposer extends Pass {
     this.blurPass1 = new BlurPass(4);
     this.blurPass2 = new BlurPass(4);
     this.compositePass = new OutlineCompositePass();
-    this.copyPass = new ShaderPass(CopyShader);
+    this.copyPass = new ShaderPass(CopyShader, this.textureId);
   }
 
   // Convenience method to enable inter-mesh edge display
@@ -213,7 +206,7 @@ export class EnhancedOutlineEffectComposer extends Pass {
     this.edgeDetectionPass.setSelectedObjects(this.selectedObjects);
     this.edgeDetectionPass.setTextureSize(
       Math.round(this.resolution.x / this.downSampleRatio),
-      Math.round(this.resolution.y / this.downSampleRatio)
+      Math.round(this.resolution.y / this.downSampleRatio),
     );
 
     this.edgeDetectionPass.render(renderer, this.renderTargetEdgeBuffer1);

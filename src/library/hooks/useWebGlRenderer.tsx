@@ -1,5 +1,6 @@
 import React, { useContext, createContext, ReactNode, useEffect, useState } from "react";
-import { WebGLRenderer } from "three";
+import { WebGLRenderer, Vector2, Scene } from "three";
+import { EffectComposer, IDBasedOutlinePass, OutputPass, RenderPass, Camera } from "../rendering/outline";
 
 const WebGlRendererContext = createContext<{
   used: { [key: string]: WebGLRendererWrapper };
@@ -8,42 +9,107 @@ const WebGlRendererContext = createContext<{
 
 class WebGLRendererWrapper {
   public referenceCount = 0;
-  constructor(public renderer: WebGLRenderer) {
+  public composer: EffectComposer;
+  public renderPass: RenderPass;
+  public outlinePass: IDBasedOutlinePass;
+  public outputPass: OutputPass;
+
+  constructor(
+    public renderer: WebGLRenderer,
+    width: number,
+    height: number,
+  ) {
     this.renderer.setPixelRatio(Math.max(1.5, window.devicePixelRatio));
     this.renderer.shadowMap.enabled = true;
+
+    // Setup effect composer with standard passes
+    this.composer = new EffectComposer(renderer);
+
+    this.renderPass = new RenderPass();
+    this.outlinePass = new IDBasedOutlinePass(
+      new Vector2(width * window.devicePixelRatio, height * window.devicePixelRatio),
+    );
+    this.outputPass = new OutputPass();
+
+    // Configure outline pass with standard settings
+    this.outlinePass.edgeStrength = 200.0;
+    this.outlinePass.edgeGlow = 2.0;
+    this.outlinePass.edgeThickness = 10.0;
+    this.outlinePass.pulsePeriod = 0;
+    this.outlinePass.downSampleRatio = 1;
+
+    this.composer.addPass(this.renderPass);
+    this.composer.addPass(this.outlinePass);
+    this.composer.addPass(this.outputPass);
+
+    this.setSize(width, height);
+  }
+
+  render(scene: Scene, camera: Camera) {
+    this.renderPass.scene = scene;
+    this.renderPass.camera = camera;
+    this.outlinePass.renderScene = scene;
+    this.outlinePass.renderCamera = camera;
+    this.composer.render();
+  }
+
+  setSize(width: number, height: number) {
+    this.renderer.setSize(width, height);
+    this.composer.setSize(width, height);
+    this.outlinePass.setSize(width * window.devicePixelRatio, height * window.devicePixelRatio);
+  }
+
+  dispose() {
+    this.composer.dispose();
+    this.outlinePass.dispose();
+    this.renderer.dispose();
   }
 }
 
-export function useWebGlRenderer(w: number, h: number): WebGLRenderer | undefined {
-  const [renderer, setRenderer] = useState<WebGLRenderer | undefined>(undefined);
+export function useWebGlRenderer(w: number, h: number): WebGLRendererWrapper | undefined {
+  const [rendererWrapper, setRendererWrapper] = useState<WebGLRendererWrapper | undefined>(undefined);
   const context = useContext(WebGlRendererContext);
 
   useEffect(() => {
     const key = `${w}_${h}`;
-    let rendererWrapper: WebGLRendererWrapper | undefined = context.used[key];
-    if (!rendererWrapper) {
-      rendererWrapper = context.unused.pop();
-      if (!rendererWrapper) {
-        rendererWrapper = new WebGLRendererWrapper(new WebGLRenderer());
+    let wrapper: WebGLRendererWrapper | undefined = context.used[key];
+    if (!wrapper) {
+      wrapper = context.unused.pop();
+      if (!wrapper) {
+        wrapper = new WebGLRendererWrapper(new WebGLRenderer(), w, h);
+      } else {
+        wrapper.setSize(w, h);
       }
-      rendererWrapper.renderer.setSize(w, h);
-      context.used[key] = rendererWrapper;
+      context.used[key] = wrapper;
     }
-    rendererWrapper.referenceCount++;
-    setRenderer(rendererWrapper.renderer);
+    wrapper.referenceCount++;
+    setRendererWrapper(wrapper);
     return () => {
-      rendererWrapper.referenceCount--;
-      if (rendererWrapper.referenceCount === 0) {
+      wrapper.referenceCount--;
+      if (wrapper.referenceCount === 0) {
         delete context.used[key];
-        context.unused.push(rendererWrapper);
+        context.unused.push(wrapper);
       }
-      setRenderer(undefined);
+      setRendererWrapper(undefined);
     };
   }, [context, w, h]);
 
-  return renderer;
+  return rendererWrapper;
 }
 
 export function WebGlRendererProvider({ children }: { children: ReactNode }) {
-  return <WebGlRendererContext.Provider value={{ used: {}, unused: [] }}>{children}</WebGlRendererContext.Provider>;
+  const [contextValue] = useState(() => ({
+    used: {} as { [key: string]: WebGLRendererWrapper },
+    unused: [] as WebGLRendererWrapper[],
+  }));
+
+  useEffect(() => {
+    return () => {
+      // Cleanup all renderers when provider unmounts
+      Object.values(contextValue.used).forEach((wrapper) => wrapper.dispose());
+      contextValue.unused.forEach((wrapper) => wrapper.dispose());
+    };
+  }, [contextValue]);
+
+  return <WebGlRendererContext.Provider value={contextValue}>{children}</WebGlRendererContext.Provider>;
 }

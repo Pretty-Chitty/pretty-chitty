@@ -514,7 +514,7 @@ export function GalleryViewer({
 }) {
   const [id] = useState(`GalleryViewer${ID_COUNTER++}`);
   const refContainer = useRef<HTMLCanvasElement>(null);
-  const renderer = useWebGlRenderer(w, h);
+  const rendererWrapper = useWebGlRenderer(w, h);
   const theme = useGameTheme();
   const [galleryController] = useState(new GalleryController(new Scene(), theme));
   const [itemWidth, setItemWidth] = useState(galleryItemWidth);
@@ -550,7 +550,7 @@ export function GalleryViewer({
 
   useEffect(() => {
     const canvas = refContainer.current;
-    if (!canvas || !renderer || paused) return;
+    if (!canvas || !rendererWrapper || paused) return;
     const ctx = canvas.getContext("2d");
     let cancelled = false;
     const animate = () => {
@@ -558,12 +558,11 @@ export function GalleryViewer({
       requestAnimationFrame(animate);
 
       if (galleryController.render()) {
-        renderer.setClearColor(0x000000, 0);
-        renderer.render(galleryController.scene, galleryController.camera);
+        rendererWrapper.render(galleryController.scene, galleryController.camera);
 
         if (ctx) {
           ctx.clearRect(0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
-          ctx.drawImage(renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
+          ctx.drawImage(rendererWrapper.renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
         }
       }
     };
@@ -571,7 +570,7 @@ export function GalleryViewer({
     return () => {
       cancelled = true;
     };
-  }, [id, renderer, galleryController, paused, w, h]);
+  }, [id, rendererWrapper, galleryController, paused, w, h]);
 
   useEffect(() => {
     const el = refContainer.current;

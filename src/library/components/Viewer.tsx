@@ -11,7 +11,7 @@ import { addWheelListener, removeWheelListener } from "wheel";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 import { useGalleryState } from "../hooks/useGalleryState";
 import { usePlayerId } from "../hooks/usePlayer";
-import { EffectComposer, IDBasedOutlinePass, OutputPass, RenderPass } from "../rendering/outline";
+import { render } from "react-dom";
 
 let ID_COUNTER = 1;
 
@@ -38,11 +38,7 @@ export default function Viewer({
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
   const [isLoading] = useEventChannelState(timeState.isLoading);
   const refContainer = useRef(null);
-  const renderer = useWebGlRenderer(w, h);
-
-  const [composer, setComposer] = useState<EffectComposer | undefined>(undefined);
-  const [renderPass, setRenderPass] = useState<RenderPass | undefined>(undefined);
-  const [outlinePass, setOutlinePass] = useState<IDBasedOutlinePass | undefined>(undefined);
+  const rendererWrapper = useWebGlRenderer(w, h);
 
   const [scene] = useState<Scene>(new Scene());
   const galleryState = useGalleryState();
@@ -126,7 +122,7 @@ export default function Viewer({
   // handle animation frames
   useEffect(() => {
     const canvas = refContainer.current as any as HTMLCanvasElement;
-    if (!chitRenderInstance || !renderer || !canvas || !composer) {
+    if (!chitRenderInstance || !rendererWrapper || !canvas) {
       return;
     }
 
@@ -145,8 +141,8 @@ export default function Viewer({
             requestAnimationFrame(animate);
           }
           if (chitRenderInstance && (renderNextFrame === undefined || renderNextFrame || chitRenderInstance.dirty)) {
-            composer.render();
-            context.drawImage(renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
+            rendererWrapper.render(scene, chitRenderInstance.camera);
+            context.drawImage(rendererWrapper.renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
             chitRenderInstance.dirty = false;
             timeState.setAnimationState(id, !paused);
           } else {
@@ -164,7 +160,7 @@ export default function Viewer({
       timeState.setAnimationState(id, false);
       cancelled = true;
     };
-  }, [id, timeState, renderer, composer, scene, chitRenderInstance, paused, refContainer, w, h]);
+  }, [id, timeState, rendererWrapper, scene, chitRenderInstance, paused, refContainer, w, h]);
 
   useEffect(() => {
     if (chitRenderInstance) {
@@ -178,55 +174,10 @@ export default function Viewer({
     }
   }, [chitRenderInstance, id, paused, timeState]);
 
-  // Create composer per size - must match the renderer pooling strategy
+
+  // TODO: temp
   useEffect(() => {
-    if (renderer) {
-      const sizeKey = `${w}_${h}`;
-      if (!composer) {
-        console.log(`Creating EffectComposer for size ${sizeKey}`);
-        setComposer(new EffectComposer(renderer));
-      } else {
-        // When renderer changes but size doesn't, we need to update the internal renderer
-        // but avoid recreating render targets unnecessarily
-        const currentRenderer = (composer as any).renderer;
-        if (currentRenderer !== renderer) {
-          console.log(`Renderer changed for size ${sizeKey} - updating EffectComposer`);
-          composer.setRenderer(renderer, {
-            adoptSizeFromRenderer: false,  // Keep our current size
-            adoptPixelRatio: false,        // Keep our current pixel ratio
-            preserveLogicalSize: true      // Don't change logical size
-          });
-        }
-      }
-    }
-  }, [renderer, w, h]); // Depend on renderer and size
-
-  // Update composer size when dimensions change
-  useEffect(() => {
-    if (composer) {
-      console.log("Resizing EffectComposer to", w * window.devicePixelRatio, h * window.devicePixelRatio);
-      composer.setSize(w * window.devicePixelRatio, h * window.devicePixelRatio);
-    }
-  }, [composer, w, h]);
-
-  // Create outline pass once when scene/camera are available
-  useEffect(() => {
-    if (scene && chitRenderInstance && !outlinePass) {
-      const newOutlinePass = new IDBasedOutlinePass(
-        new Vector2(w * window.devicePixelRatio, h * window.devicePixelRatio),
-        scene,
-        chitRenderInstance.camera,
-      );
-
-      // Configure outline pass for userData-based outlining with thicker outlines
-      newOutlinePass.edgeStrength = 200.0; // Increased intensity
-      newOutlinePass.edgeGlow = 2.0; // Increased glow
-      newOutlinePass.edgeThickness = 10.0; // Much thicker edges
-      newOutlinePass.pulsePeriod = 0;
-      newOutlinePass.downSampleRatio = 1;
-
-      console.log("Creating persistent IDBasedOutlinePass");
-
+    if (rendererWrapper && scene) {
       // Test meshes with different outline colors and grouping
       const m = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
       m.userData.outlineColor = new Color(0, 0, 0); // Black outline
@@ -246,33 +197,9 @@ export default function Viewer({
       m3.userData.outlineId = 200; // Different group ID
       m3.position.set(-1, 0, 1);
       scene.add(m3);
-
-      setOutlinePass(newOutlinePass);
     }
-  }, [scene, chitRenderInstance]); // Only depend on scene/camera, not renderer
+  }, [scene, rendererWrapper]);
 
-  // Update outline pass size when dimensions change
-  useEffect(() => {
-    if (outlinePass) {
-      console.log("Resizing persistent outline pass to", w * window.devicePixelRatio, h * window.devicePixelRatio);
-      outlinePass.setSize(w * window.devicePixelRatio, h * window.devicePixelRatio);
-    }
-  }, [outlinePass, w, h]);
-
-  // Setup composer passes when composer and passes are available
-  useEffect(() => {
-    if (composer && scene && chitRenderInstance && outlinePass) {
-      const newRenderPass = new RenderPass(scene, chitRenderInstance.camera);
-
-      console.log("Setting up composer passes");
-      composer.passes = []; // Clear existing passes
-      composer.addPass(newRenderPass);
-      composer.addPass(outlinePass);
-      composer.addPass(new OutputPass());
-
-      setRenderPass(newRenderPass);
-    }
-  }, [composer, scene, chitRenderInstance, outlinePass]);
 
   // hook up interactions
   useEffect(() => {

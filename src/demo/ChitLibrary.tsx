@@ -392,7 +392,7 @@ export class Root extends RootChit<MyPlayer> {
           height: 2,
           contents: this.mainBoard,
         },
-        width > this.players.length * 200
+        width > this.players.length * 500
           ? {
               height: 1,
               contents: this.players.map((p) => ({
@@ -412,7 +412,7 @@ export class Root extends RootChit<MyPlayer> {
               contents: this.mainBoard,
             },
 
-            height > this.players.length * 200
+            height > this.players.length * 500
               ? {
                   width: 1,
                   contents: this.players.map((p) => ({

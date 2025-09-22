@@ -25,16 +25,10 @@ export class IDBasedOutlinePass extends OutlinePass {
   private idMaterials = new Map<number, MeshBasicMaterial>();
   private idBasedEdgeDetectionPass!: InterMeshEdgeDetectionPass;
 
-  constructor(
-    resolution: Vector2,
-    scene: Scene,
-    camera: Camera,
-    selectedObjects?: Array<any>,
-  ) {
+  constructor(resolution: Vector2, scene?: Scene, camera?: Camera, selectedObjects?: Array<any>) {
     super(resolution, scene, camera, selectedObjects);
 
     this.instanceId = ++IDBasedOutlinePass.instanceCounter;
-    console.log(`Creating IDBasedOutlinePass instance ${this.instanceId} - size: ${resolution.x}x${resolution.y}`);
 
     // Initialize ID-based components
     this.initializeIDComponents();
@@ -74,7 +68,7 @@ export class IDBasedOutlinePass extends OutlinePass {
     // Update edge detection pass texture size
     this.idBasedEdgeDetectionPass.setTextureSize(
       Math.round(width / this.downSampleRatio),
-      Math.round(height / this.downSampleRatio)
+      Math.round(height / this.downSampleRatio),
     );
   }
 
@@ -224,18 +218,18 @@ export class IDBasedOutlinePass extends OutlinePass {
 
   private performIDBasedEdgeDetection(renderer: WebGLRenderer): void {
     // Collect all meshes with userData.outlineColor
-    const outliningMeshes: Array<{id: number, color: Color}> = [];
+    const outliningMeshes: Array<{ id: number; color: Color }> = [];
 
     this.renderScene.traverse((object: any) => {
       if (object.isMesh && object.userData?.outlineColor) {
         const meshID = object.userData?.outlineId !== undefined ? object.userData.outlineId : object.id;
 
         // Check if we already have this ID (for grouped meshes)
-        const existing = outliningMeshes.find(m => m.id === meshID);
+        const existing = outliningMeshes.find((m) => m.id === meshID);
         if (!existing) {
           outliningMeshes.push({
             id: meshID,
-            color: object.userData.outlineColor
+            color: object.userData.outlineColor,
           });
         }
       }
@@ -245,7 +239,7 @@ export class IDBasedOutlinePass extends OutlinePass {
     this.idBasedEdgeDetectionPass.setOutliningMeshes(outliningMeshes);
     this.idBasedEdgeDetectionPass.setTextureSize(
       Math.round(this.resolution.x / this.downSampleRatio),
-      Math.round(this.resolution.y / this.downSampleRatio)
+      Math.round(this.resolution.y / this.downSampleRatio),
     );
 
     this.idBasedEdgeDetectionPass.render(renderer, this.renderTargetEdgeBuffer1);
@@ -293,7 +287,6 @@ export class IDBasedOutlinePass extends OutlinePass {
   private renderIDOverlay(renderer: WebGLRenderer, readBuffer: WebGLRenderTarget, maskActive: boolean): void {
     this.fsQuad.material = this.overlayMaterial;
 
-
     // Use the original mask texture (depth-based) for now to debug
     (this.overlayMaterial.uniforms["maskTexture"].value as any) = this.renderTargetMaskBuffer.texture;
     (this.overlayMaterial.uniforms["edgeTexture1"].value as any) = this.renderTargetEdgeBuffer1.texture;
@@ -333,8 +326,6 @@ export class IDBasedOutlinePass extends OutlinePass {
   }
 
   override dispose(): void {
-    console.log(`Disposing IDBasedOutlinePass instance ${this.instanceId}`);
-
     super.dispose();
 
     this.renderTargetIDBuffer.dispose();

@@ -1,12 +1,4 @@
-import {
-  Scene,
-  Vector2,
-  Color,
-  WebGLRenderer,
-  WebGLRenderTarget,
-  LinearFilter,
-  RGBAFormat,
-} from "three";
+import { Scene, Vector2, Color, WebGLRenderer, WebGLRenderTarget, LinearFilter, RGBAFormat } from "three";
 import { Pass, Camera } from "../types";
 import { ShaderPass } from "../ShaderPass";
 import { CopyShader } from "../shaders";
@@ -60,6 +52,7 @@ export class IDBasedOutlineEffectComposer extends Pass {
   needsSwap = false;
 
   constructor(
+    private textureId: string,
     resolution: Vector2,
     scene: Scene,
     camera: Camera,
@@ -119,7 +112,7 @@ export class IDBasedOutlineEffectComposer extends Pass {
 
     this.idBasedMaskPass = new IDBasedMaskPass();
 
-    this.downsamplePass = new ShaderPass(CopyShader);
+    this.downsamplePass = new ShaderPass(CopyShader, this.textureId);
 
     this.edgeDetectionPass = new IDBasedEdgeDetectionPass();
 
@@ -128,7 +121,7 @@ export class IDBasedOutlineEffectComposer extends Pass {
 
     this.compositePass = new OutlineCompositePass();
 
-    this.copyPass = new ShaderPass(CopyShader);
+    this.copyPass = new ShaderPass(CopyShader, this.textureId);
   }
 
   override setSize(width: number, height: number): void {
@@ -224,7 +217,7 @@ export class IDBasedOutlineEffectComposer extends Pass {
     this.edgeDetectionPass.setMaskTexture(this.renderTargetMaskDownSampleBuffer.texture);
     this.edgeDetectionPass.setTextureSize(
       this.renderTargetMaskDownSampleBuffer.width,
-      this.renderTargetMaskDownSampleBuffer.height
+      this.renderTargetMaskDownSampleBuffer.height,
     );
     this.edgeDetectionPass.render(renderer, this.renderTargetEdgeBuffer1);
   }

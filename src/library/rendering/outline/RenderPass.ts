@@ -1,10 +1,4 @@
-import {
-  Scene,
-  ShaderMaterial,
-  Color,
-  WebGLRenderer,
-  WebGLRenderTarget,
-} from "three";
+import { Scene, ShaderMaterial, Color, WebGLRenderer, WebGLRenderTarget, PerspectiveCamera } from "three";
 import { Pass, Camera } from "./types";
 
 export class RenderPass extends Pass {
@@ -19,15 +13,15 @@ export class RenderPass extends Pass {
   needsSwap = false;
 
   constructor(
-    scene: Scene,
-    camera: Camera,
+    scene?: Scene,
+    camera?: Camera,
     overrideMaterial?: ShaderMaterial | null,
     clearColor?: Color | number | string,
     clearAlpha?: number,
   ) {
     super();
-    this.scene = scene;
-    this.camera = camera;
+    this.scene = scene ?? new Scene();
+    this.camera = camera ?? new PerspectiveCamera();
     this.overrideMaterial = overrideMaterial ?? undefined;
     this.clearColor = clearColor;
     this.clearAlpha = clearAlpha !== undefined ? clearAlpha : 0;

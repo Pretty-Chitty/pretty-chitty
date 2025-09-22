@@ -1,11 +1,4 @@
-import {
-  WebGLRenderer,
-  WebGLRenderTarget,
-  LinearFilter,
-  RGBAFormat,
-  Vector2,
-  Clock,
-} from "three";
+import { WebGLRenderer, WebGLRenderTarget, LinearFilter, RGBAFormat, Vector2, Clock, Color } from "three";
 import { Pass } from "./types";
 import { ShaderPass } from "./ShaderPass";
 import { CopyShader } from "./shaders";
@@ -13,6 +6,7 @@ import { MaskPass, ClearMaskPass } from "./MaskPass";
 
 type RTParams = ConstructorParameters<typeof WebGLRenderTarget>[2];
 
+let COUNTER = 0;
 export class EffectComposer {
   private renderer: WebGLRenderer;
 
@@ -34,8 +28,12 @@ export class EffectComposer {
   private copyPass: ShaderPass;
   private clock = new Clock();
 
+  private textureId: string;
+
   constructor(renderer: WebGLRenderer, renderTarget?: WebGLRenderTarget) {
     this.renderer = renderer;
+
+    this.textureId = `composer${++COUNTER}`;
 
     if (!renderTarget) {
       this._rtParams = {
@@ -55,7 +53,7 @@ export class EffectComposer {
         Math.max(1, Math.floor(this._height * this._pixelRatio)),
         this._rtParams,
       );
-      renderTarget.texture.name = "EffectComposer.rt1";
+      renderTarget.texture.name = `EffectComposer.rt1.${this.textureId}`;
     } else {
       this._rtParams = {
         minFilter: renderTarget.texture.minFilter,
@@ -71,12 +69,12 @@ export class EffectComposer {
 
     this.renderTarget1 = renderTarget;
     this.renderTarget2 = renderTarget.clone();
-    this.renderTarget2.texture.name = "EffectComposer.rt2";
+    this.renderTarget2.texture.name = `EffectComposer.rt2.${this.textureId}`;
 
     this.writeBuffer = this.renderTarget1;
     this.readBuffer = this.renderTarget2;
 
-    this.copyPass = new ShaderPass(CopyShader);
+    this.copyPass = new ShaderPass(CopyShader, this.textureId);
   }
 
   setRenderer(
@@ -105,9 +103,9 @@ export class EffectComposer {
     this.renderTarget2.dispose();
 
     this.renderTarget1 = new WebGLRenderTarget(effectiveWidth, effectiveHeight, this._rtParams);
-    this.renderTarget1.texture.name = "EffectComposer.rt1";
+    this.renderTarget1.texture.name = `EffectComposer.rt1.${this.textureId}`;
     this.renderTarget2 = this.renderTarget1.clone();
-    this.renderTarget2.texture.name = "EffectComposer.rt2";
+    this.renderTarget2.texture.name = `EffectComposer.rt2.${this.textureId}`;
 
     this.writeBuffer = this.renderTarget1;
     this.readBuffer = this.renderTarget2;
@@ -143,6 +141,9 @@ export class EffectComposer {
   render(deltaTime?: number): void {
     const dt = deltaTime ?? this.clock.getDelta();
     const currentRenderTarget = this.renderer.getRenderTarget();
+    const currentClearColor = this.renderer.getClearColor(new Color());
+    const currentClearAlpha = this.renderer.getClearAlpha();
+    const currentAutoClear = this.renderer.autoClear;
 
     let maskActive = false;
 
@@ -173,6 +174,8 @@ export class EffectComposer {
     }
 
     this.renderer.setRenderTarget(currentRenderTarget);
+    this.renderer.setClearColor(currentClearColor, currentClearAlpha);
+    this.renderer.autoClear = currentAutoClear;
   }
 
   reset(renderTarget?: WebGLRenderTarget): void {
@@ -227,5 +230,10 @@ export class EffectComposer {
   setPixelRatio(pixelRatio: number): void {
     this._pixelRatio = Math.max(0.1, pixelRatio);
     this.setSize(this._width, this._height);
+  }
+
+  dispose() {
+    this.renderTarget1.dispose();
+    this.renderTarget2.dispose();
   }
 }
