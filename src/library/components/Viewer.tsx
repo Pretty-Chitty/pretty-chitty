@@ -178,23 +178,40 @@ export default function Viewer({
     }
   }, [chitRenderInstance, id, paused, timeState]);
 
+  // Create composer per size - must match the renderer pooling strategy
   useEffect(() => {
-    if (renderer && !composer) {
-      setComposer(new EffectComposer(renderer));
+    if (renderer) {
+      const sizeKey = `${w}_${h}`;
+      if (!composer) {
+        console.log(`Creating EffectComposer for size ${sizeKey}`);
+        setComposer(new EffectComposer(renderer));
+      } else {
+        // When renderer changes but size doesn't, we need to update the internal renderer
+        // but avoid recreating render targets unnecessarily
+        const currentRenderer = (composer as any).renderer;
+        if (currentRenderer !== renderer) {
+          console.log(`Renderer changed for size ${sizeKey} - updating EffectComposer`);
+          composer.setRenderer(renderer, {
+            adoptSizeFromRenderer: false,  // Keep our current size
+            adoptPixelRatio: false,        // Keep our current pixel ratio
+            preserveLogicalSize: true      // Don't change logical size
+          });
+        }
+      }
     }
-    if (renderer && composer) {
-      composer.setRenderer(renderer);
-    }
-  }, [composer, renderer]);
+  }, [renderer, w, h]); // Depend on renderer and size
 
+  // Update composer size when dimensions change
   useEffect(() => {
-    if (composer && scene && chitRenderInstance && renderer) {
-      const newRenderPass = new RenderPass(scene, chitRenderInstance.camera);
-      // newRenderPass.clearDepth = true;
-      // newRenderPass.clearAlpha = 0.5;
-      composer.addPass(newRenderPass);
-      setRenderPass(newRenderPass);
+    if (composer) {
+      console.log("Resizing EffectComposer to", w * window.devicePixelRatio, h * window.devicePixelRatio);
+      composer.setSize(w * window.devicePixelRatio, h * window.devicePixelRatio);
+    }
+  }, [composer, w, h]);
 
+  // Create outline pass once when scene/camera are available
+  useEffect(() => {
+    if (scene && chitRenderInstance && !outlinePass) {
       const newOutlinePass = new IDBasedOutlinePass(
         new Vector2(w * window.devicePixelRatio, h * window.devicePixelRatio),
         scene,
@@ -208,17 +225,17 @@ export default function Viewer({
       newOutlinePass.pulsePeriod = 0;
       newOutlinePass.downSampleRatio = 1;
 
-      console.log("ID-based OutlinePass ready with userData-based outlining");
+      console.log("Creating persistent IDBasedOutlinePass");
 
       // Test meshes with different outline colors and grouping
       const m = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
-      m.userData.outlineColor = new Color(0, 0, 0); // Red outline
+      m.userData.outlineColor = new Color(0, 0, 0); // Black outline
       m.userData.outlineId = 100; // Custom group ID
       m.position.set(0, 0, 1);
       scene.add(m);
 
       const m2 = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
-      m2.userData.outlineColor = new Color(0, 0, 0); // Same red outline
+      m2.userData.outlineColor = new Color(0, 0, 0); // Same black outline
       m2.userData.outlineId = 100; // Same group ID - will be treated as one mesh
       m2.position.set(1, 1, 1.05);
       scene.add(m2);
@@ -230,20 +247,32 @@ export default function Viewer({
       m3.position.set(-1, 0, 1);
       scene.add(m3);
 
-      // No need to set selectedObjects - the system automatically finds meshes with userData.outlineColor
-
-      // The EnhancedOutlineEffectComposer is a complete effect, so add it as a single pass
-      composer.addPass(newOutlinePass);
       setOutlinePass(newOutlinePass);
+    }
+  }, [scene, chitRenderInstance]); // Only depend on scene/camera, not renderer
 
+  // Update outline pass size when dimensions change
+  useEffect(() => {
+    if (outlinePass) {
+      console.log("Resizing persistent outline pass to", w * window.devicePixelRatio, h * window.devicePixelRatio);
+      outlinePass.setSize(w * window.devicePixelRatio, h * window.devicePixelRatio);
+    }
+  }, [outlinePass, w, h]);
+
+  // Setup composer passes when composer and passes are available
+  useEffect(() => {
+    if (composer && scene && chitRenderInstance && outlinePass) {
+      const newRenderPass = new RenderPass(scene, chitRenderInstance.camera);
+
+      console.log("Setting up composer passes");
+      composer.passes = []; // Clear existing passes
+      composer.addPass(newRenderPass);
+      composer.addPass(outlinePass);
       composer.addPass(new OutputPass());
 
-      return () => {
-        console.log("bad");
-        composer.passes = [];
-      };
+      setRenderPass(newRenderPass);
     }
-  }, [composer, scene, chitRenderInstance, w, h, renderer]);
+  }, [composer, scene, chitRenderInstance, outlinePass]);
 
   // hook up interactions
   useEffect(() => {

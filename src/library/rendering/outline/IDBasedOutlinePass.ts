@@ -15,9 +15,12 @@ import { InterMeshEdgeDetectionPass, EdgeMode } from "./passes/InterMeshEdgeDete
 
 export class IDBasedOutlinePass extends OutlinePass {
   // Simplified properties for userData-based outlining
+  private static instanceCounter = 0;
+  private instanceId: number;
 
   // ID rendering
   private renderTargetIDBuffer!: WebGLRenderTarget;
+  private renderTargetTempBuffer!: WebGLRenderTarget; // Dedicated temp buffer to avoid sharing conflicts
   private originalMaterials = new Map<any, any>();
   private idMaterials = new Map<number, MeshBasicMaterial>();
   private idBasedEdgeDetectionPass!: InterMeshEdgeDetectionPass;
@@ -30,6 +33,9 @@ export class IDBasedOutlinePass extends OutlinePass {
   ) {
     super(resolution, scene, camera, selectedObjects);
 
+    this.instanceId = ++IDBasedOutlinePass.instanceCounter;
+    console.log(`Creating IDBasedOutlinePass instance ${this.instanceId} - size: ${resolution.x}x${resolution.y}`);
+
     // Initialize ID-based components
     this.initializeIDComponents();
   }
@@ -41,6 +47,11 @@ export class IDBasedOutlinePass extends OutlinePass {
     this.renderTargetIDBuffer.texture.name = "IDBasedOutline.idBuffer";
     this.renderTargetIDBuffer.texture.generateMipmaps = false;
 
+    // Create dedicated temp buffer to avoid cross-contamination
+    this.renderTargetTempBuffer = new WebGLRenderTarget(this.resolution.x, this.resolution.y, pars);
+    this.renderTargetTempBuffer.texture.name = "IDBasedOutline.tempBuffer";
+    this.renderTargetTempBuffer.texture.generateMipmaps = false;
+
     // Create ID-based edge detection pass
     this.idBasedEdgeDetectionPass = new InterMeshEdgeDetectionPass();
   }
@@ -48,8 +59,23 @@ export class IDBasedOutlinePass extends OutlinePass {
   // Simplified API - no more edge modes, just outline meshes with userData.outlineColor
 
   override setSize(width: number, height: number): void {
+    // Call parent first to resize all the inherited render targets
     super.setSize(width, height);
+
+    // CRITICAL: Update our internal resolution property
+    this.resolution.set(width, height);
+
+    // Resize our additional buffers
     this.renderTargetIDBuffer.setSize(width, height);
+    this.renderTargetTempBuffer.setSize(width, height);
+
+    // Sizes updated successfully
+
+    // Update edge detection pass texture size
+    this.idBasedEdgeDetectionPass.setTextureSize(
+      Math.round(width / this.downSampleRatio),
+      Math.round(height / this.downSampleRatio)
+    );
   }
 
   override render(
@@ -59,6 +85,13 @@ export class IDBasedOutlinePass extends OutlinePass {
     deltaTime: number,
     maskActive: boolean,
   ): void {
+    // Always ensure our sizes match the current renderer - critical for shared renderers
+    const currentSize = renderer.getSize(new Vector2());
+
+    // Force resize if there's any mismatch to prevent cross-contamination
+    if (Math.abs(currentSize.x - this.resolution.x) > 1 || Math.abs(currentSize.y - this.resolution.y) > 1) {
+      this.setSize(currentSize.x, currentSize.y);
+    }
     // Check if any meshes have userData.outlineColor
     let hasOutlinedMeshes = false;
     this.renderScene.traverse((object: any) => {
@@ -83,11 +116,11 @@ export class IDBasedOutlinePass extends OutlinePass {
     // Step 2: Use ID-based edge detection instead of the original method
     this.performIDBasedEdgeDetection(renderer);
 
-    // Step 3: Safe composition using temporary buffer to avoid feedback loops
-    // First copy original scene to a temp buffer
+    // Step 3: Safe composition using dedicated temporary buffer to avoid feedback loops
+    // First copy original scene to our dedicated temp buffer
     this.fsQuad.material = this.materialCopy;
     (this.copyUniforms["tDiffuse"].value as any) = readBuffer.texture;
-    renderer.setRenderTarget(this.renderTargetBlurBuffer1); // Use blur buffer as temp
+    renderer.setRenderTarget(this.renderTargetTempBuffer); // Use dedicated temp buffer
     this.fsQuad.render(renderer);
 
     // Then composite temp + edges to final buffer
@@ -95,7 +128,7 @@ export class IDBasedOutlinePass extends OutlinePass {
     renderer.clear();
 
     // Copy temp buffer to output
-    (this.copyUniforms["tDiffuse"].value as any) = this.renderTargetBlurBuffer1.texture;
+    (this.copyUniforms["tDiffuse"].value as any) = this.renderTargetTempBuffer.texture;
     this.fsQuad.render(renderer);
 
     // Add edges with proper alpha blending
@@ -128,7 +161,7 @@ export class IDBasedOutlinePass extends OutlinePass {
     this.applyIDMaterials();
 
     renderer.setRenderTarget(this.renderTargetIDBuffer);
-    renderer.clear();
+    renderer.clear(true, true, true); // Clear color, depth, and stencil explicitly
     renderer.render(this.renderScene, this.renderCamera);
 
     // Restore original materials
@@ -300,9 +333,12 @@ export class IDBasedOutlinePass extends OutlinePass {
   }
 
   override dispose(): void {
+    console.log(`Disposing IDBasedOutlinePass instance ${this.instanceId}`);
+
     super.dispose();
 
     this.renderTargetIDBuffer.dispose();
+    this.renderTargetTempBuffer.dispose();
     this.idBasedEdgeDetectionPass.dispose();
 
     // Dispose all created ID materials
