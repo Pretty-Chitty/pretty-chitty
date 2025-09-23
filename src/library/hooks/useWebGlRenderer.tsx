@@ -32,9 +32,9 @@ class WebGLRendererWrapper {
     this.outputPass = new OutputPass();
 
     // Configure outline pass with standard settings
-    this.outlinePass.edgeStrength = 200.0;
-    this.outlinePass.edgeGlow = 2.0;
-    this.outlinePass.edgeThickness = 10.0;
+    this.outlinePass.edgeStrength = 200;
+    this.outlinePass.edgeGlow = 1.0;
+    this.outlinePass.edgeThickness = 3;
     this.outlinePass.pulsePeriod = 0;
     this.outlinePass.downSampleRatio = 1;
 

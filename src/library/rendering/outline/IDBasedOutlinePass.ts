@@ -79,10 +79,10 @@ export class IDBasedOutlinePass extends OutlinePass {
         useDepthTest: { value: false }, // Will be updated before rendering
         resolution: { value: new Vector2(this.resolution.x, this.resolution.y) },
         cameraDistance: { value: 1.0 }, // Will be updated per mesh
-        pixelExpansion: { value: 2.0 }, // Expand by this many pixels in screen space
+        pixelOffset: { value: new Vector2(0.0, 0.0) }, // For multiple pass rendering
       },
       vertexShader: `
-        uniform float pixelExpansion;
+        uniform vec2 pixelOffset;
         uniform vec2 resolution;
         varying vec2 vUv;
         varying vec4 vProjectedCoord;
@@ -92,15 +92,11 @@ export class IDBasedOutlinePass extends OutlinePass {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           vProjectedCoord = projectionMatrix * mvPosition;
 
-          // Expand vertices outward in screen space
-          vec4 screenPos = vProjectedCoord / vProjectedCoord.w;
-          vec2 pixelSize = 2.0 / resolution;
+          // Apply pixel offset in screen space
+          vec2 pixelSize = 2.0 / resolution; // Size of one pixel in NDC
+          vec2 offset = pixelOffset * pixelSize;
 
-          // Expand by pushing vertices outward from center
-          // This is a simple uniform expansion - not perfect but should give broader coverage
-          screenPos.xy *= 1.0 + (pixelExpansion * pixelSize.x);
-
-          gl_Position = screenPos * vProjectedCoord.w;
+          gl_Position = vProjectedCoord + vec4(offset, 0.0, 0.0);
         }
       `,
       fragmentShader: `
@@ -264,6 +260,14 @@ export class IDBasedOutlinePass extends OutlinePass {
 
     renderer.setRenderTarget(this.renderTargetIDBuffer);
     renderer.clear(true, true, true); // Clear color, depth, and stencil explicitly
+
+    // First pass: Normal rendering (no offset)
+    this.updateSharedMaterialUniforms(0.0, 0.0);
+    renderer.render(this.renderScene, this.renderCamera);
+
+    // Second pass: 1-pixel right shift (additive to same buffer)
+    renderer.autoClear = false; // Don't clear between passes
+    this.updateSharedMaterialUniforms(1.0, 0.0);
     renderer.render(this.renderScene, this.renderCamera);
 
     // Restore original materials
@@ -277,6 +281,15 @@ export class IDBasedOutlinePass extends OutlinePass {
 
     this.renderScene.background = currentBackground;
     renderer.autoClear = oldAutoClear;
+  }
+
+  private updateSharedMaterialUniforms(offsetX: number, offsetY: number): void {
+    // Update all cloned materials with the new pixel offset
+    this.renderScene.traverse((object: any) => {
+      if (object.isMesh && object.material && object.material.uniforms) {
+        object.material.uniforms["pixelOffset"].value.set(offsetX, offsetY);
+      }
+    });
   }
 
   private applyIDMaterials(): void {
@@ -299,13 +312,12 @@ export class IDBasedOutlinePass extends OutlinePass {
           meshID = object.userData.outlineId;
         }
 
-        // Encode mesh ID with more distinct colors for better edge detection
-        // Use larger steps to avoid precision issues
+        // Encode mesh ID for lookup
         const r = ((meshID >> 16) & 0xff) / 255.0;
         const g = ((meshID >> 8) & 0xff) / 255.0;
         const b = (meshID & 0xff) / 255.0;
 
-        // Clone the shared material and set the encoded outlineId color
+        // Clone the shared material and set the encoded ID
         const meshMaterial = this.sharedIDMaterial.clone();
         meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
 
@@ -370,6 +382,7 @@ export class IDBasedOutlinePass extends OutlinePass {
         Math.round(this.resolution.x / this.downSampleRatio),
         Math.round(this.resolution.y / this.downSampleRatio),
       );
+      this.idBasedEdgeDetectionPass.setThickness(this.edgeThickness);
       this.idBasedEdgeDetectionPass.render(renderer, this.renderTargetEdgeBuffer1);
     }
   }

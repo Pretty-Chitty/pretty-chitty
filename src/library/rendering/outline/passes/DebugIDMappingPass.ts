@@ -130,18 +130,15 @@ export class DebugIDMappingPass extends Pass {
         }
 
         void main() {
-          // Sample the ID texture
-          vec4 idPixel = texture2D(idTexture, vUv);
+          // Sample the ID texture - this now contains outline colors directly
+          vec4 outlineColor = texture2D(idTexture, vUv);
 
-          // Get the mapped outline color for this ID
-          vec4 outlineColor = getOutlineColor(idPixel.rgb);
-
-          if (outlineColor.a > 0.5) {
-            // Show the mapped outline color
-            gl_FragColor = vec4(outlineColor.rgb, 1.0);
+          if (isBackground(outlineColor.rgb)) {
+            // Show black for background
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
           } else {
-            // Show the raw ID color for debugging
-            gl_FragColor = vec4(idPixel.rgb, 1.0);
+            // Show the outline color directly
+            gl_FragColor = vec4(outlineColor.rgb, 1.0);
           }
         }`,
     });

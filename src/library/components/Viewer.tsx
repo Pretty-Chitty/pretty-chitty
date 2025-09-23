@@ -194,20 +194,20 @@ export default function Viewer({
     if (rendererWrapper && scene) {
       // Test meshes with different outline colors and grouping
       const m = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
-      m.userData.outlineColor = new Color(0, 1, 1); // Black outline
+      m.userData.outlineColor = new Color(0.1, 0.1, 0.1); // Black outline
       m.userData.outlineId = 100; // Custom group ID
       m.position.set(0, 0, 1);
       scene.add(m);
 
       const m2 = new Mesh(new BoxGeometry(2, 2, 2), new MeshPhongMaterial({ color: 0x00ff00 }));
-      m2.userData.outlineColor = new Color(0, 1, 1); // Same black outline
+      m2.userData.outlineColor = new Color(0.1, 0.1, 0.1); // Same black outline
       m2.userData.outlineId = 100; // Same group ID - will be treated as one mesh
       m2.position.set(1, 1, 1.05);
       scene.add(m2);
 
       // Third mesh with different group
       const m3 = new Mesh(new BoxGeometry(1, 1, 1), new MeshPhongMaterial({ color: 0xffff00 }));
-      m3.userData.outlineColor = new Color(0, 0, 1); // Blue outline
+      m3.userData.outlineColor = new Color(1, 1, 1); // Blue outline
       m3.userData.outlineId = 200; // Different group ID
       m3.position.set(-1, 0, 1);
       scene.add(m3);

@@ -40,7 +40,6 @@ export class OutlinePass extends Pass {
 
   sceneDepthTexture: any = null;
 
-
   maskBufferMaterial!: MeshBasicMaterial;
   renderTargetMaskBuffer!: WebGLRenderTarget;
 
@@ -96,7 +95,6 @@ export class OutlinePass extends Pass {
     this.maskBufferMaterial = new MeshBasicMaterial({ color: 0xffffff });
     this.maskBufferMaterial.side = DoubleSide;
 
-
     this.prepareMaskMaterial = this.createPrepareMaskMaterial();
     this.prepareMaskMaterial.side = DoubleSide;
     this.prepareMaskMaterial.fragmentShader = this.replaceDepthToViewZ(
@@ -138,7 +136,6 @@ export class OutlinePass extends Pass {
     this.renderTargetMaskBuffer.texture.name = "OutlinePass.mask";
     this.renderTargetMaskBuffer.texture.generateMipmaps = false;
 
-
     this.renderTargetMaskDownSampleBuffer = new WebGLRenderTarget(resx, resy, pars);
     this.renderTargetMaskDownSampleBuffer.texture.name = "OutlinePass.depthDownSample";
     this.renderTargetMaskDownSampleBuffer.texture.generateMipmaps = false;
@@ -174,7 +171,6 @@ export class OutlinePass extends Pass {
     const type = (camera as any).isPerspectiveCamera ? "perspective" : "orthographic";
     return str.replace(/DEPTH_TO_VIEW_Z/g, `${type}DepthToViewZ`);
   }
-
 
   setSceneDepthTexture(depthTexture: any): void {
     this.sceneDepthTexture = depthTexture;
@@ -275,7 +271,6 @@ export class OutlinePass extends Pass {
       return;
     }
 
-
     this.saveRenderState(renderer);
     this.setupRenderState(renderer, maskActive);
 
@@ -307,7 +302,6 @@ export class OutlinePass extends Pass {
     renderer.setClearColor(this.oldClearColor, this.oldClearAlpha);
     renderer.autoClear = true;
   }
-
 
   private prepareMask(renderer: WebGLRenderer): void {
     this.updateTextureMatrix();

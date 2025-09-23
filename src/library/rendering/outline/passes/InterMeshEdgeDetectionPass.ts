@@ -5,6 +5,10 @@ import {
   Vector2,
   Vector3,
   Color,
+  DataTexture,
+  RGBAFormat,
+  FloatType,
+  NearestFilter,
 } from "three";
 import { Pass } from "../types";
 import { FullScreenQuad } from "../FullScreenQuad";
@@ -25,12 +29,22 @@ export class InterMeshEdgeDetectionPass extends Pass {
 
   private selectedIDs = new Set<number>();
   private sceneDepthTexture: any = null;
+  private lookupTexture: DataTexture;
 
   clear = true;
   needsSwap = false;
 
   constructor() {
     super();
+
+    // Create lookup texture (256x256 to handle all possible IDs 0-65535)
+    const textureSize = 256;
+    const textureData = new Float32Array(textureSize * textureSize * 4); // RGBA
+    this.lookupTexture = new DataTexture(textureData, textureSize, textureSize, RGBAFormat, FloatType);
+    this.lookupTexture.minFilter = NearestFilter;
+    this.lookupTexture.magFilter = NearestFilter;
+    this.lookupTexture.needsUpdate = true;
+
     this.edgeDetectionMaterial = this.createEdgeDetectionMaterial();
     this.fsQuad = new FullScreenQuad(this.edgeDetectionMaterial);
   }
@@ -47,6 +61,10 @@ export class InterMeshEdgeDetectionPass extends Pass {
     (this.edgeDetectionMaterial.uniforms["texSize"].value as Vector2).set(width, height);
   }
 
+  setThickness(thickness: number): void {
+    this.edgeDetectionMaterial.uniforms["thickness"].value = thickness;
+  }
+
   setSceneDepthTexture(depthTexture: any): void {
     this.sceneDepthTexture = depthTexture;
     this.edgeDetectionMaterial.uniforms["sceneDepthTexture"].value = depthTexture;
@@ -56,37 +74,28 @@ export class InterMeshEdgeDetectionPass extends Pass {
   setOutliningMeshes(outliningMeshes: Array<{id: number, color: Color}>): void {
     this.selectedIDs.clear();
 
-    // Store ID to color mapping
-    const maxMeshes = 64;
-    const idColors = new Float32Array(maxMeshes * 3); // RGB for each mesh
-    const idList = new Float32Array(maxMeshes * 3); // ID encoded as RGB for each mesh
+    // Clear lookup texture
+    const textureData = this.lookupTexture.image.data as Float32Array;
+    textureData.fill(0);
 
-    let index = 0;
+    // Populate lookup texture with ID->Color mappings
     for (const mesh of outliningMeshes) {
-      if (index >= maxMeshes) break;
-
       this.selectedIDs.add(mesh.id);
 
-      // Store the outline color for this mesh
-      idColors[index * 3] = mesh.color.r;
-      idColors[index * 3 + 1] = mesh.color.g;
-      idColors[index * 3 + 2] = mesh.color.b;
+      // Convert ID to texture coordinates
+      const id = mesh.id;
+      const x = id % 256;
+      const y = Math.floor(id / 256);
+      const index = (y * 256 + x) * 4;
 
-      // Store the ID encoded as RGB
-      const r = ((mesh.id >> 16) & 0xff) / 255.0;
-      const g = ((mesh.id >> 8) & 0xff) / 255.0;
-      const b = (mesh.id & 0xff) / 255.0;
-
-      idList[index * 3] = r;
-      idList[index * 3 + 1] = g;
-      idList[index * 3 + 2] = b;
-
-      index++;
+      // Store outline color at this position
+      textureData[index] = mesh.color.r;     // R
+      textureData[index + 1] = mesh.color.g; // G
+      textureData[index + 2] = mesh.color.b; // B
+      textureData[index + 3] = 1.0;          // A (indicates valid entry)
     }
 
-    this.edgeDetectionMaterial.uniforms["meshOutlineColors"].value = idColors;
-    this.edgeDetectionMaterial.uniforms["meshIDColors"].value = idList;
-    this.edgeDetectionMaterial.uniforms["numOutlineMeshes"].value = Math.min(outliningMeshes.length, maxMeshes);
+    this.lookupTexture.needsUpdate = true;
   }
 
 
@@ -108,10 +117,9 @@ export class InterMeshEdgeDetectionPass extends Pass {
         sceneDepthTexture: { value: null },
         useDepthTest: { value: false },
         texSize: { value: new Vector2(0.5, 0.5) },
-        meshOutlineColors: { value: new Float32Array(64 * 3) }, // RGB color for each outlined mesh
-        meshIDColors: { value: new Float32Array(64 * 3) }, // ID encoded as RGB for each outlined mesh
-        numOutlineMeshes: { value: 0 },
         backgroundThreshold: { value: 0.01 },
+        lookupTexture: { value: this.lookupTexture },
+        thickness: { value: 4.0 },
       },
       vertexShader: `varying vec2 vUv;
         void main() {
@@ -124,10 +132,9 @@ export class InterMeshEdgeDetectionPass extends Pass {
         uniform sampler2D sceneDepthTexture;
         uniform bool useDepthTest;
         uniform vec2 texSize;
-        uniform float[192] meshOutlineColors; // 64 * 3 (RGB outline colors)
-        uniform float[192] meshIDColors; // 64 * 3 (RGB encoded IDs)
-        uniform int numOutlineMeshes;
         uniform float backgroundThreshold;
+        uniform sampler2D lookupTexture;
+        uniform float thickness;
         varying vec2 vUv;
 
         // Compare two RGB colors (object IDs) with tolerance
@@ -141,9 +148,18 @@ export class InterMeshEdgeDetectionPass extends Pass {
           return color.r < backgroundThreshold && color.g < backgroundThreshold && color.b < backgroundThreshold;
         }
 
+        // Safely sample texture, treating out-of-bounds as background
+        vec4 sampleTextureClampToBackground(sampler2D tex, vec2 uv) {
+          if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+            return vec4(0.0, 0.0, 0.0, 0.0); // Background
+          }
+          return texture2D(tex, uv);
+        }
+
         // Check if a pixel is visible by comparing scene depth vs ID depth
         bool isPixelVisible(vec2 uv) {
           if (!useDepthTest) return true;
+          if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return false;
 
           float sceneDepth = texture2D(sceneDepthTexture, uv).r;
           float idDepth = texture2D(idDepthTexture, uv).r;
@@ -152,42 +168,42 @@ export class InterMeshEdgeDetectionPass extends Pass {
           return abs(sceneDepth - idDepth) <= depthTolerance;
         }
 
-        // Find the outline color for a given mesh ID color, returns vec4(outlineColor, 1.0) or vec4(0,0,0,0) if not outlined
-        vec4 getOutlineColor(vec3 idColor) {
-          if (isBackground(idColor)) return vec4(0.0, 0.0, 0.0, 0.0);
+        // Decode ID from RGB and lookup outline color in texture
+        vec4 getOutlineColor(vec3 encodedIdColor) {
+          if (isBackground(encodedIdColor)) {
+            return vec4(0.0, 0.0, 0.0, 0.0);
+          }
 
-          for (int i = 0; i < numOutlineMeshes && i < 64; i++) {
-            vec3 meshIDColor = vec3(
-              meshIDColors[i * 3],
-              meshIDColors[i * 3 + 1],
-              meshIDColors[i * 3 + 2]
-            );
+          // Decode ID from RGB
+          float id = encodedIdColor.r * 255.0 * 65536.0 + encodedIdColor.g * 255.0 * 256.0 + encodedIdColor.b * 255.0;
 
-            if (colorsMatch(idColor, meshIDColor)) {
-              vec3 outlineColor = vec3(
-                meshOutlineColors[i * 3],
-                meshOutlineColors[i * 3 + 1],
-                meshOutlineColors[i * 3 + 2]
-              );
-              return vec4(outlineColor, 1.0);
-            }
+          // Convert ID to texture coordinates
+          float x = mod(id, 256.0) / 256.0;
+          float y = floor(id / 256.0) / 256.0;
+
+          // Lookup outline color
+          vec4 outlineColor = texture2D(lookupTexture, vec2(x, y));
+
+          // Return color if valid (alpha > 0), otherwise transparent
+          if (outlineColor.a > 0.5) {
+            return vec4(outlineColor.rgb, 1.0);
           }
           return vec4(0.0, 0.0, 0.0, 0.0);
         }
 
         void main() {
           vec2 invSize = 1.0 / texSize;
-          float thickness = 4.0; // Thicker outlines
 
           // For edge detection, we need to check if we're on the boundary between visible and non-visible parts
           // Don't filter out pixels here - let the edge detection logic handle visibility
 
           // Sample the center pixel
-          vec4 center = texture2D(idTexture, vUv);
+          vec4 center = sampleTextureClampToBackground(idTexture, vUv);
           vec4 centerOutlineColor = getOutlineColor(center.rgb);
 
-          // Only process pixels that belong to outlined meshes OR are near them
+          // Process pixels that belong to outlined meshes OR background pixels near outlined meshes
           if (centerOutlineColor.a > 0.5) {
+            // Center pixel belongs to an outlined mesh - check for interior edges
             bool centerVisible = isPixelVisible(vUv);
 
             // Check immediate neighbors first (most common case)
@@ -196,27 +212,66 @@ export class InterMeshEdgeDetectionPass extends Pass {
             vec2 upUv = vUv + vec2(0.0, invSize.y);
             vec2 downUv = vUv - vec2(0.0, invSize.y);
 
-            vec4 right = texture2D(idTexture, rightUv);
-            vec4 left = texture2D(idTexture, leftUv);
-            vec4 up = texture2D(idTexture, upUv);
-            vec4 down = texture2D(idTexture, downUv);
+            vec4 right = sampleTextureClampToBackground(idTexture, rightUv);
+            vec4 left = sampleTextureClampToBackground(idTexture, leftUv);
+            vec4 up = sampleTextureClampToBackground(idTexture, upUv);
+            vec4 down = sampleTextureClampToBackground(idTexture, downUv);
 
             bool rightVisible = isPixelVisible(rightUv);
             bool leftVisible = isPixelVisible(leftUv);
             bool upVisible = isPixelVisible(upUv);
             bool downVisible = isPixelVisible(downUv);
 
-            // Draw outline if center pixel is visible AND we're at a mesh boundary
-            // Only draw at actual mesh edges, not at occlusion edges
-            if (centerVisible && (
-                (!colorsMatch(center.rgb, right.rgb)) ||
-                (!colorsMatch(center.rgb, left.rgb)) ||
-                (!colorsMatch(center.rgb, up.rgb)) ||
-                (!colorsMatch(center.rgb, down.rgb))
-            )) {
-              // Additional check: only draw if this is a valid edge (neighbor is also reasonably close)
-              gl_FragColor = centerOutlineColor;
-              return;
+            // Draw outline if center pixel is visible AND we're at a true mesh boundary
+            // Avoid A-B-A false edges where single pixels are isolated
+            if (centerVisible) {
+              bool hasValidEdge = false;
+
+              // Check right edge - prevent A-B-A false edges
+              if (!colorsMatch(center.rgb, right.rgb)) {
+                vec2 rightRight = vUv + vec2(2.0 * invSize.x, 0.0);
+                vec4 rightRightColor = sampleTextureClampToBackground(idTexture, rightRight);
+                // In A-B-A pattern: A won't draw edge to B, and B won't draw edge to A
+                // Only draw edge for A-B-C patterns (true boundaries)
+                if (!colorsMatch(center.rgb, rightRightColor.rgb)) {
+                  hasValidEdge = true;
+                }
+              }
+
+              // Check left edge - avoid A-B-A pattern
+              if (!colorsMatch(center.rgb, left.rgb)) {
+                vec2 leftLeft = vUv + vec2(-2.0 * invSize.x, 0.0);
+                vec4 leftLeftColor = sampleTextureClampToBackground(idTexture, leftLeft);
+                // Only edge if next pixel doesn't match center (avoid A-B-A)
+                if (!colorsMatch(center.rgb, leftLeftColor.rgb)) {
+                  hasValidEdge = true;
+                }
+              }
+
+              // Check up edge - avoid A-B-A pattern
+              if (!colorsMatch(center.rgb, up.rgb)) {
+                vec2 upUp = vUv + vec2(0.0, 2.0 * invSize.y);
+                vec4 upUpColor = sampleTextureClampToBackground(idTexture, upUp);
+                // Only edge if next pixel doesn't match center (avoid A-B-A)
+                if (!colorsMatch(center.rgb, upUpColor.rgb)) {
+                  hasValidEdge = true;
+                }
+              }
+
+              // Check down edge - avoid A-B-A pattern
+              if (!colorsMatch(center.rgb, down.rgb)) {
+                vec2 downDown = vUv + vec2(0.0, -2.0 * invSize.y);
+                vec4 downDownColor = sampleTextureClampToBackground(idTexture, downDown);
+                // Only edge if next pixel doesn't match center (avoid A-B-A)
+                if (!colorsMatch(center.rgb, downDownColor.rgb)) {
+                  hasValidEdge = true;
+                }
+              }
+
+              if (hasValidEdge) {
+                gl_FragColor = centerOutlineColor;
+                return;
+              }
             }
 
             // Check slightly further out for thickness (8 directions)
@@ -231,10 +286,33 @@ export class InterMeshEdgeDetectionPass extends Pass {
             neighborUvs[7] = vUv + vec2(-thickness * invSize.x, -thickness * invSize.y);
 
             for (int i = 0; i < 8; i++) {
-              vec4 neighbor = texture2D(idTexture, neighborUvs[i]);
+              vec4 neighbor = sampleTextureClampToBackground(idTexture, neighborUvs[i]);
 
               if (!colorsMatch(center.rgb, neighbor.rgb)) {
                 gl_FragColor = centerOutlineColor;
+                return;
+              }
+            }
+          } else {
+            // Center pixel is background - check if it's adjacent to any outlined mesh
+            vec2 neighborUvs[8];
+            neighborUvs[0] = vUv + vec2(invSize.x, 0.0);
+            neighborUvs[1] = vUv + vec2(-invSize.x, 0.0);
+            neighborUvs[2] = vUv + vec2(0.0, invSize.y);
+            neighborUvs[3] = vUv + vec2(0.0, -invSize.y);
+            neighborUvs[4] = vUv + vec2(invSize.x, invSize.y);
+            neighborUvs[5] = vUv + vec2(-invSize.x, invSize.y);
+            neighborUvs[6] = vUv + vec2(invSize.x, -invSize.y);
+            neighborUvs[7] = vUv + vec2(-invSize.x, -invSize.y);
+
+            // Check if any neighbor belongs to an outlined mesh
+            for (int i = 0; i < 8; i++) {
+              vec4 neighbor = sampleTextureClampToBackground(idTexture, neighborUvs[i]);
+              vec4 neighborOutlineColor = getOutlineColor(neighbor.rgb);
+
+              if (neighborOutlineColor.a > 0.5 && isPixelVisible(neighborUvs[i])) {
+                // Found an adjacent outlined mesh - use its outline color for exterior edge
+                gl_FragColor = neighborOutlineColor;
                 return;
               }
             }

@@ -51,9 +51,10 @@ export class SceneWrapper {
         // Update userData to reflect any changes (like outline color changes)
         shadowMesh.userData = { ...object.userData };
 
-        // Update transform to match original
+        // Update transform to match original but with scaling applied
         object.updateMatrixWorld(true);
         shadowMesh.matrix.copy(object.matrixWorld);
+
         shadowMesh.matrixWorldNeedsUpdate = false;
         shadowMesh.matrixAutoUpdate = false; // We'll manage transforms manually
       }
