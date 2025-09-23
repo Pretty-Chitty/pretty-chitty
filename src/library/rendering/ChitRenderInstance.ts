@@ -14,6 +14,7 @@ import {
   Shape,
   Vector2,
   Vector3,
+  Color as ThreeColor,
 } from "three";
 import { Chit } from "../game/Chit";
 import { ChitRenderSpec, OwnerOriginPosition } from "./ChitRenderSpec";
@@ -23,6 +24,7 @@ import { OutlineCanvas } from "../utilities/OutlineCanvas";
 import { outlineGeometry } from "../utilities/OutlineGeometry";
 import { fixBbox } from "../utilities/BboxUtils";
 import { ChitGalleryItemInstance } from "./ChitGalleryItemInstance";
+import Color from "color";
 
 const LINE_COLOR = new MeshBasicMaterial({ color: 0xff0000, wireframe: true, wireframeLinewidth: 2 });
 const CLICK_LINE_COLOR = new MeshBasicMaterial({ color: 0xffff00, wireframe: true, wireframeLinewidth: 2 });
@@ -439,9 +441,12 @@ export class ChitRenderInstance {
     // update position and rotation
     this.handlePositionAndRotation();
 
-    if (this.chit.onClick) {
-      this.createHighlight();
+    if (this.chit.onClick && renderSpec.highlight.visible !== false) {
+      renderSpec.highlight.visible = true;
+      renderSpec.highlight.color = renderSpec.highlight.clickColor;
     }
+
+    this.fixOutline();
 
     // now update ourselves
     this.group.add(this.renderSpec.object);
@@ -449,6 +454,18 @@ export class ChitRenderInstance {
 
     this.fixObjectPosition();
     this._galleryItem?.update();
+  }
+
+  public fixOutline() {
+    if (this.renderSpec?.object && this.renderSpec.highlight.visible) {
+      const id = this.renderSpec.object.id % 60000;
+      const color = Color(this.renderSpec.highlight.color);
+      const threeColor = new ThreeColor(color.red() / 256, color.green() / 256, color.blue() / 256);
+      this.renderSpec.object.traverse((o) => {
+        o.userData.outlineId = id;
+        o.userData.outlineColor = threeColor;
+      });
+    }
   }
 
   public screenCoordinates(): Vector2 | undefined {
@@ -571,6 +588,8 @@ export class ChitRenderInstance {
   }
 
   protected createHighlight() {
+    return;
+
     const highlight = this.renderSpec?.highlight;
     if (!highlight || !this.renderSpec || !highlight.visible) {
       return;
@@ -639,11 +658,12 @@ export class ChitRenderInstance {
     renderSpec.renderedForPlayerId = this.rootRenderInstance.playerId;
 
     // attach theme stuff to the spec as defaults
-    renderSpec.highlight.color = this.chit.game?.theme.chitHighlightColor ?? renderSpec.highlight.color;
-    renderSpec.highlight.innerColor =
-      this.chit.game?.theme.chitInnerHighlightColor ??
-      this.chit.game?.theme.chitHighlightColor ??
-      renderSpec.highlight.innerColor;
+    renderSpec.highlight.color = this.chit.game?.theme.chitOutlineColor ?? renderSpec.highlight.color;
+    renderSpec.highlight.clickColor = this.chit.game?.theme.chitHighlightColor ?? renderSpec.highlight.clickColor;
+    // renderSpec.highlight.innerColor =
+    //   this.chit.game?.theme.chitInnerHighlightColor ??
+    //   this.chit.game?.theme.chitHighlightColor ??
+    //   renderSpec.highlight.innerColor;
 
     return renderSpec;
   }

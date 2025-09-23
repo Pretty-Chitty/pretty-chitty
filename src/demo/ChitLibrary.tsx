@@ -2,6 +2,7 @@ import React from "react";
 import {
   BackSide,
   BoxGeometry,
+  Color,
   DoubleSide,
   FrontSide,
   Group,
@@ -83,6 +84,11 @@ export class Bag extends GameBag<Card2> {
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0;
 
     spec.object.castShadow = true;
+
+    // spec.object.userData.outlineId = 99;
+    // spec.object.userData.outlineColor = new Color(0, 0, 1);
+
+    spec.highlight.visible = true;
 
     spec.offsetY = 1;
   }
@@ -171,10 +177,15 @@ export class Card extends Chit {
     const mat = ts.material;
     mat.transparent = true;
 
-    spec.object = new CardMesh(1, 2, mat, new MeshPhongMaterial({ color: 0xffffee }), {
+    spec.object = new CardMesh(1, 2, new MeshPhongMaterial({ color: 0xffffee }), mat, {
       castShadow: true,
       receiveShadow: true,
     });
+
+    // spec.object.children[1].userData.outlineId = (this.parentOutletIndex ?? 0) + 1;
+    // spec.object.children[1].userData.outlineColor = new Color(1, 1, 0);
+    spec.highlight.visible = true;
+    spec.highlight.color = "#00ffff";
 
     if (!this.something) {
       spec.worthSlidingToPanelToShowChange = false;
@@ -191,7 +202,7 @@ export class Card extends Chit {
 
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0; // (this.something / 90) % (Math.PI * 2);
     spec.rotateY = this.flipped ? Math.PI : 0;
-    spec.offsetZ = this.flipped ? 0.1 : 0;
+    spec.offsetZ = this.flipped ? 0.3 : 0.5;
     // spec.offsetX = this.x * 1.25;
     // spec.offsetY = this.y * 2.5;
     // spec.offsetZ = this.tapped ? 0.25 : 0 + (this.flipped ? 3.1 : 0);

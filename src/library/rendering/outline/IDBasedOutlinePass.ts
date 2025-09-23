@@ -80,6 +80,10 @@ export class IDBasedOutlinePass extends OutlinePass {
         resolution: { value: new Vector2(this.resolution.x, this.resolution.y) },
         cameraDistance: { value: 1.0 }, // Will be updated per mesh
         pixelOffset: { value: new Vector2(0.0, 0.0) }, // For multiple pass rendering
+        originalMap: { value: null }, // Original diffuse texture for alpha testing
+        originalOpacity: { value: 1.0 }, // Original material opacity
+        alphaTest: { value: 0.0 }, // Alpha test threshold
+        hasOriginalMap: { value: false }, // Whether original material has a map
       },
       vertexShader: `
         uniform vec2 pixelOffset;
@@ -105,10 +109,25 @@ export class IDBasedOutlinePass extends OutlinePass {
         uniform bool useDepthTest;
         uniform vec2 resolution;
         uniform float cameraDistance;
+        uniform sampler2D originalMap;
+        uniform float originalOpacity;
+        uniform float alphaTest;
+        uniform bool hasOriginalMap;
         varying vec2 vUv;
         varying vec4 vProjectedCoord;
 
         void main() {
+          // Handle alpha testing for transparent materials
+          float alpha = originalOpacity;
+          if (hasOriginalMap) {
+            vec4 texColor = texture2D(originalMap, vUv);
+            alpha *= texColor.a;
+          }
+
+          if (alphaTest > 0.0 && alpha < alphaTest) {
+            discard; // Respect original material's transparency
+          }
+
           if (useDepthTest) {
             // Convert screen space position to UV coordinates
             vec2 screenUV = (vProjectedCoord.xy / vProjectedCoord.w) * 0.5 + 0.5;
@@ -121,9 +140,9 @@ export class IDBasedOutlinePass extends OutlinePass {
 
             // Only draw if depths approximately match (mesh is visible in main scene)
             // Scale tolerance based on camera distance - closer = tighter tolerance
-            float baseTolerance = 0.03;
+            float baseTolerance = 0.005;
             float depthTolerance = baseTolerance * (cameraDistance * 0.025);
-            if (currentDepth > sceneDepth + depthTolerance) {
+            if (abs(currentDepth - sceneDepth) > depthTolerance) {
               discard;  // Only discard if significantly behind
             }
           }
@@ -324,6 +343,34 @@ export class IDBasedOutlinePass extends OutlinePass {
         // Pass camera distance for depth tolerance scaling
         const cameraDistance = this.renderCamera.position.length();
         meshMaterial.uniforms["cameraDistance"] = { value: cameraDistance };
+
+        // Copy essential alpha properties from original material
+        const originalMaterial = object.material;
+        if (originalMaterial) {
+          // Copy alpha-related properties
+          if (originalMaterial.transparent) {
+            meshMaterial.transparent = true;
+          }
+          if (originalMaterial.alphaTest > 0) {
+            meshMaterial.alphaTest = originalMaterial.alphaTest;
+          }
+          if (originalMaterial.opacity !== undefined && originalMaterial.opacity < 1.0) {
+            meshMaterial.opacity = originalMaterial.opacity;
+            meshMaterial.transparent = true;
+          }
+
+          // Copy texture and alpha properties to uniforms
+          meshMaterial.uniforms["originalOpacity"].value = originalMaterial.opacity !== undefined ? originalMaterial.opacity : 1.0;
+          meshMaterial.uniforms["originalMap"].value = originalMaterial.map || null;
+          meshMaterial.uniforms["hasOriginalMap"].value = !!originalMaterial.map;
+          meshMaterial.uniforms["alphaTest"].value = originalMaterial.alphaTest || 0.0;
+        } else {
+          // Default values for materials without transparency
+          meshMaterial.uniforms["originalOpacity"].value = 1.0;
+          meshMaterial.uniforms["originalMap"].value = null;
+          meshMaterial.uniforms["hasOriginalMap"].value = false;
+          meshMaterial.uniforms["alphaTest"].value = 0.0;
+        }
 
         object.material = meshMaterial;
       }

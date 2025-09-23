@@ -46,13 +46,18 @@ class WebGLRendererWrapper {
   }
 
   render(sceneWrapper: SceneWrapper, camera: Camera) {
-    // Update shadow meshes for outlined objects
+    // Fast update - only updates transforms of existing outlined objects
     sceneWrapper.update();
 
     this.renderPass.scene = sceneWrapper.scene;
     this.renderPass.camera = camera;
-    this.outlinePass.renderScene = sceneWrapper.outlineShadowScene;
-    this.outlinePass.renderCamera = camera;
+
+    // Only enable outline pass if there are objects to outline
+    this.outlinePass.enabled = sceneWrapper.hasOutlinedObjects;
+    if (sceneWrapper.hasOutlinedObjects) {
+      this.outlinePass.renderScene = sceneWrapper.outlineShadowScene;
+      this.outlinePass.renderCamera = camera;
+    }
 
     this.composer.render();
   }

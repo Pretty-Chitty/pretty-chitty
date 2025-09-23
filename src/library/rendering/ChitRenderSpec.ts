@@ -101,6 +101,8 @@ export class ChitRenderSpec {
     this.chit.onClick = () => {
       this.chit.renderInstance?.rootRenderInstance.showGallery(new GalleryItemChitChildrenSource(this.chit));
     };
+
+    // TODO: this should be a highlight
     this.highlight.visible = false;
     this.isShowingChildrenAsGallery = true;
   }

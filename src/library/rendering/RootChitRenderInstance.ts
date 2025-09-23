@@ -10,6 +10,7 @@ import { GalleryItemSource } from "../components/GalleryViewer";
 import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
 import { GalleryItemRawSource } from "../game/GalleryItemRawSource";
 import { CameraSpec } from "./CameraSpec";
+import { SceneWrapper } from "./outline";
 
 export type AnimationState = "leaving" | "entering" | "pending" | "inactive";
 
@@ -18,6 +19,7 @@ export type AnimationState = "leaving" | "entering" | "pending" | "inactive";
 // contains threejs high level stuff like lights, cameras and tween controls
 //
 export class RootChitRenderInstance extends ChitRenderInstance {
+  private _sceneWrapper = new SceneWrapper();
   public _rootGroup = new Group();
   public _lightGroup = new Group();
   private _tweenGroup = new TweenGroup();
@@ -42,6 +44,11 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   }
 
   /** @internal */
+  public get sceneWrapper() {
+    return this._sceneWrapper;
+  }
+
+  /** @internal */
   public playerId?: string;
 
   public cameraWrapper = new CameraWrapperPerspective(this);
@@ -49,6 +56,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
   constructor(chit: Chit) {
     super(chit);
+    this._sceneWrapper.scene.add(this.rootGroup);
     this.id = chit.id ?? `${Date.now()}_${Math.random()}`;
     this.bboxGroup.visible = false;
     this._tweenGroup.update(0); // make it so initial tweens finish right away?
@@ -215,6 +223,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     if (!this._hasPendingChanges) {
       this._hasPendingChanges = true;
       this.notifyPanelStatusChange();
+      this.sceneWrapper.markDirty();
     }
   }
 
@@ -222,6 +231,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     if (!this._hasChitsLeaving) {
       this._hasChitsLeaving = true;
       this.notifyPanelStatusChange();
+      this.sceneWrapper.markDirty();
     }
   }
 
@@ -229,6 +239,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     if (!this._hasChitsEntering) {
       this._hasChitsEntering = true;
       this.notifyPanelStatusChange();
+      this.sceneWrapper.markDirty();
     }
   }
 
@@ -260,6 +271,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     this.cameraWrapper.destroy();
     clearTimeout(this._notifyTimeout);
     clearTimeout(this._dirtyTimeout);
+    this._sceneWrapper.dispose();
     super.destroy();
   }
 

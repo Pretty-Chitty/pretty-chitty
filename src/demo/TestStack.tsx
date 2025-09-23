@@ -34,7 +34,7 @@ export class TestStack extends ParameterizedCanvas {
     const img = this.subTitle2 >= 5 ? serverroom : metropolis;
 
     return (
-      <RoundedRect radius={50}>
+      <RoundedRect radius={100}>
         <Layered>
           <Color val={img.borderColor} />
           <Pad amount={20}>
