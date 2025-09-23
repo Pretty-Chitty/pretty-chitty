@@ -1,4 +1,4 @@
-import { WebGLRenderer, WebGLRenderTarget, LinearFilter, RGBAFormat, Vector2, Clock, Color } from "three";
+import { WebGLRenderer, WebGLRenderTarget, LinearFilter, RGBAFormat, Vector2, Clock, Color, DepthTexture, UnsignedShortType } from "three";
 import { Pass } from "./types";
 import { ShaderPass } from "./ShaderPass";
 import { CopyShader } from "./shaders";
@@ -17,6 +17,7 @@ export class EffectComposer {
   private _rtParams: RTParams;
 
   renderTarget: WebGLRenderTarget;
+  renderTarget2: WebGLRenderTarget;
 
   renderToScreen = true;
   passes: Pass[] = [];
@@ -37,6 +38,7 @@ export class EffectComposer {
         magFilter: LinearFilter,
         format: RGBAFormat,
         stencilBuffer: false,
+        depthBuffer: true,
       };
 
       const size = renderer.getSize(new Vector2());
@@ -50,12 +52,20 @@ export class EffectComposer {
         this._rtParams,
       );
       renderTarget.texture.name = `EffectComposer.rt1.${this.textureId}`;
+
+      // Create and attach depth texture for outline pass access
+      renderTarget.depthTexture = new DepthTexture(
+        Math.max(1, Math.floor(this._width * this._pixelRatio)),
+        Math.max(1, Math.floor(this._height * this._pixelRatio))
+      );
+      renderTarget.depthTexture.type = UnsignedShortType;
     } else {
       this._rtParams = {
         minFilter: renderTarget.texture.minFilter,
         magFilter: renderTarget.texture.magFilter,
         format: renderTarget.texture.format,
         stencilBuffer: renderTarget.stencilBuffer,
+        depthBuffer: renderTarget.depthBuffer,
       } as any;
 
       this._pixelRatio = 1;
@@ -64,6 +74,17 @@ export class EffectComposer {
     }
 
     this.renderTarget = renderTarget;
+
+    // Create second render target for ping-pong rendering
+    this.renderTarget2 = renderTarget.clone();
+    this.renderTarget2.texture.name = `EffectComposer.rt2.${this.textureId}`;
+
+    // Create depth texture for second render target too
+    this.renderTarget2.depthTexture = new DepthTexture(
+      Math.max(1, Math.floor(this._width * this._pixelRatio)),
+      Math.max(1, Math.floor(this._height * this._pixelRatio))
+    );
+    this.renderTarget2.depthTexture.type = UnsignedShortType;
 
     this.copyPass = new ShaderPass(CopyShader, this.textureId);
   }
@@ -91,9 +112,20 @@ export class EffectComposer {
     const effectiveHeight = Math.max(1, Math.floor(this._height * this._pixelRatio));
 
     this.renderTarget.dispose();
+    this.renderTarget2.dispose();
 
     this.renderTarget = new WebGLRenderTarget(effectiveWidth, effectiveHeight, this._rtParams);
     this.renderTarget.texture.name = `EffectComposer.rt.${this.textureId}`;
+
+    // Create and attach depth texture for outline pass access
+    this.renderTarget.depthTexture = new DepthTexture(effectiveWidth, effectiveHeight);
+    this.renderTarget.depthTexture.type = UnsignedShortType;
+
+    // Create second render target for ping-pong rendering
+    this.renderTarget2 = new WebGLRenderTarget(effectiveWidth, effectiveHeight, this._rtParams);
+    this.renderTarget2.texture.name = `EffectComposer.rt2.${this.textureId}`;
+    this.renderTarget2.depthTexture = new DepthTexture(effectiveWidth, effectiveHeight);
+    this.renderTarget2.depthTexture.type = UnsignedShortType;
 
     for (let i = 0; i < this.passes.length; i++) {
       this.passes[i].setSize(effectiveWidth, effectiveHeight);
@@ -127,12 +159,22 @@ export class EffectComposer {
 
     let maskActive = false;
 
+    let readBuffer = this.renderTarget;
+    let writeBuffer = this.renderTarget2;
+
     for (let i = 0, il = this.passes.length; i < il; i++) {
       const pass = this.passes[i];
       if (!pass.enabled) continue;
 
       pass.renderToScreen = this.renderToScreen && this.isLastEnabledPass(i);
-      pass.render(this.renderer, this.renderTarget, this.renderTarget, dt, maskActive);
+      pass.render(this.renderer, writeBuffer, readBuffer, dt, maskActive);
+
+      // Swap buffers for next pass (ping-pong)
+      if (pass.needsSwap) {
+        const tmp = readBuffer;
+        readBuffer = writeBuffer;
+        writeBuffer = tmp;
+      }
 
       if (pass instanceof MaskPass) {
         maskActive = true;
@@ -168,6 +210,7 @@ export class EffectComposer {
         magFilter: renderTarget.texture.magFilter,
         format: renderTarget.texture.format,
         stencilBuffer: renderTarget.stencilBuffer,
+        depthBuffer: renderTarget.depthBuffer,
       } as any;
 
       this._pixelRatio = 1;
@@ -189,6 +232,20 @@ export class EffectComposer {
     const effectiveHeight = this._height * this._pixelRatio;
 
     this.renderTarget.setSize(effectiveWidth, effectiveHeight);
+    this.renderTarget2.setSize(effectiveWidth, effectiveHeight);
+
+    // Update depth texture size for both render targets
+    if (this.renderTarget.depthTexture) {
+      this.renderTarget.depthTexture.dispose();
+      this.renderTarget.depthTexture = new DepthTexture(effectiveWidth, effectiveHeight);
+      this.renderTarget.depthTexture.type = UnsignedShortType;
+    }
+
+    if (this.renderTarget2.depthTexture) {
+      this.renderTarget2.depthTexture.dispose();
+      this.renderTarget2.depthTexture = new DepthTexture(effectiveWidth, effectiveHeight);
+      this.renderTarget2.depthTexture.type = UnsignedShortType;
+    }
 
     for (let i = 0; i < this.passes.length; i++) {
       this.passes[i].setSize(effectiveWidth, effectiveHeight);
@@ -202,5 +259,6 @@ export class EffectComposer {
 
   dispose() {
     this.renderTarget.dispose();
+    this.renderTarget2.dispose();
   }
 }

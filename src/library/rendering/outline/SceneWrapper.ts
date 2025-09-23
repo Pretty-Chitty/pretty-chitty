@@ -36,12 +36,20 @@ export class SceneWrapper {
         if (!shadowMesh) {
           // Create new shadow mesh
           shadowMesh = object.clone();
-          shadowMesh.material = this.basicMaterial; // Use basic material, no textures
           shadowMesh.geometry = object.geometry; // Share geometry (no need to clone)
+
+          // Ensure materials are completely separate - clone the basic material
+          shadowMesh.material = this.basicMaterial.clone();
+
+          // Copy the userData for the outline system
+          shadowMesh.userData = { ...object.userData };
 
           this.shadowMeshes.set(meshId, shadowMesh);
           this.outlineScene.add(shadowMesh);
         }
+
+        // Update userData to reflect any changes (like outline color changes)
+        shadowMesh.userData = { ...object.userData };
 
         // Update transform to match original
         object.updateMatrixWorld(true);

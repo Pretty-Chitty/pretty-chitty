@@ -54,9 +54,6 @@ class WebGLRendererWrapper {
     this.outlinePass.renderScene = sceneWrapper.outlineShadowScene;
     this.outlinePass.renderCamera = camera;
 
-    // Pass the depth buffer from the main render to the outline pass
-    this.outlinePass.setSceneDepthTexture(this.composer.renderTarget.depthTexture);
-
     this.composer.render();
   }
 
