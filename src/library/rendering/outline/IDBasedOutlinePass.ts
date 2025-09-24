@@ -26,7 +26,7 @@ export class IDBasedOutlinePass extends Pass {
   private instanceId: number;
 
   // Debug mode toggle
-  public debugMode = true;
+  public debugMode = false;
 
   sceneDepthTexture: any = null;
 
@@ -193,17 +193,10 @@ export class IDBasedOutlinePass extends Pass {
 
     let resx = Math.round(width / this.downSampleRatio);
     let resy = Math.round(height / this.downSampleRatio);
-    this.renderTargetMaskDownSampleBuffer.setSize(resx, resy);
-    this.renderTargetBlurBuffer1.setSize(resx, resy);
     this.renderTargetEdgeBuffer1.setSize(resx, resy);
-    (this.separableBlurMaterial1.uniforms["texSize"].value as Vector2).set(resx, resy);
 
     resx = Math.round(resx / 2);
     resy = Math.round(resy / 2);
-
-    this.renderTargetBlurBuffer2.setSize(resx, resy);
-    this.renderTargetEdgeBuffer2.setSize(resx, resy);
-    (this.separableBlurMaterial2.uniforms["texSize"].value as Vector2).set(resx, resy);
 
     // CRITICAL: Update our internal resolution property
     this.resolution.set(width, height);
@@ -248,6 +241,12 @@ export class IDBasedOutlinePass extends Pass {
     if (!hasOutlinedMeshes) {
       if (this.renderToScreen) {
         this.renderIDCopyToScreen(renderer, readBuffer);
+      } else {
+        // Copy input to output buffer for effects pipeline
+        this.fsQuad.material = this.materialCopy;
+        (this.copyUniforms["tDiffuse"].value as any) = readBuffer.texture;
+        renderer.setRenderTarget(writeBuffer);
+        this.fsQuad.render(renderer);
       }
       return;
     }
@@ -271,8 +270,8 @@ export class IDBasedOutlinePass extends Pass {
     renderer.setRenderTarget(this.renderTargetTempBuffer); // Use dedicated temp buffer
     this.fsQuad.render(renderer);
 
-    // Then composite temp + edges to final buffer
-    renderer.setRenderTarget(readBuffer);
+    // Then composite temp + edges to final buffer (writeBuffer, not readBuffer!)
+    renderer.setRenderTarget(writeBuffer);
     renderer.clear();
 
     // Copy temp buffer to output
@@ -299,7 +298,13 @@ export class IDBasedOutlinePass extends Pass {
   }
 
   renderTargetMaskBuffer!: WebGLRenderTarget;
+  renderTargetMaskDownSampleBuffer!: WebGLRenderTarget;
+  renderTargetBlurBuffer1!: WebGLRenderTarget;
+  renderTargetBlurBuffer2!: WebGLRenderTarget;
   renderTargetEdgeBuffer1!: WebGLRenderTarget;
+  renderTargetEdgeBuffer2!: WebGLRenderTarget;
+  separableBlurMaterial1!: any;
+  separableBlurMaterial2!: any;
 
   private initializeRenderTargets(): void {
     const pars = { minFilter: LinearFilter, magFilter: LinearFilter, format: RGBAFormat } as any;
@@ -311,9 +316,29 @@ export class IDBasedOutlinePass extends Pass {
     this.renderTargetMaskBuffer.texture.name = "OutlinePass.mask";
     this.renderTargetMaskBuffer.texture.generateMipmaps = false;
 
+    this.renderTargetMaskDownSampleBuffer = new WebGLRenderTarget(resx, resy, pars);
+    this.renderTargetMaskDownSampleBuffer.texture.name = "OutlinePass.maskDownSample";
+    this.renderTargetMaskDownSampleBuffer.texture.generateMipmaps = false;
+
+    this.renderTargetBlurBuffer1 = new WebGLRenderTarget(resx, resy, pars);
+    this.renderTargetBlurBuffer1.texture.name = "OutlinePass.blur1";
+    this.renderTargetBlurBuffer1.texture.generateMipmaps = false;
+
+    this.renderTargetBlurBuffer2 = new WebGLRenderTarget(resx / 2, resy / 2, pars);
+    this.renderTargetBlurBuffer2.texture.name = "OutlinePass.blur2";
+    this.renderTargetBlurBuffer2.texture.generateMipmaps = false;
+
     this.renderTargetEdgeBuffer1 = new WebGLRenderTarget(resx, resy, pars);
     this.renderTargetEdgeBuffer1.texture.name = "OutlinePass.edge1";
     this.renderTargetEdgeBuffer1.texture.generateMipmaps = false;
+
+    this.renderTargetEdgeBuffer2 = new WebGLRenderTarget(resx / 2, resy / 2, pars);
+    this.renderTargetEdgeBuffer2.texture.name = "OutlinePass.edge2";
+    this.renderTargetEdgeBuffer2.texture.generateMipmaps = false;
+
+    // Create placeholder materials to prevent errors
+    this.separableBlurMaterial1 = { uniforms: { texSize: { value: new Vector2(resx, resy) } } };
+    this.separableBlurMaterial2 = { uniforms: { texSize: { value: new Vector2(resx / 2, resy / 2) } } };
   }
 
   setSceneDepthTexture(depthTexture: any): void {
@@ -511,6 +536,12 @@ export class IDBasedOutlinePass extends Pass {
   dispose(): void {
     this.renderTargetIDBuffer.dispose();
     this.renderTargetTempBuffer.dispose();
+    this.renderTargetMaskBuffer.dispose();
+    this.renderTargetMaskDownSampleBuffer.dispose();
+    this.renderTargetBlurBuffer1.dispose();
+    this.renderTargetBlurBuffer2.dispose();
+    this.renderTargetEdgeBuffer1.dispose();
+    this.renderTargetEdgeBuffer2.dispose();
     this.idBasedEdgeDetectionPass.dispose();
   }
 }
