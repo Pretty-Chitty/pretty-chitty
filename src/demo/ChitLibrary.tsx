@@ -74,12 +74,13 @@ export class Bag extends GameBag<Card2> {
       bumpScale: 1,
       map: ts.get().texture,
     });
+    face.transparent = true;
 
     const side = new MeshPhongMaterial({
       color: 0xbbbbbb,
     });
 
-    spec.object = new Mesh(geo, [side, face, face]);
+    spec.object = new Mesh(geo, [face, side, side]); // face, face]);
     spec.offsetX = -2;
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0;
 
@@ -89,6 +90,7 @@ export class Bag extends GameBag<Card2> {
     // spec.object.userData.outlineColor = new Color(0, 0, 1);
 
     spec.highlight.visible = true;
+    spec.highlight.color = "#ff00ff";
 
     spec.offsetY = 1;
   }
@@ -179,7 +181,7 @@ export class Card extends Chit {
     const mat = ts.material;
     mat.transparent = true;
 
-    spec.object = new CardMesh(1, 2, new MeshPhongMaterial({ color: 0xffffee }), mat, {
+    spec.object = new CardMesh(1, 2, mat, new MeshPhongMaterial({ color: 0xffffee }), {
       castShadow: true,
       receiveShadow: true,
     });

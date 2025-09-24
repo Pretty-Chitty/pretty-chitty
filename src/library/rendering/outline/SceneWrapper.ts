@@ -5,6 +5,8 @@ export class SceneWrapper {
   private outlineScene: Scene;
   private shadowMeshes = new Map<number, Mesh>(); // object.id -> shadow mesh
   private outlinedObjects = new Map<number, Mesh>(); // object.id -> original object
+  private materialHashes = new Map<number, string>(); // object.id -> material hash for change detection
+  private outlinePass: any = null; // Will be set by IDBasedOutlinePass
 
   constructor(realScene: Scene = new Scene()) {
     this.realScene = realScene;
@@ -26,6 +28,37 @@ export class SceneWrapper {
   _dirty = true;
   markDirty() {
     this._dirty = true;
+  }
+
+  setOutlinePass(outlinePass: any) {
+    this.outlinePass = outlinePass;
+  }
+
+  // Generate hash of material properties for change detection
+  private getMaterialHash(material: any): string {
+    if (!material) return 'null';
+
+    if (Array.isArray(material)) {
+      return material.map(m => this.getSingleMaterialHash(m)).join('|');
+    }
+
+    return this.getSingleMaterialHash(material);
+  }
+
+  private getSingleMaterialHash(material: any): string {
+    if (!material) return 'null';
+
+    // Hash key material properties that would affect ID material creation
+    const props = [
+      material.uuid || 'no-uuid',
+      material.transparent || false,
+      material.opacity || 1,
+      material.alphaTest || 0,
+      material.side || 0,
+      material.map?.uuid || 'no-map'
+    ];
+
+    return props.join('_');
   }
 
   // Fast update - only updates transforms of existing outlined objects
@@ -75,15 +108,17 @@ export class SceneWrapper {
         // Track this as an outlined object
         this.outlinedObjects.set(meshId, object);
 
+        // Check if material has changed
+        const currentMaterialHash = this.getMaterialHash(object.material);
+        const previousMaterialHash = this.materialHashes.get(meshId);
+        const materialChanged = previousMaterialHash !== currentMaterialHash;
+
         let shadowMesh = this.shadowMeshes.get(meshId);
 
         if (!shadowMesh) {
           // Create new shadow mesh
           shadowMesh = object.clone() as Mesh;
           shadowMesh.geometry = object.geometry; // Share geometry (no need to clone)
-
-          // Keep original material for transparency support
-          // shadowMesh.material = object.material.clone ? object.material.clone() : object.material;
 
           // Copy the userData for the outline system
           shadowMesh.userData = { ...object.userData };
@@ -104,6 +139,14 @@ export class SceneWrapper {
 
           this.shadowMeshes.set(meshId, shadowMesh);
           this.outlineScene.add(shadowMesh);
+
+          // Let the outline pass prepare the ID materials for this new mesh
+          if (this.outlinePass) {
+            this.outlinePass.prepareShadowMesh(shadowMesh, object);
+          }
+
+          // Store material hash
+          this.materialHashes.set(meshId, currentMaterialHash);
         } else {
           // Update userData to reflect any changes (like outline color changes)
           shadowMesh.userData = { ...object.userData };
@@ -119,6 +162,12 @@ export class SceneWrapper {
           shadowMesh.scale.copy(worldScale);
           shadowMesh.updateMatrix();
           shadowMesh.updateMatrixWorld(true);
+
+          // If material changed, recreate ID materials
+          if (materialChanged && this.outlinePass) {
+            this.outlinePass.prepareShadowMesh(shadowMesh, object);
+            this.materialHashes.set(meshId, currentMaterialHash);
+          }
         }
       }
     });
@@ -131,6 +180,7 @@ export class SceneWrapper {
           this.outlineScene.remove(shadowMesh);
           this.shadowMeshes.delete(existingId);
           this.outlinedObjects.delete(existingId);
+          this.materialHashes.delete(existingId);
         }
       }
     }
@@ -139,6 +189,7 @@ export class SceneWrapper {
   dispose(): void {
     this.shadowMeshes.clear();
     this.outlinedObjects.clear();
+    this.materialHashes.clear();
     this.outlineScene.clear();
   }
 }

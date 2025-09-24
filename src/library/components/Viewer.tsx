@@ -135,6 +135,7 @@ export default function Viewer({
           // console.log(renderNextFrame);
           if (!paused) {
             requestAnimationFrame(animate);
+            // setTimeout(animate, 500);
           }
           const prevRenderNextFrame = renderNextFrame;
           renderNextFrame = chitRenderInstance?.update();

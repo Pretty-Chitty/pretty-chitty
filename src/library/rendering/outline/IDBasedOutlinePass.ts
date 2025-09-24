@@ -234,6 +234,9 @@ export class IDBasedOutlinePass extends Pass {
     if (Math.abs(currentSize.x - this.resolution.x) > 1 || Math.abs(currentSize.y - this.resolution.y) > 1) {
       this.setSize(currentSize.x, currentSize.y);
     }
+    // Ensure SceneWrapper has reference to this pass
+    this.sceneWrapper.setOutlinePass(this);
+
     // Check if any meshes have userData.outlineColor
     this.sceneWrapper.update();
     const hasOutlinedMeshes = this.sceneWrapper.hasOutlinedObjects;
@@ -391,76 +394,113 @@ export class IDBasedOutlinePass extends Pass {
     });
   }
 
-  // TODO: this should only happen once... wtf
+  // Now only updates uniforms that change per frame - materials are created by prepareShadowMesh
   private applyIDMaterials(): void {
-    // Update shared material uniforms for this render
-    this.sharedIDMaterial.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
-    this.sharedIDMaterial.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
-    this.sharedIDMaterial.uniforms["resolution"].value.set(this.resolution.x, this.resolution.y);
+    // Get values that change per frame
+    const cameraDistance = this.camera.position.length();
 
     this.sceneWrapper.outlineShadowScene.traverse((object: any) => {
-      if (object.isMesh) {
-        // Only assign IDs to meshes that have userData.outlineColor
-        // Use ONLY the outlineId, never object.id
-        let meshID = 0;
-        if (object.userData?.outlineColor && object.userData?.outlineId !== undefined) {
-          meshID = object.userData.outlineId;
-        }
-
-        // Encode mesh ID for lookup
-        const r = ((meshID >> 16) & 0xff) / 255.0;
-        const g = ((meshID >> 8) & 0xff) / 255.0;
-        const b = (meshID & 0xff) / 255.0;
-
-        // Clone the shared material and set the encoded ID
-        const meshMaterial = this.sharedIDMaterial.clone();
-        meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
-
-        // Pass camera distance for depth tolerance scaling
-        const cameraDistance = this.camera.position.length();
-        meshMaterial.uniforms["cameraDistance"] = { value: cameraDistance };
-
-        // Copy essential properties from original material
-        const originalMaterial = object.material;
-        if (originalMaterial) {
-          // Copy alpha-related properties
-          if (originalMaterial.transparent) {
-            meshMaterial.transparent = true;
-          }
-          if (originalMaterial.alphaTest > 0) {
-            meshMaterial.alphaTest = originalMaterial.alphaTest;
-          }
-          if (originalMaterial.opacity !== undefined && originalMaterial.opacity < 1.0) {
-            meshMaterial.opacity = originalMaterial.opacity;
-            meshMaterial.transparent = true;
-          }
-
-          // Copy backface culling settings
-          if (originalMaterial.side !== undefined) {
-            meshMaterial.side = originalMaterial.side;
-          }
-
-          // Copy texture and alpha properties to uniforms
-          meshMaterial.uniforms["originalOpacity"].value =
-            originalMaterial.opacity !== undefined ? originalMaterial.opacity : 1.0;
-          meshMaterial.uniforms["originalMap"].value = originalMaterial.map || null;
-          meshMaterial.uniforms["hasOriginalMap"].value = !!originalMaterial.map;
-          meshMaterial.uniforms["alphaTest"].value = originalMaterial.alphaTest || 0.0;
+      if (object.isMesh && object.material) {
+        // Update per-frame uniforms for ID materials
+        if (Array.isArray(object.material)) {
+          // Update each material in the array
+          object.material.forEach((material: any) => {
+            if (material.uniforms) {
+              material.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
+              material.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
+              material.uniforms["resolution"].value.set(this.resolution.x, this.resolution.y);
+              material.uniforms["cameraDistance"].value = cameraDistance;
+            }
+          });
         } else {
-          // Default values for materials without transparency
-          meshMaterial.uniforms["originalOpacity"].value = 1.0;
-          meshMaterial.uniforms["originalMap"].value = null;
-          meshMaterial.uniforms["hasOriginalMap"].value = false;
-          meshMaterial.uniforms["alphaTest"].value = 0.0;
+          // Single material case
+          if (object.material.uniforms) {
+            object.material.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
+            object.material.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
+            object.material.uniforms["resolution"].value.set(this.resolution.x, this.resolution.y);
+            object.material.uniforms["cameraDistance"].value = cameraDistance;
+          }
         }
-
-        object.material = meshMaterial;
       }
     });
   }
 
   edgeThickness = 1.0;
   edgeStrength = 3.0;
+
+  // Method called by SceneWrapper to prepare shadow meshes with ID materials
+  prepareShadowMesh(shadowMesh: any, originalMesh: any): void {
+    // Only assign IDs to meshes that have userData.outlineColor
+    let meshID = 0;
+    if (originalMesh.userData?.outlineColor && originalMesh.userData?.outlineId !== undefined) {
+      meshID = originalMesh.userData.outlineId;
+    }
+
+    // Encode mesh ID for lookup
+    const r = ((meshID >> 16) & 0xff) / 255.0;
+    const g = ((meshID >> 8) & 0xff) / 255.0;
+    const b = (meshID & 0xff) / 255.0;
+
+    // Handle both single materials and material arrays
+    if (Array.isArray(originalMesh.material)) {
+      // Create ID material for each material in the array
+      const idMaterials = originalMesh.material.map((originalMaterial) => {
+        const meshMaterial = this.sharedIDMaterial.clone();
+        meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
+        meshMaterial.needsUpdate = true;
+
+        this.copyMaterialProperties(meshMaterial, originalMaterial);
+        return meshMaterial;
+      });
+
+      shadowMesh.material = idMaterials;
+    } else {
+      // Single material case
+      const meshMaterial = this.sharedIDMaterial.clone();
+      meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
+      meshMaterial.needsUpdate = true;
+
+      this.copyMaterialProperties(meshMaterial, originalMesh.material);
+      shadowMesh.material = meshMaterial;
+    }
+  }
+
+  // Helper method to copy material properties to ID material
+  private copyMaterialProperties(idMaterial: any, originalMaterial: any): void {
+    if (originalMaterial) {
+      // Copy alpha-related properties
+      if (originalMaterial.transparent) {
+        idMaterial.transparent = true;
+      }
+      if (originalMaterial.alphaTest > 0) {
+        idMaterial.alphaTest = originalMaterial.alphaTest;
+      }
+      if (originalMaterial.opacity !== undefined && originalMaterial.opacity < 1.0) {
+        idMaterial.opacity = originalMaterial.opacity;
+        idMaterial.transparent = true;
+      }
+
+      // Copy backface culling settings
+      if (originalMaterial.side !== undefined) {
+        idMaterial.side = originalMaterial.side;
+      }
+
+      // Copy texture and alpha properties to uniforms
+      idMaterial.uniforms["originalOpacity"].value =
+        originalMaterial.opacity !== undefined ? originalMaterial.opacity : 1.0;
+      idMaterial.uniforms["originalMap"].value = originalMaterial.map || null;
+      idMaterial.uniforms["hasOriginalMap"].value = !!originalMaterial.map;
+      idMaterial.uniforms["alphaTest"].value = originalMaterial.alphaTest || 0.0;
+    } else {
+      // Default values for materials without transparency
+      idMaterial.uniforms["originalOpacity"].value = 1.0;
+      idMaterial.uniforms["originalMap"].value = null;
+      idMaterial.uniforms["hasOriginalMap"].value = false;
+      idMaterial.uniforms["alphaTest"].value = 0.0;
+      idMaterial.transparent = false;
+      idMaterial.opacity = 1.0;
+    }
+  }
 
   private performIDBasedEdgeDetection(renderer: WebGLRenderer): void {
     // Collect all meshes with userData.outlineColor
@@ -469,23 +509,18 @@ export class IDBasedOutlinePass extends Pass {
     // Use a Map to avoid O(N^2) lookups for large numbers of meshes
     const idToMesh: Map<number, Color> = new Map();
 
-    const logs: string[] = [];
     this.sceneWrapper.outlineShadowScene.traverse((object: any) => {
       if (object.userData?.outlineColor && object.userData?.outlineId !== undefined) {
         const meshID = object.userData.outlineId;
         if (!idToMesh.has(meshID)) {
-          logs.push(`ID: ${meshID}, Position: (${object.position.x}, ${object.position.y}, ${object.position.z})`);
           idToMesh.set(meshID, object.userData.outlineColor);
         }
       }
     });
-    console.log(logs.length, logs.join("\n"));
 
     idToMesh.forEach((color, id) => {
       outliningMeshes.push({ id, color });
     });
-
-    // console.log(outliningMeshes.map((m) => `${m.id}: ${m.color.getStyle()}`).join(", "));
 
     if (this.debugMode) {
       this.debugIDMappingPass.setIDTexture(this.renderTargetIDBuffer.texture);
