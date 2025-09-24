@@ -148,7 +148,7 @@ export class IDBasedOutlinePass extends Pass {
           }
 
           // Handle alpha testing for transparent materials
-          float alpha = originalOpacity;
+          float alpha = 1.0;
           if (hasOriginalMap) {
             vec4 texColor = texture2D(originalMap, vUv);
             alpha *= texColor.a;
@@ -466,25 +466,28 @@ export class IDBasedOutlinePass extends Pass {
     // Collect all meshes with userData.outlineColor
     const outliningMeshes: Array<{ id: number; color: Color }> = [];
 
-    // TODO: this is grossly inefficient - we should cache this list and only update on scene changes
+    // Use a Map to avoid O(N^2) lookups for large numbers of meshes
+    const idToMesh: Map<number, Color> = new Map();
+
+    const logs: string[] = [];
     this.sceneWrapper.outlineShadowScene.traverse((object: any) => {
       if (object.userData?.outlineColor && object.userData?.outlineId !== undefined) {
-        // Use ONLY the outlineId, never object.id
         const meshID = object.userData.outlineId;
-
-        // Check if we already have this ID (for grouped meshes)
-        const existing = outliningMeshes.find((m) => m.id === meshID);
-        if (!existing) {
-          outliningMeshes.push({
-            id: meshID,
-            color: object.userData.outlineColor,
-          });
+        if (!idToMesh.has(meshID)) {
+          logs.push(`ID: ${meshID}, Position: (${object.position.x}, ${object.position.y}, ${object.position.z})`);
+          idToMesh.set(meshID, object.userData.outlineColor);
         }
       }
     });
+    console.log(logs.length, logs.join("\n"));
+
+    idToMesh.forEach((color, id) => {
+      outliningMeshes.push({ id, color });
+    });
+
+    // console.log(outliningMeshes.map((m) => `${m.id}: ${m.color.getStyle()}`).join(", "));
 
     if (this.debugMode) {
-      // Use debug pass to visualize ID->Color mapping
       this.debugIDMappingPass.setIDTexture(this.renderTargetIDBuffer.texture);
       this.debugIDMappingPass.setOutliningMeshes(outliningMeshes);
       this.debugIDMappingPass.setTextureSize(

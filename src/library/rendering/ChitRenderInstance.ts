@@ -113,7 +113,6 @@ export class ChitRenderInstance {
 
     const cb2 = chit.onChange("onClick", () => {
       this.refresh();
-      this.rootRenderInstance.markHasChange();
     });
     this.unsubscribeToOnChange = () => {
       cb1();
@@ -455,6 +454,8 @@ export class ChitRenderInstance {
 
     this.fixObjectPosition();
     this._galleryItem?.update();
+
+    this.rootRenderInstance.markHasChange();
   }
 
   public fixOutline() {

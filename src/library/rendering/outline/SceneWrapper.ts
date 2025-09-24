@@ -109,7 +109,6 @@ export class SceneWrapper {
           shadowMesh.userData = { ...object.userData };
 
           // Update transform to match original
-          object.updateMatrixWorld(true);
           const worldPos = new Vector3();
           const worldQuat = new Quaternion();
           const worldScale = new Vector3();
