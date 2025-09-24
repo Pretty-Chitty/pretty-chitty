@@ -243,6 +243,10 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     }
   }
 
+  public markHasChange() {
+    this.sceneWrapper.markDirty();
+  }
+
   protected get now() {
     const n = performance.now();
     return n - this._totalPauseDuration - (this._isPaused ? n - this._pausedAt : 0);

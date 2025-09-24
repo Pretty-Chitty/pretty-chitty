@@ -113,6 +113,7 @@ export class ChitRenderInstance {
 
     const cb2 = chit.onChange("onClick", () => {
       this.refresh();
+      this.rootRenderInstance.markHasChange();
     });
     this.unsubscribeToOnChange = () => {
       cb1();
