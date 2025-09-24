@@ -1,4 +1,4 @@
-import { Scene, MeshBasicMaterial } from "three";
+import { Scene, MeshBasicMaterial, Vector3, Quaternion } from "three";
 
 export class SceneWrapper {
   private realScene: Scene;
@@ -6,11 +6,13 @@ export class SceneWrapper {
   private shadowMeshes = new Map<number, any>(); // object.id -> shadow mesh
   private basicMaterial: MeshBasicMaterial;
   private outlinedObjects = new Map<number, any>(); // object.id -> original object
+  private pendingObjects = new Map<number, any>(); // objects at origin waiting to be positioned
 
   constructor(realScene: Scene = new Scene()) {
     this.realScene = realScene;
     this.outlineScene = new Scene();
     this.basicMaterial = new MeshBasicMaterial({ color: 0xffffff });
+
   }
 
   get scene(): Scene {
@@ -25,7 +27,7 @@ export class SceneWrapper {
     return this.outlinedObjects.size > 0;
   }
 
-  _dirty = false;
+  _dirty = true;
   markDirty() {
     this._dirty = true;
   }
@@ -34,24 +36,49 @@ export class SceneWrapper {
   update(): void {
     if (this._dirty) {
       this.fullUpdate();
-      return;
+    }
+
+    // Check pending objects to see if they now have valid positions
+    const pendingToPromote: number[] = [];
+    for (const [meshId, pendingObject] of this.pendingObjects) {
+      pendingObject.updateMatrixWorld(true);
+      const worldPos = pendingObject.getWorldPosition(new Vector3());
+      if (!(worldPos.x === 0 && worldPos.y === 0 && worldPos.z === 0)) {
+        // Object now has a position - promote it to full outline object
+        pendingToPromote.push(meshId);
+      }
+    }
+
+    // Promote pending objects by triggering fullUpdate
+    if (pendingToPromote.length > 0) {
+      this._dirty = true;
+      this.fullUpdate();
+      return; // fullUpdate will handle all updates
     }
 
     for (const [meshId, originalObject] of this.outlinedObjects) {
       const shadowMesh = this.shadowMeshes.get(meshId);
       if (shadowMesh && originalObject.parent) {
         // Only update if object still exists in scene
-        // Update transform to match original but with scaling applied
+        // Update transform to match original
         originalObject.updateMatrixWorld(true);
-        shadowMesh.matrix.copy(originalObject.matrixWorld);
-        shadowMesh.matrix.scale(shadowMesh.scale);
-        shadowMesh.matrixWorldNeedsUpdate = false;
+        const worldPos = new Vector3();
+        const worldQuat = new Quaternion();
+        const worldScale = new Vector3();
+        originalObject.matrixWorld.decompose(worldPos, worldQuat, worldScale);
+
+        shadowMesh.position.copy(worldPos);
+        shadowMesh.quaternion.copy(worldQuat);
+        shadowMesh.scale.copy(worldScale);
+        shadowMesh.updateMatrix();
+        shadowMesh.updateMatrixWorld(true);
       }
     }
   }
 
   // Full update - traverses scene to find objects that should be outlined
   fullUpdate(): void {
+    console.log(Date.now(), "fullupdate");
     this._dirty = false;
 
     // Track existing shadow meshes
@@ -64,6 +91,21 @@ export class SceneWrapper {
         const meshId = object.id;
         currentOutlineIds.add(meshId);
 
+        // Check if object is at origin - if so, delay shadow mesh creation
+        object.updateMatrixWorld(true);
+        const worldPos = object.getWorldPosition(new Vector3());
+
+        if (worldPos.x === 0 && worldPos.y === 0 && worldPos.z === 0) {
+          // Object is at origin - put it in pending list instead of creating shadow mesh immediately
+          this.pendingObjects.set(meshId, object);
+          return; // Skip creating shadow mesh for now
+        }
+
+        // Check if this was a pending object that now has a position
+        if (this.pendingObjects.has(meshId)) {
+          this.pendingObjects.delete(meshId);
+        }
+
         // Track this as an outlined object
         this.outlinedObjects.set(meshId, object);
 
@@ -74,25 +116,45 @@ export class SceneWrapper {
           shadowMesh = object.clone();
           shadowMesh.geometry = object.geometry; // Share geometry (no need to clone)
 
-          // Use basic material - transparency is handled in ID pass
-          shadowMesh.material = this.basicMaterial.clone();
+          // Keep original material for transparency support
+          // shadowMesh.material = object.material.clone ? object.material.clone() : object.material;
 
           // Copy the userData for the outline system
           shadowMesh.userData = { ...object.userData };
 
+          // Get the world transform and decompose it into position/rotation/scale
+          // (worldPos already calculated above)
+          const worldQuat = new Quaternion();
+          const worldScale = new Vector3();
+          const tempWorldPos = new Vector3(); // temp variable for decompose
+          object.matrixWorld.decompose(tempWorldPos, worldQuat, worldScale);
+
+          // Apply world transform and force immediate matrix update
+          shadowMesh.position.copy(worldPos);
+          shadowMesh.quaternion.copy(worldQuat);
+          shadowMesh.scale.copy(worldScale);
+          shadowMesh.updateMatrix();
+          shadowMesh.updateMatrixWorld(true); // Force immediate world matrix update
+
           this.shadowMeshes.set(meshId, shadowMesh);
           this.outlineScene.add(shadowMesh);
+        } else {
+          // Update userData to reflect any changes (like outline color changes)
+          shadowMesh.userData = { ...object.userData };
+
+          // Update transform to match original
+          object.updateMatrixWorld(true);
+          const worldPos = new Vector3();
+          const worldQuat = new Quaternion();
+          const worldScale = new Vector3();
+          object.matrixWorld.decompose(worldPos, worldQuat, worldScale);
+
+          shadowMesh.position.copy(worldPos);
+          shadowMesh.quaternion.copy(worldQuat);
+          shadowMesh.scale.copy(worldScale);
+          shadowMesh.updateMatrix();
+          shadowMesh.updateMatrixWorld(true);
         }
-
-        // Update userData to reflect any changes (like outline color changes)
-        shadowMesh.userData = { ...object.userData };
-
-        // Update transform to match original but with scaling applied
-        object.updateMatrixWorld(true);
-        shadowMesh.matrix.copy(object.matrixWorld);
-
-        shadowMesh.matrixWorldNeedsUpdate = false;
-        shadowMesh.matrixAutoUpdate = false; // We'll manage transforms manually
       }
     });
 
@@ -107,6 +169,15 @@ export class SceneWrapper {
         }
       }
     }
+
+    // Clean up pending objects that no longer have outline colors
+    const pendingToRemove: number[] = [];
+    for (const [pendingId] of this.pendingObjects) {
+      if (!currentOutlineIds.has(pendingId)) {
+        pendingToRemove.push(pendingId);
+      }
+    }
+    pendingToRemove.forEach(id => this.pendingObjects.delete(id));
   }
 
   dispose(): void {

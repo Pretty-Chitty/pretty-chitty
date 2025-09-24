@@ -1,6 +1,7 @@
 import {
   Color,
   Vector2,
+  Vector3,
   WebGLRenderTarget,
   WebGLRenderer,
   Scene,
@@ -9,6 +10,7 @@ import {
   RGBAFormat,
   MeshBasicMaterial,
   DoubleSide,
+  FrontSide,
   PerspectiveCamera,
   DepthTexture,
   UnsignedShortType,
@@ -117,6 +119,11 @@ export class IDBasedOutlinePass extends OutlinePass {
         varying vec4 vProjectedCoord;
 
         void main() {
+          // Handle backface culling
+          if (!gl_FrontFacing) {
+            discard; // Only render front faces
+          }
+
           // Handle alpha testing for transparent materials
           float alpha = originalOpacity;
           if (hasOriginalMap) {
@@ -124,8 +131,8 @@ export class IDBasedOutlinePass extends OutlinePass {
             alpha *= texColor.a;
           }
 
-          if (alphaTest > 0.0 && alpha < alphaTest) {
-            discard; // Respect original material's transparency
+          if (alpha < 0.1) {
+            discard; // Respect original material's transparency (lower threshold for mipmaps)
           }
 
           if (useDepthTest) {
@@ -151,7 +158,7 @@ export class IDBasedOutlinePass extends OutlinePass {
           gl_FragColor = vec4(outlineIdColor, 1.0);
         }
       `,
-      side: DoubleSide,
+      side: FrontSide, // Default to front side, will be overridden per material
     });
   }
 
@@ -344,7 +351,7 @@ export class IDBasedOutlinePass extends OutlinePass {
         const cameraDistance = this.renderCamera.position.length();
         meshMaterial.uniforms["cameraDistance"] = { value: cameraDistance };
 
-        // Copy essential alpha properties from original material
+        // Copy essential properties from original material
         const originalMaterial = object.material;
         if (originalMaterial) {
           // Copy alpha-related properties
@@ -359,8 +366,14 @@ export class IDBasedOutlinePass extends OutlinePass {
             meshMaterial.transparent = true;
           }
 
+          // Copy backface culling settings
+          if (originalMaterial.side !== undefined) {
+            meshMaterial.side = originalMaterial.side;
+          }
+
           // Copy texture and alpha properties to uniforms
-          meshMaterial.uniforms["originalOpacity"].value = originalMaterial.opacity !== undefined ? originalMaterial.opacity : 1.0;
+          meshMaterial.uniforms["originalOpacity"].value =
+            originalMaterial.opacity !== undefined ? originalMaterial.opacity : 1.0;
           meshMaterial.uniforms["originalMap"].value = originalMaterial.map || null;
           meshMaterial.uniforms["hasOriginalMap"].value = !!originalMaterial.map;
           meshMaterial.uniforms["alphaTest"].value = originalMaterial.alphaTest || 0.0;
