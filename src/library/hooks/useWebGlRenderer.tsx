@@ -1,5 +1,5 @@
 import React, { useContext, createContext, ReactNode, useEffect, useState } from "react";
-import { WebGLRenderer, Vector2, Scene } from "three";
+import { WebGLRenderer, Vector2 } from "three";
 import { EffectComposer, IDBasedOutlinePass, OutputPass, RenderPass, Camera, SceneWrapper } from "../rendering/outline";
 
 const WebGlRendererContext = createContext<{
@@ -33,9 +33,9 @@ class WebGLRendererWrapper {
 
     // Configure outline pass with standard settings
     this.outlinePass.edgeStrength = 200;
-    this.outlinePass.edgeGlow = 1.0;
+    // this.outlinePass.edgeGlow = 1.0;
     this.outlinePass.edgeThickness = 3;
-    this.outlinePass.pulsePeriod = 0;
+    // this.outlinePass.pulsePeriod = 0;
     this.outlinePass.downSampleRatio = 1;
 
     this.composer.addPass(this.renderPass);
@@ -46,20 +46,7 @@ class WebGLRendererWrapper {
   }
 
   render(sceneWrapper: SceneWrapper, camera: Camera) {
-    // Fast update - only updates transforms of existing outlined objects
-    sceneWrapper.update();
-
-    this.renderPass.scene = sceneWrapper.scene;
-    this.renderPass.camera = camera;
-
-    // Only enable outline pass if there are objects to outline
-    this.outlinePass.enabled = sceneWrapper.hasOutlinedObjects;
-    if (sceneWrapper.hasOutlinedObjects) {
-      this.outlinePass.renderScene = sceneWrapper.outlineShadowScene;
-      this.outlinePass.renderCamera = camera;
-    }
-
-    this.composer.render();
+    this.composer.render(sceneWrapper, camera);
   }
 
   setSize(width: number, height: number) {

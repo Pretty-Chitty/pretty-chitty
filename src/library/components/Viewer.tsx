@@ -136,7 +136,12 @@ export default function Viewer({
           if (!paused) {
             requestAnimationFrame(animate);
           }
-          if (chitRenderInstance && (renderNextFrame === undefined || renderNextFrame || chitRenderInstance.dirty)) {
+          const prevRenderNextFrame = renderNextFrame;
+          renderNextFrame = chitRenderInstance?.update();
+          if (
+            chitRenderInstance &&
+            (prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
+          ) {
             rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera);
             context.drawImage(
               rendererWrapper.renderer.domElement,
@@ -150,7 +155,6 @@ export default function Viewer({
           } else {
             timeState.setAnimationState(id, false);
           }
-          renderNextFrame = chitRenderInstance?.update();
         } catch (e) {
           console.error(e);
         }

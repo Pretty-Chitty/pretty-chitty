@@ -1,18 +1,14 @@
-import { Scene, MeshBasicMaterial, Vector3, Quaternion } from "three";
+import { Scene, Vector3, Quaternion, Mesh } from "three";
 
 export class SceneWrapper {
   private realScene: Scene;
   private outlineScene: Scene;
-  private shadowMeshes = new Map<number, any>(); // object.id -> shadow mesh
-  private basicMaterial: MeshBasicMaterial;
-  private outlinedObjects = new Map<number, any>(); // object.id -> original object
-  private pendingObjects = new Map<number, any>(); // objects at origin waiting to be positioned
+  private shadowMeshes = new Map<number, Mesh>(); // object.id -> shadow mesh
+  private outlinedObjects = new Map<number, Mesh>(); // object.id -> original object
 
   constructor(realScene: Scene = new Scene()) {
     this.realScene = realScene;
     this.outlineScene = new Scene();
-    this.basicMaterial = new MeshBasicMaterial({ color: 0xffffff });
-
   }
 
   get scene(): Scene {
@@ -38,24 +34,6 @@ export class SceneWrapper {
       this.fullUpdate();
     }
 
-    // Check pending objects to see if they now have valid positions
-    const pendingToPromote: number[] = [];
-    for (const [meshId, pendingObject] of this.pendingObjects) {
-      pendingObject.updateMatrixWorld(true);
-      const worldPos = pendingObject.getWorldPosition(new Vector3());
-      if (!(worldPos.x === 0 && worldPos.y === 0 && worldPos.z === 0)) {
-        // Object now has a position - promote it to full outline object
-        pendingToPromote.push(meshId);
-      }
-    }
-
-    // Promote pending objects by triggering fullUpdate
-    if (pendingToPromote.length > 0) {
-      this._dirty = true;
-      this.fullUpdate();
-      return; // fullUpdate will handle all updates
-    }
-
     for (const [meshId, originalObject] of this.outlinedObjects) {
       const shadowMesh = this.shadowMeshes.get(meshId);
       if (shadowMesh && originalObject.parent) {
@@ -78,7 +56,6 @@ export class SceneWrapper {
 
   // Full update - traverses scene to find objects that should be outlined
   fullUpdate(): void {
-    console.log(Date.now(), "fullupdate");
     this._dirty = false;
 
     // Track existing shadow meshes
@@ -95,17 +72,6 @@ export class SceneWrapper {
         object.updateMatrixWorld(true);
         const worldPos = object.getWorldPosition(new Vector3());
 
-        if (worldPos.x === 0 && worldPos.y === 0 && worldPos.z === 0) {
-          // Object is at origin - put it in pending list instead of creating shadow mesh immediately
-          this.pendingObjects.set(meshId, object);
-          return; // Skip creating shadow mesh for now
-        }
-
-        // Check if this was a pending object that now has a position
-        if (this.pendingObjects.has(meshId)) {
-          this.pendingObjects.delete(meshId);
-        }
-
         // Track this as an outlined object
         this.outlinedObjects.set(meshId, object);
 
@@ -113,7 +79,7 @@ export class SceneWrapper {
 
         if (!shadowMesh) {
           // Create new shadow mesh
-          shadowMesh = object.clone();
+          shadowMesh = object.clone() as Mesh;
           shadowMesh.geometry = object.geometry; // Share geometry (no need to clone)
 
           // Keep original material for transparency support
@@ -169,21 +135,11 @@ export class SceneWrapper {
         }
       }
     }
-
-    // Clean up pending objects that no longer have outline colors
-    const pendingToRemove: number[] = [];
-    for (const [pendingId] of this.pendingObjects) {
-      if (!currentOutlineIds.has(pendingId)) {
-        pendingToRemove.push(pendingId);
-      }
-    }
-    pendingToRemove.forEach(id => this.pendingObjects.delete(id));
   }
 
   dispose(): void {
     this.shadowMeshes.clear();
     this.outlinedObjects.clear();
     this.outlineScene.clear();
-    this.basicMaterial.dispose();
   }
 }

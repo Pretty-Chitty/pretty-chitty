@@ -4,15 +4,12 @@ import {
   Vector3,
   Matrix4,
   MeshBasicMaterial,
-  MeshDepthMaterial,
   ShaderMaterial,
   WebGLRenderTarget,
   WebGLRenderer,
-  Scene,
   DoubleSide,
   LinearFilter,
   RGBAFormat,
-  RGBADepthPacking,
   NoBlending,
   UniformsUtils,
   IUniform,
@@ -22,10 +19,9 @@ import {
 import { Pass, Camera } from "./types";
 import { FullScreenQuad } from "./FullScreenQuad";
 import { CopyShader } from "./shaders";
+import { SceneWrapper } from "./SceneWrapper";
 
 export class OutlinePass extends Pass {
-  public renderScene: Scene;
-  public renderCamera: Camera;
   selectedObjects: Array<any>;
 
   visibleEdgeColor = new Color(1, 1, 1);
@@ -76,12 +72,10 @@ export class OutlinePass extends Pass {
   static BlurDirectionX = new Vector2(1.0, 0.0);
   static BlurDirectionY = new Vector2(0.0, 1.0);
 
-  constructor(resolution: Vector2, scene?: Scene, camera?: Camera, selectedObjects?: Array<any>) {
+  constructor(resolution: Vector2) {
     super();
 
-    this.renderScene = scene ?? new Scene();
-    this.renderCamera = camera ?? new PerspectiveCamera();
-    this.selectedObjects = selectedObjects ?? [];
+    this.selectedObjects = [];
     this.resolution = resolution ? new Vector2(resolution.x, resolution.y) : new Vector2(256, 256);
 
     this.initializeMaterials();
@@ -248,7 +242,7 @@ export class OutlinePass extends Pass {
       }
     };
 
-    this.renderScene.traverse(change);
+    this.sceneWrapper.scene.traverse(change);
   }
 
   private updateTextureMatrix(): void {
@@ -261,7 +255,6 @@ export class OutlinePass extends Pass {
     renderer: WebGLRenderer,
     _writeBuffer: WebGLRenderTarget,
     readBuffer: WebGLRenderTarget,
-    _deltaTime: number,
     maskActive: boolean,
   ): void {
     if (this.selectedObjects.length === 0) {

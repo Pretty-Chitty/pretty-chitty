@@ -1,30 +1,17 @@
 import { Scene, ShaderMaterial, Color, WebGLRenderer, WebGLRenderTarget, PerspectiveCamera } from "three";
-import { Pass, Camera } from "./types";
+import { Pass } from "./types";
 
 export class RenderPass extends Pass {
-  public scene: Scene;
-  public camera: Camera;
   public overrideMaterial?: ShaderMaterial | null;
   public clearColor?: Color | number | string;
-  public clearAlpha: number;
+  // public clearAlpha: number;
 
   clear = true;
   clearDepth = false;
   needsSwap = false;
 
-  constructor(
-    scene?: Scene,
-    camera?: Camera,
-    overrideMaterial?: ShaderMaterial | null,
-    clearColor?: Color | number | string,
-    clearAlpha?: number,
-  ) {
+  constructor() {
     super();
-    this.scene = scene ?? new Scene();
-    this.camera = camera ?? new PerspectiveCamera();
-    this.overrideMaterial = overrideMaterial ?? undefined;
-    this.clearColor = clearColor;
-    this.clearAlpha = clearAlpha !== undefined ? clearAlpha : 0;
   }
 
   render(renderer: WebGLRenderer, _writeBuffer: WebGLRenderTarget, readBuffer: WebGLRenderTarget): void {
@@ -36,8 +23,8 @@ export class RenderPass extends Pass {
     let oldOverrideMaterial: any;
 
     if (this.overrideMaterial !== undefined) {
-      oldOverrideMaterial = this.scene.overrideMaterial;
-      this.scene.overrideMaterial = this.overrideMaterial ?? null;
+      oldOverrideMaterial = this.sceneWrapper.scene.overrideMaterial;
+      this.sceneWrapper.scene.overrideMaterial = this.overrideMaterial ?? null;
     }
 
     if (this.clearColor !== undefined) {
@@ -52,14 +39,14 @@ export class RenderPass extends Pass {
 
     renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
     if (this.clear) renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
-    renderer.render(this.scene, this.camera);
+    renderer.render(this.sceneWrapper.scene, this.camera);
 
     if (this.clearColor !== undefined) {
       renderer.setClearColor(oldClearColor!, oldClearAlpha!);
     }
 
     if (this.overrideMaterial !== undefined) {
-      this.scene.overrideMaterial = oldOverrideMaterial;
+      this.sceneWrapper.scene.overrideMaterial = oldOverrideMaterial;
     }
 
     renderer.autoClear = oldAutoClear;

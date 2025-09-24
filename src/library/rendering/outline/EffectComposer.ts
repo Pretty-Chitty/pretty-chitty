@@ -1,8 +1,19 @@
-import { WebGLRenderer, WebGLRenderTarget, LinearFilter, RGBAFormat, Vector2, Clock, Color, DepthTexture, UnsignedShortType } from "three";
-import { Pass } from "./types";
+import {
+  WebGLRenderer,
+  WebGLRenderTarget,
+  LinearFilter,
+  RGBAFormat,
+  Vector2,
+  Clock,
+  Color,
+  DepthTexture,
+  UnsignedShortType,
+} from "three";
+import { Camera, Pass } from "./types";
 import { ShaderPass } from "./ShaderPass";
 import { CopyShader } from "./shaders";
 import { MaskPass, ClearMaskPass } from "./MaskPass";
+import { SceneWrapper } from "./SceneWrapper";
 
 type RTParams = ConstructorParameters<typeof WebGLRenderTarget>[2];
 
@@ -56,7 +67,7 @@ export class EffectComposer {
       // Create and attach depth texture for outline pass access
       renderTarget.depthTexture = new DepthTexture(
         Math.max(1, Math.floor(this._width * this._pixelRatio)),
-        Math.max(1, Math.floor(this._height * this._pixelRatio))
+        Math.max(1, Math.floor(this._height * this._pixelRatio)),
       );
       renderTarget.depthTexture.type = UnsignedShortType;
     } else {
@@ -82,7 +93,7 @@ export class EffectComposer {
     // Create depth texture for second render target too
     this.renderTarget2.depthTexture = new DepthTexture(
       Math.max(1, Math.floor(this._width * this._pixelRatio)),
-      Math.max(1, Math.floor(this._height * this._pixelRatio))
+      Math.max(1, Math.floor(this._height * this._pixelRatio)),
     );
     this.renderTarget2.depthTexture.type = UnsignedShortType;
 
@@ -132,7 +143,6 @@ export class EffectComposer {
     }
   }
 
-
   addPass(pass: Pass): void {
     this.passes.push(pass);
     pass.setSize(this._width * this._pixelRatio, this._height * this._pixelRatio);
@@ -150,8 +160,7 @@ export class EffectComposer {
     return true;
   }
 
-  render(deltaTime?: number): void {
-    const dt = deltaTime ?? this.clock.getDelta();
+  render(sceneWrapper: SceneWrapper, camera: Camera): void {
     const currentRenderTarget = this.renderer.getRenderTarget();
     const currentClearColor = this.renderer.getClearColor(new Color());
     const currentClearAlpha = this.renderer.getClearAlpha();
@@ -166,8 +175,10 @@ export class EffectComposer {
       const pass = this.passes[i];
       if (!pass.enabled) continue;
 
+      pass.sceneWrapper = sceneWrapper;
+      pass.camera = camera;
       pass.renderToScreen = this.renderToScreen && this.isLastEnabledPass(i);
-      pass.render(this.renderer, writeBuffer, readBuffer, dt, maskActive);
+      pass.render(this.renderer, writeBuffer, readBuffer, maskActive);
 
       // Swap buffers for next pass (ping-pong)
       if (pass.needsSwap) {
@@ -195,11 +206,13 @@ export class EffectComposer {
       this._width = size.width;
       this._height = size.height;
 
-      renderTarget = this.renderTarget?.clone() ?? new WebGLRenderTarget(
-        Math.max(1, Math.floor(this._width * this._pixelRatio)),
-        Math.max(1, Math.floor(this._height * this._pixelRatio)),
-        this._rtParams,
-      );
+      renderTarget =
+        this.renderTarget?.clone() ??
+        new WebGLRenderTarget(
+          Math.max(1, Math.floor(this._width * this._pixelRatio)),
+          Math.max(1, Math.floor(this._height * this._pixelRatio)),
+          this._rtParams,
+        );
       renderTarget.setSize(
         Math.max(1, Math.floor(this._width * this._pixelRatio)),
         Math.max(1, Math.floor(this._height * this._pixelRatio)),

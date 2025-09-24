@@ -140,6 +140,8 @@ export class Card extends Chit {
   public x = 0;
   public y = 0;
 
+  raised = false;
+
   @ChildOutlet(new Vector3(0.5, 0, 0)) public token?: Card2;
   @ChildOutlet(new Vector3(-0.5, 0, 1)) public token2?: Card2;
   @ChildOutlet public subCard?: Card;
@@ -149,14 +151,14 @@ export class Card extends Chit {
   @Ordered(new Vector3(-0.5, 0, 0))
   public tokenList2 = new OrderedOutlet("tokenList2", this);
 
-  public override hiddenPropertiesForSerialization(playerIds: string[]): HiddenPropertySerializationRule[] | undefined {
-    return [
-      {
-        fields: "all",
-        playerIds: playerIds.filter((p) => this.parent?.id !== p),
-      },
-    ];
-  }
+  // public override hiddenPropertiesForSerialization(playerIds: string[]): HiddenPropertySerializationRule[] | undefined {
+  //   return [
+  //     {
+  //       fields: "all",
+  //       playerIds: playerIds.filter((p) => this.parent?.id !== p),
+  //     },
+  //   ];
+  // }
 
   public functionallyIdentical(_other: Chit): boolean {
     return false;
@@ -202,10 +204,11 @@ export class Card extends Chit {
 
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0; // (this.something / 90) % (Math.PI * 2);
     spec.rotateY = this.flipped ? Math.PI : 0;
-    spec.offsetZ = this.flipped ? 0.3 : 0.5;
+    spec.offsetZ = (this.flipped ? 0.1 : 0) + (this.raised ? 3 : 0);
     // spec.offsetX = this.x * 1.25;
     // spec.offsetY = this.y * 2.5;
     // spec.offsetZ = this.tapped ? 0.25 : 0 + (this.flipped ? 3.1 : 0);
+    spec.offsetSpeed = 200;
 
     if (this.something === undefined) {
       spec.rotateY = Math.PI;

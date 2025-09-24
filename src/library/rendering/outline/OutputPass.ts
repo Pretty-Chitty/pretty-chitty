@@ -47,7 +47,6 @@ export class OutputPass extends Pass {
     renderer: WebGLRenderer,
     writeBuffer: WebGLRenderTarget,
     readBuffer: WebGLRenderTarget,
-    _deltaTime?: number,
     _maskActive?: boolean,
   ): void {
     this.uniforms["tDiffuse"].value = readBuffer.texture;

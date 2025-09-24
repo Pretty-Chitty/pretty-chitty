@@ -1,49 +1,72 @@
 import {
   Color,
   Vector2,
-  Vector3,
   WebGLRenderTarget,
   WebGLRenderer,
-  Scene,
   LinearFilter,
   NearestFilter,
   RGBAFormat,
-  MeshBasicMaterial,
-  DoubleSide,
   FrontSide,
-  PerspectiveCamera,
   DepthTexture,
   UnsignedShortType,
   ShaderMaterial,
+  NoBlending,
+  UniformsUtils,
+  IUniform,
 } from "three";
-import { OutlinePass } from "./OutlinePass";
-import { Camera } from "./types";
-import { InterMeshEdgeDetectionPass, EdgeMode } from "./passes/InterMeshEdgeDetectionPass";
+import { Pass } from "./types";
+import { InterMeshEdgeDetectionPass } from "./passes/InterMeshEdgeDetectionPass";
 import { DebugIDMappingPass } from "./passes/DebugIDMappingPass";
+import { FullScreenQuad } from "./FullScreenQuad";
+import { CopyShader } from "./shaders";
 
-export class IDBasedOutlinePass extends OutlinePass {
+export class IDBasedOutlinePass extends Pass {
   // Simplified properties for userData-based outlining
   private static instanceCounter = 0;
   private instanceId: number;
 
   // Debug mode toggle
-  public debugMode = false;
+  public debugMode = true;
+
+  sceneDepthTexture: any = null;
+
+  downSampleRatio = 2;
+  fsQuad = new FullScreenQuad(null);
+  materialCopy!: ShaderMaterial;
 
   // ID rendering
   private renderTargetIDBuffer!: WebGLRenderTarget;
   private renderTargetTempBuffer!: WebGLRenderTarget; // Dedicated temp buffer to avoid sharing conflicts
-  private originalMaterials = new Map<any, any>();
   private sharedIDMaterial!: ShaderMaterial; // Single shared material
   private idBasedEdgeDetectionPass!: InterMeshEdgeDetectionPass;
   private debugIDMappingPass!: DebugIDMappingPass;
 
-  constructor(resolution: Vector2, scene?: Scene, camera?: Camera, selectedObjects?: Array<any>) {
-    super(resolution, scene, camera, selectedObjects);
+  resolution: Vector2;
+  copyUniforms!: Record<string, IUniform>;
 
+  constructor(resolution: Vector2) {
+    super();
+    this.resolution = resolution ? new Vector2(resolution.x, resolution.y) : new Vector2(256, 256);
     this.instanceId = ++IDBasedOutlinePass.instanceCounter;
 
     // Initialize ID-based components
+    this.initializeMaterials();
+    this.initializeRenderTargets();
     this.initializeIDComponents();
+  }
+
+  private initializeMaterials(): void {
+    this.copyUniforms = UniformsUtils.clone(CopyShader.uniforms);
+    (this.copyUniforms["opacity"].value as number) = 1.0;
+    this.materialCopy = new ShaderMaterial({
+      uniforms: this.copyUniforms,
+      vertexShader: CopyShader.vertexShader,
+      fragmentShader: CopyShader.fragmentShader,
+      blending: NoBlending,
+      depthTest: false,
+      depthWrite: false,
+      transparent: true,
+    });
   }
 
   private initializeIDComponents(): void {
@@ -166,7 +189,21 @@ export class IDBasedOutlinePass extends OutlinePass {
 
   override setSize(width: number, height: number): void {
     // Call parent first to resize all the inherited render targets
-    super.setSize(width, height);
+    this.renderTargetMaskBuffer.setSize(width, height);
+
+    let resx = Math.round(width / this.downSampleRatio);
+    let resy = Math.round(height / this.downSampleRatio);
+    this.renderTargetMaskDownSampleBuffer.setSize(resx, resy);
+    this.renderTargetBlurBuffer1.setSize(resx, resy);
+    this.renderTargetEdgeBuffer1.setSize(resx, resy);
+    (this.separableBlurMaterial1.uniforms["texSize"].value as Vector2).set(resx, resy);
+
+    resx = Math.round(resx / 2);
+    resy = Math.round(resy / 2);
+
+    this.renderTargetBlurBuffer2.setSize(resx, resy);
+    this.renderTargetEdgeBuffer2.setSize(resx, resy);
+    (this.separableBlurMaterial2.uniforms["texSize"].value as Vector2).set(resx, resy);
 
     // CRITICAL: Update our internal resolution property
     this.resolution.set(width, height);
@@ -195,7 +232,6 @@ export class IDBasedOutlinePass extends OutlinePass {
     renderer: WebGLRenderer,
     writeBuffer: WebGLRenderTarget,
     readBuffer: WebGLRenderTarget,
-    deltaTime: number,
     maskActive: boolean,
   ): void {
     // Always ensure our sizes match the current renderer - critical for shared renderers
@@ -206,12 +242,8 @@ export class IDBasedOutlinePass extends OutlinePass {
       this.setSize(currentSize.x, currentSize.y);
     }
     // Check if any meshes have userData.outlineColor
-    let hasOutlinedMeshes = false;
-    this.renderScene.traverse((object: any) => {
-      if (object.isMesh && object.userData?.outlineColor) {
-        hasOutlinedMeshes = true;
-      }
-    });
+    this.sceneWrapper.update();
+    const hasOutlinedMeshes = this.sceneWrapper.hasOutlinedObjects;
 
     if (!hasOutlinedMeshes) {
       if (this.renderToScreen) {
@@ -266,12 +298,32 @@ export class IDBasedOutlinePass extends OutlinePass {
     }
   }
 
+  renderTargetMaskBuffer!: WebGLRenderTarget;
+  renderTargetEdgeBuffer1!: WebGLRenderTarget;
+
+  private initializeRenderTargets(): void {
+    const pars = { minFilter: LinearFilter, magFilter: LinearFilter, format: RGBAFormat } as any;
+
+    const resx = Math.round(this.resolution.x / this.downSampleRatio);
+    const resy = Math.round(this.resolution.y / this.downSampleRatio);
+
+    this.renderTargetMaskBuffer = new WebGLRenderTarget(this.resolution.x, this.resolution.y, pars);
+    this.renderTargetMaskBuffer.texture.name = "OutlinePass.mask";
+    this.renderTargetMaskBuffer.texture.generateMipmaps = false;
+
+    this.renderTargetEdgeBuffer1 = new WebGLRenderTarget(resx, resy, pars);
+    this.renderTargetEdgeBuffer1.texture.name = "OutlinePass.edge1";
+    this.renderTargetEdgeBuffer1.texture.generateMipmaps = false;
+  }
+
+  setSceneDepthTexture(depthTexture: any): void {
+    this.sceneDepthTexture = depthTexture;
+  }
+
   private renderIDBuffer(renderer: WebGLRenderer): void {
     const oldAutoClear = renderer.autoClear;
-    const currentBackground = this.renderScene.background;
 
     renderer.autoClear = false;
-    this.renderScene.background = null;
 
     // Disable antialiasing for ID buffer render to get exact colors
     const gl = renderer.getContext();
@@ -289,15 +341,12 @@ export class IDBasedOutlinePass extends OutlinePass {
 
     // First pass: Normal rendering (no offset)
     this.updateSharedMaterialUniforms(0.0, 0.0);
-    renderer.render(this.renderScene, this.renderCamera);
+    renderer.render(this.sceneWrapper.outlineShadowScene, this.camera);
 
     // Second pass: 1-pixel right shift (additive to same buffer)
     renderer.autoClear = false; // Don't clear between passes
-    this.updateSharedMaterialUniforms(1.0, 0.0);
-    renderer.render(this.renderScene, this.renderCamera);
-
-    // Restore original materials
-    this.restoreOriginalMaterials();
+    this.updateSharedMaterialUniforms(1.0, 1.0);
+    renderer.render(this.sceneWrapper.outlineShadowScene, this.camera);
 
     // Re-enable antialiasing if it was enabled
     if (wasAntialiasingEnabled) {
@@ -305,32 +354,27 @@ export class IDBasedOutlinePass extends OutlinePass {
       gl.enable(gl.SAMPLE_ALPHA_TO_COVERAGE);
     }
 
-    this.renderScene.background = currentBackground;
     renderer.autoClear = oldAutoClear;
   }
 
   private updateSharedMaterialUniforms(offsetX: number, offsetY: number): void {
     // Update all cloned materials with the new pixel offset
-    this.renderScene.traverse((object: any) => {
+    this.sceneWrapper.outlineShadowScene.traverse((object: any) => {
       if (object.isMesh && object.material && object.material.uniforms) {
         object.material.uniforms["pixelOffset"].value.set(offsetX, offsetY);
       }
     });
   }
 
+  // TODO: this should only happen once... wtf
   private applyIDMaterials(): void {
-    this.originalMaterials.clear();
-
     // Update shared material uniforms for this render
     this.sharedIDMaterial.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
     this.sharedIDMaterial.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
     this.sharedIDMaterial.uniforms["resolution"].value.set(this.resolution.x, this.resolution.y);
 
-    this.renderScene.traverse((object: any) => {
+    this.sceneWrapper.outlineShadowScene.traverse((object: any) => {
       if (object.isMesh) {
-        // Store original material
-        this.originalMaterials.set(object, object.material);
-
         // Only assign IDs to meshes that have userData.outlineColor
         // Use ONLY the outlineId, never object.id
         let meshID = 0;
@@ -348,7 +392,7 @@ export class IDBasedOutlinePass extends OutlinePass {
         meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
 
         // Pass camera distance for depth tolerance scaling
-        const cameraDistance = this.renderCamera.position.length();
+        const cameraDistance = this.camera.position.length();
         meshMaterial.uniforms["cameraDistance"] = { value: cameraDistance };
 
         // Copy essential properties from original material
@@ -390,25 +434,16 @@ export class IDBasedOutlinePass extends OutlinePass {
     });
   }
 
-  private restoreOriginalMaterials(): void {
-    this.renderScene.traverse((object: any) => {
-      if (object.isMesh) {
-        const originalMaterial = this.originalMaterials.get(object);
-        if (originalMaterial) {
-          object.material = originalMaterial;
-        } else {
-          console.warn("No original material found for mesh:", object);
-        }
-      }
-    });
-  }
+  edgeThickness = 1.0;
+  edgeStrength = 3.0;
 
   private performIDBasedEdgeDetection(renderer: WebGLRenderer): void {
     // Collect all meshes with userData.outlineColor
     const outliningMeshes: Array<{ id: number; color: Color }> = [];
 
-    this.renderScene.traverse((object: any) => {
-      if (object.isMesh && object.userData?.outlineColor && object.userData?.outlineId !== undefined) {
+    // TODO: this is grossly inefficient - we should cache this list and only update on scene changes
+    this.sceneWrapper.outlineShadowScene.traverse((object: any) => {
+      if (object.userData?.outlineColor && object.userData?.outlineId !== undefined) {
         // Use ONLY the outlineId, never object.id
         const meshID = object.userData.outlineId;
 
@@ -447,69 +482,15 @@ export class IDBasedOutlinePass extends OutlinePass {
     }
   }
 
-  // Reuse the original blur and composite methods from OutlinePass
-  private performIDBlurPasses(renderer: WebGLRenderer): void {
-    // First blur pass (half res)
-    this.separableBlurMaterial1.uniforms["kernelRadius"].value = this.edgeThickness;
-    this.fsQuad.material = this.separableBlurMaterial1;
-
-    // Horizontal blur
-    (this.separableBlurMaterial1.uniforms["direction"].value as Vector2).copy(OutlinePass.BlurDirectionX);
-    (this.separableBlurMaterial1.uniforms["colorTexture"].value as any) = this.renderTargetEdgeBuffer1.texture;
-    renderer.setRenderTarget(this.renderTargetBlurBuffer1);
-    renderer.clear();
-    this.fsQuad.render(renderer);
-
-    // Vertical blur
-    (this.separableBlurMaterial1.uniforms["direction"].value as Vector2).copy(OutlinePass.BlurDirectionY);
-    (this.separableBlurMaterial1.uniforms["colorTexture"].value as any) = this.renderTargetBlurBuffer1.texture;
-    renderer.setRenderTarget(this.renderTargetEdgeBuffer1);
-    renderer.clear();
-    this.fsQuad.render(renderer);
-
-    // Second blur pass (quarter res)
-    this.separableBlurMaterial2.uniforms["kernelRadius"].value = 4;
-    this.fsQuad.material = this.separableBlurMaterial2;
-
-    // Horizontal blur
-    (this.separableBlurMaterial2.uniforms["direction"].value as Vector2).copy(OutlinePass.BlurDirectionX);
-    (this.separableBlurMaterial2.uniforms["colorTexture"].value as any) = this.renderTargetEdgeBuffer1.texture;
-    renderer.setRenderTarget(this.renderTargetBlurBuffer2);
-    renderer.clear();
-    this.fsQuad.render(renderer);
-
-    // Vertical blur
-    (this.separableBlurMaterial2.uniforms["direction"].value as Vector2).copy(OutlinePass.BlurDirectionY);
-    (this.separableBlurMaterial2.uniforms["colorTexture"].value as any) = this.renderTargetBlurBuffer2.texture;
-    renderer.setRenderTarget(this.renderTargetEdgeBuffer2);
-    renderer.clear();
-    this.fsQuad.render(renderer);
-  }
-
-  private renderIDOverlay(renderer: WebGLRenderer, readBuffer: WebGLRenderTarget, maskActive: boolean): void {
-    this.fsQuad.material = this.overlayMaterial;
-
-    // Use the original mask texture (depth-based) for now to debug
-    (this.overlayMaterial.uniforms["maskTexture"].value as any) = this.renderTargetMaskBuffer.texture;
-    (this.overlayMaterial.uniforms["edgeTexture1"].value as any) = this.renderTargetEdgeBuffer1.texture;
-    (this.overlayMaterial.uniforms["edgeTexture2"].value as any) = this.renderTargetEdgeBuffer2.texture;
-    (this.overlayMaterial.uniforms["patternTexture"].value as any) = this.patternTexture;
-    (this.overlayMaterial.uniforms["edgeStrength"].value as number) = this.edgeStrength;
-    (this.overlayMaterial.uniforms["edgeGlow"].value as number) = this.edgeGlow;
-    (this.overlayMaterial.uniforms["usePatternTexture"].value as boolean) = this.usePatternTexture;
-
-    if (maskActive) (renderer.state as any).buffers.stencil.setTest(true);
-
-    renderer.setRenderTarget(readBuffer);
-    this.fsQuad.render(renderer);
-  }
-
   private renderIDCopyToScreen(renderer: WebGLRenderer, readBuffer: WebGLRenderTarget): void {
     this.fsQuad.material = this.materialCopy;
     (this.copyUniforms["tDiffuse"].value as any) = readBuffer.texture;
     renderer.setRenderTarget(null);
     this.fsQuad.render(renderer);
   }
+
+  oldClearColor = new Color();
+  oldClearAlpha = 1;
 
   private saveIDRenderState(renderer: WebGLRenderer): void {
     this.oldClearColor.copy(renderer.getClearColor(new Color()));
@@ -527,18 +508,9 @@ export class IDBasedOutlinePass extends OutlinePass {
     renderer.autoClear = true;
   }
 
-  override dispose(): void {
-    super.dispose();
-
+  dispose(): void {
     this.renderTargetIDBuffer.dispose();
     this.renderTargetTempBuffer.dispose();
     this.idBasedEdgeDetectionPass.dispose();
-
-    // Dispose all created ID materials
-    for (const material of this.idMaterials.values()) {
-      material.dispose();
-    }
-    this.idMaterials.clear();
-    this.originalMaterials.clear();
   }
 }
