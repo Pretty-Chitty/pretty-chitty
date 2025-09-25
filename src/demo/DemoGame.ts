@@ -128,8 +128,6 @@ export class DemoGame implements Game<MyPlayer, Root> {
           // .toggleButton(new HandButton())
           .context(pieces[7]),
       );
-
-      await turn.noValidMoves("You did thing", "bad thing");
     });
 
     pieces[3].removeFromParent();
@@ -143,6 +141,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
           // target.add(c);
         }),
       );
+      await turn.noValidMoves("You did thing", "bad thing");
     });
 
     return {

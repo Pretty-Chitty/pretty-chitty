@@ -50,6 +50,7 @@ export class EffectComposer {
         format: RGBAFormat,
         stencilBuffer: false,
         depthBuffer: true,
+        generateMipmaps: false,
       };
 
       const size = renderer.getSize(new Vector2());
@@ -63,6 +64,7 @@ export class EffectComposer {
         this._rtParams,
       );
       renderTarget.texture.name = `EffectComposer.rt1.${this.textureId}`;
+      renderTarget.texture.generateMipmaps = false;
 
       // Create and attach depth texture for outline pass access
       renderTarget.depthTexture = new DepthTexture(
@@ -89,6 +91,7 @@ export class EffectComposer {
     // Create second render target for ping-pong rendering
     this.renderTarget2 = renderTarget.clone();
     this.renderTarget2.texture.name = `EffectComposer.rt2.${this.textureId}`;
+    this.renderTarget2.texture.generateMipmaps = false;
 
     // Create depth texture for second render target too
     this.renderTarget2.depthTexture = new DepthTexture(

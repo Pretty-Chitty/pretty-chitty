@@ -18,9 +18,15 @@ class WebGLRendererWrapper {
     public renderer: WebGLRenderer,
     width: number,
     height: number,
+    transparent: boolean = false,
   ) {
     this.renderer.setPixelRatio(Math.max(1.5, window.devicePixelRatio));
     this.renderer.shadowMap.enabled = true;
+
+    // Ensure proper alpha handling for shadows
+    if (!transparent) {
+      this.renderer.setClearColor(0xffffff, 1.0); // Opaque white background for shadows
+    }
 
     // Setup effect composer with standard passes
     this.composer = new EffectComposer(renderer);
@@ -30,6 +36,12 @@ class WebGLRendererWrapper {
       new Vector2(width * window.devicePixelRatio, height * window.devicePixelRatio),
     );
     this.outputPass = new OutputPass();
+
+    // Configure transparency
+    if (transparent) {
+      this.renderPass.clearColor = 0x000000; // Black background
+      this.renderPass.clearAlpha = 0; // But transparent
+    }
 
     // Configure outline pass with standard settings
     this.outlinePass.edgeStrength = 200;
@@ -62,17 +74,17 @@ class WebGLRendererWrapper {
   }
 }
 
-export function useWebGlRenderer(w: number, h: number): WebGLRendererWrapper | undefined {
+export function useWebGlRenderer(w: number, h: number, transparent: boolean = false): WebGLRendererWrapper | undefined {
   const [rendererWrapper, setRendererWrapper] = useState<WebGLRendererWrapper | undefined>(undefined);
   const context = useContext(WebGlRendererContext);
 
   useEffect(() => {
-    const key = `${w}_${h}`;
+    const key = `${w}_${h}_${transparent}`;
     let wrapper: WebGLRendererWrapper | undefined = context.used[key];
     if (!wrapper) {
       wrapper = context.unused.pop();
       if (!wrapper) {
-        wrapper = new WebGLRendererWrapper(new WebGLRenderer(), w, h);
+        wrapper = new WebGLRendererWrapper(new WebGLRenderer(), w, h, transparent);
       } else {
         wrapper.setSize(w, h);
       }
@@ -88,7 +100,7 @@ export function useWebGlRenderer(w: number, h: number): WebGLRendererWrapper | u
       }
       setRendererWrapper(undefined);
     };
-  }, [context, w, h]);
+  }, [context, w, h, transparent]);
 
   return rendererWrapper;
 }

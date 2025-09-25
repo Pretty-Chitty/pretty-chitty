@@ -112,7 +112,7 @@ export class CanvasStack implements IUpdatingCanvas {
   get material(): Material {
     return new MeshPhongMaterial({
       map: this.texture,
-      alphaTest: 0.05,
+      alphaTest: 0.5,
     });
   }
 

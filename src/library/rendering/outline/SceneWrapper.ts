@@ -123,6 +123,10 @@ export class SceneWrapper {
           // Copy the userData for the outline system
           shadowMesh.userData = { ...object.userData };
 
+          // Ensure shadow properties are copied
+          shadowMesh.castShadow = object.castShadow;
+          shadowMesh.receiveShadow = object.receiveShadow;
+
           // Get the world transform and decompose it into position/rotation/scale
           // (worldPos already calculated above)
           const worldQuat = new Quaternion();

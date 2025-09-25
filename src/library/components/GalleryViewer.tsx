@@ -489,6 +489,8 @@ class GalleryController {
     if (hasChangedLength && !this.tween) {
       this.pan(0, true);
     }
+
+    this.sceneWrapper.markDirty();
   }
 }
 
@@ -515,7 +517,7 @@ export function GalleryViewer({
 }) {
   const [id] = useState(`GalleryViewer${ID_COUNTER++}`);
   const refContainer = useRef<HTMLCanvasElement>(null);
-  const rendererWrapper = useWebGlRenderer(w, h);
+  const rendererWrapper = useWebGlRenderer(w, h, true); // transparent=true for gallery
   const theme = useGameTheme();
   const [galleryController] = useState(new GalleryController(new SceneWrapper(new Scene()), theme));
   const [itemWidth, setItemWidth] = useState(galleryItemWidth);
@@ -532,21 +534,8 @@ export function GalleryViewer({
   }, [items, galleryController]);
 
   useEffect(() => {
-    const allHaveMaxWidth = items.length > 0 && items.every((item) => item.maximumWidth);
-    const allHaveMaxHeight = items.length > 0 && items.every((item) => item.maximumHeight);
-
-    // TODO: wtf
-    if (allHaveMaxWidth) {
-      setItemWidth(Math.max(...items.map((item) => item.maximumWidth!)));
-    } else {
-      setItemWidth(galleryItemWidth);
-    }
-
-    if (allHaveMaxHeight) {
-      setItemHeight(Math.max(...items.map((item) => item.maximumHeight!)));
-    } else {
-      setItemHeight(galleryItemHeight);
-    }
+    setItemWidth(galleryItemWidth);
+    setItemHeight(galleryItemHeight);
   }, [items, galleryItemWidth, galleryItemHeight, setItemWidth, setItemHeight]);
 
   useEffect(() => {
@@ -563,7 +552,13 @@ export function GalleryViewer({
 
         if (ctx) {
           ctx.clearRect(0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
-          ctx.drawImage(rendererWrapper.renderer.domElement, 0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
+          ctx.drawImage(
+            rendererWrapper.renderer.domElement,
+            0,
+            0,
+            w * window.devicePixelRatio,
+            h * window.devicePixelRatio,
+          );
         }
       }
     };

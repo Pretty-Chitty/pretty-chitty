@@ -4,7 +4,7 @@ import { Pass } from "./types";
 export class RenderPass extends Pass {
   public overrideMaterial?: ShaderMaterial | null;
   public clearColor?: Color | number | string;
-  // public clearAlpha: number;
+  public clearAlpha: number = 1;
 
   clear = true;
   clearDepth = false;

@@ -91,8 +91,8 @@ export class LightWrapper {
     });
 
     if (this.lightSpec.shadowOpacity > 0 && makeShadow) {
-      this.shadowMesh.material.opacity = this.lightSpec.shadowOpacity;
-      this.shadowMesh.material.color.set(this.lightSpec.shadowColor);
+      (this.shadowMesh.material as ShadowMaterial).opacity = this.lightSpec.shadowOpacity;
+      (this.shadowMesh.material as ShadowMaterial).color.set(this.lightSpec.shadowColor);
       this.shadowMesh.visible = true;
     } else {
       this.shadowMesh.visible = false;

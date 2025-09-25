@@ -11,6 +11,7 @@ import {
   UnsignedShortType,
   ShaderMaterial,
   NoBlending,
+  NormalBlending,
   UniformsUtils,
   IUniform,
 } from "three";
@@ -62,10 +63,9 @@ export class IDBasedOutlinePass extends Pass {
       uniforms: this.copyUniforms,
       vertexShader: CopyShader.vertexShader,
       fragmentShader: CopyShader.fragmentShader,
-      blending: NoBlending,
       depthTest: false,
       depthWrite: false,
-      transparent: true,
+      transparent: false,
     });
   }
 
@@ -170,9 +170,9 @@ export class IDBasedOutlinePass extends Pass {
 
             // Only draw if depths approximately match (mesh is visible in main scene)
             // Scale tolerance based on camera distance - closer = tighter tolerance
-            float baseTolerance = 0.005;
+            float baseTolerance = 0.05;
             float depthTolerance = baseTolerance * (cameraDistance * 0.025);
-            if (abs(currentDepth - sceneDepth) > depthTolerance) {
+            if (currentDepth - sceneDepth > depthTolerance) {
               discard;  // Only discard if significantly behind
             }
           }
@@ -237,6 +237,9 @@ export class IDBasedOutlinePass extends Pass {
     // Ensure SceneWrapper has reference to this pass
     this.sceneWrapper.setOutlinePass(this);
 
+    // Save state before any processing
+    this.saveRenderState(renderer);
+
     // Check if any meshes have userData.outlineColor
     this.sceneWrapper.update();
     const hasOutlinedMeshes = this.sceneWrapper.hasOutlinedObjects;
@@ -249,13 +252,16 @@ export class IDBasedOutlinePass extends Pass {
         this.fsQuad.material = this.materialCopy;
         (this.copyUniforms["tDiffuse"].value as any) = readBuffer.texture;
         renderer.setRenderTarget(writeBuffer);
+        renderer.clear(); // Clear output buffer
         this.fsQuad.render(renderer);
       }
+      this.restoreRenderState(renderer);
       return;
     }
 
-    this.saveIDRenderState(renderer);
-    this.setupIDRenderState(renderer, maskActive);
+    // Setup temporary state for ID rendering
+    renderer.autoClear = false;
+    if (maskActive) (renderer.state as any).buffers.stencil.setTest(false);
 
     // Set the depth texture from the read buffer (output of previous render pass)
     this.setSceneDepthTexture(readBuffer.depthTexture);
@@ -271,29 +277,37 @@ export class IDBasedOutlinePass extends Pass {
     this.fsQuad.material = this.materialCopy;
     (this.copyUniforms["tDiffuse"].value as any) = readBuffer.texture;
     renderer.setRenderTarget(this.renderTargetTempBuffer); // Use dedicated temp buffer
+    renderer.clear(); // Clear temp buffer first
     this.fsQuad.render(renderer);
 
     // Then composite temp + edges to final buffer (writeBuffer, not readBuffer!)
     renderer.setRenderTarget(writeBuffer);
-    renderer.clear();
+    renderer.clear(); // Clear the buffer to ensure proper compositing
 
     // Copy temp buffer to output
     (this.copyUniforms["tDiffuse"].value as any) = this.renderTargetTempBuffer.texture;
     this.fsQuad.render(renderer);
 
-    // Add edges with proper alpha blending
+    // Add edges using Three.js material blending instead of direct OpenGL
     renderer.autoClear = false;
-    const gl = renderer.getContext();
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // Use Three.js's own blending by setting the material to use normal blending
+    const originalBlending = this.materialCopy.blending;
+    const originalTransparent = this.materialCopy.transparent;
+
+    this.materialCopy.blending = NormalBlending;
+    this.materialCopy.transparent = true;
+    this.materialCopy.needsUpdate = true;
 
     (this.copyUniforms["tDiffuse"].value as any) = this.renderTargetEdgeBuffer1.texture;
     this.fsQuad.render(renderer);
 
-    gl.disable(gl.BLEND);
-    renderer.autoClear = true;
+    // Restore material blending settings
+    this.materialCopy.blending = originalBlending;
+    this.materialCopy.transparent = originalTransparent;
+    this.materialCopy.needsUpdate = true;
 
-    this.restoreIDRenderState(renderer);
+    this.restoreRenderState(renderer);
 
     if (this.renderToScreen) {
       this.renderIDCopyToScreen(renderer, readBuffer);
@@ -365,7 +379,10 @@ export class IDBasedOutlinePass extends Pass {
     this.applyIDMaterials();
 
     renderer.setRenderTarget(this.renderTargetIDBuffer);
+    renderer.setClearColor(0x000000, 1); // Black only for ID buffer
     renderer.clear(true, true, true); // Clear color, depth, and stencil explicitly
+    // Restore original clear color immediately after clearing ID buffer
+    renderer.setClearColor(this.savedState.clearColor, this.savedState.clearAlpha);
 
     // First pass: Normal rendering (no offset)
     this.updateSharedMaterialUniforms(0.0, 0.0);
@@ -552,23 +569,39 @@ export class IDBasedOutlinePass extends Pass {
     this.fsQuad.render(renderer);
   }
 
-  oldClearColor = new Color();
-  oldClearAlpha = 1;
+  // Consolidated state management
+  private savedState: {
+    clearColor: Color;
+    clearAlpha: number;
+    shadowMapEnabled: boolean;
+    autoClear: boolean;
+    blendEnabled: boolean;
+    srcBlendFactor: number;
+    dstBlendFactor: number;
+  } = {
+    clearColor: new Color(),
+    clearAlpha: 1,
+    shadowMapEnabled: true,
+    autoClear: true,
+    blendEnabled: false,
+    srcBlendFactor: 0,
+    dstBlendFactor: 0,
+  };
 
-  private saveIDRenderState(renderer: WebGLRenderer): void {
-    this.oldClearColor.copy(renderer.getClearColor(new Color()));
-    this.oldClearAlpha = renderer.getClearAlpha();
+  private saveRenderState(renderer: WebGLRenderer): void {
+    // Save only Three.js renderer state
+    this.savedState.clearColor.copy(renderer.getClearColor(new Color()));
+    this.savedState.clearAlpha = renderer.getClearAlpha();
+    this.savedState.shadowMapEnabled = renderer.shadowMap.enabled;
+    this.savedState.autoClear = renderer.autoClear;
   }
 
-  private setupIDRenderState(renderer: WebGLRenderer, maskActive: boolean): void {
-    renderer.autoClear = false;
-    if (maskActive) (renderer.state as any).buffers.stencil.setTest(false);
-    renderer.setClearColor(0x000000, 1); // Black background for ID buffer
-  }
-
-  private restoreIDRenderState(renderer: WebGLRenderer): void {
-    renderer.setClearColor(this.oldClearColor, this.oldClearAlpha);
-    renderer.autoClear = true;
+  private restoreRenderState(renderer: WebGLRenderer): void {
+    // Only restore Three.js renderer state, not OpenGL blend state
+    // Shadows need blending to remain disabled after our processing
+    renderer.setClearColor(this.savedState.clearColor, this.savedState.clearAlpha);
+    renderer.autoClear = this.savedState.autoClear;
+    renderer.shadowMap.enabled = this.savedState.shadowMapEnabled;
   }
 
   dispose(): void {
