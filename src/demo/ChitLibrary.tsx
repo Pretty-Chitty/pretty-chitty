@@ -89,7 +89,6 @@ export class Bag extends GameBag<Card2> {
     // spec.object.userData.outlineId = 99;
     // spec.object.userData.outlineColor = new Color(0, 0, 1);
 
-    spec.highlight.visible = true;
     spec.highlight.color = "#ff00ff";
 
     spec.offsetY = 1;
@@ -189,7 +188,8 @@ export class Card extends Chit {
     // spec.object.children[1].userData.outlineId = (this.parentOutletIndex ?? 0) + 1;
     // spec.object.children[1].userData.outlineColor = new Color(1, 1, 0);
     // spec.highlight.visible = true;
-    spec.highlight.color = "#00ffff";
+    spec.highlight.color = "#000000";
+    spec.highlight.childrenInheritOutline = true;
 
     if (!this.something) {
       spec.worthSlidingToPanelToShowChange = false;

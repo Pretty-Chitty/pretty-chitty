@@ -10,10 +10,10 @@ import {
   DepthTexture,
   UnsignedShortType,
   ShaderMaterial,
-  NoBlending,
   NormalBlending,
   UniformsUtils,
   IUniform,
+  Material,
 } from "three";
 import { Pass } from "./types";
 import { InterMeshEdgeDetectionPass } from "./passes/InterMeshEdgeDetectionPass";
@@ -22,6 +22,9 @@ import { FullScreenQuad } from "./FullScreenQuad";
 import { CopyShader } from "./shaders";
 
 export class IDBasedOutlinePass extends Pass {
+  edgeThickness = 0;
+  edgeStrength = 3.0;
+
   // Simplified properties for userData-based outlining
   private static instanceCounter = 0;
   private instanceId: number;
@@ -170,11 +173,11 @@ export class IDBasedOutlinePass extends Pass {
 
             // Only draw if depths approximately match (mesh is visible in main scene)
             // Scale tolerance based on camera distance - closer = tighter tolerance
-            float baseTolerance = 0.05;
-            float depthTolerance = baseTolerance * (cameraDistance * 0.025);
-            if (currentDepth - sceneDepth > depthTolerance) {
-              discard;  // Only discard if significantly behind
-            }
+            float baseTolerance = 0.001;
+            float depthTolerance = baseTolerance * (cameraDistance * 0.15);
+            // if (abs(currentDepth - sceneDepth) > depthTolerance) {
+            //   discard;  // Only discard if significantly behind
+            // }
           }
 
           // Write the encoded outlineId to the buffer
@@ -385,12 +388,12 @@ export class IDBasedOutlinePass extends Pass {
     renderer.setClearColor(this.savedState.clearColor, this.savedState.clearAlpha);
 
     // First pass: Normal rendering (no offset)
-    this.updateSharedMaterialUniforms(0.0, 0.0);
+    this.updateSharedMaterialUniforms(-2.5, -2.5);
     renderer.render(this.sceneWrapper.outlineShadowScene, this.camera);
 
     // Second pass: 1-pixel right shift (additive to same buffer)
     renderer.autoClear = false; // Don't clear between passes
-    this.updateSharedMaterialUniforms(1.0, 1.0);
+    this.updateSharedMaterialUniforms(2.5, 2.5);
     renderer.render(this.sceneWrapper.outlineShadowScene, this.camera);
 
     // Re-enable antialiasing if it was enabled
@@ -403,10 +406,16 @@ export class IDBasedOutlinePass extends Pass {
   }
 
   private updateSharedMaterialUniforms(offsetX: number, offsetY: number): void {
+    const fixMat = (mat: Material) =>
+      (mat as any).uniforms && (mat as any).uniforms["pixelOffset"].value.set(offsetX, offsetY);
     // Update all cloned materials with the new pixel offset
     this.sceneWrapper.outlineShadowScene.traverse((object: any) => {
-      if (object.isMesh && object.material && object.material.uniforms) {
-        object.material.uniforms["pixelOffset"].value.set(offsetX, offsetY);
+      if (object.isMesh) {
+        if (Array.isArray(object.material)) {
+          object.material.map(fixMat);
+        } else {
+          fixMat(object.material);
+        }
       }
     });
   }
@@ -441,9 +450,6 @@ export class IDBasedOutlinePass extends Pass {
       }
     });
   }
-
-  edgeThickness = 1.0;
-  edgeStrength = 3.0;
 
   // Method called by SceneWrapper to prepare shadow meshes with ID materials
   prepareShadowMesh(shadowMesh: any, originalMesh: any): void {
@@ -558,6 +564,7 @@ export class IDBasedOutlinePass extends Pass {
         Math.round(this.resolution.y / this.downSampleRatio),
       );
       this.idBasedEdgeDetectionPass.setThickness(this.edgeThickness);
+      this.idBasedEdgeDetectionPass.setStrength(this.edgeStrength);
       this.idBasedEdgeDetectionPass.render(renderer, this.renderTargetEdgeBuffer1);
     }
   }

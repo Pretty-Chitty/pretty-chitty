@@ -36,29 +36,29 @@ export class SceneWrapper {
 
   // Generate hash of material properties for change detection
   private getMaterialHash(material: any): string {
-    if (!material) return 'null';
+    if (!material) return "null";
 
     if (Array.isArray(material)) {
-      return material.map(m => this.getSingleMaterialHash(m)).join('|');
+      return material.map((m) => this.getSingleMaterialHash(m)).join("|");
     }
 
     return this.getSingleMaterialHash(material);
   }
 
   private getSingleMaterialHash(material: any): string {
-    if (!material) return 'null';
+    if (!material) return "null";
 
     // Hash key material properties that would affect ID material creation
     const props = [
-      material.uuid || 'no-uuid',
+      material.uuid || "no-uuid",
       material.transparent || false,
       material.opacity || 1,
       material.alphaTest || 0,
       material.side || 0,
-      material.map?.uuid || 'no-map'
+      material.map?.uuid || "no-map",
     ];
 
-    return props.join('_');
+    return props.join("_");
   }
 
   // Fast update - only updates transforms of existing outlined objects
@@ -168,7 +168,7 @@ export class SceneWrapper {
           shadowMesh.updateMatrixWorld(true);
 
           // If material changed, recreate ID materials
-          if (materialChanged && this.outlinePass) {
+          if (this.outlinePass) {
             this.outlinePass.prepareShadowMesh(shadowMesh, object);
             this.materialHashes.set(meshId, currentMaterialHash);
           }

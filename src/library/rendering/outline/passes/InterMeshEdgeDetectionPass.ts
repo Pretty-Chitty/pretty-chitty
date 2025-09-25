@@ -14,10 +14,10 @@ import { Pass } from "../types";
 import { FullScreenQuad } from "../FullScreenQuad";
 
 export enum EdgeMode {
-  SELECTED_ONLY = "selected_only",        // Only edges around selected objects (current behavior)
-  ALL_MESHES = "all_meshes",             // Edges between any different mesh IDs
-  MESH_BOUNDARIES = "mesh_boundaries",    // Edges between meshes and background
-  SELECTED_AND_BOUNDARIES = "selected_and_boundaries" // Both selected outlines and mesh boundaries
+  SELECTED_ONLY = "selected_only", // Only edges around selected objects (current behavior)
+  ALL_MESHES = "all_meshes", // Edges between any different mesh IDs
+  MESH_BOUNDARIES = "mesh_boundaries", // Edges between meshes and background
+  SELECTED_AND_BOUNDARIES = "selected_and_boundaries", // Both selected outlines and mesh boundaries
 }
 
 export class InterMeshEdgeDetectionPass extends Pass {
@@ -65,13 +65,17 @@ export class InterMeshEdgeDetectionPass extends Pass {
     this.edgeDetectionMaterial.uniforms["thickness"].value = thickness;
   }
 
+  setStrength(strength: number): void {
+    this.edgeDetectionMaterial.uniforms["strength"].value = strength;
+  }
+
   setSceneDepthTexture(depthTexture: any): void {
     this.sceneDepthTexture = depthTexture;
     this.edgeDetectionMaterial.uniforms["sceneDepthTexture"].value = depthTexture;
     this.edgeDetectionMaterial.uniforms["useDepthTest"].value = depthTexture !== null;
   }
 
-  setOutliningMeshes(outliningMeshes: Array<{id: number, color: Color}>): void {
+  setOutliningMeshes(outliningMeshes: Array<{ id: number; color: Color }>): void {
     this.selectedIDs.clear();
 
     // Clear lookup texture
@@ -89,15 +93,14 @@ export class InterMeshEdgeDetectionPass extends Pass {
       const index = (y * 256 + x) * 4;
 
       // Store outline color at this position
-      textureData[index] = mesh.color.r;     // R
+      textureData[index] = mesh.color.r; // R
       textureData[index + 1] = mesh.color.g; // G
       textureData[index + 2] = mesh.color.b; // B
-      textureData[index + 3] = 1.0;          // A (indicates valid entry)
+      textureData[index + 3] = 1.0; // A (indicates valid entry)
     }
 
     this.lookupTexture.needsUpdate = true;
   }
-
 
   render(renderer: WebGLRenderer, writeBuffer: WebGLRenderTarget): void {
     // Update uniforms that still exist
@@ -107,7 +110,6 @@ export class InterMeshEdgeDetectionPass extends Pass {
     if (this.clear) renderer.clear();
     this.fsQuad.render(renderer);
   }
-
 
   private createEdgeDetectionMaterial(): ShaderMaterial {
     return new ShaderMaterial({
@@ -120,6 +122,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
         backgroundThreshold: { value: 0.01 },
         lookupTexture: { value: this.lookupTexture },
         thickness: { value: 4.0 },
+        strength: { value: 1.0 },
       },
       vertexShader: `varying vec2 vUv;
         void main() {
@@ -135,6 +138,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
         uniform float backgroundThreshold;
         uniform sampler2D lookupTexture;
         uniform float thickness;
+        uniform float strength;
         varying vec2 vUv;
 
         // Compare two RGB colors (object IDs) with tolerance
@@ -206,11 +210,11 @@ export class InterMeshEdgeDetectionPass extends Pass {
             // Center pixel belongs to an outlined mesh - check for interior edges
             bool centerVisible = isPixelVisible(vUv);
 
-            // Check immediate neighbors first (most common case)
-            vec2 rightUv = vUv + vec2(invSize.x, 0.0);
-            vec2 leftUv = vUv - vec2(invSize.x, 0.0);
-            vec2 upUv = vUv + vec2(0.0, invSize.y);
-            vec2 downUv = vUv - vec2(0.0, invSize.y);
+            // Check neighbors at thickness distance
+            vec2 rightUv = vUv + vec2(thickness * invSize.x, 0.0);
+            vec2 leftUv = vUv - vec2(thickness * invSize.x, 0.0);
+            vec2 upUv = vUv + vec2(0.0, thickness * invSize.y);
+            vec2 downUv = vUv - vec2(0.0, thickness * invSize.y);
 
             vec4 right = sampleTextureClampToBackground(idTexture, rightUv);
             vec4 left = sampleTextureClampToBackground(idTexture, leftUv);
@@ -229,7 +233,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
 
               // Check right edge - prevent A-B-A false edges
               if (!colorsMatch(center.rgb, right.rgb)) {
-                vec2 rightRight = vUv + vec2(2.0 * invSize.x, 0.0);
+                vec2 rightRight = vUv + vec2(2.0 * thickness * invSize.x, 0.0);
                 vec4 rightRightColor = sampleTextureClampToBackground(idTexture, rightRight);
                 // In A-B-A pattern: A won't draw edge to B, and B won't draw edge to A
                 // Only draw edge for A-B-C patterns (true boundaries)
@@ -240,7 +244,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
 
               // Check left edge - avoid A-B-A pattern
               if (!colorsMatch(center.rgb, left.rgb)) {
-                vec2 leftLeft = vUv + vec2(-2.0 * invSize.x, 0.0);
+                vec2 leftLeft = vUv + vec2(-2.0 * thickness * invSize.x, 0.0);
                 vec4 leftLeftColor = sampleTextureClampToBackground(idTexture, leftLeft);
                 // Only edge if next pixel doesn't match center (avoid A-B-A)
                 if (!colorsMatch(center.rgb, leftLeftColor.rgb)) {
@@ -250,7 +254,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
 
               // Check up edge - avoid A-B-A pattern
               if (!colorsMatch(center.rgb, up.rgb)) {
-                vec2 upUp = vUv + vec2(0.0, 2.0 * invSize.y);
+                vec2 upUp = vUv + vec2(0.0, 2.0 * thickness * invSize.y);
                 vec4 upUpColor = sampleTextureClampToBackground(idTexture, upUp);
                 // Only edge if next pixel doesn't match center (avoid A-B-A)
                 if (!colorsMatch(center.rgb, upUpColor.rgb)) {
@@ -260,7 +264,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
 
               // Check down edge - avoid A-B-A pattern
               if (!colorsMatch(center.rgb, down.rgb)) {
-                vec2 downDown = vUv + vec2(0.0, -2.0 * invSize.y);
+                vec2 downDown = vUv + vec2(0.0, -2.0 * thickness * invSize.y);
                 vec4 downDownColor = sampleTextureClampToBackground(idTexture, downDown);
                 // Only edge if next pixel doesn't match center (avoid A-B-A)
                 if (!colorsMatch(center.rgb, downDownColor.rgb)) {
@@ -269,7 +273,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
               }
 
               if (hasValidEdge) {
-                gl_FragColor = centerOutlineColor;
+                gl_FragColor = vec4(centerOutlineColor.rgb, centerOutlineColor.a * strength);
                 return;
               }
             }
@@ -289,7 +293,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
               vec4 neighbor = sampleTextureClampToBackground(idTexture, neighborUvs[i]);
 
               if (!colorsMatch(center.rgb, neighbor.rgb)) {
-                gl_FragColor = centerOutlineColor;
+                gl_FragColor = vec4(centerOutlineColor.rgb, centerOutlineColor.a * strength);
                 return;
               }
             }
@@ -312,7 +316,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
 
               if (neighborOutlineColor.a > 0.5 && isPixelVisible(neighborUvs[i])) {
                 // Found an adjacent outlined mesh - use its outline color for exterior edge
-                gl_FragColor = neighborOutlineColor;
+                gl_FragColor = vec4(neighborOutlineColor.rgb, neighborOutlineColor.a * strength);
                 return;
               }
             }

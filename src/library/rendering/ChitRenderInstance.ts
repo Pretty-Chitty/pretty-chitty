@@ -441,8 +441,7 @@ export class ChitRenderInstance {
     // update position and rotation
     this.handlePositionAndRotation();
 
-    if (this.chit.onClick && renderSpec.highlight.visible !== false) {
-      renderSpec.highlight.visible = true;
+    if (this.chit.onClick && renderSpec.highlight.clickColor) {
       renderSpec.highlight.color = renderSpec.highlight.clickColor;
     }
 
@@ -458,10 +457,26 @@ export class ChitRenderInstance {
     this.rootRenderInstance.markHasChange();
   }
 
+  public outlineContext?: ChitRenderInstance;
+
   public fixOutline() {
-    if (this.renderSpec?.object && this.renderSpec.highlight.visible) {
-      const id = this.renderSpec.object.id % 60000;
-      const color = Color(this.renderSpec.highlight.color);
+    if (this.renderSpec?.highlight.childrenInheritOutline) {
+      this.outlineContext = this;
+    } else {
+      this.outlineContext = this.parentRenderInstance?.outlineContext;
+    }
+    this.childrenRenderInstances.forEach((child) => child.fixOutline());
+
+    const outlineContext = this.renderSpec?.highlight.color ? this : this.outlineContext;
+
+    if (
+      outlineContext &&
+      this.renderSpec?.object &&
+      outlineContext.renderSpec?.object &&
+      outlineContext.renderSpec.highlight.color
+    ) {
+      const id = outlineContext.renderSpec.object.id % 60000;
+      const color = Color(outlineContext.renderSpec.highlight.color);
       const threeColor = new ThreeColor(color.red() / 256, color.green() / 256, color.blue() / 256);
       this.renderSpec.object.traverse((o) => {
         o.userData.outlineId = id;
@@ -589,84 +604,10 @@ export class ChitRenderInstance {
     }
   }
 
-  protected createHighlight() {
-    return;
-
-    const highlight = this.renderSpec?.highlight;
-    if (!highlight || !this.renderSpec || !highlight.visible) {
-      return;
-    }
-
-    const group = new Group();
-    group.renderOrder = 10;
-
-    const USE_TEXTURE = true;
-    if (USE_TEXTURE) {
-      const w = highlight.width + this.clickbox.scale.x;
-      const h = highlight.width + this.clickbox.scale.y;
-      const planeGeometry = new PlaneGeometry(w, h);
-
-      const outline = new OutlineCanvas().set((obj) => {
-        const DPI = highlight.dpi;
-        obj.width = w * DPI;
-        obj.height = h * DPI;
-        obj.lineWidth = highlight.width * DPI;
-        obj.innerLineWidth = highlight.innerWidth * DPI;
-        obj.outerColor = highlight.color;
-        obj.innerColor = highlight.innerColor;
-        obj.radius = highlight.radius * DPI;
-      });
-
-      const face = new MeshBasicMaterial({
-        map: outline.get().texture,
-        transparent: true,
-        depthWrite: true,
-        side: FrontSide,
-      });
-
-      const m1 = new Mesh(planeGeometry, face);
-      m1.position.z = this.clickbox.scale.z + highlight.zOffset;
-      m1.position.y = this.clickbox.position.y;
-      m1.position.x = this.clickbox.position.x;
-      group.add(m1);
-
-      const m2 = new Mesh(planeGeometry, face);
-      m2.position.z = -highlight.zOffset;
-      m2.position.y = this.clickbox.position.y;
-      m2.position.x = this.clickbox.position.x;
-      m2.rotateY(Math.PI);
-      group.add(m2);
-    } else {
-      const w = this.clickbox.scale.x / 2;
-      const h = this.clickbox.scale.y / 2;
-
-      const mat = new MeshPhongMaterial({ color: highlight.color, side: FrontSide });
-
-      const shape = new Shape();
-      shape.moveTo(w, h);
-      shape.lineTo(w, -h);
-      shape.lineTo(-w, -h);
-      shape.lineTo(-w, h);
-      const geo = outlineGeometry(shape, this.clickbox.scale.z);
-      const m = new Mesh(geo, mat);
-      group.add(m);
-    }
-
-    this.renderSpec.ornaments.push(group);
-  }
-
   protected createRenderSpec() {
     const renderSpec = new ChitRenderSpec(this.chit);
     renderSpec.renderedForPlayerId = this.rootRenderInstance.playerId;
-
-    // attach theme stuff to the spec as defaults
-    renderSpec.highlight.color = this.chit.game?.theme.chitOutlineColor ?? renderSpec.highlight.color;
     renderSpec.highlight.clickColor = this.chit.game?.theme.chitHighlightColor ?? renderSpec.highlight.clickColor;
-    // renderSpec.highlight.innerColor =
-    //   this.chit.game?.theme.chitInnerHighlightColor ??
-    //   this.chit.game?.theme.chitHighlightColor ??
-    //   renderSpec.highlight.innerColor;
-
     return renderSpec;
   }
 
