@@ -46,6 +46,7 @@ class WebGLRendererWrapper {
     if (transparent) {
       this.renderPass.clearColor = 0x000000; // Black background
       this.renderPass.clearAlpha = 0; // But transparent
+      this.renderPass.clearDepth = true; // Ensure depth buffer is cleared
     }
 
     // Configure outline pass with standard settings

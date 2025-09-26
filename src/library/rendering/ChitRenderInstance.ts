@@ -440,11 +440,6 @@ export class ChitRenderInstance {
 
     // update position and rotation
     this.handlePositionAndRotation();
-
-    if (this.chit.onClick && renderSpec.highlight.clickColor) {
-      renderSpec.highlight.color = renderSpec.highlight.clickColor;
-    }
-
     this.fixOutline();
 
     // now update ourselves
@@ -460,7 +455,11 @@ export class ChitRenderInstance {
   public outlineContext?: ChitRenderInstance;
 
   public fixOutline() {
-    if (this.renderSpec?.highlight.childrenInheritOutline) {
+    const myColor = this.chit.onClick ? this.renderSpec?.highlight.clickColor : this.renderSpec?.highlight.color;
+
+    if (this.chit.onClick && !this.renderSpec?.highlight.childrenInheritOutline) {
+      this.outlineContext = undefined;
+    } else if (myColor && this.renderSpec?.highlight.childrenInheritOutline) {
       this.outlineContext = this;
     } else {
       this.outlineContext = this.parentRenderInstance?.outlineContext;
@@ -468,19 +467,22 @@ export class ChitRenderInstance {
     this.childrenRenderInstances.forEach((child) => child.fixOutline());
 
     const outlineContext = this.outlineContext ? this.outlineContext : this;
+    const c = outlineContext.chit.onClick
+      ? outlineContext.renderSpec?.highlight.clickColor
+      : outlineContext.renderSpec?.highlight.color;
 
-    if (
-      outlineContext &&
-      this.renderSpec?.object &&
-      outlineContext.renderSpec?.object &&
-      outlineContext.renderSpec.highlight.color
-    ) {
+    if (outlineContext && this.renderSpec?.object && outlineContext.renderSpec?.object && c) {
       const id = outlineContext.renderSpec.object.id % 60000;
-      const color = Color(outlineContext.renderSpec.highlight.color);
+      const color = Color(c);
       const threeColor = new ThreeColor(color.red() / 256, color.green() / 256, color.blue() / 256);
       this.renderSpec.object.traverse((o) => {
         o.userData.outlineId = id;
         o.userData.outlineColor = threeColor;
+      });
+    } else {
+      this.renderSpec?.object.traverse((o) => {
+        delete o.userData.outlineId;
+        delete o.userData.outlineColor;
       });
     }
   }

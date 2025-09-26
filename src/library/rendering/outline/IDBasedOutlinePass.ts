@@ -16,6 +16,16 @@ import {
   Material,
 } from "three";
 import { Pass } from "./types";
+
+// Utility to ensure correct WebGL state for rendering
+function ensureCorrectRenderState(renderer: WebGLRenderer) {
+  const context = renderer.getContext();
+
+  // Always ensure correct depth testing state
+  context.enable(context.DEPTH_TEST);
+  context.depthFunc(context.LESS);
+  context.depthMask(true);
+}
 import { InterMeshEdgeDetectionPass } from "./passes/InterMeshEdgeDetectionPass";
 import { DebugIDMappingPass } from "./passes/DebugIDMappingPass";
 import { FullScreenQuad } from "./FullScreenQuad";
@@ -417,11 +427,13 @@ export class IDBasedOutlinePass extends Pass {
 
     // First pass: Normal rendering (no offset)
     this.updateSharedMaterialUniforms(-2.5, -2.5);
+    ensureCorrectRenderState(renderer);
     renderer.render(this.sceneWrapper.outlineShadowScene, this.camera);
 
     // Second pass: 1-pixel right shift (additive to same buffer)
     renderer.autoClear = false; // Don't clear between passes
     this.updateSharedMaterialUniforms(2.5, 2.5);
+    ensureCorrectRenderState(renderer);
     renderer.render(this.sceneWrapper.outlineShadowScene, this.camera);
 
     // Re-enable antialiasing if it was enabled

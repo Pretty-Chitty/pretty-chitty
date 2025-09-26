@@ -140,7 +140,7 @@ class GalleryController {
     this.camera.position.z = Math.cos(this.offsetAngle) * z;
     this.camera.position.y = Math.sin(this.offsetAngle) * z;
     this.camera.lookAt(new Vector3(this.camera.position.x, 0, 0));
-    this.sceneWrapper.scene.fog = new Fog(0x000000, z, z + w);
+    this.sceneWrapper.scene.fog = new Fog(0x000000, z, z + w * 2);
 
     this.light.position.copy(this.camera.position);
     this.light.lookAt(0, 0, 0);
@@ -278,11 +278,12 @@ class GalleryController {
 
     group.position.y = (1 - item.enteredAmount) * -this.h; // 5 is height of display?
 
+    const zFactor = 3;
     const largestX = initialOffset + (this.itemsPerPage - 1) * (this.itemWidth + this.itemSpacing);
     if (group.position.x > largestX) {
       const overshot = group.position.x - largestX;
       group.position.x = largestX + Math.pow(overshot, 0.94);
-      group.position.z = -overshot;
+      group.position.z = -overshot * zFactor;
       group.rotation.x = -overshot / 3000 - this.offsetAngle;
       if (item.meshToShowOrHideIfCentered) {
         item.meshToShowOrHideIfCentered.position.x = overshot * 3;
@@ -291,7 +292,7 @@ class GalleryController {
     } else if (group.position.x < initialOffset) {
       const overshot = Math.abs(initialOffset - group.position.x);
       group.position.x = initialOffset - Math.pow(overshot, 0.94);
-      group.position.z = -overshot;
+      group.position.z = -overshot * zFactor;
       group.rotation.x = -overshot / 3000 - this.offsetAngle;
       if (item.meshToShowOrHideIfCentered) {
         item.meshToShowOrHideIfCentered.position.x = -overshot * 3;

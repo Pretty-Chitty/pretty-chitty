@@ -1,6 +1,21 @@
 import { Scene, ShaderMaterial, Color, WebGLRenderer, WebGLRenderTarget, PerspectiveCamera } from "three";
 import { Pass } from "./types";
 
+// Utility to ensure correct WebGL state for rendering
+function ensureCorrectRenderState(renderer: WebGLRenderer, forceDepthTest: boolean = false) {
+  const context = renderer.getContext();
+
+  // Always ensure correct depth testing state
+  context.enable(context.DEPTH_TEST);
+  context.depthFunc(context.LESS);
+  context.depthMask(true);
+
+  if (forceDepthTest) {
+    // For transparent mode, ensure depth buffer is fresh
+    renderer.clearDepth();
+  }
+}
+
 export class RenderPass extends Pass {
   public overrideMaterial?: ShaderMaterial | null;
   public clearColor?: Color | number | string;
@@ -33,12 +48,15 @@ export class RenderPass extends Pass {
       renderer.setClearColor(this.clearColor as any, this.clearAlpha);
     }
 
-    if (this.clearDepth) {
-      renderer.clearDepth();
+    renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
+
+    if (this.clear) {
+      renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
     }
 
-    renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
-    if (this.clear) renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
+    // Ensure correct render state before every render call
+    ensureCorrectRenderState(renderer, this.clearDepth);
+
     renderer.render(this.sceneWrapper.scene, this.camera);
 
     if (this.clearColor !== undefined) {
