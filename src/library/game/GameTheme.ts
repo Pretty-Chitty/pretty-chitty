@@ -34,9 +34,10 @@ export class GameTheme {
   public endGameBackgroundColor = "#1c092c";
   public endGameTextColor = "rgba(255,255,255,1)";
 
-  public chitOutlineColor = "#111111";
   public chitHighlightColor = "#66d5c1";
-  public chitInnerHighlightColor = "#66d5c1";
+  public chitOutlineWidth = 0.1;
+  public chitOutlineDownsample = 4;
+  public chitOutlineStrength = 0.75;
 
   public panelSelectionCutoutBackground = "#ffffff";
   public panelSelectionCutoutSelected = "#66d5c1";
@@ -66,8 +67,7 @@ export class GameTheme {
 
   static withDefaults(primaryColor: string, highlight: string, textColor: string = "#ffffff") {
     const result = new GameTheme();
-    result.chitInnerHighlightColor = highlight;
-    result.chitHighlightColor = Color(highlight).alpha(0.2).hexa();
+    result.chitHighlightColor = highlight;
     result.backgroundColor = Color(primaryColor).darken(0.5).hex();
     result.barColor = primaryColor;
     result.actionBarColor = Color(primaryColor).mix(Color(highlight), 0.4).hex();

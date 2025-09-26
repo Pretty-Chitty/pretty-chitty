@@ -198,23 +198,21 @@ export class InterMeshEdgeDetectionPass extends Pass {
         void main() {
           vec2 invSize = 1.0 / texSize;
 
-          // For edge detection, we need to check if we're on the boundary between visible and non-visible parts
-          // Don't filter out pixels here - let the edge detection logic handle visibility
-
           // Sample the center pixel
           vec4 center = sampleTextureClampToBackground(idTexture, vUv);
           vec4 centerOutlineColor = getOutlineColor(center.rgb);
 
-          // Process pixels that belong to outlined meshes OR background pixels near outlined meshes
+          // ONLY process pixels that belong to outlined meshes - no background bleeding
           if (centerOutlineColor.a > 0.5) {
             // Center pixel belongs to an outlined mesh - check for interior edges
             bool centerVisible = isPixelVisible(vUv);
 
-            // Check neighbors at thickness distance
-            vec2 rightUv = vUv + vec2(thickness * invSize.x, 0.0);
-            vec2 leftUv = vUv - vec2(thickness * invSize.x, 0.0);
-            vec2 upUv = vUv + vec2(0.0, thickness * invSize.y);
-            vec2 downUv = vUv - vec2(0.0, thickness * invSize.y);
+            // Check neighbors - use minimum 1 pixel distance for reliability
+            float effectiveThickness = max(1.0, thickness);
+            vec2 rightUv = vUv + vec2(effectiveThickness * invSize.x, 0.0);
+            vec2 leftUv = vUv - vec2(effectiveThickness * invSize.x, 0.0);
+            vec2 upUv = vUv + vec2(0.0, effectiveThickness * invSize.y);
+            vec2 downUv = vUv - vec2(0.0, effectiveThickness * invSize.y);
 
             vec4 right = sampleTextureClampToBackground(idTexture, rightUv);
             vec4 left = sampleTextureClampToBackground(idTexture, leftUv);
@@ -231,45 +229,21 @@ export class InterMeshEdgeDetectionPass extends Pass {
             if (centerVisible) {
               bool hasValidEdge = false;
 
-              // Check right edge - prevent A-B-A false edges
+              // Check for any different neighbor - draw thick outlines between ALL different meshes
               if (!colorsMatch(center.rgb, right.rgb)) {
-                vec2 rightRight = vUv + vec2(2.0 * thickness * invSize.x, 0.0);
-                vec4 rightRightColor = sampleTextureClampToBackground(idTexture, rightRight);
-                // In A-B-A pattern: A won't draw edge to B, and B won't draw edge to A
-                // Only draw edge for A-B-C patterns (true boundaries)
-                if (!colorsMatch(center.rgb, rightRightColor.rgb)) {
-                  hasValidEdge = true;
-                }
+                hasValidEdge = true;
               }
 
-              // Check left edge - avoid A-B-A pattern
               if (!colorsMatch(center.rgb, left.rgb)) {
-                vec2 leftLeft = vUv + vec2(-2.0 * thickness * invSize.x, 0.0);
-                vec4 leftLeftColor = sampleTextureClampToBackground(idTexture, leftLeft);
-                // Only edge if next pixel doesn't match center (avoid A-B-A)
-                if (!colorsMatch(center.rgb, leftLeftColor.rgb)) {
-                  hasValidEdge = true;
-                }
+                hasValidEdge = true;
               }
 
-              // Check up edge - avoid A-B-A pattern
               if (!colorsMatch(center.rgb, up.rgb)) {
-                vec2 upUp = vUv + vec2(0.0, 2.0 * thickness * invSize.y);
-                vec4 upUpColor = sampleTextureClampToBackground(idTexture, upUp);
-                // Only edge if next pixel doesn't match center (avoid A-B-A)
-                if (!colorsMatch(center.rgb, upUpColor.rgb)) {
-                  hasValidEdge = true;
-                }
+                hasValidEdge = true;
               }
 
-              // Check down edge - avoid A-B-A pattern
               if (!colorsMatch(center.rgb, down.rgb)) {
-                vec2 downDown = vUv + vec2(0.0, -2.0 * thickness * invSize.y);
-                vec4 downDownColor = sampleTextureClampToBackground(idTexture, downDown);
-                // Only edge if next pixel doesn't match center (avoid A-B-A)
-                if (!colorsMatch(center.rgb, downDownColor.rgb)) {
-                  hasValidEdge = true;
-                }
+                hasValidEdge = true;
               }
 
               if (hasValidEdge) {
@@ -278,46 +252,28 @@ export class InterMeshEdgeDetectionPass extends Pass {
               }
             }
 
-            // Check slightly further out for thickness (8 directions)
-            vec2 neighborUvs[8];
-            neighborUvs[0] = vUv + vec2(thickness * invSize.x, 0.0);
-            neighborUvs[1] = vUv + vec2(-thickness * invSize.x, 0.0);
-            neighborUvs[2] = vUv + vec2(0.0, thickness * invSize.y);
-            neighborUvs[3] = vUv + vec2(0.0, -thickness * invSize.y);
-            neighborUvs[4] = vUv + vec2(thickness * invSize.x, thickness * invSize.y);
-            neighborUvs[5] = vUv + vec2(-thickness * invSize.x, thickness * invSize.y);
-            neighborUvs[6] = vUv + vec2(thickness * invSize.x, -thickness * invSize.y);
-            neighborUvs[7] = vUv + vec2(-thickness * invSize.x, -thickness * invSize.y);
+            // Multi-distance sampling to ensure uniform outline thickness on curves and diagonals
+            float maxThickness = max(1.0, thickness);
 
-            for (int i = 0; i < 8; i++) {
-              vec4 neighbor = sampleTextureClampToBackground(idTexture, neighborUvs[i]);
+            // Sample at multiple distances for consistent coverage
+            for (float dist = 1.0; dist <= maxThickness; dist += 1.0) {
+              vec2 neighborUvs[8];
+              neighborUvs[0] = vUv + vec2(dist * invSize.x, 0.0);
+              neighborUvs[1] = vUv + vec2(-dist * invSize.x, 0.0);
+              neighborUvs[2] = vUv + vec2(0.0, dist * invSize.y);
+              neighborUvs[3] = vUv + vec2(0.0, -dist * invSize.y);
+              neighborUvs[4] = vUv + vec2(dist * invSize.x * 0.707, dist * invSize.y * 0.707); // sqrt(2)/2 for consistent diagonal distance
+              neighborUvs[5] = vUv + vec2(-dist * invSize.x * 0.707, dist * invSize.y * 0.707);
+              neighborUvs[6] = vUv + vec2(dist * invSize.x * 0.707, -dist * invSize.y * 0.707);
+              neighborUvs[7] = vUv + vec2(-dist * invSize.x * 0.707, -dist * invSize.y * 0.707);
 
-              if (!colorsMatch(center.rgb, neighbor.rgb)) {
-                gl_FragColor = vec4(centerOutlineColor.rgb, centerOutlineColor.a * strength);
-                return;
-              }
-            }
-          } else {
-            // Center pixel is background - check if it's adjacent to any outlined mesh
-            vec2 neighborUvs[8];
-            neighborUvs[0] = vUv + vec2(invSize.x, 0.0);
-            neighborUvs[1] = vUv + vec2(-invSize.x, 0.0);
-            neighborUvs[2] = vUv + vec2(0.0, invSize.y);
-            neighborUvs[3] = vUv + vec2(0.0, -invSize.y);
-            neighborUvs[4] = vUv + vec2(invSize.x, invSize.y);
-            neighborUvs[5] = vUv + vec2(-invSize.x, invSize.y);
-            neighborUvs[6] = vUv + vec2(invSize.x, -invSize.y);
-            neighborUvs[7] = vUv + vec2(-invSize.x, -invSize.y);
+              for (int i = 0; i < 8; i++) {
+                vec4 neighbor = sampleTextureClampToBackground(idTexture, neighborUvs[i]);
 
-            // Check if any neighbor belongs to an outlined mesh
-            for (int i = 0; i < 8; i++) {
-              vec4 neighbor = sampleTextureClampToBackground(idTexture, neighborUvs[i]);
-              vec4 neighborOutlineColor = getOutlineColor(neighbor.rgb);
-
-              if (neighborOutlineColor.a > 0.5 && isPixelVisible(neighborUvs[i])) {
-                // Found an adjacent outlined mesh - use its outline color for exterior edge
-                gl_FragColor = vec4(neighborOutlineColor.rgb, neighborOutlineColor.a * strength);
-                return;
+                if (!colorsMatch(center.rgb, neighbor.rgb)) {
+                  gl_FragColor = vec4(centerOutlineColor.rgb, centerOutlineColor.a * strength);
+                  return;
+                }
               }
             }
           }

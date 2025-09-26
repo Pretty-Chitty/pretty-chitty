@@ -34,7 +34,7 @@ export class IDBasedOutlinePass extends Pass {
 
   sceneDepthTexture: any = null;
 
-  downSampleRatio = 2;
+  downSampleRatio = 6;
   fsQuad = new FullScreenQuad(null);
   materialCopy!: ShaderMaterial;
 
@@ -191,22 +191,24 @@ export class IDBasedOutlinePass extends Pass {
   // Simplified API - no more edge modes, just outline meshes with userData.outlineColor
 
   override setSize(width: number, height: number): void {
-    // Call parent first to resize all the inherited render targets
-    this.renderTargetMaskBuffer.setSize(width, height);
-
+    // Calculate downsampled dimensions for performance-critical buffers
     let resx = Math.round(width / this.downSampleRatio);
     let resy = Math.round(height / this.downSampleRatio);
-    this.renderTargetEdgeBuffer1.setSize(resx, resy);
 
-    resx = Math.round(resx / 2);
-    resy = Math.round(resy / 2);
-
-    // CRITICAL: Update our internal resolution property
+    // CRITICAL: Update our internal resolution property first
     this.resolution.set(width, height);
 
-    // Resize our additional buffers
+    // Resize full-resolution buffers
+    this.renderTargetMaskBuffer.setSize(width, height);
     this.renderTargetIDBuffer.setSize(width, height);
     this.renderTargetTempBuffer.setSize(width, height);
+    this.renderTargetEdgeBuffer1.setSize(width, height); // Keep edge buffer at full resolution
+
+    // Resize downsampled performance buffers
+    this.renderTargetMaskDownSampleBuffer.setSize(resx, resy);
+    this.renderTargetBlurBuffer1.setSize(resx, resy);
+    this.renderTargetBlurBuffer2.setSize(resx / 2, resy / 2);
+    this.renderTargetEdgeBuffer2.setSize(resx / 2, resy / 2);
 
     // Update depth texture for ID buffer
     if (this.renderTargetIDBuffer.depthTexture) {
@@ -215,13 +217,17 @@ export class IDBasedOutlinePass extends Pass {
       this.renderTargetIDBuffer.depthTexture.type = UnsignedShortType;
     }
 
-    // Sizes updated successfully
+    // Update blur material uniforms
+    if (this.separableBlurMaterial1?.uniforms?.texSize) {
+      this.separableBlurMaterial1.uniforms.texSize.value.set(resx, resy);
+    }
+    if (this.separableBlurMaterial2?.uniforms?.texSize) {
+      this.separableBlurMaterial2.uniforms.texSize.value.set(resx / 2, resy / 2);
+    }
 
-    // Update edge detection pass texture size
-    this.idBasedEdgeDetectionPass.setTextureSize(
-      Math.round(width / this.downSampleRatio),
-      Math.round(height / this.downSampleRatio),
-    );
+    // Edge detection should work at downsampled resolution for performance
+    // but render to full-resolution buffer
+    this.idBasedEdgeDetectionPass.setTextureSize(resx, resy);
   }
 
   override render(
@@ -371,7 +377,7 @@ export class IDBasedOutlinePass extends Pass {
     this.renderTargetBlurBuffer2.texture.name = "OutlinePass.blur2";
     this.renderTargetBlurBuffer2.texture.generateMipmaps = false;
 
-    this.renderTargetEdgeBuffer1 = new WebGLRenderTarget(resx, resy, pars);
+    this.renderTargetEdgeBuffer1 = new WebGLRenderTarget(this.resolution.x, this.resolution.y, pars);
     this.renderTargetEdgeBuffer1.texture.name = "OutlinePass.edge1";
     this.renderTargetEdgeBuffer1.texture.generateMipmaps = false;
 
@@ -552,8 +558,8 @@ export class IDBasedOutlinePass extends Pass {
       this.debugIDMappingPass.setIDTexture(this.renderTargetIDBuffer.texture);
       this.debugIDMappingPass.setOutliningMeshes(outliningMeshes);
       this.debugIDMappingPass.setTextureSize(
-        Math.round(this.resolution.x / this.downSampleRatio),
-        Math.round(this.resolution.y / this.downSampleRatio),
+        this.resolution.x,
+        this.resolution.y,
       );
       this.debugIDMappingPass.render(renderer, this.renderTargetEdgeBuffer1);
     } else {
@@ -563,8 +569,8 @@ export class IDBasedOutlinePass extends Pass {
       this.idBasedEdgeDetectionPass.setSceneDepthTexture(this.sceneDepthTexture);
       this.idBasedEdgeDetectionPass.setOutliningMeshes(outliningMeshes);
       this.idBasedEdgeDetectionPass.setTextureSize(
-        Math.round(this.resolution.x / this.downSampleRatio),
-        Math.round(this.resolution.y / this.downSampleRatio),
+        this.resolution.x,
+        this.resolution.y,
       );
       this.idBasedEdgeDetectionPass.setThickness(this.edgeThickness);
       this.idBasedEdgeDetectionPass.setStrength(this.edgeStrength);

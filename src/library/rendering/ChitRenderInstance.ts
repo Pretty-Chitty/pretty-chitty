@@ -467,7 +467,7 @@ export class ChitRenderInstance {
     }
     this.childrenRenderInstances.forEach((child) => child.fixOutline());
 
-    const outlineContext = this.renderSpec?.highlight.color ? this : this.outlineContext;
+    const outlineContext = this.outlineContext ? this.outlineContext : this;
 
     if (
       outlineContext &&
