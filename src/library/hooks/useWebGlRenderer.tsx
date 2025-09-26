@@ -72,6 +72,25 @@ class WebGLRendererWrapper {
     this.outlinePass.setSize(width * pixelRatio, height * pixelRatio);
   }
 
+  reconfigure(theme: GameTheme, transparent: boolean) {
+    // Reconfigure transparency settings
+    if (transparent) {
+      this.renderPass.clearColor = 0x000000; // Black background
+      this.renderPass.clearAlpha = 0; // But transparent
+      this.renderPass.clearDepth = true; // Ensure depth buffer is cleared
+    } else {
+      this.renderPass.clearColor = undefined; // Use default
+      this.renderPass.clearAlpha = 1; // Opaque
+      this.renderPass.clearDepth = false; // Default
+      this.renderer.setClearColor(0xffffff, 1.0); // Opaque white background
+    }
+
+    // Update theme settings
+    this.outlinePass.edgeStrength = theme.chitOutlineStrength;
+    this.outlinePass.edgeThickness = theme.chitOutlineWidth;
+    this.outlinePass.downSampleRatio = theme.chitOutlineDownsample;
+  }
+
   dispose() {
     this.composer.dispose();
     this.outlinePass.dispose();
@@ -93,6 +112,7 @@ export function useWebGlRenderer(w: number, h: number, transparent: boolean = fa
         wrapper = new WebGLRendererWrapper(new WebGLRenderer(), w, h, theme, transparent);
       } else {
         wrapper.setSize(w, h);
+        wrapper.reconfigure(theme, transparent); // Reconfigure for current mode
       }
       context.used[key] = wrapper;
     }
