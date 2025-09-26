@@ -37,7 +37,7 @@ type UpdateCallback = () => void;
 
 export interface GalleryItem {
   id: string;
-  createMesh(): Object3D;
+  createMesh(sceneWrapper: SceneWrapper): Object3D;
   onClick?: () => void;
 
   maximumWidth?: number;
@@ -387,7 +387,7 @@ class GalleryController {
         const builtItem: BuiltItem = (this.itemLookup[item.id] = {
           item,
           enteredAmount: 0,
-          mesh: item.createMesh(),
+          mesh: item.createMesh(this.sceneWrapper),
           group: new Group(),
           index: i + itemIndexOffset,
           center: new Vector3(),
@@ -400,7 +400,7 @@ class GalleryController {
             this.changed = true;
 
             builtItem.group = new Group();
-            builtItem.mesh = item.createMesh();
+            builtItem.mesh = item.createMesh(this.sceneWrapper);
             builtItem.group.add(builtItem.mesh);
 
             this.sceneWrapper.scene.add(builtItem.group);
@@ -543,11 +543,37 @@ export function GalleryViewer({
     if (!canvas || !rendererWrapper || paused) return;
     const ctx = canvas.getContext("2d");
     let cancelled = false;
+
+    // FPS tracking variables
+    let frameCount = 0;
+    let fpsStartTime = performance.now();
+    let isAnimating = false;
+
     const animate = () => {
       if (cancelled) return;
       requestAnimationFrame(animate);
 
-      if (galleryController.render()) {
+      const wasAnimating = isAnimating;
+      isAnimating = galleryController.render();
+
+      if (isAnimating) {
+        if (!wasAnimating) {
+          // Animation just started
+          frameCount = 0;
+          fpsStartTime = performance.now();
+        }
+
+        frameCount++;
+        const elapsed = performance.now() - fpsStartTime;
+
+        if (elapsed > 1000 && frameCount > 10) {
+          // After 1 second and at least 10 frames
+          const fps = (frameCount / elapsed) * 1000;
+          console.log(`Gallery Animation FPS: ${fps.toFixed(1)}`);
+          frameCount = 0;
+          fpsStartTime = performance.now();
+        }
+
         rendererWrapper.render(galleryController.sceneWrapper, galleryController.camera);
 
         if (ctx) {

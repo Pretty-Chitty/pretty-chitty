@@ -3,6 +3,7 @@ import { GalleryItem } from "../components/GalleryViewer";
 import { Chit } from "../game/Chit";
 import { IconMap } from "../utilities/CanvasStack/CanvasOperations";
 import { RichTextRenderOptionsParameters } from "../utilities/CanvasStack/RichTextRenderer";
+import { SceneWrapper } from "./outline";
 
 type UpdateHandler = () => void;
 
@@ -20,6 +21,8 @@ export class ChitGalleryItemInstance implements GalleryItem {
   summaryIconMap?: IconMap;
   summaryRenderingOptions?: RichTextRenderOptionsParameters;
 
+  private sceneWrapper: SceneWrapper | undefined;
+
   constructor(public chit: Chit) {
     this.id = chit.id ?? "no id";
 
@@ -30,19 +33,52 @@ export class ChitGalleryItemInstance implements GalleryItem {
     };
 
     // handle refreshes.
-    this.unsubscribe = chit.onChange("deserialized parent", () => {
+    this.unsubscribe = chit.onChange("deserialized parent onClick", () => {
       if (chit.renderInstance) {
         chit.renderInstance.createGalleryItem(this);
+      }
+      if (this.sceneWrapper) {
+        this.sceneWrapper.markDirty();
       }
     });
     chit.renderInstance?.createGalleryItem(this);
   }
 
-  createMesh() {
+  private cloneWithUserData(object: any): any {
+    // Use Three.js clone for geometry/materials, then manually copy userData
+    const cloned = object.clone(true);
+
+    // Copy userData for the root object
+    if (object.userData) {
+      cloned.userData = { ...object.userData };
+    }
+
+    // Recursively copy userData for all children
+    const copyUserDataRecursively = (original: any, clone: any) => {
+      if (original.userData) {
+        clone.userData = { ...original.userData };
+      }
+
+      // Process children
+      if (original.children && clone.children) {
+        for (let i = 0; i < original.children.length; i++) {
+          if (original.children[i] && clone.children[i]) {
+            copyUserDataRecursively(original.children[i], clone.children[i]);
+          }
+        }
+      }
+    };
+
+    copyUserDataRecursively(object, cloned);
+    return cloned;
+  }
+
+  createMesh(sceneWrapper: SceneWrapper) {
+    this.sceneWrapper = sceneWrapper;
     const renderInstance = this.chit.renderInstance;
     const g = new Group();
     if (renderInstance) {
-      const mesh = renderInstance.group.clone(true) ?? new Group();
+      const mesh = this.cloneWithUserData(renderInstance.group) ?? new Group();
       mesh.visible = true;
       mesh.rotation.set(0, 0, 0);
       mesh.position.set(0, 0, 0);

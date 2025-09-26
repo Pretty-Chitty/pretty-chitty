@@ -22,6 +22,7 @@ export class SceneWrapper {
   }
 
   get hasOutlinedObjects(): boolean {
+    // return false;
     return this.outlinedObjects.size > 0;
   }
 

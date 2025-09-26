@@ -230,6 +230,8 @@ export class IDBasedOutlinePass extends Pass {
     readBuffer: WebGLRenderTarget,
     maskActive: boolean,
   ): void {
+    const renderStart = performance.now();
+
     // Always ensure our sizes match the current renderer - critical for shared renderers
     const currentSize = renderer.getSize(new Vector2());
 
@@ -243,9 +245,11 @@ export class IDBasedOutlinePass extends Pass {
     // Save state before any processing
     this.saveRenderState(renderer);
 
+    const updateStart = performance.now();
     // Check if any meshes have userData.outlineColor
     this.sceneWrapper.update();
     const hasOutlinedMeshes = this.sceneWrapper.hasOutlinedObjects;
+    const updateTime = performance.now() - updateStart;
 
     if (!hasOutlinedMeshes) {
       if (this.renderToScreen) {
@@ -269,12 +273,17 @@ export class IDBasedOutlinePass extends Pass {
     // Set the depth texture from the read buffer (output of previous render pass)
     this.setSceneDepthTexture(readBuffer.depthTexture);
 
+    const idBufferStart = performance.now();
     // Step 1: Render ID buffer
     this.renderIDBuffer(renderer);
+    const idBufferTime = performance.now() - idBufferStart;
 
+    const edgeDetectStart = performance.now();
     // Step 2: Use ID-based edge detection instead of the original method
     this.performIDBasedEdgeDetection(renderer);
+    const edgeDetectTime = performance.now() - edgeDetectStart;
 
+    const compositingStart = performance.now();
     // Step 3: Safe composition using dedicated temporary buffer to avoid feedback loops
     // First copy original scene to our dedicated temp buffer
     this.fsQuad.material = this.materialCopy;
@@ -294,7 +303,7 @@ export class IDBasedOutlinePass extends Pass {
     // Add edges using Three.js material blending instead of direct OpenGL
     renderer.autoClear = false;
 
-    // Use Three.js's own blending by setting the material to use normal blending
+    // // Use Three.js's own blending by setting the material to use normal blending
     const originalBlending = this.materialCopy.blending;
     const originalTransparent = this.materialCopy.transparent;
 
@@ -305,7 +314,7 @@ export class IDBasedOutlinePass extends Pass {
     (this.copyUniforms["tDiffuse"].value as any) = this.renderTargetEdgeBuffer1.texture;
     this.fsQuad.render(renderer);
 
-    // Restore material blending settings
+    // // Restore material blending settings
     this.materialCopy.blending = originalBlending;
     this.materialCopy.transparent = originalTransparent;
     this.materialCopy.needsUpdate = true;
@@ -314,6 +323,20 @@ export class IDBasedOutlinePass extends Pass {
 
     if (this.renderToScreen) {
       this.renderIDCopyToScreen(renderer, readBuffer);
+    }
+
+    const compositingTime = performance.now() - compositingStart;
+    const totalTime = performance.now() - renderStart;
+
+    // Log timing every 60 frames to avoid spam
+    if (Math.random() < 0.016) {
+      // ~1/60 chance
+      console.log(`Outline Pass Timing:
+  Total: ${totalTime.toFixed(2)}ms
+  SceneWrapper Update: ${updateTime.toFixed(2)}ms
+  ID Buffer Render: ${idBufferTime.toFixed(2)}ms
+  Edge Detection: ${edgeDetectTime.toFixed(2)}ms
+  Compositing: ${compositingTime.toFixed(2)}ms`);
     }
   }
 
@@ -378,8 +401,7 @@ export class IDBasedOutlinePass extends Pass {
       gl.disable(gl.SAMPLE_ALPHA_TO_COVERAGE);
     }
 
-    // Replace all materials with ID materials
-    this.applyIDMaterials();
+    // Materials already prepared by SceneWrapper calling prepareShadowMesh
 
     renderer.setRenderTarget(this.renderTargetIDBuffer);
     renderer.setClearColor(0x000000, 1); // Black only for ID buffer
@@ -420,37 +442,6 @@ export class IDBasedOutlinePass extends Pass {
     });
   }
 
-  // Now only updates uniforms that change per frame - materials are created by prepareShadowMesh
-  private applyIDMaterials(): void {
-    // Get values that change per frame
-    const cameraDistance = this.camera.position.length();
-
-    this.sceneWrapper.outlineShadowScene.traverse((object: any) => {
-      if (object.isMesh && object.material) {
-        // Update per-frame uniforms for ID materials
-        if (Array.isArray(object.material)) {
-          // Update each material in the array
-          object.material.forEach((material: any) => {
-            if (material.uniforms) {
-              material.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
-              material.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
-              material.uniforms["resolution"].value.set(this.resolution.x, this.resolution.y);
-              material.uniforms["cameraDistance"].value = cameraDistance;
-            }
-          });
-        } else {
-          // Single material case
-          if (object.material.uniforms) {
-            object.material.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
-            object.material.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
-            object.material.uniforms["resolution"].value.set(this.resolution.x, this.resolution.y);
-            object.material.uniforms["cameraDistance"].value = cameraDistance;
-          }
-        }
-      }
-    });
-  }
-
   // Method called by SceneWrapper to prepare shadow meshes with ID materials
   prepareShadowMesh(shadowMesh: any, originalMesh: any): void {
     // Only assign IDs to meshes that have userData.outlineColor
@@ -467,9 +458,15 @@ export class IDBasedOutlinePass extends Pass {
     // Handle both single materials and material arrays
     if (Array.isArray(originalMesh.material)) {
       // Create ID material for each material in the array
-      const idMaterials = originalMesh.material.map((originalMaterial) => {
+      const idMaterials = originalMesh.material.map((originalMaterial: Material) => {
         const meshMaterial = this.sharedIDMaterial.clone();
         meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
+
+        // Set static uniforms that don't change per frame
+        meshMaterial.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
+        meshMaterial.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
+        meshMaterial.uniforms["resolution"].value.set(this.resolution.x, this.resolution.y);
+
         meshMaterial.needsUpdate = true;
 
         this.copyMaterialProperties(meshMaterial, originalMaterial);
@@ -481,6 +478,12 @@ export class IDBasedOutlinePass extends Pass {
       // Single material case
       const meshMaterial = this.sharedIDMaterial.clone();
       meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
+
+      // Set static uniforms that don't change per frame
+      meshMaterial.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
+      meshMaterial.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
+      meshMaterial.uniforms["resolution"].value.set(this.resolution.x, this.resolution.y);
+
       meshMaterial.needsUpdate = true;
 
       this.copyMaterialProperties(meshMaterial, originalMesh.material);

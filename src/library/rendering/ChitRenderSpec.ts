@@ -103,7 +103,6 @@ export class ChitRenderSpec {
     };
 
     // TODO: this should be a highlight
-    this.highlight.visible = false;
     this.isShowingChildrenAsGallery = true;
   }
 

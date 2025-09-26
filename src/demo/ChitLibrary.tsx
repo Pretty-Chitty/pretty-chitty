@@ -35,7 +35,6 @@ import { cityscape, cityscape2 } from "./assets/network_overload";
 import { Ordered } from "../library/utilities/Annotations";
 import { CardMesh } from "../library/utilities/CardMesh";
 import { GameBag } from "../library/game/GameBag";
-import { HiddenPropertySerializationRule } from "../library/game/Chit";
 import { tunnel, walk } from "./assets/icons";
 
 import city_profile from "./city_profile.svg";
@@ -63,6 +62,7 @@ export class Bag extends GameBag<Card2> {
     const geo = extrudeSVGToGeometry(city_profile, {
       depth: 100,
       zUp: false,
+      svgSimplifyTolerance: 5,
     });
 
     const ts = new TestStack().set((obj) => {

@@ -12,7 +12,6 @@ import {
 import { Camera, Pass } from "./types";
 import { ShaderPass } from "./ShaderPass";
 import { CopyShader } from "./shaders";
-import { MaskPass, ClearMaskPass } from "./MaskPass";
 import { SceneWrapper } from "./SceneWrapper";
 
 type RTParams = ConstructorParameters<typeof WebGLRenderTarget>[2];
@@ -164,6 +163,8 @@ export class EffectComposer {
   }
 
   render(sceneWrapper: SceneWrapper, camera: Camera): void {
+    const composerStart = performance.now();
+
     const currentRenderTarget = this.renderer.getRenderTarget();
     const currentClearColor = this.renderer.getClearColor(new Color());
     const currentClearAlpha = this.renderer.getClearAlpha();
@@ -174,14 +175,21 @@ export class EffectComposer {
     let readBuffer = this.renderTarget;
     let writeBuffer = this.renderTarget2;
 
+    const passTimes: number[] = [];
+
     for (let i = 0, il = this.passes.length; i < il; i++) {
       const pass = this.passes[i];
       if (!pass.enabled) continue;
+
+      const passStart = performance.now();
 
       pass.sceneWrapper = sceneWrapper;
       pass.camera = camera;
       pass.renderToScreen = this.renderToScreen && this.isLastEnabledPass(i);
       pass.render(this.renderer, writeBuffer, readBuffer, maskActive);
+
+      const passTime = performance.now() - passStart;
+      passTimes.push(passTime);
 
       // Swap buffers for next pass (ping-pong)
       if (pass.needsSwap) {
@@ -190,16 +198,22 @@ export class EffectComposer {
         writeBuffer = tmp;
       }
 
-      if (pass instanceof MaskPass) {
-        maskActive = true;
-      } else if (pass instanceof ClearMaskPass) {
-        maskActive = false;
-      }
     }
 
     this.renderer.setRenderTarget(currentRenderTarget);
     this.renderer.setClearColor(currentClearColor, currentClearAlpha);
     this.renderer.autoClear = currentAutoClear;
+
+    const totalComposerTime = performance.now() - composerStart;
+
+    // Log timing occasionally
+    if (Math.random() < 0.016) { // ~1/60 chance
+      console.log(`EffectComposer Timing (${totalComposerTime.toFixed(2)}ms total):`);
+      passTimes.forEach((time, index) => {
+        const passName = this.passes.filter(p => p.enabled)[index]?.constructor?.name || `Pass${index}`;
+        console.log(`  Pass ${index} (${passName}): ${time.toFixed(2)}ms`);
+      });
+    }
   }
 
   reset(renderTarget?: WebGLRenderTarget): void {

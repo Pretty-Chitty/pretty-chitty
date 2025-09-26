@@ -79,7 +79,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
     this.selectedIDs.clear();
 
     // Clear lookup texture
-    const textureData = this.lookupTexture.image.data as Float32Array;
+    const textureData = this.lookupTexture.image.data as unknown as Float32Array;
     textureData.fill(0);
 
     // Populate lookup texture with ID->Color mappings
