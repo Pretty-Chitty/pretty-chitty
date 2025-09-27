@@ -11,6 +11,7 @@ import {
   UnsignedShortType,
   ShaderMaterial,
   NormalBlending,
+  AdditiveBlending,
   UniformsUtils,
   IUniform,
   Material,
@@ -32,32 +33,37 @@ import { FullScreenQuad } from "./FullScreenQuad";
 import { CopyShader } from "./shaders";
 
 export class IDBasedOutlinePass extends Pass {
-  edgeThickness = 0;
+  // Configuration properties
+  edgeThickness = 2;
   edgeStrength = 3.0;
+  forceVisibleOutlines = false; // Debug: force outlines to be visible
+  debugMode = false;
 
-  // Simplified properties for userData-based outlining
-  private static instanceCounter = 0;
-  private instanceId: number;
+  // Constants
+  private static readonly INSTANCE_COUNTER = 0;
+  private static instanceCounter = IDBasedOutlinePass.INSTANCE_COUNTER;
+  private readonly instanceId: number;
+  readonly downSampleRatio: number;
+  readonly resolution: Vector2;
 
-  // Debug mode toggle
-  public debugMode = false;
-
-  sceneDepthTexture: any = null;
-
-  downSampleRatio = 6;
-  fsQuad = new FullScreenQuad(null);
+  // Core materials and components
+  private readonly fsQuad = new FullScreenQuad(null);
+  private readonly clonedMaterials = new Set<Material>(); // Track cloned materials for disposal
   materialCopy!: ShaderMaterial;
+  copyUniforms!: Record<string, IUniform>;
 
-  // ID rendering
+  // Render targets
   private renderTargetIDBuffer!: WebGLRenderTarget;
   private renderTargetTempBuffer!: WebGLRenderTarget; // Dedicated temp buffer to avoid sharing conflicts
+  private renderTargetEdgeBuffer1!: WebGLRenderTarget;
+
+  // ID rendering components
   private sharedIDMaterial!: ShaderMaterial; // Single shared material
   private idBasedEdgeDetectionPass!: InterMeshEdgeDetectionPass;
   private debugIDMappingPass!: DebugIDMappingPass;
-  private clonedMaterials = new Set<Material>(); // Track cloned materials for disposal
 
-  resolution: Vector2;
-  copyUniforms!: Record<string, IUniform>;
+  // Scene depth texture (set externally)
+  sceneDepthTexture: any = null;
 
   constructor(resolution: Vector2, downSampleRatio: number) {
     super();
@@ -84,15 +90,17 @@ export class IDBasedOutlinePass extends Pass {
   }
 
   private initializeIDComponents(): void {
-    // Create ID buffer render target with depth buffer
-    // Use NearestFilter to avoid any interpolation/antialiasing for exact ID colors
-    const pars = { minFilter: NearestFilter, magFilter: NearestFilter, format: RGBAFormat, depthBuffer: true };
-    this.renderTargetIDBuffer = new WebGLRenderTarget(this.resolution.x, this.resolution.y, pars);
+    // Create ID buffer render target with depth buffer at downsampled resolution for performance
+    // Always use LinearFilter for smooth edge detection
+    const resx = Math.round(this.resolution.x / this.downSampleRatio);
+    const resy = Math.round(this.resolution.y / this.downSampleRatio);
+    const pars = { minFilter: LinearFilter, magFilter: LinearFilter, format: RGBAFormat, depthBuffer: true };
+    this.renderTargetIDBuffer = new WebGLRenderTarget(resx, resy, pars);
     this.renderTargetIDBuffer.texture.name = "IDBasedOutline.idBuffer";
     this.renderTargetIDBuffer.texture.generateMipmaps = false;
 
     // Add depth texture to ID buffer
-    this.renderTargetIDBuffer.depthTexture = new DepthTexture(this.resolution.x, this.resolution.y);
+    this.renderTargetIDBuffer.depthTexture = new DepthTexture(resx, resy);
     this.renderTargetIDBuffer.depthTexture.type = UnsignedShortType;
 
     // Create dedicated temp buffer to avoid cross-contamination
@@ -111,12 +119,16 @@ export class IDBasedOutlinePass extends Pass {
   }
 
   private createSharedIDMaterial(): void {
+    // Use downsampled resolution for ID material since ID buffer is downsampled
+    const resx = Math.round(this.resolution.x / this.downSampleRatio);
+    const resy = Math.round(this.resolution.y / this.downSampleRatio);
+
     this.sharedIDMaterial = new ShaderMaterial({
       uniforms: {
         outlineIdColor: { value: new Color(1, 1, 1) }, // Will be updated per mesh (encoded outlineId)
         sceneDepthTexture: { value: null }, // Will be set before rendering
         useDepthTest: { value: false }, // Will be updated before rendering
-        resolution: { value: new Vector2(this.resolution.x, this.resolution.y) },
+        resolution: { value: new Vector2(resx, resy) },
         cameraDistance: { value: 1.0 }, // Will be updated per mesh
         pixelOffset: { value: new Vector2(0.0, 0.0) }, // For multiple pass rendering
         originalMap: { value: null }, // Original diffuse texture for alpha testing
@@ -185,10 +197,10 @@ export class IDBasedOutlinePass extends Pass {
             // Only draw if depths approximately match (mesh is visible in main scene)
             // Scale tolerance based on camera distance - closer = tighter tolerance
             float baseTolerance = 0.001;
-            float depthTolerance = baseTolerance * (cameraDistance * 0.15);
-            // if (abs(currentDepth - sceneDepth) > depthTolerance) {
-            //   discard;  // Only discard if significantly behind
-            // }
+            float depthTolerance = baseTolerance * (cameraDistance * 0.25);
+            if (abs(currentDepth - sceneDepth) > depthTolerance) {
+              discard;  // Only discard if significantly behind
+            }
           }
 
           // Write the encoded outlineId to the buffer
@@ -202,27 +214,30 @@ export class IDBasedOutlinePass extends Pass {
   // Simplified API - no more edge modes, just outline meshes with userData.outlineColor
 
   override setSize(width: number, height: number): void {
-    // Calculate downsampled dimensions for edge detection performance
+    // Calculate downsampled dimensions for ID buffer and edge detection performance
     const resx = Math.round(width / this.downSampleRatio);
     const resy = Math.round(height / this.downSampleRatio);
 
     // CRITICAL: Update our internal resolution property first
     this.resolution.set(width, height);
 
-    // Resize buffers
-    this.renderTargetIDBuffer.setSize(width, height);
+    // Resize buffers - ID buffer at downsampled resolution, others at full resolution
+    this.renderTargetIDBuffer.setSize(resx, resy);
+
+    // Always use linear filtering for smooth sampling
+    this.renderTargetIDBuffer.texture.minFilter = LinearFilter;
+    this.renderTargetIDBuffer.texture.magFilter = LinearFilter;
     this.renderTargetTempBuffer.setSize(width, height);
     this.renderTargetEdgeBuffer1.setSize(width, height);
 
-    // Update depth texture for ID buffer
+    // Update depth texture for ID buffer at downsampled resolution
     if (this.renderTargetIDBuffer.depthTexture) {
       this.renderTargetIDBuffer.depthTexture.dispose();
-      this.renderTargetIDBuffer.depthTexture = new DepthTexture(width, height);
+      this.renderTargetIDBuffer.depthTexture = new DepthTexture(resx, resy);
       this.renderTargetIDBuffer.depthTexture.type = UnsignedShortType;
     }
 
-    // Edge detection should work at downsampled resolution for performance
-    // but render to full-resolution buffer
+    // Edge detection works with downsampled ID buffer and renders to full-resolution edge buffer
     this.idBasedEdgeDetectionPass.setTextureSize(resx, resy);
   }
 
@@ -294,18 +309,21 @@ export class IDBasedOutlinePass extends Pass {
     renderer.clear(); // Clear temp buffer first
     this.fsQuad.render(renderer);
 
+    // Use edge buffer directly - blur is causing issues
+    const edgeTexture = this.renderTargetEdgeBuffer1.texture;
+
     // Then composite temp + edges to final buffer (writeBuffer, not readBuffer!)
     renderer.setRenderTarget(writeBuffer);
     renderer.clear(); // Clear the buffer to ensure proper compositing
 
-    // Copy temp buffer to output
+    // First: Copy temp buffer (scene) to output
+    this.fsQuad.material = this.materialCopy;
     (this.copyUniforms["tDiffuse"].value as any) = this.renderTargetTempBuffer.texture;
     this.fsQuad.render(renderer);
 
-    // Add edges using Three.js material blending instead of direct OpenGL
+    // Second: Add edges using additive blending
     renderer.autoClear = false;
 
-    // // Use Three.js's own blending by setting the material to use normal blending
     const originalBlending = this.materialCopy.blending;
     const originalTransparent = this.materialCopy.transparent;
 
@@ -313,7 +331,7 @@ export class IDBasedOutlinePass extends Pass {
     this.materialCopy.transparent = true;
     this.materialCopy.needsUpdate = true;
 
-    (this.copyUniforms["tDiffuse"].value as any) = this.renderTargetEdgeBuffer1.texture;
+    (this.copyUniforms["tDiffuse"].value as any) = edgeTexture;
     this.fsQuad.render(renderer);
 
     // // Restore material blending settings
@@ -342,14 +360,15 @@ export class IDBasedOutlinePass extends Pass {
     }
   }
 
-  renderTargetEdgeBuffer1!: WebGLRenderTarget;
-
   private initializeRenderTargets(): void {
     const pars = { minFilter: LinearFilter, magFilter: LinearFilter, format: RGBAFormat } as any;
 
     this.renderTargetEdgeBuffer1 = new WebGLRenderTarget(this.resolution.x, this.resolution.y, pars);
     this.renderTargetEdgeBuffer1.texture.name = "OutlinePass.edge1";
     this.renderTargetEdgeBuffer1.texture.generateMipmaps = false;
+    // Use linear filtering for smooth edge output
+    this.renderTargetEdgeBuffer1.texture.minFilter = LinearFilter;
+    this.renderTargetEdgeBuffer1.texture.magFilter = LinearFilter;
   }
 
   setSceneDepthTexture(depthTexture: any): void {
@@ -447,10 +466,12 @@ export class IDBasedOutlinePass extends Pass {
 
         meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
 
-        // Set static uniforms that don't change per frame
+        // Set static uniforms that don't change per frame (use downsampled resolution)
+        const resx = Math.round(this.resolution.x / this.downSampleRatio);
+        const resy = Math.round(this.resolution.y / this.downSampleRatio);
         meshMaterial.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
         meshMaterial.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
-        meshMaterial.uniforms["resolution"].value.set(this.resolution.x, this.resolution.y);
+        meshMaterial.uniforms["resolution"].value.set(resx, resy);
 
         meshMaterial.needsUpdate = true;
 
@@ -466,10 +487,12 @@ export class IDBasedOutlinePass extends Pass {
 
       meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
 
-      // Set static uniforms that don't change per frame
+      // Set static uniforms that don't change per frame (use downsampled resolution)
+      const resx = Math.round(this.resolution.x / this.downSampleRatio);
+      const resy = Math.round(this.resolution.y / this.downSampleRatio);
       meshMaterial.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
       meshMaterial.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
-      meshMaterial.uniforms["resolution"].value.set(this.resolution.x, this.resolution.y);
+      meshMaterial.uniforms["resolution"].value.set(resx, resy);
 
       meshMaterial.needsUpdate = true;
 
@@ -546,7 +569,10 @@ export class IDBasedOutlinePass extends Pass {
       this.idBasedEdgeDetectionPass.setIDDepthTexture(this.renderTargetIDBuffer.depthTexture);
       this.idBasedEdgeDetectionPass.setSceneDepthTexture(this.sceneDepthTexture);
       this.idBasedEdgeDetectionPass.setOutliningMeshes(outliningMeshes);
-      this.idBasedEdgeDetectionPass.setTextureSize(this.resolution.x, this.resolution.y);
+      // Edge detection renders at full resolution but samples from downsampled ID buffer
+      const resx = Math.round(this.resolution.x / this.downSampleRatio);
+      const resy = Math.round(this.resolution.y / this.downSampleRatio);
+      this.idBasedEdgeDetectionPass.setTextureSize(resx, resy); // ID buffer size for sampling
       this.idBasedEdgeDetectionPass.setThickness(this.edgeThickness);
       this.idBasedEdgeDetectionPass.setStrength(this.edgeStrength);
       this.idBasedEdgeDetectionPass.render(renderer, this.renderTargetEdgeBuffer1);

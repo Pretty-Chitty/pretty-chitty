@@ -75,6 +75,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
     this.edgeDetectionMaterial.uniforms["useDepthTest"].value = depthTexture !== null;
   }
 
+
   setOutliningMeshes(outliningMeshes: Array<{ id: number; color: Color }>): void {
     this.selectedIDs.clear();
 
@@ -195,90 +196,57 @@ export class InterMeshEdgeDetectionPass extends Pass {
           return vec4(0.0, 0.0, 0.0, 0.0);
         }
 
-        void main() {
-          vec2 invSize = 1.0 / texSize;
 
-          // Sample the center pixel
-          vec4 center = sampleTextureClampToBackground(idTexture, vUv);
+        void main() {
+          vec2 lowResInvSize = 1.0 / texSize;
+
+          // Sample the center pixel - MUST belong to an outlined mesh
+          vec4 center = texture2D(idTexture, vUv);
           vec4 centerOutlineColor = getOutlineColor(center.rgb);
 
-          // ONLY process pixels that belong to outlined meshes - no background bleeding
-          if (centerOutlineColor.a > 0.5) {
-            // Center pixel belongs to an outlined mesh - check for interior edges
-            bool centerVisible = isPixelVisible(vUv);
+          // Only draw outlines INSIDE meshes that have outline colors
+          if (centerOutlineColor.a < 0.5) {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+            return;
+          }
 
-            // Check neighbors - use minimum 1 pixel distance for reliability
-            float effectiveThickness = max(1.0, thickness);
-            vec2 rightUv = vUv + vec2(effectiveThickness * invSize.x, 0.0);
-            vec2 leftUv = vUv - vec2(effectiveThickness * invSize.x, 0.0);
-            vec2 upUv = vUv + vec2(0.0, effectiveThickness * invSize.y);
-            vec2 downUv = vUv - vec2(0.0, effectiveThickness * invSize.y);
+          // Additional depth test - only draw outlines for visible pixels
+          if (!isPixelVisible(vUv)) {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+            return;
+          }
 
-            vec4 right = sampleTextureClampToBackground(idTexture, rightUv);
-            vec4 left = sampleTextureClampToBackground(idTexture, leftUv);
-            vec4 up = sampleTextureClampToBackground(idTexture, upUv);
-            vec4 down = sampleTextureClampToBackground(idTexture, downUv);
+          // Check neighbors to see if we're near an edge
+          float edgeDistance = 1000.0; // Very far away initially
 
-            bool rightVisible = isPixelVisible(rightUv);
-            bool leftVisible = isPixelVisible(leftUv);
-            bool upVisible = isPixelVisible(upUv);
-            bool downVisible = isPixelVisible(downUv);
+          float checkRadius = max(1.0, thickness);
+          for (float x = -checkRadius; x <= checkRadius; x += 1.0) {
+            for (float y = -checkRadius; y <= checkRadius; y += 1.0) {
+              vec2 sampleUv = vUv + vec2(x, y) * lowResInvSize;
+              vec4 neighbor = texture2D(idTexture, sampleUv);
 
-            // Draw outline if center pixel is visible AND we're at a true mesh boundary
-            // Avoid A-B-A false edges where single pixels are isolated
-            if (centerVisible) {
-              bool hasValidEdge = false;
-
-              // Check for any different neighbor - draw thick outlines between ALL different meshes
-              if (!colorsMatch(center.rgb, right.rgb)) {
-                hasValidEdge = true;
-              }
-
-              if (!colorsMatch(center.rgb, left.rgb)) {
-                hasValidEdge = true;
-              }
-
-              if (!colorsMatch(center.rgb, up.rgb)) {
-                hasValidEdge = true;
-              }
-
-              if (!colorsMatch(center.rgb, down.rgb)) {
-                hasValidEdge = true;
-              }
-
-              if (hasValidEdge) {
-                gl_FragColor = vec4(centerOutlineColor.rgb, centerOutlineColor.a * strength);
-                return;
-              }
-            }
-
-            // Multi-distance sampling to ensure uniform outline thickness on curves and diagonals
-            float maxThickness = max(1.0, thickness);
-
-            // Sample at multiple distances for consistent coverage
-            for (float dist = 1.0; dist <= maxThickness; dist += 1.0) {
-              vec2 neighborUvs[8];
-              neighborUvs[0] = vUv + vec2(dist * invSize.x, 0.0);
-              neighborUvs[1] = vUv + vec2(-dist * invSize.x, 0.0);
-              neighborUvs[2] = vUv + vec2(0.0, dist * invSize.y);
-              neighborUvs[3] = vUv + vec2(0.0, -dist * invSize.y);
-              neighborUvs[4] = vUv + vec2(dist * invSize.x * 0.707, dist * invSize.y * 0.707); // sqrt(2)/2 for consistent diagonal distance
-              neighborUvs[5] = vUv + vec2(-dist * invSize.x * 0.707, dist * invSize.y * 0.707);
-              neighborUvs[6] = vUv + vec2(dist * invSize.x * 0.707, -dist * invSize.y * 0.707);
-              neighborUvs[7] = vUv + vec2(-dist * invSize.x * 0.707, -dist * invSize.y * 0.707);
-
-              for (int i = 0; i < 8; i++) {
-                vec4 neighbor = sampleTextureClampToBackground(idTexture, neighborUvs[i]);
-
-                if (!colorsMatch(center.rgb, neighbor.rgb)) {
-                  gl_FragColor = vec4(centerOutlineColor.rgb, centerOutlineColor.a * strength);
-                  return;
-                }
+              // If neighbor is different from center, we found an edge
+              if (!colorsMatch(center.rgb, neighbor.rgb)) {
+                float dist = length(vec2(x, y));
+                edgeDistance = min(edgeDistance, dist);
               }
             }
           }
 
-          gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+          // Only draw if we're near an edge (inside the mesh)
+          if (edgeDistance < 1000.0) {
+            // Create thick outline with smooth falloff
+            float lineThickness = thickness + 0.5;
+            float alpha = 1.0 - smoothstep(0.5, lineThickness, edgeDistance);
+
+            if (alpha > 0.01) {
+              gl_FragColor = vec4(centerOutlineColor.rgb, alpha * strength);
+            } else {
+              gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+            }
+          } else {
+            gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+          }
         }`,
     });
   }

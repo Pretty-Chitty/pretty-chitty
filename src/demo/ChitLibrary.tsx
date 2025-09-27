@@ -188,8 +188,8 @@ export class Card extends Chit {
     // spec.object.children[1].userData.outlineId = (this.parentOutletIndex ?? 0) + 1;
     // spec.object.children[1].userData.outlineColor = new Color(1, 1, 0);
     // spec.highlight.visible = true;
-    spec.highlight.color = "#000000";
-    spec.highlight.childrenInheritOutline = true;
+    spec.highlight.color = "#ffff00";
+    // spec.highlight.childrenInheritOutline = false;
 
     if (!this.something) {
       spec.worthSlidingToPanelToShowChange = false;
@@ -250,7 +250,7 @@ export class Card2 extends Chit {
   public card3: Card3 | undefined = undefined; // new Card3();
 
   public override render(spec: ChitRenderSpec): void {
-    const boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
+    const boxGeometry = new BoxGeometry(0.25, 0.25, 3.25);
 
     spec.showDetailsOnLongPress = true;
     spec.galleryMaximumWidth = 100;
@@ -279,6 +279,8 @@ export class Card2 extends Chit {
     ]);
     mesh.castShadow = true;
     spec.object = mesh;
+
+    // spec.highlight.color = "#00ffff";
 
     spec.ownerOrigin = this.thingy ? OwnerOriginPosition.BottomRight : OwnerOriginPosition.Default;
     // spec.offsetX = !this.thingy ? 0.6 : 0;

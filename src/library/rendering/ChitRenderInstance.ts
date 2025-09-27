@@ -456,15 +456,20 @@ export class ChitRenderInstance {
   public outlineContext?: ChitRenderInstance;
 
   public fixOutline() {
+    if (this.chit.onClick && this.renderSpec && this.renderSpec.highlight.childrenInheritOutline === undefined) {
+      this.renderSpec.highlight.childrenInheritOutline = true;
+    }
+
     const myColor = this.chit.onClick ? this.renderSpec?.highlight.clickColor : this.renderSpec?.highlight.color;
 
-    if (this.chit.onClick && !this.renderSpec?.highlight.childrenInheritOutline) {
+    if (this.chit.onClick && this.renderSpec?.highlight.childrenInheritOutline === false) {
       this.outlineContext = undefined;
-    } else if (myColor && this.renderSpec?.highlight.childrenInheritOutline) {
+    } else if (myColor && this.renderSpec?.highlight.childrenInheritOutline === true) {
       this.outlineContext = this;
     } else {
       this.outlineContext = this.parentRenderInstance?.outlineContext;
     }
+
     this.childrenRenderInstances.forEach((child) => child.fixOutline());
 
     const outlineContext = this.outlineContext ? this.outlineContext : this;
