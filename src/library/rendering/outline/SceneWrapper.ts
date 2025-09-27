@@ -183,6 +183,16 @@ export class SceneWrapper {
         const shadowMesh = this.shadowMeshes.get(existingId);
         if (shadowMesh) {
           this.outlineScene.remove(shadowMesh);
+
+          // Dispose materials to prevent GPU memory leaks
+          if (shadowMesh.material) {
+            if (Array.isArray(shadowMesh.material)) {
+              shadowMesh.material.forEach(mat => mat.dispose());
+            } else {
+              shadowMesh.material.dispose();
+            }
+          }
+
           this.shadowMeshes.delete(existingId);
           this.outlinedObjects.delete(existingId);
           this.materialHashes.delete(existingId);
@@ -192,6 +202,17 @@ export class SceneWrapper {
   }
 
   dispose(): void {
+    // Dispose all shadow mesh materials before clearing
+    for (const shadowMesh of this.shadowMeshes.values()) {
+      if (shadowMesh.material) {
+        if (Array.isArray(shadowMesh.material)) {
+          shadowMesh.material.forEach(mat => mat.dispose());
+        } else {
+          shadowMesh.material.dispose();
+        }
+      }
+    }
+
     this.shadowMeshes.clear();
     this.outlinedObjects.clear();
     this.materialHashes.clear();

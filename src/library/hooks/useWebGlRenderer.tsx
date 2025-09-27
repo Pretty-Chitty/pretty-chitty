@@ -39,7 +39,7 @@ class WebGLRendererWrapper {
     this.composer = new EffectComposer(renderer);
 
     this.renderPass = new RenderPass();
-    this.outlinePass = new IDBasedOutlinePass(new Vector2(width, height));
+    this.outlinePass = new IDBasedOutlinePass(new Vector2(width, height), theme.chitOutlineDownsample);
     this.outputPass = new OutputPass();
 
     // Configure transparency

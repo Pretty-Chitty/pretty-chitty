@@ -231,6 +231,7 @@ export class ChitRenderInstance {
   }
 
   public invalidateRootRenderInstance() {
+    this.rootRenderInstance?.markDirty();
     this._rootRenderInstance = undefined;
     this.childrenRenderInstances.forEach((child) => child.invalidateRootRenderInstance());
   }

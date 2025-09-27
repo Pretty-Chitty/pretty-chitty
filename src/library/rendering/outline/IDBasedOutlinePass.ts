@@ -54,15 +54,16 @@ export class IDBasedOutlinePass extends Pass {
   private sharedIDMaterial!: ShaderMaterial; // Single shared material
   private idBasedEdgeDetectionPass!: InterMeshEdgeDetectionPass;
   private debugIDMappingPass!: DebugIDMappingPass;
+  private clonedMaterials = new Set<Material>(); // Track cloned materials for disposal
 
   resolution: Vector2;
   copyUniforms!: Record<string, IUniform>;
 
-  constructor(resolution: Vector2) {
+  constructor(resolution: Vector2, downSampleRatio: number) {
     super();
     this.resolution = resolution ? new Vector2(resolution.x, resolution.y) : new Vector2(256, 256);
     this.instanceId = ++IDBasedOutlinePass.instanceCounter;
-
+    this.downSampleRatio = downSampleRatio;
     // Initialize ID-based components
     this.initializeMaterials();
     this.initializeRenderTargets();
@@ -201,38 +202,23 @@ export class IDBasedOutlinePass extends Pass {
   // Simplified API - no more edge modes, just outline meshes with userData.outlineColor
 
   override setSize(width: number, height: number): void {
-    // Calculate downsampled dimensions for performance-critical buffers
-    let resx = Math.round(width / this.downSampleRatio);
-    let resy = Math.round(height / this.downSampleRatio);
+    // Calculate downsampled dimensions for edge detection performance
+    const resx = Math.round(width / this.downSampleRatio);
+    const resy = Math.round(height / this.downSampleRatio);
 
     // CRITICAL: Update our internal resolution property first
     this.resolution.set(width, height);
 
-    // Resize full-resolution buffers
-    this.renderTargetMaskBuffer.setSize(width, height);
+    // Resize buffers
     this.renderTargetIDBuffer.setSize(width, height);
     this.renderTargetTempBuffer.setSize(width, height);
-    this.renderTargetEdgeBuffer1.setSize(width, height); // Keep edge buffer at full resolution
-
-    // Resize downsampled performance buffers
-    this.renderTargetMaskDownSampleBuffer.setSize(resx, resy);
-    this.renderTargetBlurBuffer1.setSize(resx, resy);
-    this.renderTargetBlurBuffer2.setSize(resx / 2, resy / 2);
-    this.renderTargetEdgeBuffer2.setSize(resx / 2, resy / 2);
+    this.renderTargetEdgeBuffer1.setSize(width, height);
 
     // Update depth texture for ID buffer
     if (this.renderTargetIDBuffer.depthTexture) {
       this.renderTargetIDBuffer.depthTexture.dispose();
       this.renderTargetIDBuffer.depthTexture = new DepthTexture(width, height);
       this.renderTargetIDBuffer.depthTexture.type = UnsignedShortType;
-    }
-
-    // Update blur material uniforms
-    if (this.separableBlurMaterial1?.uniforms?.texSize) {
-      this.separableBlurMaterial1.uniforms.texSize.value.set(resx, resy);
-    }
-    if (this.separableBlurMaterial2?.uniforms?.texSize) {
-      this.separableBlurMaterial2.uniforms.texSize.value.set(resx / 2, resy / 2);
     }
 
     // Edge detection should work at downsampled resolution for performance
@@ -356,48 +342,14 @@ export class IDBasedOutlinePass extends Pass {
     }
   }
 
-  renderTargetMaskBuffer!: WebGLRenderTarget;
-  renderTargetMaskDownSampleBuffer!: WebGLRenderTarget;
-  renderTargetBlurBuffer1!: WebGLRenderTarget;
-  renderTargetBlurBuffer2!: WebGLRenderTarget;
   renderTargetEdgeBuffer1!: WebGLRenderTarget;
-  renderTargetEdgeBuffer2!: WebGLRenderTarget;
-  separableBlurMaterial1!: any;
-  separableBlurMaterial2!: any;
 
   private initializeRenderTargets(): void {
     const pars = { minFilter: LinearFilter, magFilter: LinearFilter, format: RGBAFormat } as any;
 
-    const resx = Math.round(this.resolution.x / this.downSampleRatio);
-    const resy = Math.round(this.resolution.y / this.downSampleRatio);
-
-    this.renderTargetMaskBuffer = new WebGLRenderTarget(this.resolution.x, this.resolution.y, pars);
-    this.renderTargetMaskBuffer.texture.name = "OutlinePass.mask";
-    this.renderTargetMaskBuffer.texture.generateMipmaps = false;
-
-    this.renderTargetMaskDownSampleBuffer = new WebGLRenderTarget(resx, resy, pars);
-    this.renderTargetMaskDownSampleBuffer.texture.name = "OutlinePass.maskDownSample";
-    this.renderTargetMaskDownSampleBuffer.texture.generateMipmaps = false;
-
-    this.renderTargetBlurBuffer1 = new WebGLRenderTarget(resx, resy, pars);
-    this.renderTargetBlurBuffer1.texture.name = "OutlinePass.blur1";
-    this.renderTargetBlurBuffer1.texture.generateMipmaps = false;
-
-    this.renderTargetBlurBuffer2 = new WebGLRenderTarget(resx / 2, resy / 2, pars);
-    this.renderTargetBlurBuffer2.texture.name = "OutlinePass.blur2";
-    this.renderTargetBlurBuffer2.texture.generateMipmaps = false;
-
     this.renderTargetEdgeBuffer1 = new WebGLRenderTarget(this.resolution.x, this.resolution.y, pars);
     this.renderTargetEdgeBuffer1.texture.name = "OutlinePass.edge1";
     this.renderTargetEdgeBuffer1.texture.generateMipmaps = false;
-
-    this.renderTargetEdgeBuffer2 = new WebGLRenderTarget(resx / 2, resy / 2, pars);
-    this.renderTargetEdgeBuffer2.texture.name = "OutlinePass.edge2";
-    this.renderTargetEdgeBuffer2.texture.generateMipmaps = false;
-
-    // Create placeholder materials to prevent errors
-    this.separableBlurMaterial1 = { uniforms: { texSize: { value: new Vector2(resx, resy) } } };
-    this.separableBlurMaterial2 = { uniforms: { texSize: { value: new Vector2(resx / 2, resy / 2) } } };
   }
 
   setSceneDepthTexture(depthTexture: any): void {
@@ -462,6 +414,19 @@ export class IDBasedOutlinePass extends Pass {
 
   // Method called by SceneWrapper to prepare shadow meshes with ID materials
   prepareShadowMesh(shadowMesh: any, originalMesh: any): void {
+    // Dispose existing materials if they exist to prevent memory leaks
+    if (shadowMesh.material) {
+      if (Array.isArray(shadowMesh.material)) {
+        shadowMesh.material.forEach((mat: Material) => {
+          this.clonedMaterials.delete(mat);
+          mat.dispose();
+        });
+      } else {
+        this.clonedMaterials.delete(shadowMesh.material);
+        shadowMesh.material.dispose();
+      }
+    }
+
     // Only assign IDs to meshes that have userData.outlineColor
     let meshID = 0;
     if (originalMesh.userData?.outlineColor && originalMesh.userData?.outlineId !== undefined) {
@@ -478,6 +443,8 @@ export class IDBasedOutlinePass extends Pass {
       // Create ID material for each material in the array
       const idMaterials = originalMesh.material.map((originalMaterial: Material) => {
         const meshMaterial = this.sharedIDMaterial.clone();
+        this.clonedMaterials.add(meshMaterial); // Track for disposal
+
         meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
 
         // Set static uniforms that don't change per frame
@@ -495,6 +462,8 @@ export class IDBasedOutlinePass extends Pass {
     } else {
       // Single material case
       const meshMaterial = this.sharedIDMaterial.clone();
+      this.clonedMaterials.add(meshMaterial); // Track for disposal
+
       meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
 
       // Set static uniforms that don't change per frame
@@ -569,10 +538,7 @@ export class IDBasedOutlinePass extends Pass {
     if (this.debugMode) {
       this.debugIDMappingPass.setIDTexture(this.renderTargetIDBuffer.texture);
       this.debugIDMappingPass.setOutliningMeshes(outliningMeshes);
-      this.debugIDMappingPass.setTextureSize(
-        this.resolution.x,
-        this.resolution.y,
-      );
+      this.debugIDMappingPass.setTextureSize(this.resolution.x, this.resolution.y);
       this.debugIDMappingPass.render(renderer, this.renderTargetEdgeBuffer1);
     } else {
       // Use normal edge detection pass
@@ -580,10 +546,7 @@ export class IDBasedOutlinePass extends Pass {
       this.idBasedEdgeDetectionPass.setIDDepthTexture(this.renderTargetIDBuffer.depthTexture);
       this.idBasedEdgeDetectionPass.setSceneDepthTexture(this.sceneDepthTexture);
       this.idBasedEdgeDetectionPass.setOutliningMeshes(outliningMeshes);
-      this.idBasedEdgeDetectionPass.setTextureSize(
-        this.resolution.x,
-        this.resolution.y,
-      );
+      this.idBasedEdgeDetectionPass.setTextureSize(this.resolution.x, this.resolution.y);
       this.idBasedEdgeDetectionPass.setThickness(this.edgeThickness);
       this.idBasedEdgeDetectionPass.setStrength(this.edgeStrength);
       this.idBasedEdgeDetectionPass.render(renderer, this.renderTargetEdgeBuffer1);
@@ -633,14 +596,25 @@ export class IDBasedOutlinePass extends Pass {
   }
 
   dispose(): void {
+    // Dispose all cloned materials to prevent GPU memory leaks
+    for (const material of this.clonedMaterials) {
+      material.dispose();
+    }
+    this.clonedMaterials.clear();
+
+    // Dispose shared material
+    if (this.sharedIDMaterial) {
+      this.sharedIDMaterial.dispose();
+    }
+
+    // Dispose copy material
+    if (this.materialCopy) {
+      this.materialCopy.dispose();
+    }
+
     this.renderTargetIDBuffer.dispose();
     this.renderTargetTempBuffer.dispose();
-    this.renderTargetMaskBuffer.dispose();
-    this.renderTargetMaskDownSampleBuffer.dispose();
-    this.renderTargetBlurBuffer1.dispose();
-    this.renderTargetBlurBuffer2.dispose();
     this.renderTargetEdgeBuffer1.dispose();
-    this.renderTargetEdgeBuffer2.dispose();
     this.idBasedEdgeDetectionPass.dispose();
   }
 }

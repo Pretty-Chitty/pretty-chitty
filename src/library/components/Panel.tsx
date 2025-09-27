@@ -145,7 +145,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   const panelStates = usePanelStates(rootRenders);
   const CUTOUT_WIDTH = Math.min(40, (w - theme.spacing * 2) / chits.length);
   const CUTOUT_HEIGHT = 14;
-  const ANIMATION_DURATION = 0.25;
+  const ANIMATION_DURATION = 0.125;
 
   const leavingIndex = panelStates.findIndex((p) => p.state === "leaving");
   const enteringIndex = panelStates.findIndex((p) => p.state === "entering");
@@ -223,12 +223,13 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
             sx={{
               width: "100%",
               height: "100%",
-              transition: isLoading ? null : `transform ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
+              // transition: isLoading ? null : `transform ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
               position: "absolute",
+              zIndex: index === selectedIndex ? 1 : 0,
               left: 0,
               top: 0,
-              transform:
-                index === selectedIndex ? `translateX(0)` : `translateX(${index > selectedIndex ? "110%" : "-110%"})`,
+              // transform:
+              //   index === selectedIndex ? `translateX(0)` : `translateX(${index > selectedIndex ? "110%" : "-110%"})`,
             }}
           >
             <ViewerWrapper
@@ -254,7 +255,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
         >
           {chits.map((chit, index) => (
             <Box
-              onClick={() => setSelectedIndex(index)}
+              onMouseDown={() => setSelectedIndex(index)}
               key={chit.id}
               sx={{
                 zIndex: ZINDEX_PANEL_CUTOUTS,
@@ -272,7 +273,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
             sx={{
               height: CUTOUT_HEIGHT,
               width: CUTOUT_WIDTH,
-              transition: `left ease-in-out ${ANIMATION_DURATION}s`,
+              transition: `left ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
               background: theme.panelSelectionCutoutSelected,
               position: "absolute",
               top: 0,

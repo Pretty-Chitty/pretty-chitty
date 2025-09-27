@@ -36,6 +36,7 @@ const theme = GameTheme.withDefaults("#ffeedd", "#ef8354", "#001122");
 theme.dialogBackgroundColor = "#ef8354cc";
 theme.dialogForegroundColor = "#000000ee";
 theme.chitHighlightColor = "#ffffff";
+theme.chitOutlineDownsample = 40;
 
 export class DemoGame implements Game<MyPlayer, Root> {
   name = "Demo Game";
