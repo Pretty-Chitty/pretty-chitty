@@ -472,12 +472,16 @@ export class ChitRenderInstance {
 
     this.childrenRenderInstances.forEach((child) => child.fixOutline());
 
+    if (!this.renderSpec?.object) {
+      return;
+    }
+
     const outlineContext = this.outlineContext ? this.outlineContext : this;
     const c = outlineContext.chit.onClick
       ? outlineContext.renderSpec?.highlight.clickColor
       : outlineContext.renderSpec?.highlight.color;
 
-    if (outlineContext && this.renderSpec?.object && outlineContext.renderSpec?.object && c) {
+    if (outlineContext && this.renderSpec.object && outlineContext.renderSpec?.object && c) {
       const id = outlineContext.renderSpec.object.id % 60000;
       const color = Color(c);
       const threeColor = new ThreeColor(color.red() / 256, color.green() / 256, color.blue() / 256);
@@ -486,7 +490,7 @@ export class ChitRenderInstance {
         o.userData.outlineColor = threeColor;
       });
     } else {
-      this.renderSpec?.object.traverse((o) => {
+      this.renderSpec.object.traverse((o) => {
         delete o.userData.outlineId;
         delete o.userData.outlineColor;
       });
@@ -750,6 +754,8 @@ export class ChitRenderInstance {
       this.log("While adding child to myself, I am already moving to a new viewer");
       child.chit.renderInstance = undefined;
       child.detach();
+    } else {
+      child.fixOutline();
     }
   }
 

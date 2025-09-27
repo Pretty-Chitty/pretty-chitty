@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import base64 from "base-64";
 import { Box, Stack } from "@mui/material";
 import { useDebounce } from "@react-hook/debounce";
@@ -49,12 +49,14 @@ function ViewerWrapper({
   h,
   paused,
   panCallback,
+  refContainer,
 }: {
   chit: Chit;
   w: number;
   h: number;
   paused: boolean;
   panCallback?: (direction: "left" | "right") => void;
+  refContainer: React.RefObject<HTMLElement> | null;
 }) {
   const chitInstance = useChit(chit.id ?? "nochit");
   const theme = useGameTheme();
@@ -78,6 +80,7 @@ function ViewerWrapper({
         ))}
       </Stack>
       <Viewer
+        refContainer={refContainer}
         paused={override ? false : paused}
         chit={chit}
         w={w}
@@ -126,6 +129,7 @@ function SinglePanel({
 
 function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number; w: number; h: number }) {
   const theme = useGameTheme();
+  const refContainer = useRef(null);
   const timeState = useTimeState();
 
   const timeController = useTimeController();
@@ -216,23 +220,26 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
         p: `${theme.spacing / 2}px`,
       }}
     >
-      <Box sx={{ width: "100%", flex: 1, position: "relative", borderRadius: "10px", overflow: "hidden" }}>
+      <Box
+        ref={refContainer}
+        sx={{ width: "100%", flex: 1, position: "relative", borderRadius: "10px", overflow: "hidden" }}
+      >
         {chits.map((chit, index) => (
           <Box
             key={chit.id}
             sx={{
               width: "100%",
               height: "100%",
-              // transition: isLoading ? null : `transform ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
+              transition: isLoading ? null : `transform ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
               position: "absolute",
-              zIndex: index === selectedIndex ? 1 : 0,
               left: 0,
               top: 0,
-              // transform:
-              //   index === selectedIndex ? `translateX(0)` : `translateX(${index > selectedIndex ? "110%" : "-110%"})`,
+              transform:
+                index === selectedIndex ? `translateX(0)` : `translateX(${index > selectedIndex ? "110%" : "-110%"})`,
             }}
           >
             <ViewerWrapper
+              refContainer={refContainer}
               paused={isLoading ? false : isSliding ? true : selectedIndex !== index}
               chit={chit}
               w={w - theme.spacing}

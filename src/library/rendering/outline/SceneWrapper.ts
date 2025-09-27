@@ -187,7 +187,7 @@ export class SceneWrapper {
           // Dispose materials to prevent GPU memory leaks
           if (shadowMesh.material) {
             if (Array.isArray(shadowMesh.material)) {
-              shadowMesh.material.forEach(mat => mat.dispose());
+              shadowMesh.material.forEach((mat) => mat.dispose());
             } else {
               shadowMesh.material.dispose();
             }
@@ -199,6 +199,8 @@ export class SceneWrapper {
         }
       }
     }
+
+    console.log(this.outlinedObjects.size, "outlined objects");
   }
 
   dispose(): void {
@@ -206,7 +208,7 @@ export class SceneWrapper {
     for (const shadowMesh of this.shadowMeshes.values()) {
       if (shadowMesh.material) {
         if (Array.isArray(shadowMesh.material)) {
-          shadowMesh.material.forEach(mat => mat.dispose());
+          shadowMesh.material.forEach((mat) => mat.dispose());
         } else {
           shadowMesh.material.dispose();
         }

@@ -22,6 +22,7 @@ export default function Viewer({
   h = 0,
   paddingTop = 0,
   panCallback,
+  refContainer = null,
 }: {
   chit: Chit;
   wireframes?: boolean;
@@ -30,13 +31,14 @@ export default function Viewer({
   paddingTop?: number;
   paused?: boolean;
   panCallback?: (direction: "left" | "right") => void;
+  refContainer?: React.RefObject<HTMLElement> | null;
 }) {
   const playerId = usePlayerId();
   const [id] = useState(`Viewer${ID_COUNTER++}`);
   const timeState = useTimeState();
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
   const [isLoading] = useEventChannelState(timeState.isLoading);
-  const refContainer = useRef(null);
+  const myRefContainer = useRef(null);
   const rendererWrapper = useWebGlRenderer(w, h);
 
   const galleryState = useGalleryState();
@@ -68,6 +70,7 @@ export default function Viewer({
   }, [chitRenderInstance, w, h, paddingTop]);
 
   // handle hooking the root render instance onto the scene
+  const actualRef = refContainer ?? myRefContainer;
   const R = RootChitRenderInstance;
   useEffect(() => {
     if (!chitRenderInstance || chitRenderInstance.chit !== chit || !(chitRenderInstance instanceof R)) {
@@ -83,7 +86,7 @@ export default function Viewer({
       const newInstance = new R(chit);
       newInstance.playerId = playerId;
       newInstance.convertCameraSpaceToScreenSpace = (x: number, y: number) => {
-        const el = refContainer.current as unknown as HTMLElement;
+        const el = actualRef.current as unknown as HTMLElement;
         if (!el) {
           return;
         }
@@ -92,7 +95,7 @@ export default function Viewer({
         return new Vector2(rect.left + ((1 + x) / 2) * rect.width, rect.top + ((1 - y) / 2) * rect.height);
       };
       newInstance.convertScreenSpaceToCameraSpace = (x: number, y: number) => {
-        const el = refContainer.current as unknown as HTMLElement;
+        const el = actualRef.current as unknown as HTMLElement;
         if (!el) {
           return;
         }
@@ -106,7 +109,7 @@ export default function Viewer({
       newInstance.setup(galleryState);
       setChitRenderInstance(newInstance);
     }
-  }, [refContainer, playerId, animationSpeedMultiplier, chit, chitRenderInstance, R, galleryState]);
+  }, [actualRef, playerId, animationSpeedMultiplier, chit, chitRenderInstance, R, galleryState]);
 
   // make sure "wireframes" gets set correctly on the render instance
   useEffect(() => {
@@ -117,7 +120,7 @@ export default function Viewer({
 
   // handle animation frames
   useEffect(() => {
-    const canvas = refContainer.current as any as HTMLCanvasElement;
+    const canvas = myRefContainer.current as any as HTMLCanvasElement;
     if (!chitRenderInstance || !rendererWrapper || !canvas) {
       return;
     }
@@ -167,7 +170,7 @@ export default function Viewer({
       timeState.setAnimationState(id, false);
       cancelled = true;
     };
-  }, [id, timeState, rendererWrapper, chitRenderInstance, paused, refContainer, w, h]);
+  }, [id, timeState, rendererWrapper, chitRenderInstance, paused, actualRef, myRefContainer, w, h]);
 
   useEffect(() => {
     if (chitRenderInstance) {
@@ -183,7 +186,7 @@ export default function Viewer({
 
   // hook up interactions
   useEffect(() => {
-    const el = refContainer.current as unknown as HTMLElement;
+    const el = myRefContainer.current as unknown as HTMLElement;
     if (el) {
       if (!chitRenderInstance) {
         return;
@@ -310,7 +313,7 @@ export default function Viewer({
         removeWheelListener(el, wheelListener);
       };
     }
-  }, [refContainer, chitRenderInstance, galleryState, panCallback]);
+  }, [myRefContainer, chitRenderInstance, galleryState, panCallback]);
 
   return (
     <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }}>
@@ -318,7 +321,7 @@ export default function Viewer({
         width={w * window.devicePixelRatio}
         height={h * window.devicePixelRatio}
         style={{ width: w, height: h }}
-        ref={refContainer}
+        ref={myRefContainer}
       />
     </Box>
   );

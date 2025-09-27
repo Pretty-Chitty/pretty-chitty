@@ -37,7 +37,7 @@ theme.dialogBackgroundColor = "#ef8354cc";
 theme.dialogForegroundColor = "#000000ee";
 theme.chitHighlightColor = "#ffffff";
 theme.chitOutlineDownsample = 1;
-theme.chitOutlineWidth = 4;
+theme.chitOutlineWidth = 6;
 
 export class DemoGame implements Game<MyPlayer, Root> {
   name = "Demo Game";
@@ -123,10 +123,11 @@ export class DemoGame implements Game<MyPlayer, Root> {
       // turn.flush();
 
       await turn.pick(
-        Chit.pick([pieces[3], pieces[4]], async (c: Card) => {
+        Chit.pick([pieces[3], pieces[1]], async (c: Card) => {
           // const target = players[0];
           // target.add(c);
-          c.raised = true;
+          // c.raised = true;
+          players[0].add(c);
         })
           // .toggleButton(new HandButton())
           .context(pieces[7]),

@@ -196,7 +196,7 @@ export class IDBasedOutlinePass extends Pass {
 
             // Only draw if depths approximately match (mesh is visible in main scene)
             // Scale tolerance based on camera distance - closer = tighter tolerance
-            float baseTolerance = 0.001;
+            float baseTolerance = 0.003;
             float depthTolerance = baseTolerance * (cameraDistance * 0.25);
             if (abs(currentDepth - sceneDepth) > depthTolerance) {
               discard;  // Only discard if significantly behind
@@ -205,6 +205,8 @@ export class IDBasedOutlinePass extends Pass {
 
           // Write the encoded outlineId to the buffer
           gl_FragColor = vec4(outlineIdColor, 1.0);
+
+          
         }
       `,
       side: FrontSide, // Default to front side, will be overridden per material
