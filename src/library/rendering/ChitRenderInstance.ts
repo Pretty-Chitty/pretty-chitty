@@ -125,8 +125,12 @@ export class ChitRenderInstance {
     const positionEntranceChit = chit.lastParent ?? chit.parentFallback ?? currentPosition;
     if (this.rootRenderInstance) {
       const oldParent = this.group.parent;
-      const intersection = this.attemptToFindPlaneZ0(this.rootRenderInstance, positionEntranceChit);
+      let intersection = this.attemptToFindPlaneZ0(this.rootRenderInstance, positionEntranceChit);
+
       if (intersection && oldParent) {
+        // Ensure entrance coordinates are outside visible region if they overlap
+        intersection = this.ensureCoordinatesOutsideVisibleRegion(intersection);
+
         this.group.removeFromParent();
         this.group.position.set(intersection.x, intersection.y, intersection.z);
         oldParent.attach(this.group);
@@ -257,6 +261,79 @@ export class ChitRenderInstance {
 
   public get animationSpeedMultiplier(): number {
     return this.parentRenderInstance?.animationSpeedMultiplier ?? 1;
+  }
+
+  /**
+   * Ensures coordinates are outside current viewer's screen bounds for overlapping viewers.
+   * If coordinates would be visible in current screen area, moves them to upper left corner.
+   */
+  private ensureCoordinatesOutsideVisibleRegion(coordinates: Vector3): Vector3 {
+    if (!this.rootRenderInstance) {
+      return coordinates;
+    }
+
+    // Convert world coordinates to global page coordinates using the same method as screenCoordinates()
+    const vector = new Vector3(coordinates.x, coordinates.y, coordinates.z);
+    vector.project(this.rootRenderInstance.camera);
+    const globalScreenCoords = this.rootRenderInstance.convertCameraSpaceToScreenSpace(vector.x, vector.y);
+
+    if (!globalScreenCoords) {
+      return coordinates;
+    }
+
+    // Get the current viewer's bounds in global page coordinates
+    // We need to reverse-engineer the viewer's bounds from the conversion function
+    // The conversion function does: rect.left + ((1 + x) / 2) * rect.width
+    // So we can get bounds by testing corner positions
+    const topLeftGlobal = this.rootRenderInstance.convertCameraSpaceToScreenSpace(-1, 1); // Top-left corner in camera space
+    const bottomRightGlobal = this.rootRenderInstance.convertCameraSpaceToScreenSpace(1, -1); // Bottom-right corner in camera space
+
+    if (!topLeftGlobal || !bottomRightGlobal) {
+      return coordinates;
+    }
+
+    // Current viewer bounds in global page coordinates
+    const viewerBounds = {
+      left: topLeftGlobal.x,
+      top: topLeftGlobal.y,
+      right: bottomRightGlobal.x,
+      bottom: bottomRightGlobal.y,
+    };
+
+    // Add safety margin (50% of viewer dimensions) to account for overlapping viewers
+    const marginX = (viewerBounds.right - viewerBounds.left) * 0.5;
+    const marginY = (viewerBounds.bottom - viewerBounds.top) * 0.5;
+
+    // Check if global screen coordinates are within viewer bounds (including margin)
+    const isWithinBounds =
+      globalScreenCoords.x >= viewerBounds.left &&
+      globalScreenCoords.x <= viewerBounds.right &&
+      globalScreenCoords.y >= viewerBounds.top &&
+      globalScreenCoords.y <= viewerBounds.bottom;
+
+    if (isWithinBounds) {
+      // Target position: upper left of viewer with margin (in global page coordinates)
+      const targetGlobalX = viewerBounds.left - marginX;
+      const targetGlobalY = viewerBounds.top - marginY;
+
+      // Convert global page coordinates back to camera space
+      const targetCameraSpace = this.rootRenderInstance.convertScreenSpaceToCameraSpace(targetGlobalX, targetGlobalY);
+
+      if (targetCameraSpace) {
+        // Use raycaster to find world position at Z=0 plane
+        const raycaster = new Raycaster();
+        raycaster.setFromCamera(targetCameraSpace, this.rootRenderInstance.camera);
+        const planeZ = new Plane(new Vector3(0, 0, 1), 0);
+        const intersection = new Vector3();
+        const intersects = raycaster.ray.intersectPlane(planeZ, intersection);
+
+        if (intersects) {
+          return new Vector3(intersects.x, intersects.y, coordinates.z);
+        }
+      }
+    }
+
+    return coordinates;
   }
 
   public anchor(ownerPosition: OwnerOriginPosition | string): Group {
@@ -600,9 +677,16 @@ export class ChitRenderInstance {
     if (rootGroup && rootRenderInstance && renderSpec) {
       let intersection = this.attemptToFindPlaneZ0(rootRenderInstance, this.chit);
       if (!intersection) {
-        intersection = this.group.localToWorld(new Vector3(0, rootRenderInstance.cameraWrapper.visibleGameHeight, 0));
+        // Ensure chit moves outside visible region with safety margin
+        // Add extra margin (50% of visible height) to account for overlapping viewers
+        const safetyMargin = rootRenderInstance.cameraWrapper.visibleGameHeight * 0.5;
+        const targetY = rootRenderInstance.cameraWrapper.visibleGameHeight + safetyMargin;
+        intersection = this.group.localToWorld(new Vector3(0, targetY, 0));
         renderSpec.splay.enabled = false;
       }
+
+      // Ensure exit coordinates are outside visible region if they overlap
+      intersection = this.ensureCoordinatesOutsideVisibleRegion(intersection);
 
       rootGroup.attach(this.group);
       // now move the chit to the new "location" and then we can kill it.
@@ -780,9 +864,12 @@ export class ChitRenderInstance {
 
       // where is this going?
       const positionExitChit = this.chit.parent ?? this.chit.parentFallback;
+      // Ensure chit moves outside visible region with safety margin
+      const safetyMargin = (this.rootRenderInstance?.cameraWrapper.visibleGameHeight ?? 10) * 0.5;
+      const targetOffsetY = (this.rootRenderInstance?.cameraWrapper.visibleGameHeight ?? 10) + safetyMargin;
       const target = {
         x: position.x,
-        y: position.y + (this.rootRenderInstance?.cameraWrapper.visibleGameHeight ?? 10),
+        y: position.y + targetOffsetY,
       };
       let duration = 500;
       if (this.rootRenderInstance) {
