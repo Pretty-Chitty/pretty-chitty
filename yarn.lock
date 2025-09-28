@@ -2289,7 +2289,7 @@
   resolved "https://registry.yarnpkg.com/@types/stats.js/-/stats.js-0.17.4.tgz#1933e5ff153a23c7664487833198d685c22e791e"
   integrity sha512-jIBvWWShCvlBqBNIZt0KAshWpvSjhkwkEu4ZUcASoAvhmrgAUI2t1dXrjSL4xXVLB4FznPrIsX3nKXFl/Dt4vA==
 
-"@types/three@^0.180.1":
+"@types/three@^0.180.0":
   version "0.180.0"
   resolved "https://registry.yarnpkg.com/@types/three/-/three-0.180.0.tgz#c9525a744e55c43f720185710c5dc33e6ff67b53"
   integrity sha512-ykFtgCqNnY0IPvDro7h+9ZeLY+qjgUWv+qEvUt84grhenO60Hqd4hScHE7VTB9nOQ/3QM8lkbNE+4vKjEpUxKg==

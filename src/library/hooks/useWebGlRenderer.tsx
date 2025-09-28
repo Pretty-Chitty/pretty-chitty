@@ -15,6 +15,7 @@ class WebGLRendererWrapper {
   public renderPass: RenderPass;
   public outlinePass: IDBasedOutlinePass;
   public outputPass: OutputPass;
+  private memoryExtension: any;
 
   constructor(
     public renderer: WebGLRenderer,
@@ -27,6 +28,10 @@ class WebGLRendererWrapper {
     if (!this.renderer.getContext()) {
       throw new Error("WebGL context is not available");
     }
+
+    // Get memory extension for GPU memory monitoring
+    const gl = this.renderer.getContext();
+    this.memoryExtension = gl.getExtension('WEBGL_debug_renderer_info');
 
     const pixelRatio = Math.max(1.5, window.devicePixelRatio);
     this.renderer.setPixelRatio(pixelRatio);
@@ -67,6 +72,22 @@ class WebGLRendererWrapper {
 
   render(sceneWrapper: SceneWrapper, camera: Camera) {
     this.composer.render(sceneWrapper, camera);
+  }
+
+  getGPUMemoryInfo() {
+    const gl = this.renderer.getContext();
+    const info = this.renderer.info;
+
+    return {
+      geometries: info.memory.geometries,
+      textures: info.memory.textures,
+      programs: info.programs?.length || 0,
+      calls: info.render.calls,
+      triangles: info.render.triangles,
+      points: info.render.points,
+      lines: info.render.lines,
+      frame: info.render.frame
+    };
   }
 
   setSize(width: number, height: number) {
@@ -142,6 +163,29 @@ export function useWebGlRenderer(w: number, h: number, transparent: boolean = fa
   }, [context, theme, w, h, transparent]);
 
   return rendererWrapper;
+}
+
+// Global memory monitoring utility
+export function logWebGLMemoryStats(label: string = "WebGL Memory") {
+  // Find any active renderer to get memory stats
+  const canvas = document.querySelector('canvas');
+  if (!canvas) return;
+
+  const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+  if (!gl) return;
+
+  console.group(label);
+  console.log(`Active textures: ${gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS)}`);
+  console.log(`Max texture size: ${gl.getParameter(gl.MAX_TEXTURE_SIZE)}`);
+  console.log(`Max renderbuffer size: ${gl.getParameter(gl.MAX_RENDERBUFFER_SIZE)}`);
+
+  // Try to get debug info if available
+  const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+  if (debugInfo) {
+    console.log(`Renderer: ${gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)}`);
+    console.log(`Vendor: ${gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)}`);
+  }
+  console.groupEnd();
 }
 
 export function WebGlRendererProvider({ children }: { children: ReactNode }) {

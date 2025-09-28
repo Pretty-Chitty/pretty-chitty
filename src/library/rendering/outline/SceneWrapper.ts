@@ -92,6 +92,9 @@ export class SceneWrapper {
   fullUpdate(): void {
     this._dirty = false;
 
+    // Log memory before flush if significant changes expected
+    const beforeMemory = this.getMemorySnapshot();
+
     // Track existing shadow meshes
     const existingShadowIds = new Set(this.shadowMeshes.keys());
     const currentOutlineIds = new Set<number>();
@@ -200,6 +203,9 @@ export class SceneWrapper {
       }
     }
 
+    // Log memory after flush and compare
+    const afterMemory = this.getMemorySnapshot();
+    this.logMemoryChanges(beforeMemory, afterMemory, existingShadowIds.size, currentOutlineIds.size);
   }
 
   dispose(): void {
@@ -218,5 +224,255 @@ export class SceneWrapper {
     this.outlinedObjects.clear();
     this.materialHashes.clear();
     this.outlineScene.clear();
+  }
+
+  private getMemorySnapshot() {
+    // Shadow scene stats (outline materials)
+    const shadowStats = this.analyzeSceneMemory(this.outlineScene, "shadow");
+
+    // Real scene stats (original materials)
+    const realStats = this.analyzeSceneMemory(this.realScene, "real");
+
+    return {
+      timestamp: performance.now(),
+      shadow: shadowStats,
+      real: realStats
+    };
+  }
+
+  private analyzeSceneMemory(scene: any, sceneType: string) {
+    const geometries = new Set();
+    const materials = new Set();
+    const textureMemoryMap = new Map<string, number>(); // Store memory usage, not texture refs
+    let totalMeshes = 0;
+    let totalVertices = 0;
+    let totalFaces = 0;
+    let transparentMaterials = 0;
+    let opaqueMaterials = 0;
+    let texturesUsed = 0;
+    let outlinedMeshes = 0;
+    let nonOutlinedMeshes = 0;
+
+    scene.traverse((object: any) => {
+      if (object.isMesh) {
+        totalMeshes++;
+
+        // Check if mesh has outline userData
+        if (object.userData?.outlineColor) {
+          outlinedMeshes++;
+        } else {
+          nonOutlinedMeshes++;
+        }
+
+        // Analyze geometry
+        if (object.geometry) {
+          geometries.add(object.geometry.uuid);
+          const positions = object.geometry.attributes.position;
+          if (positions) {
+            totalVertices += positions.count;
+            if (object.geometry.index) {
+              totalFaces += object.geometry.index.count / 3;
+            } else {
+              totalFaces += positions.count / 3;
+            }
+          }
+        }
+
+        // Analyze materials
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach((mat: any) => {
+              materials.add(mat.uuid);
+              this.analyzeMaterial(mat, sceneType, {
+                transparentMaterials: () => transparentMaterials++,
+                opaqueMaterials: () => opaqueMaterials++,
+                texturesUsed: () => texturesUsed++,
+                textureMemoryMap
+              });
+            });
+          } else {
+            materials.add(object.material.uuid);
+            this.analyzeMaterial(object.material, sceneType, {
+              transparentMaterials: () => transparentMaterials++,
+              opaqueMaterials: () => opaqueMaterials++,
+              texturesUsed: () => texturesUsed++,
+              textureMemoryMap
+            });
+          }
+        }
+      }
+    });
+
+    // Sum up texture memory
+    const textureMemoryMB = Array.from(textureMemoryMap.values()).reduce((sum, mem) => sum + mem, 0);
+
+    return {
+      meshes: totalMeshes,
+      outlinedMeshes,
+      nonOutlinedMeshes,
+      geometries: geometries.size,
+      materials: materials.size,
+      textures: textureMemoryMap.size,
+      textureMemoryMB,
+      vertices: totalVertices,
+      faces: totalFaces,
+      transparentMaterials,
+      opaqueMaterials,
+      texturesUsed
+    };
+  }
+
+  private analyzeMaterial(material: any, sceneType: string, counters: any) {
+    if (sceneType === "shadow") {
+      // Shadow materials (ID materials)
+      if (material.transparent) {
+        counters.transparentMaterials();
+      } else {
+        counters.opaqueMaterials();
+      }
+      if (material.uniforms?.originalMap?.value) {
+        counters.texturesUsed();
+        const texture = material.uniforms.originalMap.value;
+        if (!counters.textureMemoryMap.has(texture.uuid)) {
+          counters.textureMemoryMap.set(texture.uuid, this.calculateSingleTextureMemory(texture));
+        }
+      }
+    } else {
+      // Real scene materials (original materials)
+      if (material.transparent || material.opacity < 1.0) {
+        counters.transparentMaterials();
+      } else {
+        counters.opaqueMaterials();
+      }
+      if (material.map) {
+        counters.texturesUsed();
+        if (!counters.textureMemoryMap.has(material.map.uuid)) {
+          counters.textureMemoryMap.set(material.map.uuid, this.calculateSingleTextureMemory(material.map));
+        }
+      }
+      // Also check other common texture maps
+      ['normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap'].forEach(mapType => {
+        if (material[mapType]) {
+          if (!counters.textureMemoryMap.has(material[mapType].uuid)) {
+            counters.textureMemoryMap.set(material[mapType].uuid, this.calculateSingleTextureMemory(material[mapType]));
+          }
+        }
+      });
+    }
+  }
+
+  private calculateSingleTextureMemory(texture: any): number {
+    if (!texture?.image) return 0;
+
+    const width = texture.image.width || 512; // Default fallback
+    const height = texture.image.height || 512;
+
+    // Determine bytes per pixel based on format
+    let bytesPerPixel = 4; // Default RGBA
+    if (texture.format !== undefined) {
+      // Three.js texture formats
+      switch (texture.format) {
+        case 1023: // RGBAFormat
+          bytesPerPixel = 4;
+          break;
+        case 1022: // RGBFormat
+          bytesPerPixel = 3;
+          break;
+        case 1021: // RGFormat (Red Green)
+          bytesPerPixel = 2;
+          break;
+        case 1019: // RedFormat
+          bytesPerPixel = 1;
+          break;
+        case 1020: // AlphaFormat
+          bytesPerPixel = 1;
+          break;
+        default:
+          bytesPerPixel = 4; // Safe default
+      }
+    }
+
+    // Base texture memory
+    let textureMemory = width * height * bytesPerPixel;
+
+    // Add mipmap memory (approximately 1.33x base size if mipmaps enabled)
+    if (texture.generateMipmaps !== false) {
+      textureMemory *= 1.33;
+    }
+
+    // Convert to MB
+    return textureMemory / (1024 * 1024);
+  }
+
+  private logMemoryChanges(before: any, after: any, beforeCount: number, afterCount: number) {
+    // Check for significant changes in either scene
+    const shadowChanged = this.hasSignificantChanges(before.shadow, after.shadow);
+    const realChanged = this.hasSignificantChanges(before.real, after.real);
+
+    if (shadowChanged || realChanged) {
+      console.group(`SceneWrapper Memory Update (${beforeCount} → ${afterCount} outlined objects)`);
+
+      // Real Scene Stats
+      console.group(`🎨 Real Scene (Original Materials)`);
+      this.logSceneStats(before.real, after.real);
+      console.groupEnd();
+
+      // Shadow Scene Stats
+      console.group(`👤 Shadow Scene (Outline Materials)`);
+      this.logSceneStats(before.shadow, after.shadow);
+      console.groupEnd();
+
+      // Combined memory estimate
+      const totalVertices = after.real.vertices + after.shadow.vertices;
+      const totalFaces = after.real.faces + after.shadow.faces;
+      const vertexMemoryMB = (totalVertices * 3 * 4) / (1024 * 1024);
+      const faceMemoryMB = (totalFaces * 3 * 2) / (1024 * 1024);
+      const totalTextures = after.real.textures + after.shadow.textures;
+      const totalTextureMemoryMB = (after.real.textureMemoryMB || 0) + (after.shadow.textureMemoryMB || 0);
+
+      console.log(`📊 Combined Memory Estimate:`);
+      console.log(`  Geometry: ${(vertexMemoryMB + faceMemoryMB).toFixed(2)}MB`);
+      console.log(`  Textures: ${totalTextureMemoryMB.toFixed(2)}MB (${totalTextures} unique)`);
+      console.log(`  Total GPU: ${(vertexMemoryMB + faceMemoryMB + totalTextureMemoryMB).toFixed(2)}MB`);
+      console.log(`  Optimization: ${after.shadow.opaqueMaterials} shadow materials skip texture sampling`);
+
+      console.groupEnd();
+    }
+  }
+
+  private hasSignificantChanges(before: any, after: any): boolean {
+    if (!before || !after) return true;
+    return Math.abs(after.meshes - before.meshes) > 0 ||
+           Math.abs(after.geometries - before.geometries) > 0 ||
+           Math.abs(after.materials - before.materials) > 0;
+  }
+
+  private logSceneStats(before: any, after: any) {
+    if (!before || !after) {
+      console.log("No previous data for comparison");
+      return;
+    }
+
+    const meshDelta = after.meshes - before.meshes;
+    const geometryDelta = after.geometries - before.geometries;
+    const materialDelta = after.materials - before.materials;
+    const vertexDelta = after.vertices - before.vertices;
+    const faceDelta = after.faces - before.faces;
+    const transparentDelta = after.transparentMaterials - before.transparentMaterials;
+    const opaqueDelta = after.opaqueMaterials - before.opaqueMaterials;
+    const texturesDelta = after.texturesUsed - before.texturesUsed;
+    const textureMemoryDelta = (after.textureMemoryMB || 0) - (before.textureMemoryMB || 0);
+
+    console.log(`Meshes: ${before.meshes} → ${after.meshes} (${meshDelta > 0 ? '+' : ''}${meshDelta})`);
+    console.log(`  ├─ With Outlines: ${before.outlinedMeshes || 0} → ${after.outlinedMeshes || 0}`);
+    console.log(`  └─ Without Outlines: ${before.nonOutlinedMeshes || 0} → ${after.nonOutlinedMeshes || 0}`);
+    console.log(`Geometries: ${before.geometries} → ${after.geometries} (${geometryDelta > 0 ? '+' : ''}${geometryDelta})`);
+    console.log(`Materials: ${before.materials} → ${after.materials} (${materialDelta > 0 ? '+' : ''}${materialDelta})`);
+    console.log(`  ├─ Transparent: ${before.transparentMaterials} → ${after.transparentMaterials} (${transparentDelta > 0 ? '+' : ''}${transparentDelta})`);
+    console.log(`  ├─ Opaque: ${before.opaqueMaterials} → ${after.opaqueMaterials} (${opaqueDelta > 0 ? '+' : ''}${opaqueDelta})`);
+    console.log(`  └─ Using Textures: ${before.texturesUsed} → ${after.texturesUsed} (${texturesDelta > 0 ? '+' : ''}${texturesDelta})`);
+    console.log(`Textures: ${(before.textureMemoryMB || 0).toFixed(2)}MB → ${(after.textureMemoryMB || 0).toFixed(2)}MB (${textureMemoryDelta > 0 ? '+' : ''}${textureMemoryDelta.toFixed(2)}MB)`);
+    console.log(`Vertices: ${before.vertices.toLocaleString()} → ${after.vertices.toLocaleString()} (${vertexDelta > 0 ? '+' : ''}${vertexDelta.toLocaleString()})`);
+    console.log(`Faces: ${before.faces.toLocaleString()} → ${after.faces.toLocaleString()} (${faceDelta > 0 ? '+' : ''}${faceDelta.toLocaleString()})`);
   }
 }

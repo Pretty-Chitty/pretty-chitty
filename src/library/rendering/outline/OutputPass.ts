@@ -22,7 +22,7 @@ export class OutputPass extends Pass {
   public material: RawShaderMaterial;
 
   private _fsQuad: FullScreenQuad;
-  private _outputColorSpace: ColorSpace | null;
+  private _outputColorSpace: string | null;
   private _toneMapping: unknown;
 
   constructor() {
@@ -58,7 +58,7 @@ export class OutputPass extends Pass {
 
       this.material.defines = {};
 
-      if (ColorManagement.getTransfer(this._outputColorSpace) === SRGBTransfer) {
+      if (this._outputColorSpace && ColorManagement.getTransfer(this._outputColorSpace) === SRGBTransfer) {
         this.material.defines.SRGB_TRANSFER = "";
       }
 

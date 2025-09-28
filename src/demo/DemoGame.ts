@@ -68,8 +68,8 @@ export class DemoGame implements Game<MyPlayer, Root> {
     players[0].color = "#ed00cb";
     players[1].color = "#00edcb";
 
-    const W = 20;
-    const H = 20;
+    const W = 6;
+    const H = 6;
 
     // set up the board
     // const rows = [...new Array(H)].map(() =>
@@ -83,6 +83,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
 
     const pieces = [...new Array(W * H)].map((d, i) =>
       new Card().set((c) => {
+        c.something = i;
         c.x = Math.floor(i / H);
         c.y = i % H;
         rootChit.mainBoard.add(c);
@@ -93,8 +94,18 @@ export class DemoGame implements Game<MyPlayer, Root> {
     );
     setup.flush();
 
-    players[1].add(pieces[1]);
-    setup.flush();
+    for (let i = 0; i < 300; i++) {
+      for (let c = 0; c < 6; c++) {
+        const index = Math.floor((await setup.rng()) * 3) - 1;
+        const pieceIndex = Math.floor((await setup.rng()) * pieces.length);
+        if (index === -1) {
+          rootChit.mainBoard.add(pieces[pieceIndex]);
+        } else {
+          players[index].add(pieces[pieceIndex]);
+        }
+      }
+      setup.flush();
+    }
 
     // players[2].add(pieces[2]);
     // setup.flush();

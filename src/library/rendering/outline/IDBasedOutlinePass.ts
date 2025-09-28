@@ -505,8 +505,25 @@ export class IDBasedOutlinePass extends Pass {
 
   // Helper method to copy material properties to ID material
   private copyMaterialProperties(idMaterial: any, originalMaterial: any): void {
-    if (originalMaterial) {
-      // Copy alpha-related properties
+    if (!originalMaterial) {
+      // Default values for materials without transparency
+      idMaterial.uniforms["originalOpacity"].value = 1.0;
+      idMaterial.uniforms["originalMap"].value = null;
+      idMaterial.uniforms["hasOriginalMap"].value = false;
+      idMaterial.uniforms["alphaTest"].value = 0.0;
+      idMaterial.transparent = false;
+      idMaterial.opacity = 1.0;
+      return;
+    }
+
+    // Check if material has any transparency
+    const isTransparent = originalMaterial.transparent ||
+                         originalMaterial.alphaTest > 0 ||
+                         (originalMaterial.opacity !== undefined && originalMaterial.opacity < 1.0) ||
+                         (originalMaterial.map && originalMaterial.map.format === 1023); // RGBAFormat
+
+    if (isTransparent) {
+      // Full material property copying for transparent materials
       if (originalMaterial.transparent) {
         idMaterial.transparent = true;
       }
@@ -518,25 +535,28 @@ export class IDBasedOutlinePass extends Pass {
         idMaterial.transparent = true;
       }
 
-      // Copy backface culling settings
-      if (originalMaterial.side !== undefined) {
-        idMaterial.side = originalMaterial.side;
-      }
-
-      // Copy texture and alpha properties to uniforms
+      // Copy texture and alpha properties to uniforms for alpha testing
       idMaterial.uniforms["originalOpacity"].value =
         originalMaterial.opacity !== undefined ? originalMaterial.opacity : 1.0;
       idMaterial.uniforms["originalMap"].value = originalMaterial.map || null;
       idMaterial.uniforms["hasOriginalMap"].value = !!originalMaterial.map;
       idMaterial.uniforms["alphaTest"].value = originalMaterial.alphaTest || 0.0;
     } else {
-      // Default values for materials without transparency
+      // Simplified material for opaque materials - no texture sampling needed
+      idMaterial.transparent = false;
+      idMaterial.opacity = 1.0;
+      idMaterial.alphaTest = 0.0;
+
+      // Skip texture uniforms for opaque materials to save GPU memory
       idMaterial.uniforms["originalOpacity"].value = 1.0;
       idMaterial.uniforms["originalMap"].value = null;
       idMaterial.uniforms["hasOriginalMap"].value = false;
       idMaterial.uniforms["alphaTest"].value = 0.0;
-      idMaterial.transparent = false;
-      idMaterial.opacity = 1.0;
+    }
+
+    // Always copy backface culling settings regardless of transparency
+    if (originalMaterial.side !== undefined) {
+      idMaterial.side = originalMaterial.side;
     }
   }
 
