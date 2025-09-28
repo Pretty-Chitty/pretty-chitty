@@ -532,14 +532,24 @@ export class ChitRenderInstance {
 
   public outlineContext?: ChitRenderInstance;
 
+  public hasExplicitOnClick() {
+    return this.chit.onClick && !this.renderSpec?.isShowingChildrenAsGallery;
+  }
+
   public fixOutline() {
-    if (this.chit.onClick && this.renderSpec && this.renderSpec.highlight.childrenInheritOutline === undefined) {
+    if (
+      this.hasExplicitOnClick() &&
+      this.renderSpec &&
+      this.renderSpec.highlight.childrenInheritOutline === undefined
+    ) {
       this.renderSpec.highlight.childrenInheritOutline = true;
     }
 
-    const myColor = this.chit.onClick ? this.renderSpec?.highlight.clickColor : this.renderSpec?.highlight.color;
+    const myColor = this.hasExplicitOnClick()
+      ? this.renderSpec?.highlight.clickColor
+      : this.renderSpec?.highlight.color;
 
-    if (this.chit.onClick && this.renderSpec?.highlight.childrenInheritOutline === false) {
+    if (this.hasExplicitOnClick() && this.renderSpec?.highlight.childrenInheritOutline === false) {
       this.outlineContext = undefined;
     } else if (myColor && this.renderSpec?.highlight.childrenInheritOutline === true) {
       this.outlineContext = this;
@@ -554,7 +564,7 @@ export class ChitRenderInstance {
     }
 
     const outlineContext = this.outlineContext ? this.outlineContext : this;
-    const c = outlineContext.chit.onClick
+    const c = outlineContext.hasExplicitOnClick()
       ? outlineContext.renderSpec?.highlight.clickColor
       : outlineContext.renderSpec?.highlight.color;
 

@@ -130,6 +130,8 @@ export default function Viewer({
       return;
     }
 
+    chitRenderInstance.sceneWrapper.markDirty();
+
     let renderNextFrame: boolean | undefined;
     let cancelled = false;
     const animate = () => {
@@ -144,6 +146,8 @@ export default function Viewer({
           renderNextFrame = chitRenderInstance?.update();
           if (
             chitRenderInstance &&
+            rendererWrapper &&
+            rendererWrapper.renderer.getContext() &&
             (prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
           ) {
             rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera);

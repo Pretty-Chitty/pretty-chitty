@@ -87,8 +87,8 @@ function BlurringGalleryWrapper({ children }: { children: React.ReactNode }) {
         width: "100%",
         height: "100%",
         display: "flex",
-        filter: isShowingGallery ? `blur(${theme.galleryBlur}px)` : "blur(0.0001px)",
-        transition: `filter ${0.3 * animationSpeedMultiplier}s`,
+        // filter: isShowingGallery ? `blur(${theme.galleryBlur}px)` : "blur(0.0001px)",
+        // transition: `filter ${0.3 * animationSpeedMultiplier}s`,
       }}
     >
       {children}

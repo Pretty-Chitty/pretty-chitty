@@ -121,7 +121,7 @@ function SinglePanel({
       }}
     >
       <Box sx={{ width: "100%", height: "100%", position: "relative", borderRadius: "10px", overflow: "hidden" }}>
-        <ViewerWrapper chit={chit} w={w - theme.spacing} h={h - theme.spacing} paused={paused} />
+        <ViewerWrapper chit={chit} w={w - theme.spacing} h={h - theme.spacing} paused={paused} refContainer={null} />
       </Box>
     </Box>
   );

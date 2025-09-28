@@ -23,6 +23,11 @@ class WebGLRendererWrapper {
     theme: GameTheme,
     transparent: boolean = false,
   ) {
+    // Check if WebGL context is available
+    if (!this.renderer.getContext()) {
+      throw new Error("WebGL context is not available");
+    }
+
     const pixelRatio = Math.max(1.5, window.devicePixelRatio);
     this.renderer.setPixelRatio(pixelRatio);
     width = Math.round(width * pixelRatio);
@@ -52,7 +57,6 @@ class WebGLRendererWrapper {
     // Configure outline pass with standard settings
     this.outlinePass.edgeStrength = theme.chitOutlineStrength;
     this.outlinePass.edgeThickness = theme.chitOutlineWidth;
-    this.outlinePass.downSampleRatio = theme.chitOutlineDownsample;
 
     this.composer.addPass(this.renderPass);
     this.composer.addPass(this.outlinePass);
@@ -88,7 +92,6 @@ class WebGLRendererWrapper {
     // Update theme settings
     this.outlinePass.edgeStrength = theme.chitOutlineStrength;
     this.outlinePass.edgeThickness = theme.chitOutlineWidth;
-    this.outlinePass.downSampleRatio = theme.chitOutlineDownsample;
   }
 
   dispose() {
@@ -109,7 +112,17 @@ export function useWebGlRenderer(w: number, h: number, transparent: boolean = fa
     if (!wrapper) {
       wrapper = context.unused.pop();
       if (!wrapper) {
-        wrapper = new WebGLRendererWrapper(new WebGLRenderer(), w, h, theme, transparent);
+        try {
+          const renderer = new WebGLRenderer();
+          if (!renderer.getContext()) {
+            console.error("Failed to create WebGL context");
+            return;
+          }
+          wrapper = new WebGLRendererWrapper(renderer, w, h, theme, transparent);
+        } catch (error) {
+          console.error("Failed to create WebGL renderer:", error);
+          return;
+        }
       } else {
         wrapper.setSize(w, h);
         wrapper.reconfigure(theme, transparent); // Reconfigure for current mode

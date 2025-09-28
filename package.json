@@ -19,7 +19,7 @@
   "peerDependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "three": "^0.158.0"
+    "three": "^0.180.0"
   },
   "devDependencies": {
     "@babel/core": "^7.23.3",
@@ -36,7 +36,7 @@
     "@types/node": "^20.11.3",
     "@types/react": "^18.2.34",
     "@types/react-dom": "^18.2.14",
-    "@types/three": "^0.158.1",
+    "@types/three": "^0.180.1",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitest/coverage-v8": "^1.2.0",

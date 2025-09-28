@@ -200,7 +200,6 @@ export class SceneWrapper {
       }
     }
 
-    console.log(this.outlinedObjects.size, "outlined objects");
   }
 
   dispose(): void {

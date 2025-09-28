@@ -170,8 +170,6 @@ export class EffectComposer {
     const currentClearAlpha = this.renderer.getClearAlpha();
     const currentAutoClear = this.renderer.autoClear;
 
-    let maskActive = false;
-
     let readBuffer = this.renderTarget;
     let writeBuffer = this.renderTarget2;
 
@@ -186,7 +184,7 @@ export class EffectComposer {
       pass.sceneWrapper = sceneWrapper;
       pass.camera = camera;
       pass.renderToScreen = this.renderToScreen && this.isLastEnabledPass(i);
-      pass.render(this.renderer, writeBuffer, readBuffer, maskActive);
+      pass.render(this.renderer, writeBuffer, readBuffer, false);
 
       const passTime = performance.now() - passStart;
       passTimes.push(passTime);
@@ -197,7 +195,6 @@ export class EffectComposer {
         readBuffer = writeBuffer;
         writeBuffer = tmp;
       }
-
     }
 
     this.renderer.setRenderTarget(currentRenderTarget);
@@ -207,10 +204,11 @@ export class EffectComposer {
     const totalComposerTime = performance.now() - composerStart;
 
     // Log timing occasionally
-    if (Math.random() < 0.016) { // ~1/60 chance
+    if (Math.random() < 0.016) {
+      // ~1/60 chance
       console.log(`EffectComposer Timing (${totalComposerTime.toFixed(2)}ms total):`);
       passTimes.forEach((time, index) => {
-        const passName = this.passes.filter(p => p.enabled)[index]?.constructor?.name || `Pass${index}`;
+        const passName = this.passes.filter((p) => p.enabled)[index]?.constructor?.name || `Pass${index}`;
         console.log(`  Pass ${index} (${passName}): ${time.toFixed(2)}ms`);
       });
     }

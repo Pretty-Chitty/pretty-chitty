@@ -68,8 +68,8 @@ export class DemoGame implements Game<MyPlayer, Root> {
     players[0].color = "#ed00cb";
     players[1].color = "#00edcb";
 
-    const W = 3;
-    const H = 3;
+    const W = 20;
+    const H = 20;
 
     // set up the board
     // const rows = [...new Array(H)].map(() =>

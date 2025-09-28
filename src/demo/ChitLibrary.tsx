@@ -89,7 +89,7 @@ export class Bag extends GameBag<Card2> {
     // spec.object.userData.outlineId = 99;
     // spec.object.userData.outlineColor = new Color(0, 0, 1);
 
-    spec.highlight.color = "#ff00ff";
+    // spec.highlight.color = "#ff00ff";
 
     spec.offsetY = 1;
   }
@@ -133,6 +133,8 @@ export class Hand extends Chit {
     spec.showChildrenAsGallery();
   }
 }
+
+const cc = new MeshPhongMaterial({ color: 0xffffee });
 
 export class Card extends Chit {
   public something?: number = 2;
@@ -180,7 +182,7 @@ export class Card extends Chit {
     const mat = ts.material;
     mat.transparent = true;
 
-    spec.object = new CardMesh(1, 2, mat, new MeshPhongMaterial({ color: 0xffffee }), {
+    spec.object = new CardMesh(1, 2, mat, cc, {
       castShadow: true,
       receiveShadow: true,
     });
@@ -188,7 +190,7 @@ export class Card extends Chit {
     // spec.object.children[1].userData.outlineId = (this.parentOutletIndex ?? 0) + 1;
     // spec.object.children[1].userData.outlineColor = new Color(1, 1, 0);
     // spec.highlight.visible = true;
-    spec.highlight.color = "#000000";
+    // spec.highlight.color = "#000000";
     // spec.highlight.childrenInheritOutline = false;
 
     if (!this.something) {
@@ -231,8 +233,8 @@ export class Card extends Chit {
       spec.splay.zPerIndexMultiplier = 0.01;
     } else {
       spec.splay.enabled = true;
-      spec.splay.rows = 3;
-      spec.splay.columns = 3;
+      spec.splay.rows = 30;
+      spec.splay.columns = 30;
     }
 
     spec.galleryMaximumWidth = 300;
@@ -242,6 +244,11 @@ export class Card extends Chit {
   }
 }
 
+const card2side = new MeshPhongMaterial({
+  color: 0x999999,
+});
+const card2boxGeometry = new BoxGeometry(0.25, 0.25, 3.25);
+
 export class Card2 extends Chit {
   public something: number = 2;
   public thingy = false;
@@ -250,8 +257,6 @@ export class Card2 extends Chit {
   public card3: Card3 | undefined = undefined; // new Card3();
 
   public override render(spec: ChitRenderSpec): void {
-    const boxGeometry = new BoxGeometry(0.25, 0.25, 3.25);
-
     spec.showDetailsOnLongPress = true;
     spec.galleryMaximumWidth = 100;
     spec.worthSlidingToPanelToShowChange = false;
@@ -260,11 +265,9 @@ export class Card2 extends Chit {
     ts.subTitle = "yo ho ho";
     ts.title = "and a bottle" + this.something * 2;
 
-    const side = new MeshPhongMaterial({
-      color: 0x999999,
-    });
+    const side = card2side;
 
-    const mesh = new Mesh(boxGeometry, [
+    const mesh = new Mesh(card2boxGeometry, [
       side,
       side,
       side,
