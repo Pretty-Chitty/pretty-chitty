@@ -190,7 +190,7 @@ export class Card extends Chit {
     // spec.object.children[1].userData.outlineId = (this.parentOutletIndex ?? 0) + 1;
     // spec.object.children[1].userData.outlineColor = new Color(1, 1, 0);
     // spec.highlight.visible = true;
-    // spec.highlight.color = "#000000";
+    spec.highlight.color = "#00ffff";
     // spec.highlight.childrenInheritOutline = false;
 
     if (!this.something) {

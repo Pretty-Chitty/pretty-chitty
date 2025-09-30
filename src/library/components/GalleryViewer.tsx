@@ -518,7 +518,7 @@ export function GalleryViewer({
 }) {
   const [id] = useState(`GalleryViewer${ID_COUNTER++}`);
   const refContainer = useRef<HTMLCanvasElement>(null);
-  const rendererWrapper = useWebGlRenderer(w, h, true); // transparent=true for gallery
+  const rendererWrapper = useWebGlRenderer();
   const theme = useGameTheme();
   const [galleryController] = useState(new GalleryController(new SceneWrapper(new Scene()), theme));
   const [itemWidth, setItemWidth] = useState(galleryItemWidth);
@@ -575,17 +575,14 @@ export function GalleryViewer({
           fpsStartTime = performance.now();
         }
 
-        rendererWrapper.render(galleryController.sceneWrapper, galleryController.camera);
-
         if (ctx) {
-          ctx.clearRect(0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
-          ctx.drawImage(
-            rendererWrapper.renderer.domElement,
-            0,
-            0,
-            w * window.devicePixelRatio,
-            h * window.devicePixelRatio,
-          );
+          // Set canvas size to match target dimensions
+          ctx.canvas.width = w;
+          ctx.canvas.height = h;
+
+          // Clear canvas and render
+          ctx.clearRect(0, 0, w, h);
+          rendererWrapper.render(galleryController.sceneWrapper, galleryController.camera, ctx, theme);
         }
       }
     };

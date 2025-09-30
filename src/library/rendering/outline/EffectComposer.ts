@@ -37,53 +37,38 @@ export class EffectComposer {
 
   private textureId: string;
 
-  constructor(renderer: WebGLRenderer, renderTarget?: WebGLRenderTarget) {
+  constructor(renderer: WebGLRenderer, width: number, height: number) {
     this.renderer = renderer;
 
     this.textureId = `composer${++COUNTER}`;
 
-    if (!renderTarget) {
-      this._rtParams = {
-        minFilter: LinearFilter,
-        magFilter: LinearFilter,
-        format: RGBAFormat,
-        stencilBuffer: false,
-        depthBuffer: true,
-        generateMipmaps: false,
-      };
+    this._rtParams = {
+      minFilter: LinearFilter,
+      magFilter: LinearFilter,
+      format: RGBAFormat,
+      stencilBuffer: false,
+      depthBuffer: true,
+      generateMipmaps: false,
+    };
 
-      const size = renderer.getSize(new Vector2());
-      this._pixelRatio = renderer.getPixelRatio();
-      this._width = size.width;
-      this._height = size.height;
+    this._pixelRatio = renderer.getPixelRatio();
+    this._width = width;
+    this._height = height;
 
-      renderTarget = new WebGLRenderTarget(
-        Math.max(1, Math.floor(this._width * this._pixelRatio)),
-        Math.max(1, Math.floor(this._height * this._pixelRatio)),
-        this._rtParams,
-      );
-      renderTarget.texture.name = `EffectComposer.rt1.${this.textureId}`;
-      renderTarget.texture.generateMipmaps = false;
+    const renderTarget = new WebGLRenderTarget(
+      Math.max(1, Math.floor(this._width * this._pixelRatio)),
+      Math.max(1, Math.floor(this._height * this._pixelRatio)),
+      this._rtParams,
+    );
+    renderTarget.texture.name = `EffectComposer.rt1.${this.textureId}`;
+    renderTarget.texture.generateMipmaps = false;
 
-      // Create and attach depth texture for outline pass access
-      renderTarget.depthTexture = new DepthTexture(
-        Math.max(1, Math.floor(this._width * this._pixelRatio)),
-        Math.max(1, Math.floor(this._height * this._pixelRatio)),
-      );
-      renderTarget.depthTexture.type = UnsignedShortType;
-    } else {
-      this._rtParams = {
-        minFilter: renderTarget.texture.minFilter,
-        magFilter: renderTarget.texture.magFilter,
-        format: renderTarget.texture.format,
-        stencilBuffer: renderTarget.stencilBuffer,
-        depthBuffer: renderTarget.depthBuffer,
-      } as any;
-
-      this._pixelRatio = 1;
-      this._width = renderTarget.width;
-      this._height = renderTarget.height;
-    }
+    // Create and attach depth texture for outline pass access
+    renderTarget.depthTexture = new DepthTexture(
+      Math.max(1, Math.floor(this._width * this._pixelRatio)),
+      Math.max(1, Math.floor(this._height * this._pixelRatio)),
+    );
+    renderTarget.depthTexture.type = UnsignedShortType;
 
     this.renderTarget = renderTarget;
 
@@ -278,11 +263,6 @@ export class EffectComposer {
     for (let i = 0; i < this.passes.length; i++) {
       this.passes[i].setSize(effectiveWidth, effectiveHeight);
     }
-  }
-
-  setPixelRatio(pixelRatio: number): void {
-    this._pixelRatio = Math.max(0.1, pixelRatio);
-    this.setSize(this._width, this._height);
   }
 
   dispose() {

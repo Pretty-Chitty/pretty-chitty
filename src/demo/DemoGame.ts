@@ -37,7 +37,7 @@ theme.dialogBackgroundColor = "#ef8354cc";
 theme.dialogForegroundColor = "#000000ee";
 theme.chitHighlightColor = "#ffffff";
 theme.chitOutlineDownsample = 1;
-theme.chitOutlineWidth = 6;
+theme.chitOutlineWidth = 3;
 
 export class DemoGame implements Game<MyPlayer, Root> {
   name = "Demo Game";
@@ -94,7 +94,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     );
     setup.flush();
 
-    for (let i = 0; i < 300; i++) {
+    for (let i = 0; i < 3; i++) {
       for (let c = 0; c < 6; c++) {
         const index = Math.floor((await setup.rng()) * 3) - 1;
         const pieceIndex = Math.floor((await setup.rng()) * pieces.length);

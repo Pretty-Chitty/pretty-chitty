@@ -11,6 +11,7 @@ import { addWheelListener, removeWheelListener } from "wheel";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 import { useGalleryState } from "../hooks/useGalleryState";
 import { usePlayerId } from "../hooks/usePlayer";
+import { useGameTheme } from "../hooks/useGameTheme";
 
 let ID_COUNTER = 1;
 
@@ -39,7 +40,8 @@ export default function Viewer({
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
   const [isLoading] = useEventChannelState(timeState.isLoading);
   const myRefContainer = useRef(null);
-  const rendererWrapper = useWebGlRenderer(w, h);
+  const rendererWrapper = useWebGlRenderer();
+  const theme = useGameTheme();
 
   const galleryState = useGalleryState();
   const [chitRenderInstance, setChitRenderInstance] = useState<RootChitRenderInstance | null>(null);
@@ -147,17 +149,16 @@ export default function Viewer({
           if (
             chitRenderInstance &&
             rendererWrapper &&
-            rendererWrapper.renderer.getContext() &&
             (prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
           ) {
-            rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera);
-            context.drawImage(
-              rendererWrapper.renderer.domElement,
-              0,
-              0,
-              w * window.devicePixelRatio,
-              h * window.devicePixelRatio,
-            );
+            // Set canvas size to match target dimensions
+            context.canvas.width = w;
+            context.canvas.height = h;
+
+            // Clear canvas and render
+            context.clearRect(0, 0, w, h);
+            rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme);
+
             chitRenderInstance.dirty = false;
             timeState.setAnimationState(id, !paused);
           } else {
