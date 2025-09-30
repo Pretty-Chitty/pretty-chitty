@@ -87,57 +87,9 @@ export class EffectComposer {
     this.copyPass = new ShaderPass(CopyShader, this.textureId);
   }
 
-  setRenderer(
-    renderer: WebGLRenderer,
-    opts: {
-      adoptSizeFromRenderer?: boolean;
-      adoptPixelRatio?: boolean;
-      preserveLogicalSize?: boolean;
-    } = {},
-  ): void {
-    const { adoptSizeFromRenderer = true, adoptPixelRatio = true, preserveLogicalSize = false } = opts;
-
-    this.renderer = renderer;
-
-    if (adoptPixelRatio) this._pixelRatio = Math.max(0.1, renderer.getPixelRatio());
-    if (adoptSizeFromRenderer && !preserveLogicalSize) {
-      const size = renderer.getSize(new Vector2());
-      this._width = size.width;
-      this._height = size.height;
-    }
-
-    const effectiveWidth = Math.max(1, Math.floor(this._width * this._pixelRatio));
-    const effectiveHeight = Math.max(1, Math.floor(this._height * this._pixelRatio));
-
-    this.renderTarget.dispose();
-    this.renderTarget2.dispose();
-
-    this.renderTarget = new WebGLRenderTarget(effectiveWidth, effectiveHeight, this._rtParams);
-    this.renderTarget.texture.name = `EffectComposer.rt.${this.textureId}`;
-
-    // Create and attach depth texture for outline pass access
-    this.renderTarget.depthTexture = new DepthTexture(effectiveWidth, effectiveHeight);
-    this.renderTarget.depthTexture.type = UnsignedShortType;
-
-    // Create second render target for ping-pong rendering
-    this.renderTarget2 = new WebGLRenderTarget(effectiveWidth, effectiveHeight, this._rtParams);
-    this.renderTarget2.texture.name = `EffectComposer.rt2.${this.textureId}`;
-    this.renderTarget2.depthTexture = new DepthTexture(effectiveWidth, effectiveHeight);
-    this.renderTarget2.depthTexture.type = UnsignedShortType;
-
-    for (let i = 0; i < this.passes.length; i++) {
-      this.passes[i].setSize(effectiveWidth, effectiveHeight);
-    }
-  }
-
   addPass(pass: Pass): void {
     this.passes.push(pass);
-    pass.setSize(this._width * this._pixelRatio, this._height * this._pixelRatio);
-  }
-
-  insertPass(pass: Pass, index: number): void {
-    this.passes.splice(index, 0, pass);
-    pass.setSize(this._width * this._pixelRatio, this._height * this._pixelRatio);
+    pass.setSize(this._width, this._height);
   }
 
   private isLastEnabledPass(passIndex: number): boolean {
@@ -197,44 +149,6 @@ export class EffectComposer {
         console.log(`  Pass ${index} (${passName}): ${time.toFixed(2)}ms`);
       });
     }
-  }
-
-  reset(renderTarget?: WebGLRenderTarget): void {
-    if (!renderTarget) {
-      const size = this.renderer.getSize(new Vector2());
-      this._pixelRatio = this.renderer.getPixelRatio();
-      this._width = size.width;
-      this._height = size.height;
-
-      renderTarget =
-        this.renderTarget?.clone() ??
-        new WebGLRenderTarget(
-          Math.max(1, Math.floor(this._width * this._pixelRatio)),
-          Math.max(1, Math.floor(this._height * this._pixelRatio)),
-          this._rtParams,
-        );
-      renderTarget.setSize(
-        Math.max(1, Math.floor(this._width * this._pixelRatio)),
-        Math.max(1, Math.floor(this._height * this._pixelRatio)),
-      );
-    } else {
-      this._rtParams = {
-        minFilter: renderTarget.texture.minFilter,
-        magFilter: renderTarget.texture.magFilter,
-        format: renderTarget.texture.format,
-        stencilBuffer: renderTarget.stencilBuffer,
-        depthBuffer: renderTarget.depthBuffer,
-      } as any;
-
-      this._pixelRatio = 1;
-      this._width = renderTarget.width;
-      this._height = renderTarget.height;
-    }
-
-    if (this.renderTarget) {
-      this.renderTarget.dispose();
-    }
-    this.renderTarget = renderTarget;
   }
 
   setSize(width: number, height: number): void {

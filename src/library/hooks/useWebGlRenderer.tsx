@@ -142,7 +142,7 @@ class WebGLRendererWrapper {
 
     try {
       // Set scissor to render only to target region
-      this.renderer.setScissor(0, 0, width, height);
+      this.renderer.setScissor(0, 0, targetWidth, targetHeight);
       this.renderer.setViewport(0, 0, width, height);
 
       // Render using the composer
