@@ -75,7 +75,6 @@ export class InterMeshEdgeDetectionPass extends Pass {
     this.edgeDetectionMaterial.uniforms["useDepthTest"].value = depthTexture !== null;
   }
 
-
   setOutliningMeshes(outliningMeshes: Array<{ id: number; color: Color }>): void {
     this.selectedIDs.clear();
 

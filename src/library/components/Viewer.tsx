@@ -151,10 +151,6 @@ export default function Viewer({
             rendererWrapper &&
             (prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
           ) {
-            // Set canvas size to match target dimensions
-            context.canvas.width = w;
-            context.canvas.height = h;
-
             // Clear canvas and render
             context.clearRect(0, 0, w, h);
             rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme);
@@ -175,7 +171,7 @@ export default function Viewer({
       timeState.setAnimationState(id, false);
       cancelled = true;
     };
-  }, [id, timeState, rendererWrapper, chitRenderInstance, paused, actualRef, myRefContainer, w, h]);
+  }, [id, timeState, rendererWrapper, chitRenderInstance, paused, actualRef, myRefContainer, w, h, theme]);
 
   useEffect(() => {
     if (chitRenderInstance) {

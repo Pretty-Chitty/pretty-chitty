@@ -126,8 +126,8 @@ class WebGLRendererWrapper {
 
   render(sceneWrapper: SceneWrapper, camera: Camera, context2d: CanvasRenderingContext2D, theme: GameTheme) {
     const canvas = context2d.canvas;
-    const width = Math.round(canvas.width);
-    const height = Math.round(canvas.height);
+    const width = Math.round(canvas.width / this.pixelRatio);
+    const height = Math.round(canvas.height / this.pixelRatio);
     const targetWidth = Math.round(width * this.pixelRatio);
     const targetHeight = Math.round(height * this.pixelRatio);
 
@@ -160,8 +160,8 @@ class WebGLRendererWrapper {
         targetHeight, // Source width, height
         0,
         0, // Dest x, y
-        width,
-        height, // Dest width, height
+        targetWidth,
+        targetHeight, // Dest width, height
       );
       // context2d.restore();
     } finally {
