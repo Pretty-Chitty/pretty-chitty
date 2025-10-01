@@ -577,11 +577,11 @@ export function GalleryViewer({
 
         if (ctx) {
           // Set canvas size to match target dimensions
-          ctx.canvas.width = w;
-          ctx.canvas.height = h;
+          ctx.canvas.width = w * rendererWrapper.pixelRatio;
+          ctx.canvas.height = h * rendererWrapper.pixelRatio;
 
           // Clear canvas and render
-          ctx.clearRect(0, 0, w, h);
+          ctx.clearRect(0, 0, w * rendererWrapper.pixelRatio, h * rendererWrapper.pixelRatio);
           rendererWrapper.render(galleryController.sceneWrapper, galleryController.camera, ctx, theme);
         }
       }
@@ -590,7 +590,7 @@ export function GalleryViewer({
     return () => {
       cancelled = true;
     };
-  }, [id, rendererWrapper, galleryController, paused, w, h]);
+  }, [id, rendererWrapper, galleryController, paused, theme, w, h]);
 
   useEffect(() => {
     const el = refContainer.current;
@@ -674,8 +674,8 @@ export function GalleryViewer({
   return (
     <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }}>
       <canvas
-        width={w * window.devicePixelRatio}
-        height={h * window.devicePixelRatio}
+        width={w * rendererWrapper.pixelRatio}
+        height={h * rendererWrapper.pixelRatio}
         style={{ width: w, height: h }}
         ref={refContainer}
       />

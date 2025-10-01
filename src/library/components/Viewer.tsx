@@ -152,7 +152,6 @@ export default function Viewer({
             (prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
           ) {
             // Clear canvas and render
-            context.clearRect(0, 0, w, h);
             rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme);
 
             chitRenderInstance.dirty = false;
@@ -319,8 +318,8 @@ export default function Viewer({
   return (
     <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }}>
       <canvas
-        width={w * window.devicePixelRatio}
-        height={h * window.devicePixelRatio}
+        width={w * rendererWrapper.pixelRatio}
+        height={h * rendererWrapper.pixelRatio}
         style={{ width: w, height: h }}
         ref={myRefContainer}
       />

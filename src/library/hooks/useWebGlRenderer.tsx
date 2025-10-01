@@ -4,10 +4,6 @@ import { EffectComposer, IDBasedOutlinePass, OutputPass, RenderPass, Camera, Sce
 import { useGameTheme } from "./useGameTheme";
 import { GameTheme } from "../game/GameTheme";
 
-const WebGlRendererContext = createContext<{
-  wrapper: WebGLRendererWrapper | null;
-}>({ wrapper: null });
-
 interface ComposerEntry {
   composer: EffectComposer;
   renderPass: RenderPass;
@@ -24,7 +20,7 @@ class WebGLRendererWrapper {
   private memoryExtension: any;
   private currentWidth = 0;
   private currentHeight = 0;
-  private pixelRatio = Math.max(1.5, window.devicePixelRatio);
+  public pixelRatio = Math.max(1.5, window.devicePixelRatio);
   private maxComposers = 8;
 
   constructor() {
@@ -208,7 +204,11 @@ class WebGLRendererWrapper {
   }
 }
 
-export function useWebGlRenderer(): WebGLRendererWrapper | null {
+const WebGlRendererContext = createContext<{
+  wrapper: WebGLRendererWrapper;
+}>({ wrapper: new WebGLRendererWrapper() });
+
+export function useWebGlRenderer(): WebGLRendererWrapper {
   const context = useContext(WebGlRendererContext);
   const theme = useGameTheme();
 
@@ -230,6 +230,10 @@ export function useWebGlRenderer(): WebGLRendererWrapper | null {
       wrapper.referenceCount--;
     };
   }, [context, theme]);
+
+  if (!context.wrapper) {
+    throw new Error("useWebGlRenderer must be used within a WebGlRendererProvider");
+  }
 
   return context.wrapper;
 }
@@ -255,21 +259,4 @@ export function logWebGLMemoryStats(label: string = "WebGL Memory") {
     console.log(`Vendor: ${gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)}`);
   }
   console.groupEnd();
-}
-
-export function WebGlRendererProvider({ children }: { children: ReactNode }) {
-  const [contextValue] = useState(() => ({
-    wrapper: null as WebGLRendererWrapper | null,
-  }));
-
-  useEffect(() => {
-    return () => {
-      // Cleanup renderer when provider unmounts
-      if (contextValue.wrapper) {
-        contextValue.wrapper.dispose();
-      }
-    };
-  }, [contextValue]);
-
-  return <WebGlRendererContext.Provider value={contextValue}>{children}</WebGlRendererContext.Provider>;
 }
