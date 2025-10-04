@@ -179,7 +179,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       const type = c.chitTypeName();
       const counter = (this.newChitCounter[type] || 0) + 1;
       this.newChitCounter[type] = counter;
-      c.id = `${this.id}.${type}${counter}`;
+      c.id = `${this.id}.${type}.${counter}`;
       c.lock(this);
 
       const existing = this.chitLookup[c.id];

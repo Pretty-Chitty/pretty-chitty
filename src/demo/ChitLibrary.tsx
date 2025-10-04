@@ -146,7 +146,7 @@ export class Card extends Chit {
   raised = false;
 
   @ChildOutlet(new Vector3(0.5, 0, 0)) public token?: Card2;
-  @ChildOutlet(new Vector3(-0.5, 0, 1)) public token2?: Card2;
+  @ChildOutlet(new Vector3(0, 0, -2)) public token2?: Card2;
   @ChildOutlet public subCard?: Card;
 
   @Ordered(new Vector3(0.5, 0, 0))
@@ -180,11 +180,11 @@ export class Card extends Chit {
     });
 
     const mat = ts.material;
-    mat.transparent = true;
+    // mat.transparent = true;
 
     spec.object = new CardMesh(1, 2, mat, cc, {
-      castShadow: true,
-      receiveShadow: true,
+      // castShadow: true,
+      // receiveShadow: true,
     });
 
     // spec.object.children[1].userData.outlineId = (this.parentOutletIndex ?? 0) + 1;
@@ -233,8 +233,11 @@ export class Card extends Chit {
       spec.splay.zPerIndexMultiplier = 0.01;
     } else {
       spec.splay.enabled = true;
-      spec.splay.rows = 30;
-      spec.splay.columns = 30;
+      spec.splay.rows = 11;
+      spec.splay.columns = 11;
+      spec.splay.spacingMultiplier = 1.2;
+      spec.splay.columnOrientation = "increasing";
+      spec.splay.rowOrientation = "increasing";
     }
 
     spec.galleryMaximumWidth = 300;
@@ -243,11 +246,6 @@ export class Card extends Chit {
     spec.setOutletPositionFromCanvas(ts);
   }
 }
-
-const card2side = new MeshPhongMaterial({
-  color: 0x999999,
-});
-const card2boxGeometry = new BoxGeometry(0.25, 0.25, 3.25);
 
 export class Card2 extends Chit {
   public something: number = 2;
@@ -265,6 +263,10 @@ export class Card2 extends Chit {
     ts.subTitle = "yo ho ho";
     ts.title = "and a bottle" + this.something * 2;
 
+    const card2side = new MeshPhongMaterial({
+      color: 0x999999,
+    });
+    const card2boxGeometry = new BoxGeometry(0.25, 0.25, 5.25);
     const side = card2side;
 
     const mesh = new Mesh(card2boxGeometry, [

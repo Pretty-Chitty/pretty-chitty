@@ -1,5 +1,3 @@
-import { ClockDetails } from "../ClockDetails";
-import QuickLRU from "quick-lru";
 import { Connection } from "../Connection";
 import { ConnectionObject } from "../ConnectionObject";
 import { Match } from "../Match";

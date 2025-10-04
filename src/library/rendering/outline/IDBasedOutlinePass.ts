@@ -11,7 +11,6 @@ import {
   UnsignedShortType,
   ShaderMaterial,
   NormalBlending,
-  AdditiveBlending,
   UniformsUtils,
   IUniform,
   Material,
@@ -31,6 +30,7 @@ import { InterMeshEdgeDetectionPass } from "./passes/InterMeshEdgeDetectionPass"
 import { DebugIDMappingPass } from "./passes/DebugIDMappingPass";
 import { FullScreenQuad } from "./FullScreenQuad";
 import { CopyShader } from "./shaders";
+import { SceneWrapper } from "./SceneWrapper";
 
 export class IDBasedOutlinePass extends Pass {
   // Configuration properties
@@ -137,7 +137,6 @@ export class IDBasedOutlinePass extends Pass {
         sceneDepthTexture: { value: null }, // Will be set before rendering
         useDepthTest: { value: false }, // Will be updated before rendering
         resolution: { value: new Vector2(resx, resy) },
-        cameraDistance: { value: 1.0 }, // Will be updated per mesh
         pixelOffset: { value: new Vector2(0.0, 0.0) }, // For multiple pass rendering
         originalMap: { value: null }, // Original diffuse texture for alpha testing
         originalOpacity: { value: 1.0 }, // Original material opacity
@@ -167,7 +166,6 @@ export class IDBasedOutlinePass extends Pass {
         uniform sampler2D sceneDepthTexture;
         uniform bool useDepthTest;
         uniform vec2 resolution;
-        uniform float cameraDistance;
         uniform sampler2D originalMap;
         uniform float originalOpacity;
         uniform float alphaTest;
@@ -203,10 +201,9 @@ export class IDBasedOutlinePass extends Pass {
             float currentDepth = (gl_FragCoord.z);
 
             // Only draw if depths approximately match (mesh is visible in main scene)
-            // Scale tolerance based on camera distance - closer = tighter tolerance
-            float baseTolerance = 0.003;
-            float depthTolerance = baseTolerance * (cameraDistance * 0.25);
-            if (abs(currentDepth - sceneDepth) > depthTolerance) {
+            // Use simple percentage-based tolerance
+            float tolerance = currentDepth * 0.001; // 0.1% tolerance
+            if (abs(currentDepth - sceneDepth) > tolerance) {
               discard;  // Only discard if significantly behind
             }
           }
@@ -223,34 +220,7 @@ export class IDBasedOutlinePass extends Pass {
 
   // Simplified API - no more edge modes, just outline meshes with userData.outlineColor
 
-  // override setSize(width: number, height: number): void {
-  //   // Calculate downsampled dimensions for ID buffer and edge detection performance
-  //   const resx = Math.round(width / this.downSampleRatio);
-  //   const resy = Math.round(height / this.downSampleRatio);
-
-  //   // CRITICAL: Update our internal resolution property first
-  //   this.resolution.set(width, height);
-
-  //   // Resize buffers - ID buffer at downsampled resolution, others at full resolution
-  //   this.renderTargetIDBuffer.setSize(resx, resy);
-
-  //   // Always use linear filtering for smooth sampling
-  //   this.renderTargetIDBuffer.texture.minFilter = LinearFilter;
-  //   this.renderTargetIDBuffer.texture.magFilter = LinearFilter;
-  //   this.renderTargetTempBuffer.setSize(width, height);
-  //   this.renderTargetEdgeBuffer1.setSize(width, height);
-
-  //   // Update depth texture for ID buffer at downsampled resolution
-  //   if (this.renderTargetIDBuffer.depthTexture) {
-  //     this.renderTargetIDBuffer.depthTexture.dispose();
-  //     this.renderTargetIDBuffer.depthTexture = new DepthTexture(resx, resy);
-  //     this.renderTargetIDBuffer.depthTexture.type = UnsignedShortType;
-  //   }
-
-  //   // Edge detection works with downsampled ID buffer and renders to full-resolution edge buffer
-  //   this.idBasedEdgeDetectionPass.setTextureSize(resx, resy);
-  // }
-
+  private _lastSceneWrapper: SceneWrapper | undefined;
   override render(
     renderer: WebGLRenderer,
     writeBuffer: WebGLRenderTarget,
@@ -259,10 +229,17 @@ export class IDBasedOutlinePass extends Pass {
   ): void {
     const renderStart = performance.now();
 
-    // Force resize if there's any mismatch to prevent cross-contamination
-    // if (Math.abs(currentSize.x - this.resolution.x) > 1 || Math.abs(currentSize.y - this.resolution.y) > 1) {
-    //   this.setSize(currentSize.x, currentSize.y);
-    // }
+    // Set the depth texture from the read buffer (output of previous render pass)
+    this.setSceneDepthTexture(readBuffer.depthTexture);
+
+    if (this._lastSceneWrapper !== this.sceneWrapper) {
+      // Mark materials dirty when scene wrapper changes
+      if (this.sceneWrapper) {
+        this.sceneWrapper.markMaterialsDirty();
+      }
+      this._lastSceneWrapper = this.sceneWrapper;
+    }
+
     // Ensure SceneWrapper has reference to this pass
     this.sceneWrapper.setOutlinePass(this);
 
@@ -293,9 +270,6 @@ export class IDBasedOutlinePass extends Pass {
     // Setup temporary state for ID rendering
     renderer.autoClear = false;
     if (maskActive) (renderer.state as any).buffers.stencil.setTest(false);
-
-    // Set the depth texture from the read buffer (output of previous render pass)
-    this.setSceneDepthTexture(readBuffer.depthTexture);
 
     const idBufferStart = performance.now();
     // Step 1: Render ID buffer
@@ -383,8 +357,28 @@ export class IDBasedOutlinePass extends Pass {
   }
 
   setSceneDepthTexture(depthTexture: any): void {
+    // Only update if the depth texture actually changed
+    if (this.sceneDepthTexture === depthTexture) {
+      return;
+    }
+
     this.sceneDepthTexture = depthTexture;
+
+    // Mark materials as dirty in the scene wrapper - it will handle the update
+    if (this.sceneWrapper) {
+      this.sceneWrapper.markMaterialsDirty();
+    }
   }
+
+  // DEPRECATED: This method is no longer needed. Material updates are now handled
+  // by SceneWrapper.updateMaterials() in a consolidated way.
+  fixDepthTextureReferences(): void {
+    // Legacy method - now handled by SceneWrapper.updateMaterials()
+    if (this.sceneWrapper) {
+      this.sceneWrapper.markMaterialsDirty();
+    }
+  }
+
 
   private renderIDBuffer(renderer: WebGLRenderer): void {
     const oldAutoClear = renderer.autoClear;
@@ -480,10 +474,10 @@ export class IDBasedOutlinePass extends Pass {
         // Set static uniforms that don't change per frame (use downsampled resolution)
         const resx = Math.round(this.resolution.x / this.downSampleRatio);
         const resy = Math.round(this.resolution.y / this.downSampleRatio);
-        meshMaterial.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
-        meshMaterial.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
         meshMaterial.uniforms["resolution"].value.set(resx, resy);
 
+        // Note: sceneDepthTexture and useDepthTest are now set by SceneWrapper.updateMaterials()
+        // This avoids redundant updates and ensures consistency
         meshMaterial.needsUpdate = true;
 
         this.copyMaterialProperties(meshMaterial, originalMaterial);
@@ -501,10 +495,10 @@ export class IDBasedOutlinePass extends Pass {
       // Set static uniforms that don't change per frame (use downsampled resolution)
       const resx = Math.round(this.resolution.x / this.downSampleRatio);
       const resy = Math.round(this.resolution.y / this.downSampleRatio);
-      meshMaterial.uniforms["sceneDepthTexture"].value = this.sceneDepthTexture;
-      meshMaterial.uniforms["useDepthTest"].value = this.sceneDepthTexture !== null;
       meshMaterial.uniforms["resolution"].value.set(resx, resy);
 
+      // Note: sceneDepthTexture and useDepthTest are now set by SceneWrapper.updateMaterials()
+      // This avoids redundant updates and ensures consistency
       meshMaterial.needsUpdate = true;
 
       this.copyMaterialProperties(meshMaterial, originalMesh.material);

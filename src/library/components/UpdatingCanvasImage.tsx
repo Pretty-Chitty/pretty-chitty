@@ -8,7 +8,7 @@ export function UpdatingCanvasImage({ image, style }: { image: IUpdatingCanvas; 
   useEffect(() => {
     if (image) {
       const update = () => {
-        if (canvasRef.current) {
+        if (canvasRef.current && image.canvas) {
           canvasRef.current.getContext("2d")?.drawImage(image.canvas, 0, 0);
         }
       };

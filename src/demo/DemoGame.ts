@@ -68,8 +68,8 @@ export class DemoGame implements Game<MyPlayer, Root> {
     players[0].color = "#ed00cb";
     players[1].color = "#00edcb";
 
-    const W = 6;
-    const H = 6;
+    const W = 10;
+    const H = 10;
 
     // set up the board
     // const rows = [...new Array(H)].map(() =>
@@ -88,24 +88,28 @@ export class DemoGame implements Game<MyPlayer, Root> {
         c.y = i % H;
         rootChit.mainBoard.add(c);
 
-        const c2 = new Card2();
-        c.add(c2, "testoutlet");
+        c.token2 = new Card2();
+        // c.add(new Card2(), "testoutlet");
+        c.add(new Card3(), "testoutlet2");
+        // c.add(new Card(), "testoutlet3");
       }),
     );
     setup.flush();
 
-    for (let i = 0; i < 3; i++) {
-      for (let c = 0; c < 6; c++) {
-        const index = Math.floor((await setup.rng()) * 3) - 1;
-        const pieceIndex = Math.floor((await setup.rng()) * pieces.length);
-        if (index === -1) {
-          rootChit.mainBoard.add(pieces[pieceIndex]);
-        } else {
-          players[index].add(pieces[pieceIndex]);
-        }
-      }
-      setup.flush();
-    }
+    // for (let i = 0; i < 3000; i++) {
+    //   for (let c = 0; c < 6; c++) {
+    //     const index = Math.floor((await setup.rng()) * 3) - 1;
+    //     const pieceIndex = Math.floor((await setup.rng()) * pieces.length);
+    //     pieces[pieceIndex].something = i * c;
+    //     if (index === -1) {
+    //       rootChit.mainBoard.add(pieces[pieceIndex]);
+    //       pieces[pieceIndex].raised = !pieces[pieceIndex].raised;
+    //     } else {
+    //       players[index].add(pieces[pieceIndex]);
+    //     }
+    //   }
+    //   setup.flush();
+    // }
 
     // players[2].add(pieces[2]);
     // setup.flush();
@@ -138,6 +142,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
           // const target = players[0];
           // target.add(c);
           // c.raised = true;
+          c.something = 9999;
           players[0].add(c);
         })
           // .toggleButton(new HandButton())

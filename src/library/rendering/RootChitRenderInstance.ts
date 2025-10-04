@@ -1,7 +1,7 @@
 import { Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { ChitRenderInstance } from "./ChitRenderInstance";
 import { Chit } from "../game/Chit";
-import { Box3, Group, Material, Mesh, Object3D, Raycaster, Vector2, Vector3 } from "three";
+import { Box3, BufferGeometry, Group, Material, Mesh, Object3D, Raycaster, Vector2, Vector3 } from "three";
 import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
 import { LightWrapper } from "./LightWrapper";
 import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
@@ -19,6 +19,8 @@ export type AnimationState = "leaving" | "entering" | "pending" | "inactive";
 // contains threejs high level stuff like lights, cameras and tween controls
 //
 export class RootChitRenderInstance extends ChitRenderInstance {
+  private static rootRenderInstances: RootChitRenderInstance[] = [];
+
   private _sceneWrapper = new SceneWrapper();
   public _rootGroup = new Group();
   public _lightGroup = new Group();
@@ -56,6 +58,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
   constructor(chit: Chit) {
     super(chit);
+    RootChitRenderInstance.rootRenderInstances.push(this);
     this._sceneWrapper.scene.add(this.rootGroup);
     this.id = chit.id ?? `${Date.now()}_${Math.random()}`;
     this.bboxGroup.visible = false;
@@ -90,13 +93,15 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   }
 
   public dirty = false;
-  private _dirtyTimeout?: NodeJS.Timeout;
   markDirty() {
     this.dirty = true;
-    clearTimeout(this._dirtyTimeout);
-    this._dirtyTimeout = setTimeout(() => {
-      this.registerTextures();
-    }, 0);
+  }
+
+  resetDirty() {
+    if (this.dirty) {
+      RootChitRenderInstance.registerAllTextures();
+      this.dirty = false;
+    }
   }
 
   private galleryState?: GalleryState;
@@ -106,11 +111,13 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   }
 
   /*
-   * Walk all of our meshes and find all textures used by every object in our scene
-   * and let the chit render instance that we are using it.
+   * Centrally walk all active RootChitRenderInstance scenes and register all textures
+   * across all instances to prevent race conditions during texture disposal.
    */
-  registerTextures() {
-    const idsUsed = new Set<string>();
+  static registerAllTextures() {
+    const allIdsUsed = new Set<string>();
+    const allMaterialsUsed = new Map<string, Material>();
+    const allGeosUsed = new Map<string, BufferGeometry>();
     const props = [
       "map",
       "lightMap",
@@ -125,24 +132,58 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     ];
 
     const processMaterial = (mat: Material) => {
+      allMaterialsUsed.set(mat.uuid, mat);
       const mata = mat as any;
       props.forEach((prop) => {
         if (mata[prop]) {
-          idsUsed.add(mata[prop].uuid);
+          allIdsUsed.add(mata[prop].uuid);
         }
       });
     };
-    this.rootGroup.traverse((obj) => {
-      if (obj instanceof Mesh) {
-        if (Array.isArray(obj.material)) {
-          obj.material.forEach(processMaterial);
-        } else {
-          processMaterial(obj.material);
+
+    // Scan all active root render instances
+    RootChitRenderInstance.rootRenderInstances.forEach((instance) => {
+      instance.rootGroup.traverse((obj) => {
+        if (obj instanceof Mesh) {
+          if (obj.geometry instanceof BufferGeometry) {
+            allGeosUsed.set(obj.geometry.uuid, obj.geometry);
+          }
+          if (Array.isArray(obj.material)) {
+            obj.material.forEach(processMaterial);
+          } else {
+            processMaterial(obj.material);
+          }
         }
-      }
+      });
     });
 
-    CanvasStack.markTexturesUsed(this.id, idsUsed, () => (this.dirty = true));
+    // Mark all textures as used globally
+    CanvasStack.disposer.markUsed(allIdsUsed, () => {
+      // Mark all instances as dirty when textures change
+      RootChitRenderInstance.rootRenderInstances.forEach((instance) => {
+        instance.dirty = true;
+      });
+    });
+    CanvasStack.materialDisposer.markUsedMap(allMaterialsUsed, () => {
+      RootChitRenderInstance.rootRenderInstances.forEach((instance) => {
+        instance.dirty = true;
+      });
+    });
+    CanvasStack.geoDisposer.markUsedMap(allGeosUsed, () => {
+      RootChitRenderInstance.rootRenderInstances.forEach((instance) => {
+        instance.dirty = true;
+      });
+    });
+  }
+
+  /*
+   * Walk all of our meshes and find all textures used by every object in our scene
+   * and let the chit render instance that we are using it.
+   * @deprecated Use static registerAllTextures() instead
+   */
+  registerTextures() {
+    // Delegate to the new centralized method
+    RootChitRenderInstance.registerAllTextures();
   }
 
   public override checkPreDestroy() {
@@ -271,10 +312,10 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   }
 
   public override destroy() {
+    RootChitRenderInstance.rootRenderInstances = RootChitRenderInstance.rootRenderInstances.filter((r) => r !== this);
     this.lightWrapper.destroy();
     this.cameraWrapper.destroy();
     clearTimeout(this._notifyTimeout);
-    clearTimeout(this._dirtyTimeout);
     this._sceneWrapper.dispose();
     super.destroy();
   }

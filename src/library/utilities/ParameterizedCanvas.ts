@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 
-import { ParameterizedMemoized } from "./ParameterizedMemoized";
 import { IUpdatingCanvas } from "./IUpdatingCanvas";
 import { CanvasStack } from "./CanvasStack/CanvasStack";
 import { ObjectWithProps } from "./ObjectWithProps";
@@ -9,8 +8,10 @@ import { unwrapCanvasNode } from "./CanvasStack/ReactCanvas";
 import { LayeredCanvasOperation } from "./CanvasStack/CanvasOperations";
 
 export abstract class ParameterizedCanvas extends ObjectWithProps {
+  // only remove items from the lru where there is no texture built on it.
+
   /** @internal */
-  static lu = new ParameterizedMemoized<IUpdatingCanvas>();
+  static lu: { [key: string]: IUpdatingCanvas } = {};
 
   /** @internal */
   static counter = 1;
@@ -41,15 +42,32 @@ export abstract class ParameterizedCanvas extends ObjectWithProps {
 
   get(): IUpdatingCanvas {
     const signature = this.signature();
-    return ParameterizedCanvas.lu.get(signature, () => {
-      try {
-        const ops = this.render();
-        return new CanvasStack(this.width, this.height, unwrapCanvasNode(ops));
-      } catch (e) {
-        console.error(e);
-        return new CanvasStack(this.width, this.height, new LayeredCanvasOperation([]));
-      }
-    });
+    let result = ParameterizedCanvas.lu[signature];
+    if (!result) {
+      ParameterizedCanvas.resize();
+      result = ParameterizedCanvas.lu[signature] = (() => {
+        try {
+          const ops = this.render();
+          return new CanvasStack(this.width, this.height, unwrapCanvasNode(ops));
+        } catch (e) {
+          console.error(e);
+          return new CanvasStack(this.width, this.height, new LayeredCanvasOperation([]));
+        }
+      })();
+    }
+    return result;
+  }
+
+  private static resize() {
+    const entries = Object.entries(ParameterizedCanvas.lu);
+    if (entries.length % 10 === 0) {
+      entries.forEach(([sig, value]) => {
+        if (!value.hasBuiltTexture && value.createdAt < Date.now() - 5000) {
+          ParameterizedCanvas.lu[sig].dispose();
+          delete ParameterizedCanvas.lu[sig];
+        }
+      });
+    }
   }
 
   get material() {

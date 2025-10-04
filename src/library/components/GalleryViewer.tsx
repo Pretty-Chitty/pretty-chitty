@@ -30,8 +30,11 @@ import { useGameTheme } from "../hooks/useGameTheme";
 import { GameTheme } from "../game/GameTheme";
 import { RichTextRenderOptionsParameters } from "../utilities/CanvasStack/RichTextRenderer";
 import { SceneWrapper } from "../rendering/outline";
+import { requestSharedAnimationFrame } from "../utilities/RequestSharedAnimationFrame";
 
 let ID_COUNTER = 1;
+
+const SCALE_FACTOR = 20;
 
 type UpdateCallback = () => void;
 
@@ -87,8 +90,8 @@ class GalleryController {
     public sceneWrapper: SceneWrapper,
     private theme: GameTheme,
   ) {
-    this.camera = new PerspectiveCamera(25, 10, 0.1, 20000);
-    this.camera.position.z = 500;
+    this.camera = new PerspectiveCamera(25, 1, 0.1, 10000 / SCALE_FACTOR);
+    this.camera.position.z = 500 / SCALE_FACTOR;
 
     this.light = new DirectionalLight(0xffffff, 1);
     this.light.position.copy(this.camera.position);
@@ -98,14 +101,14 @@ class GalleryController {
   }
 
   public camera: PerspectiveCamera;
-  private w = 100;
-  private h = 100;
-  private itemWidth = 100;
-  private itemHeight = 100;
+  private w = 100 / SCALE_FACTOR;
+  private h = 100 / SCALE_FACTOR;
+  private itemWidth = 100 / SCALE_FACTOR;
+  private itemHeight = 100 / SCALE_FACTOR;
 
   public tweenDuration = 250;
   private changed = false;
-  private itemSpacing = 100;
+  private itemSpacing = 100 / SCALE_FACTOR;
   private itemsPerPage = 1;
   private frontStageWidth = 1;
   private offsetX = 0;
@@ -119,13 +122,14 @@ class GalleryController {
 
   public setSize(w: number, h: number, itemWidth: number, itemHeight: number, itemSpacing: number) {
     this.changed = true;
-    this.w = w;
-    this.h = h;
-    this.itemHeight = Math.min(itemHeight, h - itemSpacing);
-    this.itemWidth = Math.min(itemWidth, w - itemSpacing);
-    this.itemSpacing = itemSpacing;
-    this.itemsPerPage = Math.floor((w - itemSpacing * 2) / (this.itemWidth + itemSpacing));
-    this.frontStageWidth = this.itemsPerPage * (this.itemWidth + itemSpacing) - itemSpacing;
+    this.w = w / SCALE_FACTOR;
+    this.h = h / SCALE_FACTOR;
+    this.itemHeight = Math.min(itemHeight, h - itemSpacing) / SCALE_FACTOR;
+    this.itemWidth = Math.min(itemWidth, w - itemSpacing) / SCALE_FACTOR;
+    this.itemSpacing = itemSpacing / SCALE_FACTOR;
+    this.itemsPerPage = Math.floor((w - itemSpacing * 2) / (this.itemWidth * SCALE_FACTOR + itemSpacing));
+    this.frontStageWidth =
+      (this.itemsPerPage * (this.itemWidth * SCALE_FACTOR + itemSpacing)) / SCALE_FACTOR - this.itemSpacing;
 
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
@@ -133,14 +137,14 @@ class GalleryController {
     const aspect = this.camera.aspect;
     const vFov = (this.camera.fov * Math.PI) / 180;
     const hFov = 2 * Math.atan(aspect * Math.tan(vFov / 2));
-    this.camera.position.z = w / (2 * Math.tan(hFov / 2));
+    this.camera.position.z = w / SCALE_FACTOR / (2 * Math.tan(hFov / 2));
     this.camera.position.x = 0;
 
     const z = this.camera.position.z;
     this.camera.position.z = Math.cos(this.offsetAngle) * z;
     this.camera.position.y = Math.sin(this.offsetAngle) * z;
     this.camera.lookAt(new Vector3(this.camera.position.x, 0, 0));
-    this.sceneWrapper.scene.fog = new Fog(0x000000, z, z + w * 2);
+    this.sceneWrapper.scene.fog = new Fog(0x000000, z, z + (w / SCALE_FACTOR) * 2);
 
     this.light.position.copy(this.camera.position);
     this.light.lookAt(0, 0, 0);
@@ -151,7 +155,7 @@ class GalleryController {
 
   getItemAtPosition(x: any, y: any) {
     const paddingX = (this.w - this.frontStageWidth) / 2;
-    const index = (-this.offsetX + x - paddingX) / (this.itemWidth + this.itemSpacing);
+    const index = (-this.offsetX + x / SCALE_FACTOR - paddingX) / (this.itemWidth + this.itemSpacing);
 
     const item = this.items.find((item) => index > item.index && Math.abs(index - item.index) < 1);
     if (!item) {
@@ -162,7 +166,7 @@ class GalleryController {
       return null;
     }
 
-    const ndc = new Vector3((x / this.w) * 2 - 1, -(y / this.h) * 2 + 1, 0.5);
+    const ndc = new Vector3((x / SCALE_FACTOR / this.w) * 2 - 1, -(y / SCALE_FACTOR / this.h) * 2 + 1, 0.5);
     ndc.unproject(this.camera);
     const raycaster = new Raycaster(this.camera.position, ndc.sub(this.camera.position).normalize());
 
@@ -231,7 +235,7 @@ class GalleryController {
     }
 
     if (!animate) {
-      this.offsetX += deltaX;
+      this.offsetX += deltaX / SCALE_FACTOR;
 
       if (this.offsetX > max + this.w / 2) {
         this.offsetX = max + this.w / 2;
@@ -243,7 +247,7 @@ class GalleryController {
       this.items.forEach((item) => this.positionItem(item));
     } else {
       // lock the offset to the nearest item
-      let target = this.offsetX + deltaX;
+      let target = this.offsetX + deltaX / SCALE_FACTOR;
       const itemIndex = Math.round(target / (this.itemWidth + this.itemSpacing));
       target = itemIndex * (this.itemWidth + this.itemSpacing);
 
@@ -284,7 +288,7 @@ class GalleryController {
       const overshot = group.position.x - largestX;
       group.position.x = largestX + Math.pow(overshot, 0.94);
       group.position.z = -overshot * zFactor;
-      group.rotation.x = -overshot / 3000 - this.offsetAngle;
+      group.rotation.x = -overshot / (3000 / SCALE_FACTOR) - this.offsetAngle;
       if (item.meshToShowOrHideIfCentered) {
         item.meshToShowOrHideIfCentered.position.x = overshot * 3;
         item.meshToShowOrHideIfCentered.position.z = -overshot * 3;
@@ -293,7 +297,7 @@ class GalleryController {
       const overshot = Math.abs(initialOffset - group.position.x);
       group.position.x = initialOffset - Math.pow(overshot, 0.94);
       group.position.z = -overshot * zFactor;
-      group.rotation.x = -overshot / 3000 - this.offsetAngle;
+      group.rotation.x = -overshot / (3000 / SCALE_FACTOR) - this.offsetAngle;
       if (item.meshToShowOrHideIfCentered) {
         item.meshToShowOrHideIfCentered.position.x = -overshot * 3;
         item.meshToShowOrHideIfCentered.position.z = -overshot * 3;
@@ -308,6 +312,44 @@ class GalleryController {
 
     group.rotation.x -= Math.min(1, item.depth / this.w);
     group.position.add(item.center);
+
+    // Update camera far plane when items move around
+    this.updateCameraFarPlane();
+  }
+
+  private updateCameraFarPlane() {
+    // Calculate the scene bounds to set appropriate far plane
+    let minZ = this.camera.position.z;
+    let maxZ = this.camera.position.z;
+
+    // Check all items for their actual Z bounds
+    this.items.forEach((item) => {
+      const box = new Box3().setFromObject(item.group);
+      if (!box.isEmpty()) {
+        minZ = Math.min(minZ, box.min.z);
+        maxZ = Math.max(maxZ, box.max.z);
+      }
+    });
+
+    // Also check leaving items
+    this.leavingItems.forEach((item) => {
+      const box = new Box3().setFromObject(item.group);
+      if (!box.isEmpty()) {
+        minZ = Math.min(minZ, box.min.z);
+        maxZ = Math.max(maxZ, box.max.z);
+      }
+    });
+
+    // Calculate required depth range with some padding
+    const depthRange = Math.abs(maxZ - minZ);
+    const paddingFactor = 1.5; // 50% padding
+    const newFar = Math.max(depthRange * paddingFactor, this.w / SCALE_FACTOR); // Minimum far plane
+
+    // Only update if it changed significantly (5% threshold handled by SceneWrapper)
+    if (this.camera.far !== newFar) {
+      this.camera.far = newFar;
+      this.camera.updateProjectionMatrix();
+    }
   }
 
   scaleItem(item: BuiltItem, maximumWidth?: number, maximumHeight?: number) {
@@ -316,8 +358,8 @@ class GalleryController {
     if (!box3.isEmpty()) {
       const size = box3.getSize(new Vector3());
       const center = box3.getCenter(new Vector3());
-      const xScale = Math.min(this.itemWidth, maximumWidth ?? Number.MAX_SAFE_INTEGER) / size.x;
-      const yScale = Math.min(this.itemHeight, maximumHeight ?? Number.MAX_SAFE_INTEGER) / size.y;
+      const xScale = Math.min(this.itemWidth, (maximumWidth ?? Number.MAX_SAFE_INTEGER) / SCALE_FACTOR) / size.x;
+      const yScale = Math.min(this.itemHeight, (maximumHeight ?? Number.MAX_SAFE_INTEGER) / SCALE_FACTOR) / size.y;
       const scale = Math.min(xScale, yScale);
       item.mesh.scale.set(scale, scale, scale);
       item.center = center.multiplyScalar(scale).negate();
@@ -333,7 +375,7 @@ class GalleryController {
       return;
     }
 
-    const height = (this.h - this.itemHeight) / 2 - this.theme.spacing * 2;
+    const height = (this.h - this.itemHeight) / 2 - (this.theme.spacing / SCALE_FACTOR) * 2;
 
     const specs: RichTextRenderOptionsParameters = {
       align: "center",
@@ -345,18 +387,22 @@ class GalleryController {
     }
     specs.fontSize *= window.devicePixelRatio;
 
-    const pad = this.theme.spacing * window.devicePixelRatio;
+    const pad = (this.theme.spacing / SCALE_FACTOR) * window.devicePixelRatio;
     const markdown = new MarkdownCanvasOperation(summary, item.item.summaryIconMap ?? {}, specs);
     const ops = new LayeredCanvasOperation([
       new ColorCanvasOperation(this.theme.gallerySummaryBackgroundColor, this.theme.gallerySummaryBackgroundOpacity),
       new PadCanvasOperation({ top: pad, bottom: pad, left: pad, right: pad }, markdown),
     ]);
 
-    const stack1 = new CanvasStack(this.itemWidth * window.devicePixelRatio, height * window.devicePixelRatio, ops);
+    const stack1 = new CanvasStack(
+      this.itemWidth * SCALE_FACTOR * window.devicePixelRatio,
+      height * SCALE_FACTOR * window.devicePixelRatio,
+      ops,
+    );
     stack1.render();
     const stack2 = new CanvasStack(
-      this.itemWidth * window.devicePixelRatio,
-      markdown.height + this.theme.spacing * 2 * window.devicePixelRatio,
+      this.itemWidth * SCALE_FACTOR * window.devicePixelRatio,
+      markdown.height + (this.theme.spacing / SCALE_FACTOR) * 2 * window.devicePixelRatio,
       ops,
     );
     stack2.render();
@@ -365,11 +411,11 @@ class GalleryController {
     material.transparent = true;
     material.depthWrite = true;
 
-    const finalHeight = stack2.height / window.devicePixelRatio;
+    const finalHeight = stack2.height / window.devicePixelRatio / SCALE_FACTOR;
     const face = new PlaneGeometry(this.itemWidth, finalHeight);
     const m = new Mesh(face, material);
-    m.renderOrder = 2;
-    m.position.set(0, -this.itemHeight * 0.5 - finalHeight / 2 - this.theme.spacing, 0);
+    // m.renderOrder = 2;
+    m.position.set(0, -this.itemHeight * 0.5 - finalHeight / 2 - this.theme.spacing / SCALE_FACTOR, 0);
 
     item.meshToShowOrHideIfCentered = m;
     item.group.add(m);
@@ -552,7 +598,7 @@ export function GalleryViewer({
 
     const animate = () => {
       if (cancelled) return;
-      requestAnimationFrame(animate);
+      requestSharedAnimationFrame(animate);
 
       const wasAnimating = isAnimating;
       isAnimating = galleryController.render();

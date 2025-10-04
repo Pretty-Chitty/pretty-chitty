@@ -6,10 +6,12 @@ import {
   MeshPhongMaterial,
   Material,
   SRGBColorSpace,
+  BufferGeometry,
 } from "three";
 import { IUpdatingCanvas } from "../IUpdatingCanvas";
 import { CanvasOperation } from "./CanvasOperations";
 import { ImageResult, ImageCache } from "./ImageCache";
+import { ThreeDisposer } from "../ThreeDisposer";
 
 export type RenderBounds = {
   x: number;
@@ -18,25 +20,15 @@ export type RenderBounds = {
   h: number;
 };
 
-type TexturesUsedBy = {
-  id: string;
-  uuids: Set<string>;
-  cb: () => void;
-};
-type TextureReferences = {
-  uuid: string;
-  ids: Set<string>;
-  unusedSince: number;
-  canvas: CanvasStack;
-};
 type Coord = {
   x: number;
   y: number;
 };
 
+let _NOTHING_CANVAS: HTMLCanvasElement | undefined;
 export class CanvasStack implements IUpdatingCanvas {
-  public canvas: HTMLCanvasElement;
-  private context: CanvasRenderingContext2D;
+  public canvas: HTMLCanvasElement | undefined;
+  private context: CanvasRenderingContext2D | undefined;
   private _texture?: Texture;
   private cbs: Array<() => void> = [];
 
@@ -44,6 +36,13 @@ export class CanvasStack implements IUpdatingCanvas {
 
   private static imageCache = new ImageCache(50); // 50? Is that good? No idea.
   private _outlets: { [id: string]: Coord } = {};
+
+  public createdAt = Date.now();
+
+  /** @internal */
+  public get hasBuiltTexture(): boolean {
+    return !!this._texture;
+  }
 
   /** @internal */
   onUpdate(cb: () => void): () => void {
@@ -59,11 +58,14 @@ export class CanvasStack implements IUpdatingCanvas {
     if (!result.isLoaded.value) {
       if (!this.loadedUrls.has(url)) {
         this.loadedUrls.add(url);
-        result.isLoaded.on(() => {
-          this.render();
-          if (this._texture) {
-            this._texture.needsUpdate = true;
-            CanvasStack.notifyChange(this._texture.uuid);
+        const unsub = result.isLoaded.on(() => {
+          if (result.isLoaded.value) {
+            unsub();
+            this.render();
+            if (this._texture) {
+              this._texture.needsUpdate = true;
+              CanvasStack.disposer.notifyChange(this._texture.uuid);
+            }
           }
         });
       }
@@ -74,6 +76,10 @@ export class CanvasStack implements IUpdatingCanvas {
 
   /** @internal */
   render(): void {
+    if (!this.context) {
+      return;
+    }
+
     this._outlets = {};
     this.context.clearRect(0, 0, this.width, this.height);
     this.operation.render(
@@ -85,6 +91,22 @@ export class CanvasStack implements IUpdatingCanvas {
       },
     );
     this.cbs.forEach((cb) => cb());
+  }
+
+  dispose() {
+    this.cbs = [];
+    this.canvas!.title = `Disposed, mat ${this._material?.uuid} texture ${this._texture?.uuid}`;
+    this.canvas = undefined;
+    this.context = undefined;
+
+    if (this._material) {
+      this._material.dispose();
+      this._material = undefined;
+    }
+    if (this._texture) {
+      this._texture.dispose();
+      this._texture = undefined;
+    }
   }
 
   constructor(
@@ -109,14 +131,22 @@ export class CanvasStack implements IUpdatingCanvas {
     return this._outlets;
   }
 
+  private _material: Material | undefined;
   get material(): Material {
-    return new MeshPhongMaterial({
-      map: this.texture,
-      alphaTest: 0.5,
-    });
+    if (!this._material) {
+      this._material = new MeshPhongMaterial({
+        map: this.texture,
+        alphaTest: 0.5,
+      });
+    }
+    return this._material;
   }
 
   get texture(): Texture {
+    if (!this.canvas) {
+      throw new Error("CanvasStack has been disposed");
+    }
+
     if (!this._texture) {
       this._texture = new Texture(
         this.canvas,
@@ -129,66 +159,35 @@ export class CanvasStack implements IUpdatingCanvas {
       this._texture.needsUpdate = true;
       this._texture.colorSpace = SRGBColorSpace;
 
-      CanvasStack.texturesReferences[this._texture.uuid] = {
-        uuid: this._texture.uuid,
-        ids: new Set<string>(),
-        unusedSince: Date.now(),
-        canvas: this,
-      };
+      CanvasStack.disposer.register(this._texture.uuid, this);
     }
     return this._texture;
   }
 
-  // necessary for reference counting
-  private static texturesUsedBy: { [id: string]: TexturesUsedBy } = {};
-  private static texturesReferences: { [uuid: string]: TextureReferences } = {};
-
-  private static notifyChange(uuid: string) {
-    const ref = this.texturesReferences[uuid];
-    if (ref) {
-      ref.ids.forEach((id) => {
-        const idRef = this.texturesUsedBy[id];
-        idRef.cb();
-      });
+  public static disposer = new ThreeDisposer<CanvasStack>((canvasStack) => {
+    if (canvasStack._material) {
+      canvasStack._material.dispose();
+      canvasStack._material = undefined;
     }
-  }
+    if (canvasStack._texture) {
+      canvasStack._texture.dispose();
 
-  public static markTexturesUsed(id: string, uuids: Set<string>, cb: () => void) {
-    const existing = this.texturesUsedBy[id];
-    const now = Date.now();
-    if (existing) {
-      existing.uuids.forEach((uuid) => {
-        const ref = this.texturesReferences[uuid];
-        if (ref) {
-          ref.ids.delete(id);
-          if (ref.ids.size === 0) {
-            ref.unusedSince = now;
-          }
-        }
-      });
+      if (!_NOTHING_CANVAS) {
+        _NOTHING_CANVAS = document.createElement("canvas");
+        _NOTHING_CANVAS.width = 1;
+        _NOTHING_CANVAS.height = 1;
+      }
+
+      canvasStack._texture.source.data = _NOTHING_CANVAS; // prevent memory leaks! somehow it holding this reference stops the GC from cleaning anything up
+      canvasStack._texture = undefined;
     }
+  });
 
-    this.texturesUsedBy[id] = {
-      id,
-      uuids,
-      cb,
-    };
+  public static materialDisposer = new ThreeDisposer<Material>((material) => {
+    material.dispose();
+  });
 
-    uuids.forEach((uuid) => {
-      const ref = this.texturesReferences[uuid];
-      if (ref) {
-        ref.ids.add(id);
-      }
-    });
-
-    // now check for any textures we should remove
-    Object.values(this.texturesReferences).forEach((ref) => {
-      if (ref.ids.size === 0 && ref.unusedSince < now - 5000) {
-        if (ref.canvas._texture) {
-          ref.canvas._texture.dispose();
-        }
-        delete this.texturesReferences[ref.uuid];
-      }
-    });
-  }
+  public static geoDisposer = new ThreeDisposer<BufferGeometry>((geometry) => {
+    geometry.dispose();
+  });
 }

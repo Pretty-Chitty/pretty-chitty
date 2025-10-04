@@ -12,6 +12,7 @@ import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
 import { useGalleryState } from "../hooks/useGalleryState";
 import { usePlayerId } from "../hooks/usePlayer";
 import { useGameTheme } from "../hooks/useGameTheme";
+import { requestSharedAnimationFrame } from "../utilities/RequestSharedAnimationFrame";
 
 let ID_COUNTER = 1;
 
@@ -141,7 +142,7 @@ export default function Viewer({
         try {
           // console.log(renderNextFrame);
           if (!paused) {
-            requestAnimationFrame(animate);
+            requestSharedAnimationFrame(animate);
             // setTimeout(animate, 500);
           }
           const prevRenderNextFrame = renderNextFrame;
@@ -152,9 +153,9 @@ export default function Viewer({
             (prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
           ) {
             // Clear canvas and render
-            rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme);
+            rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme, 10);
 
-            chitRenderInstance.dirty = false;
+            chitRenderInstance.resetDirty();
             timeState.setAnimationState(id, !paused);
           } else {
             timeState.setAnimationState(id, false);

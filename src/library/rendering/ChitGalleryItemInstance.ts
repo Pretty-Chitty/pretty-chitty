@@ -1,4 +1,4 @@
-import { Group } from "three";
+import { Group, Object3D } from "three";
 import { GalleryItem } from "../components/GalleryViewer";
 import { Chit } from "../game/Chit";
 import { IconMap } from "../utilities/CanvasStack/CanvasOperations";
@@ -44,7 +44,7 @@ export class ChitGalleryItemInstance implements GalleryItem {
     chit.renderInstance?.createGalleryItem(this);
   }
 
-  private cloneWithUserData(object: any): any {
+  private cloneWithUserData(object: Object3D): any {
     // Use Three.js clone for geometry/materials, then manually copy userData
     const cloned = object.clone(true);
 

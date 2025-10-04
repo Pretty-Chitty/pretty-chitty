@@ -35,9 +35,9 @@ export default function UpdatingCanvasViewer({
   }
 
   useEffect(() => {
-    setDataUrl(updatingCanvas.canvas.toDataURL("image/png", 1));
+    setDataUrl(updatingCanvas.canvas!.toDataURL("image/png", 1));
     return updatingCanvas.onUpdate(() => {
-      setDataUrl(updatingCanvas.canvas.toDataURL("image/png", 1));
+      setDataUrl(updatingCanvas.canvas!.toDataURL("image/png", 1));
     });
   }, [updatingCanvas.canvas, updatingCanvas]);
 

@@ -439,12 +439,15 @@ export class ChitRenderInstance {
   }
 
   public destroy() {
-    this.log("destroy");
+    this.rootRenderInstance.markHasChange();
     this.invalidateRootRenderInstance();
     this.unsubscribeToOnChange();
     this.rotationTween.stop();
     this.offsetTween.stop();
     this.zOffsetTween.stop();
+    this.rotationTween.onComplete();
+    this.offsetTween.onComplete();
+    this.zOffsetTween.onComplete();
     this.group.removeFromParent();
     this.bboxGroup.removeFromParent();
     this.parentRenderInstance?.removeChild(this);
@@ -984,8 +987,11 @@ export class ChitRenderInstance {
     let offsetEasing: undefined | ((amount: number) => number);
     let rotationEasing: undefined | ((amount: number) => number);
 
+    this.offsetTween.onComplete();
     this.offsetTween.stop();
+    this.zOffsetTween.onComplete();
     this.zOffsetTween.stop();
+    this.rotationTween.onComplete();
     this.rotationTween.stop();
 
     // offset has to change

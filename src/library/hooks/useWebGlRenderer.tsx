@@ -1,6 +1,14 @@
 import React, { useContext, createContext, ReactNode, useEffect, useState } from "react";
 import { WebGLRenderer, Vector2 } from "three";
-import { EffectComposer, IDBasedOutlinePass, OutputPass, RenderPass, Camera, SceneWrapper } from "../rendering/outline";
+import {
+  EffectComposer,
+  IDBasedOutlinePass,
+  OutputPass,
+  RenderPass,
+  Camera,
+  SceneWrapper,
+  DepthVisualizationPass,
+} from "../rendering/outline";
 import { useGameTheme } from "./useGameTheme";
 import { GameTheme } from "../game/GameTheme";
 
@@ -20,7 +28,7 @@ class WebGLRendererWrapper {
   private memoryExtension: any;
   private currentWidth = 0;
   private currentHeight = 0;
-  public pixelRatio = Math.max(1.5, window.devicePixelRatio);
+  public pixelRatio = Math.max(1.5, typeof window !== "undefined" ? window.devicePixelRatio : 1.5);
   private maxComposers = 8;
 
   constructor() {
@@ -90,9 +98,15 @@ class WebGLRendererWrapper {
 
       // Configure outline pass
       outlinePass.edgeStrength = theme.chitOutlineStrength;
-      outlinePass.edgeThickness = theme.chitOutlineWidth;
+      outlinePass.edgeThickness = theme.chitOutlineWidth / theme.chitOutlineDownsample;
+
+      const depthPass = new DepthVisualizationPass();
+      depthPass.renderToScreen = false;
+
+      // renderPass.needsSwap = true;
 
       composer.addPass(renderPass);
+      // composer.addPass(depthPass);
       composer.addPass(outlinePass);
       composer.addPass(outputPass);
 
@@ -204,59 +218,12 @@ class WebGLRendererWrapper {
   }
 }
 
-const WebGlRendererContext = createContext<{
-  wrapper: WebGLRendererWrapper;
-}>({ wrapper: new WebGLRendererWrapper() });
-
+let _wrapper: WebGLRendererWrapper | undefined = undefined;
 export function useWebGlRenderer(): WebGLRendererWrapper {
-  const context = useContext(WebGlRendererContext);
   const theme = useGameTheme();
-
-  useEffect(() => {
-    if (!context.wrapper) {
-      try {
-        context.wrapper = new WebGLRendererWrapper();
-      } catch (error) {
-        console.error("Failed to create WebGL renderer:", error);
-        return;
-      }
-    }
-
-    const wrapper = context.wrapper;
-    wrapper.referenceCount++;
-    wrapper.updateTheme(theme);
-
-    return () => {
-      wrapper.referenceCount--;
-    };
-  }, [context, theme]);
-
-  if (!context.wrapper) {
-    throw new Error("useWebGlRenderer must be used within a WebGlRendererProvider");
+  if (!_wrapper) {
+    _wrapper = new WebGLRendererWrapper();
+    _wrapper.updateTheme(theme);
   }
-
-  return context.wrapper;
-}
-
-// Global memory monitoring utility
-export function logWebGLMemoryStats(label: string = "WebGL Memory") {
-  // Find any active renderer to get memory stats
-  const canvas = document.querySelector("canvas");
-  if (!canvas) return;
-
-  const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
-  if (!gl) return;
-
-  console.group(label);
-  console.log(`Active textures: ${gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS)}`);
-  console.log(`Max texture size: ${gl.getParameter(gl.MAX_TEXTURE_SIZE)}`);
-  console.log(`Max renderbuffer size: ${gl.getParameter(gl.MAX_RENDERBUFFER_SIZE)}`);
-
-  // Try to get debug info if available
-  const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-  if (debugInfo) {
-    console.log(`Renderer: ${gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)}`);
-    console.log(`Vendor: ${gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)}`);
-  }
-  console.groupEnd();
+  return _wrapper;
 }

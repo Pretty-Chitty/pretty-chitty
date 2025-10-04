@@ -8,6 +8,10 @@ export class SceneWrapper {
   private materialHashes = new Map<number, string>(); // object.id -> material hash for change detection
   private outlinePass: any = null; // Will be set by IDBasedOutlinePass
 
+  // Material update tracking
+  private materialsDirty = false;
+  private lastDepthTexture: any = null;
+
   constructor(realScene: Scene = new Scene()) {
     this.realScene = realScene;
     this.outlineScene = new Scene();
@@ -27,12 +31,55 @@ export class SceneWrapper {
   }
 
   _dirty = true;
+  _needsRebuild = false;
   markDirty() {
     this._dirty = true;
   }
 
+  markMaterialsDirty() {
+    this.materialsDirty = true;
+  }
+
+  rebuild() {
+    this._dirty = true;
+    this._needsRebuild = true;
+  }
+
+  private executeRebuild() {
+    if (!this._needsRebuild) {
+      return;
+    }
+    this._needsRebuild = false;
+
+    // Remove shadow meshes for objects that no longer have outlines
+    for (const existingId of this.shadowMeshes.keys()) {
+      const shadowMesh = this.shadowMeshes.get(existingId);
+      this.outlineScene.remove(shadowMesh!);
+      // Dispose materials to prevent GPU memory leaks
+      if (shadowMesh!.material) {
+        if (Array.isArray(shadowMesh!.material)) {
+          shadowMesh!.material.forEach((mat) => mat.dispose());
+        } else {
+          shadowMesh!.material.dispose();
+        }
+      }
+    }
+    this.shadowMeshes.clear();
+    this.outlinedObjects.clear();
+    this.materialHashes.clear();
+  }
+
+  private _lastX = -1;
+  private _lastY = -1;
   setOutlinePass(outlinePass: any) {
+    const outlinePassChanged = this.outlinePass !== outlinePass;
     this.outlinePass = outlinePass;
+
+    if (outlinePassChanged || this._lastX !== outlinePass.resolution.x || this._lastY !== outlinePass.resolution.y) {
+      this._lastX = outlinePass.resolution.x;
+      this._lastY = outlinePass.resolution.y;
+      this.rebuild();
+    }
   }
 
   // Generate hash of material properties for change detection
@@ -68,6 +115,11 @@ export class SceneWrapper {
       this.fullUpdate();
     }
 
+    // Update materials if needed
+    if (this.materialsDirty && this.outlinePass) {
+      this.updateMaterials();
+    }
+
     for (const [meshId, originalObject] of this.outlinedObjects) {
       const shadowMesh = this.shadowMeshes.get(meshId);
       if (shadowMesh && originalObject.parent) {
@@ -91,6 +143,8 @@ export class SceneWrapper {
   // Full update - traverses scene to find objects that should be outlined
   fullUpdate(): void {
     this._dirty = false;
+
+    this.executeRebuild();
 
     // Log memory before flush if significant changes expected
     const beforeMemory = this.getMemorySnapshot();
@@ -172,7 +226,7 @@ export class SceneWrapper {
           shadowMesh.updateMatrixWorld(true);
 
           // If material changed, recreate ID materials
-          if (this.outlinePass) {
+          if (materialChanged && this.outlinePass) {
             this.outlinePass.prepareShadowMesh(shadowMesh, object);
             this.materialHashes.set(meshId, currentMaterialHash);
           }
@@ -208,6 +262,61 @@ export class SceneWrapper {
     this.logMemoryChanges(beforeMemory, afterMemory, existingShadowIds.size, currentOutlineIds.size);
   }
 
+  // Single consolidated material update method
+  updateMaterials(): void {
+    if (!this.outlinePass) return;
+
+    const currentDepthTexture = this.outlinePass.sceneDepthTexture;
+    const depthTextureChanged = this.lastDepthTexture !== currentDepthTexture;
+
+    if (!this.materialsDirty && !depthTextureChanged) {
+      return; // No updates needed
+    }
+
+    const useDepthTest = currentDepthTexture !== null;
+    let materialsUpdated = false;
+
+    // Update all shadow mesh materials in one pass
+    this.outlineScene.traverse((object: any) => {
+      if (object.isMesh && object.material) {
+        const updateMaterial = (mat: any) => {
+          if (mat.uniforms) {
+            let materialChanged = false;
+
+            if (mat.uniforms["sceneDepthTexture"] && mat.uniforms["sceneDepthTexture"].value !== currentDepthTexture) {
+              mat.uniforms["sceneDepthTexture"].value = currentDepthTexture;
+              materialChanged = true;
+            }
+
+            if (mat.uniforms["useDepthTest"] && mat.uniforms["useDepthTest"].value !== useDepthTest) {
+              mat.uniforms["useDepthTest"].value = useDepthTest;
+              materialChanged = true;
+            }
+
+            if (materialChanged) {
+              mat.needsUpdate = true;
+              materialsUpdated = true;
+            }
+          }
+        };
+
+        if (Array.isArray(object.material)) {
+          object.material.forEach(updateMaterial);
+        } else {
+          updateMaterial(object.material);
+        }
+      }
+    });
+
+    // Update tracking
+    this.lastDepthTexture = currentDepthTexture;
+    this.materialsDirty = false;
+
+    if (materialsUpdated) {
+      console.log(`SceneWrapper: Updated materials (depth texture: ${!!currentDepthTexture}, useDepthTest: ${useDepthTest})`);
+    }
+  }
+
   dispose(): void {
     // Dispose all shadow mesh materials before clearing
     for (const shadowMesh of this.shadowMeshes.values()) {
@@ -236,7 +345,7 @@ export class SceneWrapper {
     return {
       timestamp: performance.now(),
       shadow: shadowStats,
-      real: realStats
+      real: realStats,
     };
   }
 
@@ -287,7 +396,7 @@ export class SceneWrapper {
                 transparentMaterials: () => transparentMaterials++,
                 opaqueMaterials: () => opaqueMaterials++,
                 texturesUsed: () => texturesUsed++,
-                textureMemoryMap
+                textureMemoryMap,
               });
             });
           } else {
@@ -296,7 +405,7 @@ export class SceneWrapper {
               transparentMaterials: () => transparentMaterials++,
               opaqueMaterials: () => opaqueMaterials++,
               texturesUsed: () => texturesUsed++,
-              textureMemoryMap
+              textureMemoryMap,
             });
           }
         }
@@ -318,7 +427,7 @@ export class SceneWrapper {
       faces: totalFaces,
       transparentMaterials,
       opaqueMaterials,
-      texturesUsed
+      texturesUsed,
     };
   }
 
@@ -351,7 +460,7 @@ export class SceneWrapper {
         }
       }
       // Also check other common texture maps
-      ['normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap'].forEach(mapType => {
+      ["normalMap", "roughnessMap", "metalnessMap", "emissiveMap", "aoMap"].forEach((mapType) => {
         if (material[mapType]) {
           if (!counters.textureMemoryMap.has(material[mapType].uuid)) {
             counters.textureMemoryMap.set(material[mapType].uuid, this.calculateSingleTextureMemory(material[mapType]));
@@ -442,9 +551,11 @@ export class SceneWrapper {
 
   private hasSignificantChanges(before: any, after: any): boolean {
     if (!before || !after) return true;
-    return Math.abs(after.meshes - before.meshes) > 0 ||
-           Math.abs(after.geometries - before.geometries) > 0 ||
-           Math.abs(after.materials - before.materials) > 0;
+    return (
+      Math.abs(after.meshes - before.meshes) > 0 ||
+      Math.abs(after.geometries - before.geometries) > 0 ||
+      Math.abs(after.materials - before.materials) > 0
+    );
   }
 
   private logSceneStats(before: any, after: any) {
@@ -463,16 +574,32 @@ export class SceneWrapper {
     const texturesDelta = after.texturesUsed - before.texturesUsed;
     const textureMemoryDelta = (after.textureMemoryMB || 0) - (before.textureMemoryMB || 0);
 
-    console.log(`Meshes: ${before.meshes} → ${after.meshes} (${meshDelta > 0 ? '+' : ''}${meshDelta})`);
+    console.log(`Meshes: ${before.meshes} → ${after.meshes} (${meshDelta > 0 ? "+" : ""}${meshDelta})`);
     console.log(`  ├─ With Outlines: ${before.outlinedMeshes || 0} → ${after.outlinedMeshes || 0}`);
     console.log(`  └─ Without Outlines: ${before.nonOutlinedMeshes || 0} → ${after.nonOutlinedMeshes || 0}`);
-    console.log(`Geometries: ${before.geometries} → ${after.geometries} (${geometryDelta > 0 ? '+' : ''}${geometryDelta})`);
-    console.log(`Materials: ${before.materials} → ${after.materials} (${materialDelta > 0 ? '+' : ''}${materialDelta})`);
-    console.log(`  ├─ Transparent: ${before.transparentMaterials} → ${after.transparentMaterials} (${transparentDelta > 0 ? '+' : ''}${transparentDelta})`);
-    console.log(`  ├─ Opaque: ${before.opaqueMaterials} → ${after.opaqueMaterials} (${opaqueDelta > 0 ? '+' : ''}${opaqueDelta})`);
-    console.log(`  └─ Using Textures: ${before.texturesUsed} → ${after.texturesUsed} (${texturesDelta > 0 ? '+' : ''}${texturesDelta})`);
-    console.log(`Textures: ${(before.textureMemoryMB || 0).toFixed(2)}MB → ${(after.textureMemoryMB || 0).toFixed(2)}MB (${textureMemoryDelta > 0 ? '+' : ''}${textureMemoryDelta.toFixed(2)}MB)`);
-    console.log(`Vertices: ${before.vertices.toLocaleString()} → ${after.vertices.toLocaleString()} (${vertexDelta > 0 ? '+' : ''}${vertexDelta.toLocaleString()})`);
-    console.log(`Faces: ${before.faces.toLocaleString()} → ${after.faces.toLocaleString()} (${faceDelta > 0 ? '+' : ''}${faceDelta.toLocaleString()})`);
+    console.log(
+      `Geometries: ${before.geometries} → ${after.geometries} (${geometryDelta > 0 ? "+" : ""}${geometryDelta})`,
+    );
+    console.log(
+      `Materials: ${before.materials} → ${after.materials} (${materialDelta > 0 ? "+" : ""}${materialDelta})`,
+    );
+    console.log(
+      `  ├─ Transparent: ${before.transparentMaterials} → ${after.transparentMaterials} (${transparentDelta > 0 ? "+" : ""}${transparentDelta})`,
+    );
+    console.log(
+      `  ├─ Opaque: ${before.opaqueMaterials} → ${after.opaqueMaterials} (${opaqueDelta > 0 ? "+" : ""}${opaqueDelta})`,
+    );
+    console.log(
+      `  └─ Using Textures: ${before.texturesUsed} → ${after.texturesUsed} (${texturesDelta > 0 ? "+" : ""}${texturesDelta})`,
+    );
+    console.log(
+      `Textures: ${(before.textureMemoryMB || 0).toFixed(2)}MB → ${(after.textureMemoryMB || 0).toFixed(2)}MB (${textureMemoryDelta > 0 ? "+" : ""}${textureMemoryDelta.toFixed(2)}MB)`,
+    );
+    console.log(
+      `Vertices: ${before.vertices.toLocaleString()} → ${after.vertices.toLocaleString()} (${vertexDelta > 0 ? "+" : ""}${vertexDelta.toLocaleString()})`,
+    );
+    console.log(
+      `Faces: ${before.faces.toLocaleString()} → ${after.faces.toLocaleString()} (${faceDelta > 0 ? "+" : ""}${faceDelta.toLocaleString()})`,
+    );
   }
 }
