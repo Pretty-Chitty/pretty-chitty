@@ -153,7 +153,7 @@ export default function Viewer({
             (prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
           ) {
             // Clear canvas and render
-            rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme, 10);
+            rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme);
 
             chitRenderInstance.resetDirty();
             timeState.setAnimationState(id, !paused);

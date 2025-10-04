@@ -201,10 +201,19 @@ export class IDBasedOutlinePass extends Pass {
             float currentDepth = (gl_FragCoord.z);
 
             // Only draw if depths approximately match (mesh is visible in main scene)
-            // Use simple percentage-based tolerance
-            float tolerance = currentDepth * 0.001; // 0.1% tolerance
-            if (abs(currentDepth - sceneDepth) > tolerance) {
-              discard;  // Only discard if significantly behind
+            // Use adaptive tolerance: more tolerance for near objects, less for far objects
+            float nearTolerance = 0.005;   // Loose tolerance for close objects (depth ≈ 0)
+            float farTolerance = 0.0025;  // Tight tolerance for far objects (depth ≈ 1)
+
+            // Interpolate tolerance based on current depth
+            // Near camera (depth ≈ 0): use nearTolerance
+            // Far from camera (depth ≈ 1): use farTolerance
+            float tolerance = mix(nearTolerance, farTolerance, currentDepth);
+
+            float low = currentDepth - tolerance;
+            float high = currentDepth + tolerance;
+            if (sceneDepth < low || sceneDepth > high) {
+              discard;
             }
           }
 
@@ -378,7 +387,6 @@ export class IDBasedOutlinePass extends Pass {
       this.sceneWrapper.markMaterialsDirty();
     }
   }
-
 
   private renderIDBuffer(renderer: WebGLRenderer): void {
     const oldAutoClear = renderer.autoClear;

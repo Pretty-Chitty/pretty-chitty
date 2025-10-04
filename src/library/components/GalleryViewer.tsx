@@ -107,6 +107,7 @@ class GalleryController {
   private itemHeight = 100 / SCALE_FACTOR;
 
   public tweenDuration = 250;
+  public showSummary = true;
   private changed = false;
   private itemSpacing = 100 / SCALE_FACTOR;
   private itemsPerPage = 1;
@@ -145,6 +146,9 @@ class GalleryController {
     this.camera.position.y = Math.sin(this.offsetAngle) * z;
     this.camera.lookAt(new Vector3(this.camera.position.x, 0, 0));
     this.sceneWrapper.scene.fog = new Fog(0x000000, z, z + (w / SCALE_FACTOR) * 2);
+    this.camera.near = z * 0.5;
+    this.camera.far = z + (w / SCALE_FACTOR) * 3;
+    this.camera.updateProjectionMatrix();
 
     this.light.position.copy(this.camera.position);
     this.light.lookAt(0, 0, 0);
@@ -312,44 +316,6 @@ class GalleryController {
 
     group.rotation.x -= Math.min(1, item.depth / this.w);
     group.position.add(item.center);
-
-    // Update camera far plane when items move around
-    this.updateCameraFarPlane();
-  }
-
-  private updateCameraFarPlane() {
-    // Calculate the scene bounds to set appropriate far plane
-    let minZ = this.camera.position.z;
-    let maxZ = this.camera.position.z;
-
-    // Check all items for their actual Z bounds
-    this.items.forEach((item) => {
-      const box = new Box3().setFromObject(item.group);
-      if (!box.isEmpty()) {
-        minZ = Math.min(minZ, box.min.z);
-        maxZ = Math.max(maxZ, box.max.z);
-      }
-    });
-
-    // Also check leaving items
-    this.leavingItems.forEach((item) => {
-      const box = new Box3().setFromObject(item.group);
-      if (!box.isEmpty()) {
-        minZ = Math.min(minZ, box.min.z);
-        maxZ = Math.max(maxZ, box.max.z);
-      }
-    });
-
-    // Calculate required depth range with some padding
-    const depthRange = Math.abs(maxZ - minZ);
-    const paddingFactor = 1.5; // 50% padding
-    const newFar = Math.max(depthRange * paddingFactor, this.w / SCALE_FACTOR); // Minimum far plane
-
-    // Only update if it changed significantly (5% threshold handled by SceneWrapper)
-    if (this.camera.far !== newFar) {
-      this.camera.far = newFar;
-      this.camera.updateProjectionMatrix();
-    }
   }
 
   scaleItem(item: BuiltItem, maximumWidth?: number, maximumHeight?: number) {
@@ -371,7 +337,7 @@ class GalleryController {
 
   updateHelpText(item: BuiltItem) {
     const summary = item.item.summary;
-    if (!summary) {
+    if (!summary || !this.showSummary) {
       return;
     }
 
@@ -551,6 +517,7 @@ export function GalleryViewer({
   w = 0,
   h = 0,
   galleryItemHeight = h * 0.7,
+  showSummary = true,
 }: {
   items: GalleryItem[];
   w: number;
@@ -561,6 +528,7 @@ export function GalleryViewer({
   galleryItemWidth?: number;
   galleryItemHeight?: number;
   onClose?: () => void;
+  showSummary: boolean;
 }) {
   const [id] = useState(`GalleryViewer${ID_COUNTER++}`);
   const refContainer = useRef<HTMLCanvasElement>(null);
@@ -571,6 +539,7 @@ export function GalleryViewer({
   const [itemHeight, setItemHeight] = useState(galleryItemHeight);
 
   galleryController.tweenDuration = tweenDuration;
+  galleryController.showSummary = showSummary;
 
   useEffect(() => {
     galleryController.setSize(w, h, itemWidth, itemHeight, itemSpacing);

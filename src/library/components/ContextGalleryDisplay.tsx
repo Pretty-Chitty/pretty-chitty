@@ -54,6 +54,7 @@ export function ContextGalleryDisplay({ size }: { size: number }) {
         }}
       >
         <GalleryViewer
+          showSummary={false}
           paused={items.length > 0 ? false : true}
           items={items ?? []}
           tweenDuration={0}

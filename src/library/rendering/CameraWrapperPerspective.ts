@@ -26,7 +26,6 @@ export class CameraWrapperPerspective {
   private wiggleRoomY: number = 0;
   public visibleGameWidth: number = 0;
   public visibleGameHeight: number = 0;
-  private lastNearFarDistanceSet: number = 0;
 
   protected offsetTween = new Tween<Point3d>({ x: 0, y: 0, z: 0 });
   protected rotationTween = new Tween<Point3d>({ x: 0, y: 0, z: 0 });
@@ -47,6 +46,60 @@ export class CameraWrapperPerspective {
   }
 
   destroy() {}
+
+  private getBboxCorners(bbox: Box3): Vector3[] {
+    // Return all 8 corners of the bounding box
+    return [
+      new Vector3(bbox.min.x, bbox.min.y, bbox.min.z), // 0: min-min-min
+      new Vector3(bbox.min.x, bbox.min.y, bbox.max.z), // 1: min-min-max
+      new Vector3(bbox.min.x, bbox.max.y, bbox.min.z), // 2: min-max-min
+      new Vector3(bbox.min.x, bbox.max.y, bbox.max.z), // 3: min-max-max
+      new Vector3(bbox.max.x, bbox.min.y, bbox.min.z), // 4: max-min-min
+      new Vector3(bbox.max.x, bbox.min.y, bbox.max.z), // 5: max-min-max
+      new Vector3(bbox.max.x, bbox.max.y, bbox.min.z), // 6: max-max-min
+      new Vector3(bbox.max.x, bbox.max.y, bbox.max.z), // 7: max-max-max
+    ];
+  }
+
+  private calculateOptimalNearFar(bbox: Box3, cameraPosition: Vector3): { near: number; far: number } {
+    // Transform bbox to camera space and find analytical closest/farthest distances
+    const corners = this.getBboxCorners(bbox);
+
+    // Find the closest point on the bbox to the camera (analytical approach)
+    let closestDistanceSquared = Infinity;
+    let farthestDistanceSquared = 0;
+
+    // For analytical closest point calculation
+    const clampToRange = (value: number, min: number, max: number) =>
+      Math.max(min, Math.min(max, value));
+
+    // Find closest point on bbox to camera position
+    const closestPoint = new Vector3(
+      clampToRange(cameraPosition.x, bbox.min.x, bbox.max.x),
+      clampToRange(cameraPosition.y, bbox.min.y, bbox.max.y),
+      clampToRange(cameraPosition.z, bbox.min.z, bbox.max.z)
+    );
+
+    closestDistanceSquared = cameraPosition.distanceToSquared(closestPoint);
+
+    // Find farthest distance by checking all corners
+    for (const corner of corners) {
+      const distanceSquared = cameraPosition.distanceToSquared(corner);
+      farthestDistanceSquared = Math.max(farthestDistanceSquared, distanceSquared);
+    }
+
+    const closestDistance = Math.sqrt(closestDistanceSquared);
+    const farthestDistance = Math.sqrt(farthestDistanceSquared);
+
+    // Apply 20% padding as requested
+    const near = Math.max(0.001, closestDistance * 0.8);
+    const far = farthestDistance * 1.2;
+
+    // Ensure meaningful separation between near and far
+    const finalFar = Math.max(far, near + 0.1);
+
+    return { near, far: finalFar };
+  }
 
   public setCameraSpec(cameraSpec?: CameraSpec): void {
     this.cameraSpec = cameraSpec ?? new CameraSpec();
@@ -259,36 +312,16 @@ export class CameraWrapperPerspective {
         const adjustedCenterX = gameAreaX + centerShiftX;
         const adjustedCenterY = gameAreaY + centerShiftY;
 
-        // project corners
-        const pA = projectPointToPixels(
-          new Vector3(this.bbox.min.x, this.bbox.min.y, 0),
-          adjustedCenterX,
-          adjustedCenterY,
-          distance,
-        );
-        const pB = projectPointToPixels(
-          new Vector3(this.bbox.min.x, this.bbox.max.y, 0),
-          adjustedCenterX,
-          adjustedCenterY,
-          distance,
-        );
-        const pC = projectPointToPixels(
-          new Vector3(this.bbox.max.x, this.bbox.min.y, 0),
-          adjustedCenterX,
-          adjustedCenterY,
-          distance,
-        );
-        const pD = projectPointToPixels(
-          new Vector3(this.bbox.max.x, this.bbox.max.y, 0),
-          adjustedCenterX,
-          adjustedCenterY,
-          distance,
+        // project all 8 corners of the bbox
+        const corners = this.getBboxCorners(this.bbox);
+        const projectedCorners = corners.map(corner =>
+          projectPointToPixels(corner, adjustedCenterX, adjustedCenterY, distance)
         );
 
-        const leftPx = Math.min(pA.px, pB.px, pC.px, pD.px);
-        const rightPx = Math.max(pA.px, pB.px, pC.px, pD.px);
-        const topPx = Math.min(pA.py, pB.py, pC.py, pD.py);
-        const bottomPx = Math.max(pA.py, pB.py, pC.py, pD.py);
+        const leftPx = Math.min(...projectedCorners.map(p => p.px));
+        const rightPx = Math.max(...projectedCorners.map(p => p.px));
+        const topPx = Math.min(...projectedCorners.map(p => p.py));
+        const bottomPx = Math.max(...projectedCorners.map(p => p.py));
 
         const contentPxWidth = Math.max(1, rightPx - leftPx);
         const contentPxHeight = Math.max(1, bottomPx - topPx);
@@ -399,24 +432,30 @@ export class CameraWrapperPerspective {
       distance = 500;
     }
 
-    const distanceDifference = this.lastNearFarDistanceSet / distance;
-    if (
-      !Number.isFinite(distanceDifference) ||
-      !distanceDifference ||
-      distanceDifference > 1.1 ||
-      distanceDifference < 0.9
-    ) {
-      this.camera.near = distance / 10;
-      this.camera.far = distance * 10;
-      this.lastNearFarDistanceSet = distance;
-      this.camera.updateProjectionMatrix();
-    }
-
     // centerShiftX/centerShiftY are computed by the angle-aware solver above.
     // If padding is not used they will be zero; no further adjustment needed here.
 
     const adjustedCenterX = gameAreaX + centerShiftX;
     const adjustedCenterY = gameAreaY + centerShiftY;
+
+    // Calculate optimal near/far planes based on actual bbox dimensions and final camera position
+    const finalCameraPosition = new Vector3(
+      adjustedCenterX + distance * Math.sin(this.cameraSpec.horizontalRadiansRotation),
+      adjustedCenterY + distance * Math.sin(this.cameraSpec.verticalRadiansRotation),
+      distance * Math.cos(this.cameraSpec.horizontalRadiansRotation) * Math.cos(this.cameraSpec.verticalRadiansRotation)
+    );
+
+    const optimalPlanes = this.calculateOptimalNearFar(this.bbox, finalCameraPosition);
+
+    // Only update if planes changed significantly (avoid unnecessary projection matrix updates)
+    const nearChanged = Math.abs(this.camera.near - optimalPlanes.near) / this.camera.near > 0.1;
+    const farChanged = Math.abs(this.camera.far - optimalPlanes.far) / this.camera.far > 0.1;
+
+    if (nearChanged || farChanged || !Number.isFinite(this.camera.near) || !Number.isFinite(this.camera.far)) {
+      this.camera.near = optimalPlanes.near;
+      this.camera.far = optimalPlanes.far;
+      this.camera.updateProjectionMatrix();
+    }
 
     // Safety guard: ensure camera's Z (depth) is positive so camera looks toward scene plane.
     // If rotation causes camZ <= 0 (camera pointing below horizon / behind plane) increase distance slightly until valid.
