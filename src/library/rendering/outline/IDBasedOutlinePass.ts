@@ -202,8 +202,8 @@ export class IDBasedOutlinePass extends Pass {
 
             // Only draw if depths approximately match (mesh is visible in main scene)
             // Use adaptive tolerance: more tolerance for near objects, less for far objects
-            float nearTolerance = 0.005;   // Loose tolerance for close objects (depth ≈ 0)
-            float farTolerance = 0.0025;  // Tight tolerance for far objects (depth ≈ 1)
+            float nearTolerance = 0.007;   // Loose tolerance for close objects (depth ≈ 0)
+            float farTolerance = 0.003;  // Tight tolerance for far objects (depth ≈ 1)
 
             // Interpolate tolerance based on current depth
             // Near camera (depth ≈ 0): use nearTolerance

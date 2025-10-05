@@ -38,6 +38,7 @@ theme.dialogForegroundColor = "#000000ee";
 theme.chitHighlightColor = "#ffffff";
 theme.chitOutlineDownsample = 1;
 theme.chitOutlineWidth = 3;
+theme.chitOutlineStrength = 1;
 
 export class DemoGame implements Game<MyPlayer, Root> {
   name = "Demo Game";

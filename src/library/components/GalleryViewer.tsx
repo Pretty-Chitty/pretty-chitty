@@ -31,6 +31,7 @@ import { GameTheme } from "../game/GameTheme";
 import { RichTextRenderOptionsParameters } from "../utilities/CanvasStack/RichTextRenderer";
 import { SceneWrapper } from "../rendering/outline";
 import { requestSharedAnimationFrame } from "../utilities/RequestSharedAnimationFrame";
+import { TextureReferenaceCounter, TextureReferenceCounterRootGroup } from "../rendering/TextureReferenceCounter";
 
 let ID_COUNTER = 1;
 
@@ -85,7 +86,7 @@ type BuiltItem = {
   unsubscribe: UpdateCallback;
 };
 
-class GalleryController {
+class GalleryController implements TextureReferenceCounterRootGroup {
   constructor(
     public sceneWrapper: SceneWrapper,
     private theme: GameTheme,
@@ -98,6 +99,13 @@ class GalleryController {
     sceneWrapper.scene.add(this.light);
     const ambient = new AmbientLight(0xffffff, 1);
     sceneWrapper.scene.add(ambient);
+  }
+
+  getRootGroup(): Object3D {
+    return this.sceneWrapper.scene;
+  }
+  markHasChange(): void {
+    this.changed = true;
   }
 
   public camera: PerspectiveCamera;
@@ -309,6 +317,7 @@ class GalleryController {
     } else {
       if (item.meshToShowOrHideIfCentered) {
         item.meshToShowOrHideIfCentered.position.x = 0;
+        item.meshToShowOrHideIfCentered.position.z = 0;
       }
       group.position.z = 0;
       group.rotation.x = -this.offsetAngle;
@@ -421,6 +430,8 @@ class GalleryController {
             this.scaleItem(builtItem, item.maximumWidth, item.maximumHeight);
             this.positionItem(builtItem);
             this.updateHelpText(builtItem);
+
+            TextureReferenaceCounter.update();
           }),
         });
         this.scaleItem(builtItem, item.maximumWidth, item.maximumHeight);
@@ -504,6 +515,7 @@ class GalleryController {
     }
 
     this.sceneWrapper.markDirty();
+    TextureReferenaceCounter.update();
   }
 }
 
@@ -528,7 +540,7 @@ export function GalleryViewer({
   galleryItemWidth?: number;
   galleryItemHeight?: number;
   onClose?: () => void;
-  showSummary: boolean;
+  showSummary?: boolean;
 }) {
   const [id] = useState(`GalleryViewer${ID_COUNTER++}`);
   const refContainer = useRef<HTMLCanvasElement>(null);
@@ -677,7 +689,9 @@ export function GalleryViewer({
 
   // Cleanup sceneWrapper on unmount
   useEffect(() => {
+    TextureReferenaceCounter.registerInstance(galleryController);
     return () => {
+      TextureReferenaceCounter.unregisterInstance(galleryController);
       galleryController.sceneWrapper.dispose();
     };
   }, [galleryController]);

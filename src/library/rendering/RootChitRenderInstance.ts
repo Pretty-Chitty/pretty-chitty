@@ -11,6 +11,7 @@ import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
 import { GalleryItemRawSource } from "../game/GalleryItemRawSource";
 import { CameraSpec } from "./CameraSpec";
 import { SceneWrapper } from "./outline";
+import { TextureReferenaceCounter, TextureReferenceCounterRootGroup } from "./TextureReferenceCounter";
 
 export type AnimationState = "leaving" | "entering" | "pending" | "inactive";
 
@@ -18,9 +19,7 @@ export type AnimationState = "leaving" | "entering" | "pending" | "inactive";
 // Like a ChitRenderInstance, but only useful at the root
 // contains threejs high level stuff like lights, cameras and tween controls
 //
-export class RootChitRenderInstance extends ChitRenderInstance {
-  private static rootRenderInstances: RootChitRenderInstance[] = [];
-
+export class RootChitRenderInstance extends ChitRenderInstance implements TextureReferenceCounterRootGroup {
   private _sceneWrapper = new SceneWrapper();
   public _rootGroup = new Group();
   public _lightGroup = new Group();
@@ -58,7 +57,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
   constructor(chit: Chit) {
     super(chit);
-    RootChitRenderInstance.rootRenderInstances.push(this);
+    TextureReferenaceCounter.registerInstance(this);
     this._sceneWrapper.scene.add(this.rootGroup);
     this.id = chit.id ?? `${Date.now()}_${Math.random()}`;
     this.bboxGroup.visible = false;
@@ -99,7 +98,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
 
   resetDirty() {
     if (this.dirty) {
-      RootChitRenderInstance.registerAllTextures();
+      TextureReferenaceCounter.update();
       this.dirty = false;
     }
   }
@@ -108,82 +107,6 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   public setup(galleryState: GalleryState) {
     this.init();
     this.galleryState = galleryState;
-  }
-
-  /*
-   * Centrally walk all active RootChitRenderInstance scenes and register all textures
-   * across all instances to prevent race conditions during texture disposal.
-   */
-  static registerAllTextures() {
-    const allIdsUsed = new Set<string>();
-    const allMaterialsUsed = new Map<string, Material>();
-    const allGeosUsed = new Map<string, BufferGeometry>();
-    const props = [
-      "map",
-      "lightMap",
-      "aoMap",
-      "emissiveMap",
-      "bumpMap",
-      "normalMap",
-      "displacementMap",
-      "specularMap",
-      "alphaMap",
-      "envMap",
-    ];
-
-    const processMaterial = (mat: Material) => {
-      allMaterialsUsed.set(mat.uuid, mat);
-      const mata = mat as any;
-      props.forEach((prop) => {
-        if (mata[prop]) {
-          allIdsUsed.add(mata[prop].uuid);
-        }
-      });
-    };
-
-    // Scan all active root render instances
-    RootChitRenderInstance.rootRenderInstances.forEach((instance) => {
-      instance.rootGroup.traverse((obj) => {
-        if (obj instanceof Mesh) {
-          if (obj.geometry instanceof BufferGeometry) {
-            allGeosUsed.set(obj.geometry.uuid, obj.geometry);
-          }
-          if (Array.isArray(obj.material)) {
-            obj.material.forEach(processMaterial);
-          } else {
-            processMaterial(obj.material);
-          }
-        }
-      });
-    });
-
-    // Mark all textures as used globally
-    CanvasStack.disposer.markUsed(allIdsUsed, () => {
-      // Mark all instances as dirty when textures change
-      RootChitRenderInstance.rootRenderInstances.forEach((instance) => {
-        instance.dirty = true;
-      });
-    });
-    CanvasStack.materialDisposer.markUsedMap(allMaterialsUsed, () => {
-      RootChitRenderInstance.rootRenderInstances.forEach((instance) => {
-        instance.dirty = true;
-      });
-    });
-    CanvasStack.geoDisposer.markUsedMap(allGeosUsed, () => {
-      RootChitRenderInstance.rootRenderInstances.forEach((instance) => {
-        instance.dirty = true;
-      });
-    });
-  }
-
-  /*
-   * Walk all of our meshes and find all textures used by every object in our scene
-   * and let the chit render instance that we are using it.
-   * @deprecated Use static registerAllTextures() instead
-   */
-  registerTextures() {
-    // Delegate to the new centralized method
-    RootChitRenderInstance.registerAllTextures();
   }
 
   public override checkPreDestroy() {
@@ -288,6 +211,10 @@ export class RootChitRenderInstance extends ChitRenderInstance {
     this.sceneWrapper.markDirty();
   }
 
+  getRootGroup(): Object3D {
+    return this.rootGroup;
+  }
+
   protected get now() {
     const n = performance.now();
     return n - this._totalPauseDuration - (this._isPaused ? n - this._pausedAt : 0);
@@ -312,7 +239,7 @@ export class RootChitRenderInstance extends ChitRenderInstance {
   }
 
   public override destroy() {
-    RootChitRenderInstance.rootRenderInstances = RootChitRenderInstance.rootRenderInstances.filter((r) => r !== this);
+    TextureReferenaceCounter.unregisterInstance(this);
     this.lightWrapper.destroy();
     this.cameraWrapper.destroy();
     clearTimeout(this._notifyTimeout);
