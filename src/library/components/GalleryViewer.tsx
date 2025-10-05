@@ -350,7 +350,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
       return;
     }
 
-    const height = (this.h - this.itemHeight) / 2 - (this.theme.spacing / SCALE_FACTOR) * 2;
+    const height = (this.h - this.itemHeight) / 2 - this.theme.spacing * 2;
 
     const specs: RichTextRenderOptionsParameters = {
       align: "center",
@@ -362,7 +362,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
     }
     specs.fontSize *= window.devicePixelRatio;
 
-    const pad = (this.theme.spacing / SCALE_FACTOR) * window.devicePixelRatio;
+    const pad = this.theme.spacing * window.devicePixelRatio;
     const markdown = new MarkdownCanvasOperation(summary, item.item.summaryIconMap ?? {}, specs);
     const ops = new LayeredCanvasOperation([
       new ColorCanvasOperation(this.theme.gallerySummaryBackgroundColor, this.theme.gallerySummaryBackgroundOpacity),
@@ -377,7 +377,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
     stack1.render();
     const stack2 = new CanvasStack(
       this.itemWidth * SCALE_FACTOR * window.devicePixelRatio,
-      markdown.height + (this.theme.spacing / SCALE_FACTOR) * 2 * window.devicePixelRatio,
+      markdown.height + this.theme.spacing * 2 * window.devicePixelRatio,
       ops,
     );
     stack2.render();
