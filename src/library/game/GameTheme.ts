@@ -5,7 +5,7 @@ export class GameTheme {
 
   public spacing = 8;
   public bottomBarHeight = 80;
-  public topBarHeight = 56;
+  public topBarHeight = 40;
   public barColor = "#1c092c";
   public barGradientPercent = 0.05;
   public barGradientAngle = 110;

@@ -81,6 +81,7 @@ type BuiltItem = {
   center: Vector3;
   height: number;
   depth: number;
+  summaryHeight: number;
   tween?: Tween<{ x: number }>;
   enteredTween?: Tween<{ x: number }>;
   unsubscribe: UpdateCallback;
@@ -124,10 +125,50 @@ class GalleryController implements TextureReferenceCounterRootGroup {
   private light: DirectionalLight;
 
   private offsetAngle = Math.PI * 0.1;
+  private effectiveItemHeight = 0;
+  private baseCameraZ = 500 / SCALE_FACTOR;
 
   private items: BuiltItem[] = [];
   private leavingItems: BuiltItem[] = [];
   private itemLookup: { [key: string]: BuiltItem } = {};
+
+  private updateEffectiveItemHeightAndCamera() {
+    // Calculate the tallest actual mesh height (capped at itemHeight)
+    const tallestMeshHeight = Math.max(...this.items.map((item) => item.height), 0);
+    const newEffectiveItemHeight = Math.min(tallestMeshHeight, this.itemHeight);
+
+    // Check if effective height changed - if so, need to reposition all summaries
+    const heightChanged = Math.abs(newEffectiveItemHeight - this.effectiveItemHeight) > 0.001;
+    this.effectiveItemHeight = newEffectiveItemHeight;
+
+    if (heightChanged) {
+      this.items.forEach((item) => {
+        if (item.meshToShowOrHideIfCentered) {
+          // Reposition summary based on new effective height
+          const summaryHeight = item.summaryHeight - this.theme.spacing / SCALE_FACTOR;
+          item.meshToShowOrHideIfCentered.position.y =
+            -this.effectiveItemHeight * 0.5 - summaryHeight / 2 - this.theme.spacing / SCALE_FACTOR;
+        }
+      });
+    }
+
+    // Calculate tallest summary
+    const tallestSummaryHeight = Math.max(...this.items.map((item) => item.summaryHeight), 0);
+
+    // Vertical offset is based on effective item height + tallest summary
+    const verticalOffset = -tallestSummaryHeight / 2;
+
+    // Update camera position using the base Z distance
+    this.camera.position.z = Math.cos(this.offsetAngle) * this.baseCameraZ;
+    this.camera.position.y = Math.sin(this.offsetAngle) * this.baseCameraZ + verticalOffset;
+    this.camera.lookAt(new Vector3(this.camera.position.x, verticalOffset, 0));
+
+    // Update light to match camera
+    this.light.position.copy(this.camera.position);
+    this.light.lookAt(0, verticalOffset, 0);
+
+    this.changed = true;
+  }
 
   public setSize(w: number, h: number, itemWidth: number, itemHeight: number, itemSpacing: number) {
     this.changed = true;
@@ -143,23 +184,18 @@ class GalleryController implements TextureReferenceCounterRootGroup {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
 
+    // Calculate base camera Z distance from the field of view
     const aspect = this.camera.aspect;
     const vFov = (this.camera.fov * Math.PI) / 180;
     const hFov = 2 * Math.atan(aspect * Math.tan(vFov / 2));
-    this.camera.position.z = w / SCALE_FACTOR / (2 * Math.tan(hFov / 2));
+    this.baseCameraZ = w / SCALE_FACTOR / (2 * Math.tan(hFov / 2));
     this.camera.position.x = 0;
 
-    const z = this.camera.position.z;
-    this.camera.position.z = Math.cos(this.offsetAngle) * z;
-    this.camera.position.y = Math.sin(this.offsetAngle) * z;
-    this.camera.lookAt(new Vector3(this.camera.position.x, 0, 0));
-    this.sceneWrapper.scene.fog = new Fog(0x000000, z, z + (w / SCALE_FACTOR) * 2);
-    this.camera.near = z * 0.5;
-    this.camera.far = z + (w / SCALE_FACTOR) * 3;
+    // Set up fog and camera clipping planes
+    this.sceneWrapper.scene.fog = new Fog(0x000000, this.baseCameraZ, this.baseCameraZ + (w / SCALE_FACTOR) * 2);
+    this.camera.near = this.baseCameraZ * 0.5;
+    this.camera.far = this.baseCameraZ + (w / SCALE_FACTOR) * 3;
     this.camera.updateProjectionMatrix();
-
-    this.light.position.copy(this.camera.position);
-    this.light.lookAt(0, 0, 0);
 
     // reset the world
     this.pan(0, true);
@@ -182,18 +218,15 @@ class GalleryController implements TextureReferenceCounterRootGroup {
     ndc.unproject(this.camera);
     const raycaster = new Raycaster(this.camera.position, ndc.sub(this.camera.position).normalize());
 
-    // Check main mesh
-    const boundingBox = new Box3().setFromObject(item.mesh);
-    const hitMain = raycaster.ray.intersectBox(boundingBox, new Vector3());
-
-    // Check helpText/summary mesh if present
-    let hitHelpText = false;
+    // Create a combined bounding box from mesh to summary (if present)
+    const combinedBox = new Box3().setFromObject(item.mesh);
     if (item.meshToShowOrHideIfCentered) {
-      const helpTextBox = new Box3().setFromObject(item.meshToShowOrHideIfCentered);
-      hitHelpText = !!raycaster.ray.intersectBox(helpTextBox, new Vector3());
+      const summaryBox = new Box3().setFromObject(item.meshToShowOrHideIfCentered);
+      combinedBox.union(summaryBox);
     }
 
-    if (!hitMain && !hitHelpText) {
+    const hit = raycaster.ray.intersectBox(combinedBox, new Vector3());
+    if (!hit) {
       return null;
     }
 
@@ -347,6 +380,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
   updateHelpText(item: BuiltItem) {
     const summary = item.item.summary;
     if (!summary || !this.showSummary) {
+      item.summaryHeight = 0;
       return;
     }
 
@@ -387,10 +421,12 @@ class GalleryController implements TextureReferenceCounterRootGroup {
     material.depthWrite = true;
 
     const finalHeight = stack2.height / window.devicePixelRatio / SCALE_FACTOR;
+    item.summaryHeight = finalHeight + this.theme.spacing / SCALE_FACTOR;
     const face = new PlaneGeometry(this.itemWidth, finalHeight);
     const m = new Mesh(face, material);
     // m.renderOrder = 2;
-    m.position.set(0, -this.itemHeight * 0.5 - finalHeight / 2 - this.theme.spacing / SCALE_FACTOR, 0);
+    // Position will be set by updateEffectiveItemHeightAndCamera based on effectiveItemHeight
+    m.position.set(0, -this.effectiveItemHeight * 0.5 - finalHeight / 2 - this.theme.spacing / SCALE_FACTOR, 0);
 
     item.meshToShowOrHideIfCentered = m;
     item.group.add(m);
@@ -415,6 +451,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
           center: new Vector3(),
           height: 0,
           depth: 0,
+          summaryHeight: 0,
           targetIndex: i + itemIndexOffset,
           unsubscribe: item.registerUpdateHandler(() => {
             builtItem.group.removeFromParent();
@@ -430,6 +467,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
             this.scaleItem(builtItem, item.maximumWidth, item.maximumHeight);
             this.positionItem(builtItem);
             this.updateHelpText(builtItem);
+            this.updateEffectiveItemHeightAndCamera();
 
             TextureReferenaceCounter.update();
           }),
@@ -514,6 +552,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
       this.pan(0, true);
     }
 
+    this.updateEffectiveItemHeightAndCamera();
     this.sceneWrapper.markDirty();
     TextureReferenaceCounter.update();
   }
