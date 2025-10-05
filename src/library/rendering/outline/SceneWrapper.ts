@@ -211,6 +211,9 @@ export class SceneWrapper {
           this.materialHashes.set(meshId, currentMaterialHash);
         } else {
           // Update userData to reflect any changes (like outline color changes)
+          const userDataChanged =
+            object.userData.outlineColor !== shadowMesh.userData.outlineColor ||
+            object.userData.outlineId !== shadowMesh.userData.outlineId;
           shadowMesh.userData = { ...object.userData };
 
           // Update transform to match original
@@ -226,7 +229,7 @@ export class SceneWrapper {
           shadowMesh.updateMatrixWorld(true);
 
           // If material changed, recreate ID materials
-          if (materialChanged && this.outlinePass) {
+          if ((materialChanged || userDataChanged) && this.outlinePass) {
             this.outlinePass.prepareShadowMesh(shadowMesh, object);
             this.materialHashes.set(meshId, currentMaterialHash);
           }
@@ -313,7 +316,9 @@ export class SceneWrapper {
     this.materialsDirty = false;
 
     if (materialsUpdated) {
-      console.log(`SceneWrapper: Updated materials (depth texture: ${!!currentDepthTexture}, useDepthTest: ${useDepthTest})`);
+      console.log(
+        `SceneWrapper: Updated materials (depth texture: ${!!currentDepthTexture}, useDepthTest: ${useDepthTest})`,
+      );
     }
   }
 
