@@ -9,7 +9,12 @@ export { GameBag } from "./game/GameBag";
 export { GameTheme } from "./game/GameTheme";
 export { OrderedOutlet } from "./game/OrderedOutlet";
 export { PanelChit } from "./game/PanelChit";
-export type { PanelLayoutResult, PanelLayout, PanelLayoutCell, PanelLayoutRow } from "./game/PanelChit";
+export type {
+  PanelLayoutResult,
+  PanelLayout,
+  PanelLayoutCol as PanelLayoutCell,
+  PanelLayoutRow,
+} from "./game/PanelChit";
 export { Pick, ButtonPick, ChitPick } from "./game/Pick";
 export { PlayerChit } from "./game/PlayerChit";
 export { RootChit } from "./game/RootChit";
@@ -57,3 +62,6 @@ export { Splay } from "./rendering/Splay";
 
 export type { ExtrudeFromSVGOptions } from "./utilities/SvgExtruder";
 export { extrudeSVGToGeometry } from "./utilities/SvgExtruder";
+
+export { createLayoutFromTree } from "./utilities/LayoutHelper";
+export type { LayoutNode, PanelNode, ContainerNode, LayoutDirection } from "./utilities/LayoutHelper";

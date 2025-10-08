@@ -26,6 +26,7 @@ import {
   OrderedOutlet,
   StaticImage,
   extrudeSVGToGeometry,
+  createLayoutFromTree,
 } from "../library";
 
 import { TestStack } from "./TestStack";
@@ -412,44 +413,43 @@ export class Root extends RootChit<MyPlayer> {
   }
 
   override getLayout(width: number, height: number) {
-    if (height > width) {
-      return [
-        {
-          height: 2,
-          contents: this.mainBoard,
-        },
-        width > this.players.length * 500
-          ? {
-              height: 1,
-              contents: this.players.map((p) => ({
-                contents: p,
-                width: 1,
-              })),
-            }
-          : { height: 1, contents: this.players.map((p) => p) },
-      ];
-    } else {
-      return [
-        {
-          height: 1,
-          contents: [
-            {
-              width: 2,
-              contents: this.mainBoard,
-            },
-
-            height > this.players.length * 500
-              ? {
-                  width: 1,
-                  contents: this.players.map((p) => ({
-                    contents: p,
-                    height: 1,
+    return createLayoutFromTree(
+      {
+        direction: "horizontal",
+        collapseOrder: 3, // Collapse last if players collapsing doesn't help
+        splits: [
+          {
+            panel: this.mainBoard,
+            minWidth: 300,
+            minHeight: 500,
+          },
+          {
+            direction: "optimizePreferVertical",
+            collapseOrder: 2, // Collapse second
+            splits: [
+              {
+                direction: "optimizeGrid",
+                collapseOrder: 1, // Collapse first
+                splits: this.players
+                  .copy()
+                  .slice(1)
+                  .map((player) => ({
+                    panel: player,
+                    minWidth: 250,
+                    minHeight: 225,
                   })),
-                }
-              : { width: 1, contents: this.players.map((p) => p) },
-          ],
-        },
-      ];
-    }
+              },
+              {
+                panel: this.players.get(0),
+                minWidth: 300,
+                minHeight: 225,
+              },
+            ],
+          },
+        ],
+      },
+      width,
+      height,
+    );
   }
 }

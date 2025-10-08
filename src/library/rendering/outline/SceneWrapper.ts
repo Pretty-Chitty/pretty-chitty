@@ -519,6 +519,7 @@ export class SceneWrapper {
   }
 
   private logMemoryChanges(before: any, after: any, beforeCount: number, afterCount: number) {
+    return;
     // Check for significant changes in either scene
     const shadowChanged = this.hasSignificantChanges(before.shadow, after.shadow);
     const realChanged = this.hasSignificantChanges(before.real, after.real);

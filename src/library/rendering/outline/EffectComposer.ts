@@ -141,7 +141,7 @@ export class EffectComposer {
     const totalComposerTime = performance.now() - composerStart;
 
     // Log timing occasionally
-    if (Math.random() < 0.016) {
+    if (Math.random() < 0.00016) {
       // ~1/60 chance
       console.log(`EffectComposer Timing (${totalComposerTime.toFixed(2)}ms total):`);
       passTimes.forEach((time, index) => {

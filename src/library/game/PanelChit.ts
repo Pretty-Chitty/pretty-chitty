@@ -1,17 +1,17 @@
 import { NonEditable } from "../utilities/Annotations";
 import { Chit } from "./Chit";
 
-export type PanelLayoutCell = {
+export type PanelLayoutCol = {
   width: number;
-  contents: PanelLayout;
+  contents: PanelLayout[];
 };
 
 export type PanelLayoutRow = {
   height: number;
-  contents: PanelLayout;
+  contents: PanelLayout[];
 };
 
-export type PanelLayout = Chit | Chit[] | PanelLayoutCell[] | PanelLayoutRow[];
+export type PanelLayout = Chit | Chit[] | PanelLayoutCol | PanelLayoutRow;
 
 export type PanelLayoutResult = {
   w: number;
@@ -28,18 +28,14 @@ export class PanelChit extends Chit {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getLayout(width: number, height: number, playerId: string): PanelLayout {
-    return [
-      {
-        height: 1,
-        contents: this,
-      },
-    ];
+    return this;
   }
 
   getFlatLayout(width: number, height: number, scale = 1, playerId: string): PanelLayoutResult[] {
     const layout = this.getLayout(width * scale, height * scale, playerId);
 
     const flatten = (layout: PanelLayout, x: number, y: number, w: number, h: number): PanelLayoutResult[] => {
+      // Handle Chit or Chit[] (leaf nodes)
       if (layout instanceof Chit || (Array.isArray(layout) && layout[0] instanceof Chit)) {
         const layoutArray = layout as Chit[];
         return [
@@ -53,41 +49,45 @@ export class PanelChit extends Chit {
           },
         ];
       }
-      if (Array.isArray(layout)) {
-        if ((layout[0] as PanelLayoutCell).width !== undefined) {
-          const cells = layout as PanelLayoutCell[];
 
-          if (cells.length === 1 && cells[0].contents instanceof Chit) {
-            return flatten(cells[0].contents, x, y, w, h);
-          }
+      // Handle PanelLayoutCol (horizontal split)
+      if ("width" in layout) {
+        const col = layout as PanelLayoutCol;
+        const totalWidth = col.width;
+        let currentX = x;
 
-          const totalWidth = cells.reduce((total, col) => total + col.width, 0);
-          return cells
-            .map((c) => {
-              const newW = (w / totalWidth) * c.width;
-              const result = flatten(c.contents, x, y, newW, h);
-              x += newW;
-              return result;
-            })
-            .flat();
-        } else if ((layout[0] as PanelLayoutRow).height !== undefined) {
-          const rows = layout as PanelLayoutRow[];
-          const totalHeight = rows.reduce((total, row) => total + row.height, 0);
-
-          if (rows.length === 1 && rows[0].contents instanceof Chit) {
-            return flatten(rows[0].contents, x, y, w, h);
-          }
-
-          return rows
-            .map((c) => {
-              const newH = (h / totalHeight) * c.height;
-              const result = flatten(c.contents, x, y, w, newH);
-              y += newH;
-              return result;
-            })
-            .flat();
-        }
+        return col.contents
+          .map((content) => {
+            // Get width from the content if it's a col, otherwise distribute evenly
+            const contentWidth =
+              "width" in content ? (content as PanelLayoutCol).width : totalWidth / col.contents.length;
+            const newW = (w / totalWidth) * contentWidth;
+            const result = flatten(content, currentX, y, newW, h);
+            currentX += newW;
+            return result;
+          })
+          .flat();
       }
+
+      // Handle PanelLayoutRow (vertical split)
+      if ("height" in layout) {
+        const row = layout as PanelLayoutRow;
+        const totalHeight = row.height;
+        let currentY = y;
+
+        return row.contents
+          .map((content) => {
+            // Get height from the content if it's a row, otherwise distribute evenly
+            const contentHeight =
+              "height" in content ? (content as PanelLayoutRow).height : totalHeight / row.contents.length;
+            const newH = (h / totalHeight) * contentHeight;
+            const result = flatten(content, x, currentY, w, newH);
+            currentY += newH;
+            return result;
+          })
+          .flat();
+      }
+
       return [];
     };
 

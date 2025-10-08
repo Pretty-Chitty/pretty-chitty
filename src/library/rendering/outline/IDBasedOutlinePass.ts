@@ -339,7 +339,7 @@ export class IDBasedOutlinePass extends Pass {
     const totalTime = performance.now() - renderStart;
 
     // Log timing every 60 frames to avoid spam
-    if (Math.random() < 0.016) {
+    if (Math.random() < 0.00016) {
       // ~1/60 chance
       console.log(`Outline Pass Timing:
   Total: ${totalTime.toFixed(2)}ms
