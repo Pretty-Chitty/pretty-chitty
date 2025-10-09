@@ -5,13 +5,22 @@ import { useTimeController, useTimeState } from "../hooks/useTimeController";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import BottomBarButton from "./BottomBarButton";
 import { useGameTheme } from "../hooks/useGameTheme";
+import LiveButton from "./LiveButton";
+import GridZoomButton from "./GridZoomButton";
 
 const SPEEDS = [1, 2 / 3, 0.5, 0.25, 0.125, 2];
 
-export default function TimeControlBar() {
+export default function TimeControlBar({
+  autoLive = false,
+  includeGridButton = false,
+}: {
+  autoLive?: boolean;
+  includeGridButton?: boolean;
+}) {
   const theme = useGameTheme();
   const timeController = useTimeController();
   const timeState = useTimeState();
+  const [, setLive] = useEventChannelState(timeState.live);
   const [speed, setSpeed] = useEventChannelState(timeState.animationSpeedMultiplier);
   const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
@@ -23,33 +32,46 @@ export default function TimeControlBar() {
 
   return (
     <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
-      <Box sx={{ position: "absolute", width: "100%" }}>
-        <Box
-          sx={{
-            width: `${(targetClock / maxClock.clock) * 100}%`,
-            background: theme.barHighlightTextColor,
-            transition: "width linear 0.25s",
-            height: "6px",
-          }}
-        />
+      <Box sx={{ height: "6px", position: "absolute", width: "100%" }}>
+        {targetClock < maxClock.clock && (
+          <Box
+            sx={{
+              width: `${(targetClock / maxClock.clock) * 100}%`,
+              background: theme.barHighlightTextColor,
+              transition: "width linear 0.25s",
+              height: "6px",
+            }}
+          />
+        )}
       </Box>
 
       <Stack direction="row" sx={{ width: "100%", height: "100%", pl: 1, pr: 1 }}>
-        <BottomBarButton icon={Settings} label={"Menu"} />
+        {includeGridButton && <GridZoomButton />}
         <BottomBarButton icon={Speed} label={`${1 / speed}x`} onClick={toggleSpeed} />
         <Box flex={1} />
         <BottomBarButton
           icon={FastRewind}
           label={"Back"}
-          whileHolding={(n: number) => setTargetClock(targetClock - n)}
+          whileHolding={(n: number) => {
+            setLive(false);
+            setTargetClock(targetClock - n);
+          }}
         />
         <BottomBarButton
+          disabled={targetClock >= maxClock.clock}
           icon={FastForward}
           label={"Forward"}
-          whileHolding={(n: number) => setTargetClock(targetClock + n)}
+          whileHolding={(n: number) => {
+            if (autoLive && targetClock + 1 >= maxClock.clock) {
+              setLive(true);
+            } else {
+              setLive(false);
+              setTargetClock(targetClock + n);
+            }
+          }}
         />
         <Box flex={1} />
-        <BottomBarButton icon={SkipNext} label={"Live"} onClick={() => timeState.goLive(maxClock.clock)} />
+        <LiveButton hideIfLive={false} />
       </Stack>
     </Box>
   );

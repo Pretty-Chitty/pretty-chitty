@@ -22,6 +22,12 @@ export class PanelChit extends Chit {
       return [];
     }
     const layoutTree = this.getLayout(width * scale, height * scale, playerId);
-    return createLayoutFromTree(layoutTree, width, height);
+    return createLayoutFromTree(layoutTree, width * scale, height * scale).map((item) => {
+      item.h = item.h / scale;
+      item.w = item.w / scale;
+      item.x = item.x / scale;
+      item.y = item.y / scale;
+      return item;
+    });
   }
 }

@@ -1,5 +1,5 @@
 import { Box, Stack, SvgIconTypeMap, Typography } from "@mui/material";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { LongPressEventType, useLongPress } from "use-long-press";
 import useHover from "@react-hook/hover";
@@ -29,6 +29,12 @@ export default function BottomBarButton({
   onLongClick?: () => void;
   whileHolding?: (steps: number) => void;
 }) {
+  if (disabled) {
+    onClick = undefined;
+    onLongClick = undefined;
+    whileHolding = undefined;
+  }
+
   const theme = useGameTheme();
   const ref = useRef(null);
   const hovered = useHover(ref);
@@ -56,6 +62,15 @@ export default function BottomBarButton({
 
   // eslint-disable-next-line prefer-const
   let [isPressed, setIsPressed] = useState(false);
+
+  // Stop interval and reset state when button becomes disabled
+  useEffect(() => {
+    if (disabled) {
+      setIsPressed(false);
+      setHoldStart(0);
+      stop();
+    }
+  }, [disabled, stop]);
 
   const LONG_PRESS_SECONDS = 1.25;
   const bind = useLongPress(

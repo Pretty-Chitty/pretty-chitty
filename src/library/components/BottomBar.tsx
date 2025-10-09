@@ -1,14 +1,17 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useRef } from "react";
 import { Box, Stack } from "@mui/material";
-import { CalendarViewMonth, SkipNext, Speed } from "@mui/icons-material";
-import { useTimeController, useTimeState } from "../hooks/useTimeController";
+import { Speed } from "@mui/icons-material";
+import { useTimeState } from "../hooks/useTimeController";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import BottomBarButton from "./BottomBarButton";
 import { useGameTheme } from "../hooks/useGameTheme";
 import TimeControlBar from "./TimeControlBar";
 import PromptControls from "./PromptControls";
-import { usePanelScale, usePanelSetScale } from "../hooks/usePanelScale";
-import { useGame } from "../hooks/useGame";
+import GridZoomButton from "./GridZoomButton";
+import LiveButton from "./LiveButton";
+import useSize from "@react-hook/size";
+
+type LayoutSize = "mobile" | "medium" | "large";
 
 function BaseBottomBar({ children }: { children: ReactNode | ReactNode[] }) {
   const theme = useGameTheme();
@@ -27,56 +30,68 @@ function BaseBottomBar({ children }: { children: ReactNode | ReactNode[] }) {
 }
 
 export default function BottomBar() {
-  const timeController = useTimeController();
-  const game = useGame();
-  const scale = usePanelScale();
-  const setScale = usePanelSetScale();
   const timeState = useTimeState();
-  const [targetClock] = useEventChannelState(timeState.targetClock);
-  const [maxClock] = useEventChannelState(timeController.maxClock);
   const [live, setLive] = useEventChannelState(timeState.live);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width] = useSize(containerRef);
 
-  if (!live) {
+  const layoutSize: LayoutSize = width >= 1200 ? "large" : width >= 768 ? "medium" : "mobile";
+
+  // Mobile: current behavior (live mode shows buttons, timeline mode shows TimeControlBar)
+  if (layoutSize === "mobile") {
+    if (!live) {
+      return (
+        <BaseBottomBar>
+          <Box ref={containerRef} sx={{ width: "100%", height: "100%" }}>
+            <TimeControlBar />
+          </Box>
+        </BaseBottomBar>
+      );
+    }
+
     return (
       <BaseBottomBar>
-        <TimeControlBar />
+        <Stack ref={containerRef} direction="row" sx={{ width: "100%", height: "100%", pl: 1, pr: 1 }}>
+          <GridZoomButton />
+          <BottomBarButton icon={Speed} label={"Timeline"} onClick={() => setLive(false)} />
+          <Box flex={1} />
+          <PromptControls collapsible />
+          <LiveButton />
+        </Stack>
       </BaseBottomBar>
     );
   }
 
-  const isLarge = window.innerWidth > 800;
-  const zooms = isLarge ? [0.33, 1, 3] : [1, 3];
-  const labels = isLarge ? ["0.5x", "Grid", "3x"] : ["Grid", "3x"];
-
-  function toggleZoom() {
-    if (timeState.isLoading.value === false) {
-      timeState.isLoading.value = true;
-      setTimeout(() => {
-        timeState.isLoading.value = false;
-      }, 200);
-    }
-
-    const currentIndex = zooms.indexOf(scale);
-    setScale(zooms[(currentIndex + 1) % zooms.length]);
+  // Medium: time controls left half, prompt controls right half
+  if (layoutSize === "medium") {
+    return (
+      <BaseBottomBar>
+        <Stack ref={containerRef} direction="row" sx={{ width: "100%", height: "100%" }}>
+          <Box sx={{ width: "50%", display: "flex", alignItems: "center" }}>
+            <TimeControlBar autoLive includeGridButton />
+          </Box>
+          <Box sx={{ width: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <PromptControls />
+          </Box>
+        </Stack>
+      </BaseBottomBar>
+    );
   }
 
+  // Large: time controls left 1/3, prompt controls middle 1/3, empty right 1/3
   return (
     <BaseBottomBar>
-      <Stack direction="row" sx={{ width: "100%", height: "100%", pl: 1, pr: 1 }}>
-        {/* <BottomBarButton icon={Chat} label={"Chat"} /> */}
-        {game.showGrid && (
-          <BottomBarButton
-            icon={CalendarViewMonth}
-            label={labels[zooms.indexOf(scale)] ?? "Grid"}
-            onClick={toggleZoom}
-          />
-        )}
-        <BottomBarButton icon={Speed} label={"Timeline"} onClick={() => setLive(false)} />
-        <Box flex={1} />
-        <PromptControls />
-        {targetClock < maxClock.clock && (
-          <BottomBarButton icon={SkipNext} label={"Live"} onClick={() => timeState.goLive(maxClock.clock)} />
-        )}
+      <Stack ref={containerRef} direction="row" sx={{ width: "100%", height: "100%" }}>
+        <Box sx={{ width: "30%", display: "flex", alignItems: "center" }}>
+          <TimeControlBar autoLive />
+        </Box>
+        <Box sx={{ width: "40%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <PromptControls />
+        </Box>
+        <Stack direction="row" sx={{ width: "30%", pr: 1, pl: 1 }}>
+          <Box flex={1} />
+          <GridZoomButton />
+        </Stack>
       </Stack>
     </BaseBottomBar>
   );

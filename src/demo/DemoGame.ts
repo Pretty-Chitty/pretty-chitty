@@ -32,7 +32,7 @@ import * as CanvasLibrary from "./CanvasLibrary";
 import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
 
-const theme = GameTheme.withDefaults("#ffeedd", "#ef8354", "#001122");
+const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
 theme.dialogForegroundColor = "#000000ee";
 theme.chitHighlightColor = "#ffffff";

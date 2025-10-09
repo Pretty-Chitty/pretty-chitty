@@ -86,6 +86,10 @@ export class GameTheme {
     result.barTopLineColor = Color(textColor).alpha(0.1).hexa();
     result.endGameTextColor = Color(textColor).alpha(1).hexa();
 
+    result.barDisabledTextColor = Color(result.barColor).isLight()
+      ? Color(result.barColor).darken(1).hexa()
+      : Color(result.barColor).lighten(1).hexa();
+
     return result;
   }
 }

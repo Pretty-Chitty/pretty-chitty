@@ -38,7 +38,7 @@ function GameButtonWrapper({ button }: { button: GameButton }) {
   return <BottomBarButton highlight={highlight} icon={button.icon} label={button.label} onClick={cb} />;
 }
 
-export default function PromptControls() {
+export default function PromptControls({ collapsible }: { collapsible?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const timeState = useTimeState();
@@ -75,28 +75,37 @@ export default function PromptControls() {
     <Stack
       direction="row"
       sx={{
-        position: "absolute",
+        position: collapsible ? "absolute" : "static",
+        overflow: "hidden",
         zIndex: ZINDEX_PROMPT_CONTROLS,
         background: theme.actionBarColor,
-        maxWidth: "390px",
-        width: "97%",
+        maxWidth: "85vw",
+        width: collapsible ? "97%" : "100%",
         minWidth: "100px",
         height: theme.bottomBarHeight,
-        transform: expandedBecauseOfPrompt
-          ? `translateX(${expanded ? "0px" : "calc(100% - 55px)"})`
-          : "translateX(100%)",
-        transition: `transform ease-in-out ${theme.actionBarAnimationDuration * speed}s`,
+        transform: collapsible
+          ? expandedBecauseOfPrompt
+            ? `translateX(${expanded ? "0px" : "calc(100% - 55px)"})`
+            : "translateX(100%)"
+          : "",
+        opacity: !collapsible ? (expandedBecauseOfPrompt ? 1 : 0.4) : 1,
+        transition: `transform ease-in-out ${theme.actionBarAnimationDuration * speed}s, opacity linear ${theme.actionBarAnimationDuration * speed}s`,
         pr: 1,
+        pl: collapsible ? 0 : 1,
         right: 0,
         boxShadow: "-2px -2px 10px 0px rgba(0,0,0,0.2)",
       }}
     >
-      <BottomBarButton
-        removeLabel
-        icon={expanded ? ChevronRight : ChevronLeft}
-        onClick={() => setExpanded(!expanded)}
-      />
-      <BottomBarBreak />
+      {collapsible && (
+        <>
+          <BottomBarButton
+            removeLabel
+            icon={expanded ? ChevronRight : ChevronLeft}
+            onClick={() => setExpanded(!expanded)}
+          />
+          <BottomBarBreak />
+        </>
+      )}
 
       {prompt && <BottomBarButton icon={QuestionMark} label="Help" onClick={() => setShowHelp(true)} />}
       {prompt && (
