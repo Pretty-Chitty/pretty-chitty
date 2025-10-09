@@ -36,6 +36,10 @@ export class SceneWrapper {
     this._dirty = true;
   }
 
+  isDirty() {
+    return this._dirty;
+  }
+
   markMaterialsDirty() {
     this.materialsDirty = true;
   }

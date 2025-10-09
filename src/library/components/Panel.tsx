@@ -4,7 +4,8 @@ import { Box, Stack } from "@mui/material";
 import { useDebounce } from "@react-hook/debounce";
 import { Chit } from "../game/Chit";
 import Viewer from "./Viewer";
-import { PanelLayoutResult, PanelChit } from "../game/PanelChit";
+import { PanelChit } from "../game/PanelChit";
+import { PanelLayoutResult } from "../utilities/LayoutHelper";
 import { useGameTheme } from "../hooks/useGameTheme";
 
 import { useAnimationSpeedMultiplier, useTimeController, useTimeState } from "../hooks/useTimeController";
@@ -151,23 +152,25 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
   const CUTOUT_HEIGHT = 14;
   const ANIMATION_DURATION = 0.125;
 
+  const effectiveSelectedIndex = selectedIndex >= chits.length ? 0 : selectedIndex;
+
   const leavingIndex = panelStates.findIndex((p) => p.state === "leaving");
   const enteringIndex = panelStates.findIndex((p) => p.state === "entering");
   const pendingIndex = panelStates.findIndex((p) => p.state === "pending");
 
   if (!isLoading) {
     if (leavingIndex >= 0) {
-      if (panelStates[selectedIndex].state !== "leaving") {
+      if (panelStates[effectiveSelectedIndex].state !== "leaving") {
         // if our current panel is entering... obviously stay there
         setSelectedIndex(leavingIndex);
       }
     } else if (enteringIndex >= 0) {
-      if (panelStates[selectedIndex].state !== "entering") {
+      if (panelStates[effectiveSelectedIndex].state !== "entering") {
         // if our current panel is entering... obviously stay there
         setSelectedIndex(enteringIndex);
       }
     } else if (pendingIndex >= 0) {
-      if (panelStates[selectedIndex].state !== "pending") {
+      if (panelStates[effectiveSelectedIndex].state !== "pending") {
         // if our current panel is pending... obviously stay there
         setSelectedIndex(pendingIndex);
       }
@@ -235,12 +238,14 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
               left: 0,
               top: 0,
               transform:
-                index === selectedIndex ? `translateX(0)` : `translateX(${index > selectedIndex ? "110%" : "-110%"})`,
+                index === effectiveSelectedIndex
+                  ? `translateX(0)`
+                  : `translateX(${index > effectiveSelectedIndex ? "110%" : "-110%"})`,
             }}
           >
             <ViewerWrapper
               refContainer={refContainer}
-              paused={isLoading ? false : isSliding ? true : selectedIndex !== index}
+              paused={isLoading ? false : isSliding ? true : effectiveSelectedIndex !== index}
               chit={chit}
               w={w - theme.spacing}
               h={h - CUTOUT_HEIGHT - theme.spacing}
@@ -284,7 +289,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
               background: theme.panelSelectionCutoutSelected,
               position: "absolute",
               top: 0,
-              left: selectedIndex * CUTOUT_WIDTH,
+              left: effectiveSelectedIndex * CUTOUT_WIDTH,
             }}
           />
         </Box>

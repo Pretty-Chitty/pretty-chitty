@@ -1,8 +1,17 @@
 import { create } from "domain";
 import { Chit } from "../game/Chit";
-import { PanelLayout, PanelLayoutRow } from "../game/PanelChit";
+
+export type PanelLayoutResult = {
+  w: number;
+  h: number;
+  x: number;
+  y: number;
+  id?: string;
+  chit: Chit | Chit[];
+};
 
 export type LayoutDirection =
+  | "collapsed"
   | "horizontal"
   | "vertical"
   | "optimize"
@@ -51,18 +60,31 @@ function isPanelNode(node: LayoutNode | ConcreteLayoutNode): node is PanelNode {
 /**
  * Main entry point: creates layout from tree specification
  */
-export function createLayoutFromTree(tree: LayoutNode, availableWidth: number, availableHeight: number): PanelLayout {
-  console.log("Creating layout for", tree, availableWidth, availableHeight);
-
+export function createLayoutFromTree(
+  tree: LayoutNode,
+  availableWidth: number,
+  availableHeight: number,
+): PanelLayoutResult[] {
   // Step 1: Build valid LayoutNode tree (with collapses applied)
   const validTree = buildValidTree(tree, availableWidth, availableHeight);
 
-  console.log("validTree", validTree);
+  const rebalancedTree = rebalanceTree(validTree);
 
-  // Step 2: Convert the valid tree to PanelLayout
-  const res = treeToLayout(validTree);
-  console.log(res);
+  // Step 2: Convert the valid tree to PanelLayoutResult[]
+  const res = flattenTreeToResults(rebalancedTree, 0, 0, availableWidth, availableHeight);
+
   return res;
+}
+
+function rebalanceTree(tree: ConcreteLayoutNode): ConcreteLayoutNode {
+  if (isPanelNode(tree)) {
+    return tree;
+  }
+  if (tree.direction === "horizontal") {
+    return createHorizontalLayout(tree, tree.width, tree.height);
+  } else if (tree.direction === "vertical") {
+    return createVerticalLayout(tree, tree.width, tree.height);
+  } else return tree;
 }
 
 /**
@@ -70,6 +92,13 @@ export function createLayoutFromTree(tree: LayoutNode, availableWidth: number, a
  * Returns a NEW tree - does not modify the input
  */
 function buildValidTree(tree: LayoutNode, width: number, height: number): ConcreteLayoutNode {
+  if (width === 0) {
+    width = 1;
+  }
+  if (height === 0) {
+    height = 1;
+  }
+
   // Step 1: Attempt to layout - resolves all optimize* into concrete horizontal/vertical/grid
   const concreteTree = createConcreteLayout(tree, width, height);
 
@@ -78,13 +107,8 @@ function buildValidTree(tree: LayoutNode, width: number, height: number): Concre
 
   // If no violations, the original tree is valid!
   if (!hasViolations) {
-    console.log("Tree is valid - everything fits!");
     return concreteTree;
   }
-
-  console.log(
-    `Found violations in ${width.toFixed(0)}×${height.toFixed(0)} - scanning entire tree for smallest collapseOrder`,
-  );
 
   // Step 3: Scan ENTIRE tree for the container with smallest collapseOrder
   const toCollapse = findSmallestCollapseOrder(tree);
@@ -92,8 +116,6 @@ function buildValidTree(tree: LayoutNode, width: number, height: number): Concre
   if (!toCollapse) {
     return concreteTree;
   }
-
-  console.log(`Collapsing container with collapseOrder=${toCollapse.collapseOrder ?? "default"}`);
 
   // Step 4: Collapse that container to create NEW tree
   const newTree = collapseContainer(tree, toCollapse);
@@ -152,8 +174,8 @@ function createConcreteLayout(node: LayoutNode, width: number, height: number): 
     const horizontalLayout = createHorizontalLayout(container, width, height);
     const verticalLayout = createVerticalLayout(container, width, height);
 
-    const horizontalIsOkay = checkConcreteViolations(horizontalLayout);
-    const verticalIsOkay = checkConcreteViolations(verticalLayout);
+    const horizontalIsOkay = !checkConcreteViolations(horizontalLayout);
+    const verticalIsOkay = !checkConcreteViolations(verticalLayout);
 
     if (horizontalIsOkay && verticalIsOkay) {
       if (width >= height) {
@@ -174,8 +196,8 @@ function createConcreteLayout(node: LayoutNode, width: number, height: number): 
     const horizontalLayout = createHorizontalLayout(container, width, height);
     const verticalLayout = createVerticalLayout(container, width, height);
 
-    const horizontalIsOkay = checkConcreteViolations(horizontalLayout);
-    const verticalIsOkay = checkConcreteViolations(verticalLayout);
+    const horizontalIsOkay = !checkConcreteViolations(horizontalLayout);
+    const verticalIsOkay = !checkConcreteViolations(verticalLayout);
 
     if (
       container.direction === "optimizePreferHorizontal" &&
@@ -219,13 +241,10 @@ function createConcreteLayout(node: LayoutNode, width: number, height: number): 
       height,
       splits: result,
     };
+  } else if (container.direction === "horizontal") {
+    return createHorizontalLayout(container, width, height);
   } else {
-    return {
-      direction: container.direction as ConcreteDirection,
-      width,
-      height,
-      splits: container.splits.map((split) => createConcreteLayout(split, width, height)),
-    };
+    return createVerticalLayout(container, width, height);
   }
 }
 
@@ -236,7 +255,12 @@ function checkConcreteViolations(node: ConcreteLayoutNode): boolean {
   if (isPanelNode(node)) {
     return node.minWidth > node.width || node.minHeight > node.height;
   }
-  return node.splits.find((split) => checkConcreteViolations(split)) !== undefined;
+  for (let i = 0; i < node.splits.length; i++) {
+    if (checkConcreteViolations(node.splits[i])) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -266,35 +290,55 @@ function findSmallestCollapseOrder(node: LayoutNode): ContainerNode | null {
 }
 
 /**
- * Converts a valid LayoutNode tree to PanelLayout
+ * Flattens a valid ConcreteLayoutNode tree into PanelLayoutResult[]
  */
-function treeToLayout(node: ConcreteLayoutNode): PanelLayout {
+function flattenTreeToResults(
+  node: ConcreteLayoutNode,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): PanelLayoutResult[] {
+  // Handle leaf node (panel or panel array)
   if (isPanelNode(node)) {
-    return node.panel;
+    const panelArray = Array.isArray(node.panel) ? node.panel : [node.panel];
+    return [
+      {
+        x,
+        y,
+        w,
+        h,
+        id: panelArray.length > 0 ? panelArray[0].id : undefined,
+        chit: node.panel,
+      },
+    ];
   }
 
   const container = node as ConcreteContainerNode;
-  const direction = container.direction;
 
-  if (direction === "horizontal") {
-    return buildHorizontalLayout(container);
-  } else {
-    return buildVerticalLayout(container);
+  // Handle horizontal split
+  if (container.direction === "horizontal") {
+    let currentX = x;
+    return container.splits
+      .map((split) => {
+        const splitWidth = (split.width / container.width) * w;
+        const result = flattenTreeToResults(split, currentX, y, splitWidth, h);
+        currentX += splitWidth;
+        return result;
+      })
+      .flat();
   }
-}
 
-function buildHorizontalLayout(container: ConcreteContainerNode): PanelLayout {
-  return {
-    height: container.height,
-    contents: container.splits.map((split) => treeToLayout(split)).flat(),
-  };
-}
-
-function buildVerticalLayout(container: ConcreteContainerNode): PanelLayout {
-  return {
-    width: container.width,
-    contents: container.splits.map((split) => treeToLayout(split)).flat(),
-  };
+  // Handle vertical split
+  let currentY = y;
+  return container.splits
+    .map((split) => {
+      const splitHeight = (split.height / container.height) * h;
+      const result = flattenTreeToResults(split, x, currentY, w, splitHeight);
+      currentY += splitHeight;
+      return result;
+    })
+    .flat();
 }
 
 function findBestGridConfig(splits: LayoutNode[], width: number, height: number): { rows: number; cols: number } {
@@ -305,13 +349,13 @@ function findBestGridConfig(splits: LayoutNode[], width: number, height: number)
   const cellWidth = getMinWidth(splits[0]);
   const cellHeight = getMinHeight(splits[0]);
 
-  let cols = Math.floor(width / cellWidth);
-  let rows = Math.floor(height / cellHeight);
+  let cols = Math.ceil(width / cellWidth);
+  let rows = Math.ceil(height / cellHeight);
   let lastValidCols = cols;
   let lastValidRows = rows;
 
   // eslint-disable-next-line no-constant-condition
-  while (true) {
+  while (splits.length > 0) {
     let canReduceRows = rows > 1 && cols * (rows - 1) >= splits.length;
     let canReduceCols = cols > 1 && (cols - 1) * rows >= splits.length;
 
@@ -364,6 +408,7 @@ function collapseContainer(tree: LayoutNode, targetContainer: ContainerNode): La
 
     // Return PanelNode with array of panels (tabs) - NO collapseOrder
     return {
+      direction: "collapsed",
       panel: panels.map((p) => p.panel).flat(),
       minWidth: maxWidth,
       minHeight: maxHeight,

@@ -224,7 +224,6 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     if (this._isPaused) {
       return false;
     }
-
     if (this._tweenGroup) {
       const hasChange = this._tweenGroup.update(this.now);
       if (!hasChange && (this._hasPendingChanges || this._hasChitsEntering || this._hasChitsLeaving)) {
@@ -233,6 +232,11 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
         this._hasChitsLeaving = false;
         this.notifyPanelStatusChange();
       }
+
+      if (this._sceneWrapper.isDirty()) {
+        return true;
+      }
+
       return hasChange;
     }
     return false;

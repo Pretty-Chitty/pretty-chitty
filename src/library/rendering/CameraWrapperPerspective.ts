@@ -70,14 +70,13 @@ export class CameraWrapperPerspective {
     let farthestDistanceSquared = 0;
 
     // For analytical closest point calculation
-    const clampToRange = (value: number, min: number, max: number) =>
-      Math.max(min, Math.min(max, value));
+    const clampToRange = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
     // Find closest point on bbox to camera position
     const closestPoint = new Vector3(
       clampToRange(cameraPosition.x, bbox.min.x, bbox.max.x),
       clampToRange(cameraPosition.y, bbox.min.y, bbox.max.y),
-      clampToRange(cameraPosition.z, bbox.min.z, bbox.max.z)
+      clampToRange(cameraPosition.z, bbox.min.z, bbox.max.z),
     );
 
     closestDistanceSquared = cameraPosition.distanceToSquared(closestPoint);
@@ -92,8 +91,8 @@ export class CameraWrapperPerspective {
     const farthestDistance = Math.sqrt(farthestDistanceSquared);
 
     // Apply 20% padding as requested
-    const near = Math.max(0.001, closestDistance * 0.8);
-    const far = farthestDistance * 1.2;
+    const near = Math.max(0.001, closestDistance * 0.5);
+    const far = farthestDistance * 1.5;
 
     // Ensure meaningful separation between near and far
     const finalFar = Math.max(far, near + 0.1);
@@ -314,14 +313,14 @@ export class CameraWrapperPerspective {
 
         // project all 8 corners of the bbox
         const corners = this.getBboxCorners(this.bbox);
-        const projectedCorners = corners.map(corner =>
-          projectPointToPixels(corner, adjustedCenterX, adjustedCenterY, distance)
+        const projectedCorners = corners.map((corner) =>
+          projectPointToPixels(corner, adjustedCenterX, adjustedCenterY, distance),
         );
 
-        const leftPx = Math.min(...projectedCorners.map(p => p.px));
-        const rightPx = Math.max(...projectedCorners.map(p => p.px));
-        const topPx = Math.min(...projectedCorners.map(p => p.py));
-        const bottomPx = Math.max(...projectedCorners.map(p => p.py));
+        const leftPx = Math.min(...projectedCorners.map((p) => p.px));
+        const rightPx = Math.max(...projectedCorners.map((p) => p.px));
+        const topPx = Math.min(...projectedCorners.map((p) => p.py));
+        const bottomPx = Math.max(...projectedCorners.map((p) => p.py));
 
         const contentPxWidth = Math.max(1, rightPx - leftPx);
         const contentPxHeight = Math.max(1, bottomPx - topPx);
@@ -442,7 +441,9 @@ export class CameraWrapperPerspective {
     const finalCameraPosition = new Vector3(
       adjustedCenterX + distance * Math.sin(this.cameraSpec.horizontalRadiansRotation),
       adjustedCenterY + distance * Math.sin(this.cameraSpec.verticalRadiansRotation),
-      distance * Math.cos(this.cameraSpec.horizontalRadiansRotation) * Math.cos(this.cameraSpec.verticalRadiansRotation)
+      distance *
+        Math.cos(this.cameraSpec.horizontalRadiansRotation) *
+        Math.cos(this.cameraSpec.verticalRadiansRotation),
     );
 
     const optimalPlanes = this.calculateOptimalNearFar(this.bbox, finalCameraPosition);

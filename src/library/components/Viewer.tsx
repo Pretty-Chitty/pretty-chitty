@@ -1,5 +1,4 @@
 import { Vector2 } from "three";
-import { Box } from "@mui/material";
 
 import React, { useEffect, useRef, useState } from "react";
 import { Chit } from "../game/Chit";
@@ -13,6 +12,7 @@ import { useGalleryState } from "../hooks/useGalleryState";
 import { usePlayerId } from "../hooks/usePlayer";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { requestSharedAnimationFrame } from "../utilities/RequestSharedAnimationFrame";
+import PersistentCanvas from "./PersistentCanvas";
 
 let ID_COUNTER = 1;
 
@@ -150,10 +150,16 @@ export default function Viewer({
           if (
             chitRenderInstance &&
             rendererWrapper &&
-            (prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
+            (paused || prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
           ) {
             // Clear canvas and render
             rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme);
+
+            // Clear snapshot after first render at new size
+            const canvasEl = canvas as any;
+            if (canvasEl.clearSnapshot) {
+              canvasEl.clearSnapshot();
+            }
 
             chitRenderInstance.resetDirty();
             timeState.setAnimationState(id, !paused);
@@ -171,7 +177,7 @@ export default function Viewer({
       timeState.setAnimationState(id, false);
       cancelled = true;
     };
-  }, [id, timeState, rendererWrapper, chitRenderInstance, paused, actualRef, myRefContainer, w, h, theme]);
+  }, [id, timeState, rendererWrapper, chitRenderInstance, paused, actualRef, myRefContainer, theme]);
 
   useEffect(() => {
     if (chitRenderInstance) {
@@ -317,13 +323,12 @@ export default function Viewer({
   }, [myRefContainer, chitRenderInstance, galleryState, panCallback]);
 
   return (
-    <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }}>
-      <canvas
-        width={w * rendererWrapper.pixelRatio}
-        height={h * rendererWrapper.pixelRatio}
-        style={{ width: w, height: h }}
-        ref={myRefContainer}
-      />
-    </Box>
+    <PersistentCanvas
+      width={w * rendererWrapper.pixelRatio}
+      height={h * rendererWrapper.pixelRatio}
+      displayWidth={w}
+      displayHeight={h}
+      canvasRef={myRefContainer}
+    />
   );
 }

@@ -61,7 +61,7 @@ export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; c
 
   useEffect(() => {
     if (targetValue !== value) {
-      if (paused) {
+      if (paused && value !== Number.MIN_SAFE_INTEGER) {
         chit.parent?.renderInstance?.rootRenderInstance.markHasPendingChange();
         return;
       }

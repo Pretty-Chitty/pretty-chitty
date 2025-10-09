@@ -26,8 +26,8 @@ import {
   OrderedOutlet,
   StaticImage,
   extrudeSVGToGeometry,
-  createLayoutFromTree,
 } from "../library";
+import type { LayoutNode } from "../library";
 
 import { TestStack } from "./TestStack";
 import { TestStack2 } from "./TestStack2";
@@ -366,25 +366,39 @@ export class SideBoards extends PanelChit {
   @ChildOutlet public sideBoard1 = new Table();
   @ChildOutlet public sideBoard2 = new Table();
 
-  override getLayout(width: number, height: number) {
+  override getLayout(width: number, height: number, _playerId: string): LayoutNode {
     if (height > width) {
-      return [
-        {
-          height: 2,
-          contents: this.sideBoard1,
-        },
-        {
-          height: 1,
-          contents: this.sideBoard2,
-        },
-      ];
+      return {
+        direction: "vertical" as const,
+        splits: [
+          {
+            panel: this.sideBoard1,
+            minWidth: 100,
+            minHeight: 200,
+          },
+          {
+            panel: this.sideBoard2,
+            minWidth: 100,
+            minHeight: 100,
+          },
+        ],
+      };
     } else {
-      return [
-        {
-          width: 1,
-          contents: [this.sideBoard1, this.sideBoard2],
-        },
-      ];
+      return {
+        direction: "horizontal" as const,
+        splits: [
+          {
+            panel: this.sideBoard1,
+            minWidth: 100,
+            minHeight: 100,
+          },
+          {
+            panel: this.sideBoard2,
+            minWidth: 100,
+            minHeight: 100,
+          },
+        ],
+      };
     }
   }
 }
@@ -412,44 +426,39 @@ export class Root extends RootChit<MyPlayer> {
     return [this.playerAid];
   }
 
-  override getLayout(width: number, height: number) {
-    return createLayoutFromTree(
-      {
-        direction: "horizontal",
-        collapseOrder: 3, // Collapse last if players collapsing doesn't help
-        splits: [
-          {
-            panel: this.mainBoard,
-            minWidth: 300,
-            minHeight: 500,
-          },
-          {
-            direction: "optimizePreferVertical",
-            collapseOrder: 2, // Collapse second
-            splits: [
-              {
-                direction: "optimizeGrid",
-                collapseOrder: 1, // Collapse first
-                splits: this.players
-                  .copy()
-                  .slice(1)
-                  .map((player) => ({
-                    panel: player,
-                    minWidth: 250,
-                    minHeight: 225,
-                  })),
-              },
-              {
-                panel: this.players.get(0),
-                minWidth: 300,
-                minHeight: 225,
-              },
-            ],
-          },
-        ],
-      },
-      width,
-      height,
-    );
+  override getLayout(_width: number, _height: number, _playerId: string): LayoutNode {
+    return {
+      direction: "optimize",
+      collapseOrder: 3, // Collapse last if players collapsing doesn't help
+      splits: [
+        {
+          panel: this.mainBoard,
+          minWidth: 300,
+          minHeight: 300,
+        },
+        {
+          direction: "optimizePreferVertical",
+          collapseOrder: 2, // Collapse second
+          splits: [
+            {
+              direction: "optimizeGrid",
+              collapseOrder: 1, // Collapse first
+              splits: this.players
+                .filter((p) => p.id !== _playerId)
+                .map((player) => ({
+                  panel: player,
+                  minWidth: 250,
+                  minHeight: 250,
+                })),
+            },
+            {
+              panel: this.players.find((p) => p.id === _playerId)!,
+              minWidth: 250,
+              minHeight: 250,
+            },
+          ],
+        },
+      ],
+    };
   }
 }
