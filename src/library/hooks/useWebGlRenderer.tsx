@@ -136,10 +136,10 @@ class WebGLRendererWrapper {
 
   render(sceneWrapper: SceneWrapper, camera: Camera, context2d: CanvasRenderingContext2D, theme: GameTheme) {
     const canvas = context2d.canvas;
-    const width = Math.round(canvas.width / this.pixelRatio);
-    const height = Math.round(canvas.height / this.pixelRatio);
-    const targetWidth = Math.round(width * this.pixelRatio);
-    const targetHeight = Math.round(height * this.pixelRatio);
+    const width = Math.floor(canvas.width / this.pixelRatio);
+    const height = Math.floor(canvas.height / this.pixelRatio);
+    const targetWidth = Math.ceil(width * this.pixelRatio);
+    const targetHeight = Math.ceil(height * this.pixelRatio);
 
     // Ensure renderer can accommodate this size
     this.ensureRendererSize(width, height);

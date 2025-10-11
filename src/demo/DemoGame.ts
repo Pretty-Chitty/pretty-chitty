@@ -68,6 +68,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
   async run(players: MyPlayer[], setup: Turn<any, MyPlayer, Root>, rootChit: Root) {
     players[0].color = "#ed00cb";
     players[1].color = "#00edcb";
+    players[2].color = "#002244";
 
     const W = 10;
     const H = 10;
@@ -125,7 +126,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     // pieces[2].add(new Card2());
     // setup.flush();
 
-    await setup.createTurn([rootChit], players[0], async (turn) => {
+    await setup.createTurn([rootChit], players[2], async (turn) => {
       // const c = new Card();
       // rootChit.mainBoard.add(c);
       // turn.flush();

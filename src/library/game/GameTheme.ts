@@ -68,6 +68,7 @@ export class GameTheme {
   public actionLogBackgroundColor = "rgba(255,255,255,0.05)";
   public actionLogTextColor = "#ffffff";
   public actionBarWidth = 600;
+  public actionBarLinesToShow = 2;
 
   static withDefaults(primaryColor: string, highlight: string, textColor: string = "#ffffff") {
     const result = new GameTheme();

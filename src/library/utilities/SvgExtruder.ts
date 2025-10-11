@@ -1,4 +1,12 @@
-import * as THREE from "three";
+import {
+  BufferGeometry,
+  BufferAttribute,
+  Vector2,
+  Path,
+  ShapePath,
+  ExtrudeGeometryOptions,
+  ExtrudeGeometry,
+} from "three";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import QuickLRU from "quick-lru";
@@ -23,7 +31,7 @@ export interface ExtrudeFromSVGOptions {
 }
 
 /** --- NEW: module-level LRU cache (stores BufferGeometry) --- */
-const geomCache = new QuickLRU<string, THREE.BufferGeometry>({ maxSize: 100 });
+const geomCache = new QuickLRU<string, BufferGeometry>({ maxSize: 100 });
 
 /** Stable stringify limited to our known option keys (order-insensitive). */
 function stableOptionsKey(
@@ -75,7 +83,7 @@ export function extrudeSVGToGeometry(
     svgSimplifyTolerance = 0,
     svgCurveDivisionsPreSimplify = 24,
   }: ExtrudeFromSVGOptions = {},
-): THREE.BufferGeometry {
+): BufferGeometry {
   // --- helpers ---
   const decodeSvgDataUrl = (input: string): string => {
     if (!input.startsWith("data:")) return input;
@@ -94,12 +102,12 @@ export function extrudeSVGToGeometry(
     return decodeURIComponent(data);
   };
 
-  const applyPlanarUV_XY = (geometry: THREE.BufferGeometry): void => {
+  const applyPlanarUV_XY = (geometry: BufferGeometry): void => {
     geometry.computeBoundingBox();
     const bb = geometry.boundingBox!;
     const sx = bb.max.x - bb.min.x;
     const sy = bb.max.y - bb.min.y;
-    const pos = geometry.getAttribute("position") as THREE.BufferAttribute;
+    const pos = geometry.getAttribute("position") as BufferAttribute;
     const uv = new Float32Array(pos.count * 2);
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i),
@@ -107,12 +115,12 @@ export function extrudeSVGToGeometry(
       uv[2 * i + 0] = sx > 1e-9 ? (x - bb.min.x) / sx : 0;
       uv[2 * i + 1] = sy > 1e-9 ? (y - bb.min.y) / sy : 0;
     }
-    geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    geometry.setAttribute("uv", new BufferAttribute(uv, 2));
     geometry.attributes.uv.needsUpdate = true;
   };
 
-  const tagGroupsFrontBackSides_Z = (geometry: THREE.BufferGeometry, eps = 1e-9): void => {
-    const pos = geometry.getAttribute("position") as THREE.BufferAttribute;
+  const tagGroupsFrontBackSides_Z = (geometry: BufferGeometry, eps = 1e-9): void => {
+    const pos = geometry.getAttribute("position") as BufferAttribute;
     const index = geometry.getIndex();
     geometry.clearGroups();
     const readZ = (vi: number) => pos.getZ(vi);
@@ -157,9 +165,9 @@ export function extrudeSVGToGeometry(
   };
 
   // --- SVG pre-simplification utilities (RDP) ---
-  const rdp = (pts: THREE.Vector2[], eps: number): THREE.Vector2[] => {
+  const rdp = (pts: Vector2[], eps: number): Vector2[] => {
     if (pts.length <= 2) return pts.slice();
-    const dist = (p: THREE.Vector2, a: THREE.Vector2, b: THREE.Vector2) => {
+    const dist = (p: Vector2, a: Vector2, b: Vector2) => {
       const abx = b.x - a.x,
         aby = b.y - a.y;
       const apx = p.x - a.x,
@@ -189,7 +197,7 @@ export function extrudeSVGToGeometry(
     }
   };
 
-  const pathIsClosed = (p: THREE.Path, tol = 1e-6): boolean => {
+  const pathIsClosed = (p: Path, tol = 1e-6): boolean => {
     const pts = p.getPoints(1);
     if (pts.length < 2) return false;
     const first = pts[0],
@@ -197,8 +205,8 @@ export function extrudeSVGToGeometry(
     return Math.hypot(first.x - last.x, first.y - last.y) <= tol;
   };
 
-  const simplifyShapePath = (sp: THREE.ShapePath, eps: number, divisionsPerCurve: number): THREE.ShapePath => {
-    const out = new THREE.ShapePath();
+  const simplifyShapePath = (sp: ShapePath, eps: number, divisionsPerCurve: number): ShapePath => {
+    const out = new ShapePath();
     (out as any).color = (sp as any).color;
     (out as any).userData = (sp as any).userData;
 
@@ -226,7 +234,7 @@ export function extrudeSVGToGeometry(
         continue;
       }
 
-      const np = new THREE.Path();
+      const np = new Path();
       np.moveTo(simp[0].x, simp[0].y);
       for (let i = 1; i < simp.length; i++) np.lineTo(simp[i].x, simp[i].y);
       np.autoClose = closed;
@@ -266,7 +274,7 @@ export function extrudeSVGToGeometry(
   const loader = new SVGLoader();
   const data = loader.parse(decodedSvg);
 
-  const extrudeSettings: THREE.ExtrudeGeometryOptions = {
+  const extrudeSettings: ExtrudeGeometryOptions = {
     depth,
     bevelEnabled,
     bevelThickness,
@@ -276,7 +284,7 @@ export function extrudeSVGToGeometry(
     curveSegments,
   };
 
-  const parts: THREE.BufferGeometry[] = [];
+  const parts: BufferGeometry[] = [];
 
   for (const path of data.paths) {
     const style = path.userData?.style ?? {};
@@ -288,7 +296,7 @@ export function extrudeSVGToGeometry(
       const shapes = SVGLoader.createShapes(pathForShapes);
 
       for (const shape of shapes) {
-        const g = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        const g = new ExtrudeGeometry(shape, extrudeSettings);
         g.scale(scale, scale, scale);
         g.rotateX(Math.PI); // fix SVG Y-down; local Z is thickness axis
         parts.push(g);

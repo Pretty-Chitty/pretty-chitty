@@ -26,6 +26,7 @@ export interface PanelNode {
   panel: Chit | Chit[];
   minWidth: number;
   minHeight: number;
+  collapseOrder?: number;
 }
 export interface ContainerNode {
   direction: LayoutDirection;
@@ -58,6 +59,26 @@ function isPanelNode(node: LayoutNode | ConcreteLayoutNode): node is PanelNode {
 }
 
 /**
+ * Recursively fixes nodes where minWidth/minHeight exceed available dimensions
+ */
+function fixInvalidNodeDimensions(tree: LayoutNode, availableWidth: number, availableHeight: number): LayoutNode {
+  if (isPanelNode(tree)) {
+    // Fix panel node dimensions if they exceed available space
+    return {
+      ...tree,
+      minWidth: Math.min(tree.minWidth, availableWidth),
+      minHeight: Math.min(tree.minHeight, availableHeight),
+    };
+  }
+
+  const container = tree as ContainerNode;
+  return {
+    ...container,
+    splits: container.splits.map((split) => fixInvalidNodeDimensions(split, availableWidth, availableHeight)),
+  };
+}
+
+/**
  * Main entry point: creates layout from tree specification
  */
 export function createLayoutFromTree(
@@ -65,8 +86,11 @@ export function createLayoutFromTree(
   availableWidth: number,
   availableHeight: number,
 ): PanelLayoutResult[] {
+  // Step 0: Fix invalid nodes in tree
+  const fixedTree = fixInvalidNodeDimensions(tree, availableWidth, availableHeight);
+
   // Step 1: Build valid LayoutNode tree (with collapses applied)
-  const validTree = buildValidTree(tree, availableWidth, availableHeight);
+  const validTree = buildValidTree(fixedTree, availableWidth, availableHeight);
 
   const rebalancedTree = rebalanceTree(validTree);
 
@@ -403,13 +427,21 @@ function collapseContainer(tree: LayoutNode, targetContainer: ContainerNode): La
     const panels: PanelNode[] = [];
     collectPanels(targetContainer, panels);
 
-    const maxWidth = Math.max(...panels.map((s) => s.minWidth));
-    const maxHeight = Math.max(...panels.map((s) => s.minHeight));
+    // Sort panels by collapseOrder (stable sort)
+    // Panels without collapseOrder go to the end
+    const sortedPanels = panels.slice().sort((a, b) => {
+      const orderA = a.collapseOrder ?? Number.MAX_SAFE_INTEGER;
+      const orderB = b.collapseOrder ?? Number.MAX_SAFE_INTEGER;
+      return orderA - orderB;
+    });
+
+    const maxWidth = Math.max(...sortedPanels.map((s) => s.minWidth));
+    const maxHeight = Math.max(...sortedPanels.map((s) => s.minHeight));
 
     // Return PanelNode with array of panels (tabs) - NO collapseOrder
     return {
       direction: "collapsed",
-      panel: panels.map((p) => p.panel).flat(),
+      panel: sortedPanels.map((p) => p.panel).flat(),
       minWidth: maxWidth,
       minHeight: maxHeight,
     };

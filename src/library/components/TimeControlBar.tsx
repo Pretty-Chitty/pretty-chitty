@@ -62,8 +62,9 @@ export default function TimeControlBar({
           icon={FastForward}
           label={"Forward"}
           whileHolding={(n: number) => {
-            if (autoLive && targetClock + 1 >= maxClock.clock) {
+            if (autoLive && targetClock + n >= maxClock.clock) {
               setLive(true);
+              setTargetClock(targetClock + n);
             } else {
               setLive(false);
               setTargetClock(targetClock + n);

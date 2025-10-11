@@ -49,8 +49,8 @@ export function ViewerWrapper({
         refContainer={refContainer}
         paused={override ? false : paused}
         chit={chit}
-        w={w}
-        h={h}
+        w={Math.ceil(w)}
+        h={Math.ceil(h)}
         paddingTop={sparkRows * sparkHeight}
         panCallback={panCallback}
       />
