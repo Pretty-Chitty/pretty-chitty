@@ -107,12 +107,12 @@ export default function PromptControls({ collapsible }: { collapsible?: boolean 
         </>
       )}
 
-      {prompt && <BottomBarButton icon={QuestionMark} label="Help" onClick={() => setShowHelp(true)} />}
-      {prompt && (
+      {/* {prompt && <BottomBarButton icon={QuestionMark} label="Help" onClick={() => setShowHelp(true)} />} */}
+      {/* {prompt && (
         <GameDialog onClose={() => setShowHelp(false)} open={showHelp}>
           <Markdown>{prompt.formatHelpText()}</Markdown>
         </GameDialog>
-      )}
+      )} */}
 
       {prompt?.canReset && (
         <BottomBarButton

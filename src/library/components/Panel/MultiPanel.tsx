@@ -1,134 +1,18 @@
-import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
-import base64 from "base-64";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Stack } from "@mui/material";
 import { useDebounce } from "@react-hook/debounce";
-import { Chit } from "../game/Chit";
-import Viewer from "./Viewer";
-import { PanelChit } from "../game/PanelChit";
-import { PanelLayoutResult } from "../utilities/LayoutHelper";
-import { useGameTheme } from "../hooks/useGameTheme";
+import { Chit } from "../../game/Chit";
+import { useGameTheme } from "../../hooks/useGameTheme";
+import { useAnimationSpeedMultiplier, useTimeController, useTimeState } from "../../hooks/useTimeController";
+import { usePanelStates } from "../../hooks/usePanelStates";
+import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
+import { useEventChannelState } from "../../hooks/useEventChannelState";
+import { ZINDEX_PANEL_CUTOUTS } from "../../utilities/zIndex";
+import { ViewerWrapper } from "./ViewerWrapper";
+import { Cutout } from "./cutout";
+import { panelTransition } from "./util";
 
-import { useAnimationSpeedMultiplier, useTimeController, useTimeState } from "../hooks/useTimeController";
-import { usePanelStates } from "../hooks/usePanelStates";
-import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
-import { useEventChannelState } from "../hooks/useEventChannelState";
-import PanelSpark from "./PanelSpark";
-import { useChit } from "../hooks/useChits";
-import { ZINDEX_PANEL_CUTOUTS, ZINDEX_SPARKS } from "../utilities/zIndex";
-import { usePanelScale } from "../hooks/usePanelScale";
-import { usePlayerId } from "../hooks/usePlayer";
-import { RootChit } from "../game/RootChit";
-
-const Cutout = `data:image/svg+xml;base64,${base64.encode(
-  `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   width="40"
-   height="14"
-   version="1.1"
-   id="svg4"
-   sodipodi:docname="cutout.svg"
-   viewport="0 0 40 14"
-   inkscape:version="1.3.1 (9b9bdc1480, 2023-11-25, custom)"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg">
-  <rect
-     style="fill:#000000;stroke-width:1.58232"
-     id="rect4"
-     width="34"
-     height="8"
-     x="3"
-     y="6"
-     ry="4" />
-</svg>`,
-)}`;
-
-function ViewerWrapper({
-  chit,
-  w,
-  h,
-  paused,
-  panCallback,
-  refContainer,
-}: {
-  chit: Chit;
-  w: number;
-  h: number;
-  paused: boolean;
-  panCallback?: (direction: "left" | "right") => void;
-  refContainer: React.RefObject<HTMLElement> | null;
-}) {
-  const chitInstance = useChit(chit.id ?? "nochit");
-  const theme = useGameTheme();
-
-  // if time is overridden, we don't want to pause ourselves (ever)
-  // it's likely trying to play "catchup" and will go very very fast
-  const timeState = useTimeState();
-  const [override] = useEventChannelState(timeState.animationSpeedOverrideMultiplier);
-
-  const sparks = chitInstance?.getSparks("panel") ?? [];
-
-  const sparkHeight = theme.sparkSize + theme.sparkBorderWidth * 2 + theme.sparkPadding * 2;
-  const sparkWidth = sparkHeight * 1.45;
-  const sparkRows = Math.ceil((sparks.length * sparkWidth) / w);
-
-  return (
-    <>
-      <Stack direction={"row"} flexWrap={"wrap"} sx={{ position: "absolute", zIndex: ZINDEX_SPARKS }}>
-        {sparks.map((spark, i) => (
-          <PanelSpark zIndex={ZINDEX_SPARKS + sparks.length - i} key={spark.id} chit={spark} paused={paused} />
-        ))}
-      </Stack>
-      <Viewer
-        refContainer={refContainer}
-        paused={override ? false : paused}
-        chit={chit}
-        w={w}
-        h={h}
-        paddingTop={sparkRows * sparkHeight}
-        panCallback={panCallback}
-      />
-    </>
-  );
-}
-
-function SinglePanel({
-  chit,
-  x,
-  y,
-  w,
-  h,
-  paused = false,
-}: {
-  chit: Chit;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  paused?: boolean;
-}) {
-  const theme = useGameTheme();
-  return (
-    <Box
-      sx={{
-        overflow: "hidden",
-        width: `${w}px`,
-        height: `${h}px`,
-        left: `${x}px`,
-        top: `${y}px`,
-        position: "absolute",
-        p: `${theme.spacing / 2}px`,
-      }}
-    >
-      <Box sx={{ width: "100%", height: "100%", position: "relative", borderRadius: "10px", overflow: "hidden" }}>
-        <ViewerWrapper chit={chit} w={w - theme.spacing} h={h - theme.spacing} paused={paused} refContainer={null} />
-      </Box>
-    </Box>
-  );
-}
-
-function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number; w: number; h: number }) {
+export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number; w: number; h: number }) {
   const theme = useGameTheme();
   const refContainer = useRef(null);
   const timeState = useTimeState();
@@ -221,6 +105,7 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
         top: `${y}px`,
         position: "absolute",
         p: `${theme.spacing / 2}px`,
+        transition: panelTransition(theme, timeMultiplier),
       }}
     >
       <Box
@@ -297,72 +182,4 @@ function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number
       </Stack>
     </Stack>
   );
-}
-
-export default function Panel({
-  chit,
-  x,
-  y,
-  w,
-  h,
-}: {
-  chit: Chit | Chit[];
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}) {
-  const [layout, setLayout] = useState<PanelLayoutResult[]>([]);
-  const scale = usePanelScale();
-  const playerId = usePlayerId();
-
-  useEffect(() => {
-    if (!chit) {
-      return;
-    }
-
-    if (chit instanceof PanelChit) {
-      const newLayout = chit.getFlatLayout(w, h, scale, playerId);
-      setLayout(newLayout);
-    } else {
-      setLayout([{ chit, x: 0, y: 0, w, h }]);
-    }
-  }, [chit, w, h, setLayout, scale, playerId]);
-
-  // we are just given a root chit
-  let renderHiddenRootChit: Chit | undefined;
-  if (!Array.isArray(chit) && chit instanceof RootChit) {
-    // if we are showing the root chit, no reason to render a fake hidden chit
-    if (layout.length === 1 && layout[0].chit === chit) {
-      renderHiddenRootChit = undefined;
-    } else {
-      renderHiddenRootChit = chit;
-    }
-  }
-
-  if (layout.length > 1) {
-    return (
-      <>
-        {layout.map((cell) => (
-          <Panel key={cell.id} chit={cell.chit} x={x + cell.x} y={y + cell.y} w={cell.w} h={cell.h} />
-        ))}
-
-        {renderHiddenRootChit && (
-          <Box sx={{ display: "none" }}>
-            <SinglePanel paused={true} chit={renderHiddenRootChit} x={0} y={0} w={1} h={1} />
-          </Box>
-        )}
-      </>
-    );
-  }
-
-  if (layout.length === 0) {
-    return null;
-  }
-
-  if (Array.isArray(layout[0].chit)) {
-    return <MultiPanel chits={layout[0].chit} w={w} h={h} x={x} y={y} />;
-  } else {
-    return <SinglePanel chit={layout[0].chit} w={w} h={h} x={x} y={y} />;
-  }
 }

@@ -8,7 +8,6 @@ export { GameDeck } from "./game/GameDeck";
 export { GameBag } from "./game/GameBag";
 export { GameTheme } from "./game/GameTheme";
 export { OrderedOutlet } from "./game/OrderedOutlet";
-export { PanelChit } from "./game/PanelChit";
 export type { PanelLayoutResult } from "./utilities/LayoutHelper";
 export { Pick, ButtonPick, ChitPick } from "./game/Pick";
 export { PlayerChit } from "./game/PlayerChit";

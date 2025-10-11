@@ -13,7 +13,6 @@ import {
 } from "three";
 import {
   BagSparkChit,
-  PanelChit,
   GameDeck,
   RootChit,
   PlayerChit,
@@ -362,45 +361,9 @@ export class BagChit extends BagSparkChit<Card2> {
   }
 }
 
-export class SideBoards extends PanelChit {
+export class SideBoards extends Chit {
   @ChildOutlet public sideBoard1 = new Table();
   @ChildOutlet public sideBoard2 = new Table();
-
-  override getLayout(width: number, height: number, _playerId: string): LayoutNode {
-    if (height > width) {
-      return {
-        direction: "vertical" as const,
-        splits: [
-          {
-            panel: this.sideBoard1,
-            minWidth: 100,
-            minHeight: 200,
-          },
-          {
-            panel: this.sideBoard2,
-            minWidth: 100,
-            minHeight: 100,
-          },
-        ],
-      };
-    } else {
-      return {
-        direction: "horizontal" as const,
-        splits: [
-          {
-            panel: this.sideBoard1,
-            minWidth: 100,
-            minHeight: 100,
-          },
-          {
-            panel: this.sideBoard2,
-            minWidth: 100,
-            minHeight: 100,
-          },
-        ],
-      };
-    }
-  }
 }
 
 export class MyPlayer extends PlayerChit {
@@ -434,7 +397,7 @@ export class Root extends RootChit<MyPlayer> {
         {
           panel: this.mainBoard,
           minWidth: 300,
-          minHeight: 300,
+          minHeight: 250,
         },
         {
           direction: "optimizePreferVertical",
@@ -448,13 +411,13 @@ export class Root extends RootChit<MyPlayer> {
                 .map((player) => ({
                   panel: player,
                   minWidth: 250,
-                  minHeight: 250,
+                  minHeight: 200,
                 })),
             },
             {
               panel: this.players.find((p) => p.id === _playerId)!,
               minWidth: 250,
-              minHeight: 250,
+              minHeight: 200,
             },
           ],
         },

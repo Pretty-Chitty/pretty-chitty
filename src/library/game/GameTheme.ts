@@ -65,6 +65,10 @@ export class GameTheme {
   public gallerySummaryBackgroundOpacity = 0.7;
   public galleryBlur = 5;
 
+  public actionLogBackgroundColor = "rgba(255,255,255,0.05)";
+  public actionLogTextColor = "#ffffff";
+  public actionBarWidth = 600;
+
   static withDefaults(primaryColor: string, highlight: string, textColor: string = "#ffffff") {
     const result = new GameTheme();
     result.chitHighlightColor = highlight;
@@ -90,6 +94,12 @@ export class GameTheme {
       ? Color(result.barColor).darken(1).hexa()
       : Color(result.barColor).lighten(1).hexa();
 
+    result.actionLogTextColor = result.barActiveTextColor;
+
     return result;
+  }
+
+  layoutSize(width: number): "large" | "medium" | "mobile" {
+    return width >= this.actionBarWidth * 2 ? "large" : width >= this.actionBarWidth * 1.3 ? "medium" : "mobile";
   }
 }

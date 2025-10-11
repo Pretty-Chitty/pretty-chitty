@@ -5,6 +5,7 @@ import { ClockDetails, samePasses } from "../ClockDetails";
 import { Connection } from "../Connection";
 import { ConnectionObject } from "../ConnectionObject";
 import { Game } from "../Game";
+import { RootChit } from "../RootChit";
 import { ServerTime } from "../serverTransport/ServerTime";
 import { ClientPrompts } from "./ClientPrompts";
 
@@ -47,7 +48,7 @@ export class ClientTime extends ConnectionObject {
   public currentClock = new EventChannel<ClockDetails>({ clock: 0, pass: -1 });
   private chitLookup: { [id: string]: Chit } = {};
   public maxClock = new EventChannel<ClockDetails>({ clock: 0, pass: -1 });
-  public rootChit = new EventChannel<Chit | undefined>(undefined);
+  public rootChit = new EventChannel<RootChit<any> | undefined>(undefined);
   private startTime = 1;
 
   public readonly findChit: (id: string) => Chit = (id: string) => {
@@ -180,7 +181,7 @@ export class ClientTime extends ConnectionObject {
 
       chits.forEach((chit) => chit.doneDeserializing());
 
-      this.rootChit.value = this.findChit("root");
+      this.rootChit.value = this.findChit("root") as RootChit<any>;
 
       // sometimes deserializing chits does not result in animations (maybe a pure texture change?)
       // in that case, we need to make sure that the clock moves forward

@@ -11,8 +11,6 @@ import GridZoomButton from "./GridZoomButton";
 import LiveButton from "./LiveButton";
 import useSize from "@react-hook/size";
 
-type LayoutSize = "mobile" | "medium" | "large";
-
 function BaseBottomBar({ children }: { children: ReactNode | ReactNode[] }) {
   const theme = useGameTheme();
   return (
@@ -30,12 +28,13 @@ function BaseBottomBar({ children }: { children: ReactNode | ReactNode[] }) {
 }
 
 export default function BottomBar() {
+  const theme = useGameTheme();
   const timeState = useTimeState();
   const [live, setLive] = useEventChannelState(timeState.live);
   const containerRef = useRef<HTMLDivElement>(null);
   const [width] = useSize(containerRef);
 
-  const layoutSize: LayoutSize = width >= 1200 ? "large" : width >= 768 ? "medium" : "mobile";
+  const layoutSize = theme.layoutSize(width);
 
   // Mobile: current behavior (live mode shows buttons, timeline mode shows TimeControlBar)
   if (layoutSize === "mobile") {
@@ -82,16 +81,20 @@ export default function BottomBar() {
   return (
     <BaseBottomBar>
       <Stack ref={containerRef} direction="row" sx={{ width: "100%", height: "100%" }}>
-        <Box sx={{ width: "30%", display: "flex", alignItems: "center" }}>
+        <Box flex={1}>
           <TimeControlBar autoLive />
         </Box>
-        <Box sx={{ width: "40%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Box
+          sx={{ width: `${theme.actionBarWidth}px`, display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
           <PromptControls />
         </Box>
-        <Stack direction="row" sx={{ width: "30%", pr: 1, pl: 1 }}>
-          <Box flex={1} />
-          <GridZoomButton />
-        </Stack>
+        <Box flex={1}>
+          <Stack direction="row" sx={{ pr: 1, pl: 1, height: "100%", width: "100%" }}>
+            <Box flex={1} />
+            <GridZoomButton />
+          </Stack>
+        </Box>
       </Stack>
     </BaseBottomBar>
   );

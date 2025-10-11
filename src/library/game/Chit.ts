@@ -43,7 +43,6 @@ export class Chit extends ObjectWithProps {
   }
 
   // used if this chit is the root of a panel
-  // maybe should be forced to be on PanelChit?
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getSparks(context: "panel" | "dropdown" | "endgame"): SparkChit[] {
     return [];
