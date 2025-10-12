@@ -9,6 +9,7 @@ import { useChit, useChits } from "../hooks/useChits";
 import { PlayerChit } from "../game/PlayerChit";
 import { RootChit } from "../game/RootChit";
 import { usePlayerId } from "../hooks/usePlayer";
+import { NoValidMovesPrompt } from "../game/Prompt";
 
 export function ActionLogDisplay() {
   const timeController = useTimeController();
@@ -32,10 +33,15 @@ export function ActionLogDisplay() {
   playerChits?.forEach((p) => {
     tokenMap[p.playerId] = { label: p.name ?? "??", color: p.color ?? theme.actionLogTextColor, image: p.imageUrl };
   });
+  tokenMap["warning"] = { label: "⚠️" };
 
   let message: string = "";
   if (prompt) {
-    message = `:${playerId}: to ${prompt?.message ?? ""}`;
+    if (prompt instanceof NoValidMovesPrompt) {
+      message = `:warning: ${prompt?.message ?? ""}`;
+    } else {
+      message = `:${playerId}: to ${prompt?.message ?? ""}`;
+    }
   } else if (currentClock.clock === maxClock.clock) {
     const waitingPlayers = playerChits.filter((p) => p.promptStatus?.latestPromptMessage);
     if (waitingPlayers.length > 0 && !waitingPlayers.find((p) => p.playerId === playerId)) {

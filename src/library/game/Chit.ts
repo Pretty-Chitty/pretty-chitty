@@ -9,6 +9,8 @@ import { OrderedOutlet } from "./OrderedOutlet";
 import { SparkChit } from "./SparkChit";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
 import type { Game } from "./Game";
+import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
+import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 
 export const ORDERED_CHILDREN = "orderedChildren";
 
@@ -98,6 +100,20 @@ export class Chit extends ObjectWithProps {
   /** @internal */
   public get lastParent(): Chit | undefined {
     return this._lastParent;
+  }
+
+  /** @internal */
+  private colorValue: string = "";
+
+  public get color(): string {
+    return this.colorValue;
+  }
+  public set color(value: string) {
+    this.colorValue = value;
+  }
+
+  public get icon(): IUpdatingCanvas | undefined {
+    return undefined;
   }
 
   /** @internal */

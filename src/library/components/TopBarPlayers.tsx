@@ -53,17 +53,7 @@ function HeaderCell({ spark }: { spark: SparkChit }) {
     return <Box sx={{ width: `${spark.width}px`, pl: 1, pr: 1 }} />;
   }
 
-  let im: IUpdatingCanvas | undefined;
-  const icon = spark.headerIcon;
-
-  if ("onUpdate" in icon && typeof icon.onUpdate === "function") {
-    im = icon;
-  } else {
-    const image = new StaticImage(icon as ImageSpec);
-    image.width = spark.width - theme.spacing * 2;
-    image.height = spark.width - theme.spacing * 2;
-    im = image.get();
-  }
+  const im = spark.headerIcon as IUpdatingCanvas;
 
   return (
     <Box sx={{ width: `${spark.width}px`, pl: 1, pr: 1 }}>

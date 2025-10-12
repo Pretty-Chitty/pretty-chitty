@@ -3,7 +3,6 @@ import { Chit } from "./Chit";
 import { Vector2 } from "three";
 import { NonEditable } from "../utilities/Annotations";
 import { PlayerChit } from "./PlayerChit";
-import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
 import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 
@@ -11,15 +10,24 @@ export class SparkChit extends Chit {
   /** @internal */
   @NonEditable type = "spark";
 
-  public color: string = "";
-  public get icon(): PlayerChit | ImageSpec | IUpdatingCanvas | undefined {
+  public get color() {
     if (this._boundPlayer) {
-      return this._boundPlayer;
+      return this._boundPlayer.color ?? "#ffffff";
+    }
+    return super.color;
+  }
+  public set color(newColor: string) {
+    super.color = newColor;
+  }
+
+  public get icon(): IUpdatingCanvas | undefined {
+    if (this._boundPlayer) {
+      return this._boundPlayer.icon;
     }
     return undefined;
   }
 
-  public get headerIcon(): PlayerChit | ImageSpec | IUpdatingCanvas | undefined {
+  public get headerIcon(): IUpdatingCanvas | undefined {
     return this.icon;
   }
 

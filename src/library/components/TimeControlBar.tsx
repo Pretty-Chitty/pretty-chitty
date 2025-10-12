@@ -20,7 +20,7 @@ export default function TimeControlBar({
   const theme = useGameTheme();
   const timeController = useTimeController();
   const timeState = useTimeState();
-  const [, setLive] = useEventChannelState(timeState.live);
+  const [live, setLive] = useEventChannelState(timeState.live);
   const [speed, setSpeed] = useEventChannelState(timeState.animationSpeedMultiplier);
   const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
@@ -33,7 +33,7 @@ export default function TimeControlBar({
   return (
     <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
       <Box sx={{ height: "6px", position: "absolute", width: "100%" }}>
-        {targetClock < maxClock.clock && (
+        {targetClock < maxClock.clock && !live && (
           <Box
             sx={{
               width: `${(targetClock / maxClock.clock) * 100}%`,

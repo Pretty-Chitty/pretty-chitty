@@ -33,6 +33,7 @@ export { ParameterizedCanvas } from "./utilities/ParameterizedCanvas";
 export { StaticImage } from "./utilities/StaticImage";
 export type { StaticImageOptions } from "./utilities/StaticImage";
 export * as ReactCanvas from "./utilities/CanvasStack/ReactCanvas";
+export { IconCanvas } from "./utilities/CanvasStack/IconCanvas";
 export type { DefaultProps } from "./utilities/CanvasStack/ReactCanvas";
 export type {
   ImageSpec,

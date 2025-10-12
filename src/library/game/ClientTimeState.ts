@@ -26,11 +26,14 @@ export class ClientTimeState {
     }
   }
 
+  _animationOverrideTimeout: NodeJS.Timeout | undefined;
+
   public goLive(clock: number) {
     this.live.value = true;
     this.targetClock.value = clock;
+    clearTimeout(this._animationOverrideTimeout);
     this.animationSpeedOverrideMultiplier.value = 0.075;
-    setTimeout(() => {
+    this._animationOverrideTimeout = setTimeout(() => {
       this.animationSpeedOverrideMultiplier.value = undefined;
     }, 250);
   }

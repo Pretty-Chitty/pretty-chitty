@@ -1,3 +1,4 @@
+import Color from "color";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Stack } from "@mui/material";
 import { useDebounce } from "@react-hook/debounce";
@@ -7,10 +8,53 @@ import { useAnimationSpeedMultiplier, useTimeController, useTimeState } from "..
 import { usePanelStates } from "../../hooks/usePanelStates";
 import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
 import { useEventChannelState } from "../../hooks/useEventChannelState";
-import { ZINDEX_PANEL_CUTOUTS } from "../../utilities/zIndex";
 import { ViewerWrapper } from "./ViewerWrapper";
-import { Cutout } from "./cutout";
 import { panelTransition } from "./util";
+import { UpdatingCanvasImage } from "../UpdatingCanvasImage";
+import { ZINDEX_PANEL_CUTOUTS } from "../../utilities/zIndex";
+
+const TAB_HEIGHT = 20;
+const ANIMATION_DURATION = 0.125;
+const TAB_WIDTH = TAB_HEIGHT * 2;
+
+const PANEL_ADJUST_IGNORE_DURATION = 5000;
+
+function PanelTab({ chit, onClick, selected }: { selected?: boolean; chit: Chit; onClick: () => void }) {
+  const color = chit.color.length > 0 ? chit.color : "#ffffff";
+  const lightness = Color(color).lightness();
+
+  const outlineColor = Color(color)
+    .lightness(lightness < 35 ? lightness + 10 : 20)
+    .hex();
+
+  return (
+    <Box
+      onMouseDown={onClick}
+      sx={{ pt: 1, pb: 1, mt: -1, mb: -1, position: "relative", zIndex: ZINDEX_PANEL_CUTOUTS }}
+    >
+      <Box
+        sx={{
+          opacity: selected ? 1 : 0.75,
+          transition: "opacity linear 0.25s",
+          background: color,
+          border: `2px solid ${outlineColor}`,
+          borderTop: "none",
+          overflow: "hidden",
+          cursor: "pointer",
+          height: TAB_HEIGHT,
+          textAlign: "center",
+          width: TAB_WIDTH,
+          borderBottomLeftRadius: TAB_HEIGHT / 4,
+          borderBottomRightRadius: TAB_HEIGHT / 4,
+        }}
+      >
+        {chit.icon && (
+          <UpdatingCanvasImage image={chit.icon} style={{ height: TAB_HEIGHT - 2, width: TAB_HEIGHT - 2 }} />
+        )}
+      </Box>
+    </Box>
+  );
+}
 
 export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number; w: number; h: number }) {
   const theme = useGameTheme();
@@ -25,6 +69,7 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
 
   const timeMultiplier = useAnimationSpeedMultiplier();
 
+  const [ignoreChangesBefore, setIgnoreChangesBefore] = useState(0);
   const [isSliding, setIsSliding] = useState(false);
   const [isLoading] = useEventChannelState(timeState.isLoading);
   const [selectedIndex, setSelectedIndex] = useDebounce(0);
@@ -32,9 +77,19 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
     c.renderInstance instanceof RootChitRenderInstance ? c.renderInstance : undefined,
   );
   const panelStates = usePanelStates(rootRenders);
-  const CUTOUT_WIDTH = Math.min(40, (w - theme.spacing * 2) / chits.length);
-  const CUTOUT_HEIGHT = 14;
-  const ANIMATION_DURATION = 0.125;
+
+  const manuallyChangeSelectedIndex = useCallback(
+    (index: number) => {
+      if (index !== selectedIndex) {
+        setSelectedIndex(index);
+        if (live) {
+          setTargetClock(maxClock.clock);
+        }
+        setIgnoreChangesBefore(Date.now() + PANEL_ADJUST_IGNORE_DURATION);
+      }
+    },
+    [selectedIndex, setSelectedIndex, live, maxClock, setTargetClock],
+  );
 
   const effectiveSelectedIndex = selectedIndex >= chits.length ? 0 : selectedIndex;
 
@@ -42,7 +97,9 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
   const enteringIndex = panelStates.findIndex((p) => p.state === "entering");
   const pendingIndex = panelStates.findIndex((p) => p.state === "pending");
 
-  if (!isLoading) {
+  const ignoringChanges = ignoreChangesBefore > Date.now();
+
+  if (!isLoading && !ignoringChanges) {
     if (leavingIndex >= 0) {
       if (panelStates[effectiveSelectedIndex].state !== "leaving") {
         // if our current panel is entering... obviously stay there
@@ -59,6 +116,10 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
         setSelectedIndex(pendingIndex);
       }
     }
+  }
+
+  if (ignoringChanges) {
+    chits.forEach((chit) => chit.renderInstance?.rootRenderInstance.resetMarks());
   }
 
   useEffect(() => {
@@ -82,23 +143,17 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
   const panCallback = useCallback(
     (direction: "left" | "right") => {
       if (direction === "left") {
-        setSelectedIndex((chits.length + selectedIndex - 1) % chits.length);
+        manuallyChangeSelectedIndex((chits.length + selectedIndex - 1) % chits.length);
       } else {
-        setSelectedIndex((chits.length + selectedIndex + 1) % chits.length);
-      }
-
-      if (live) {
-        setTargetClock(maxClock.clock);
-        chits.forEach((chit) => chit.renderInstance?.rootRenderInstance.resetMarks());
+        manuallyChangeSelectedIndex((chits.length + selectedIndex + 1) % chits.length);
       }
     },
-    [selectedIndex, chits, setSelectedIndex, maxClock, setTargetClock, live],
+    [selectedIndex, chits, manuallyChangeSelectedIndex],
   );
 
   return (
     <Stack
       sx={{
-        overflow: "hidden",
         width: `${w}px`,
         height: `${h}px`,
         left: `${x}px`,
@@ -116,6 +171,7 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
           <Box
             key={chit.id}
             sx={{
+              overflow: "hidden",
               width: "100%",
               height: "100%",
               transition: isLoading ? null : `transform ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
@@ -130,54 +186,39 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
           >
             <ViewerWrapper
               refContainer={refContainer}
-              paused={isLoading ? false : isSliding ? true : effectiveSelectedIndex !== index}
+              paused={isLoading || ignoringChanges ? false : isSliding ? true : effectiveSelectedIndex !== index}
               chit={chit}
               w={w - theme.spacing}
-              h={h - CUTOUT_HEIGHT - theme.spacing}
+              h={h - TAB_HEIGHT - theme.spacing}
               panCallback={panCallback}
             />
           </Box>
         ))}
       </Box>
 
-      <Stack direction="row" sx={{ height: CUTOUT_HEIGHT }}>
+      <Stack direction="row" sx={{ height: TAB_HEIGHT }}>
         <Box flex={1} />
-        <Box
-          sx={{
-            width: CUTOUT_WIDTH * chits.length,
-            position: "relative",
-            mask: `url(${Cutout})`,
-            maskSize: `${CUTOUT_WIDTH}px ${CUTOUT_HEIGHT}px`,
-          }}
-        >
+        <Stack direction="row" sx={{ position: "relative", width: TAB_WIDTH * chits.length }}>
           {chits.map((chit, index) => (
-            <Box
-              onMouseDown={() => setSelectedIndex(index)}
+            <PanelTab
               key={chit.id}
-              sx={{
-                zIndex: ZINDEX_PANEL_CUTOUTS,
-                cursor: "pointer",
-                height: CUTOUT_HEIGHT,
-                width: CUTOUT_WIDTH,
-                position: "absolute",
-                top: 0,
-                left: index * CUTOUT_WIDTH,
-              }}
+              chit={chit}
+              onClick={() => manuallyChangeSelectedIndex(index)}
+              selected={index === effectiveSelectedIndex}
             />
           ))}
-          <Box sx={{ height: CUTOUT_HEIGHT, width: "100%", background: theme.panelSelectionCutoutBackground }}></Box>
           <Box
             sx={{
-              height: CUTOUT_HEIGHT,
-              width: CUTOUT_WIDTH,
+              height: "2px",
+              width: TAB_WIDTH * 0.75,
               transition: `left ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
               background: theme.panelSelectionCutoutSelected,
               position: "absolute",
-              top: 0,
-              left: effectiveSelectedIndex * CUTOUT_WIDTH,
+              bottom: -2,
+              left: effectiveSelectedIndex * TAB_WIDTH + TAB_WIDTH * 0.125,
             }}
           />
-        </Box>
+        </Stack>
         <Box flex={1} />
       </Stack>
     </Stack>

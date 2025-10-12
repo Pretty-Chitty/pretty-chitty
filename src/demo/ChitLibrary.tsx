@@ -38,6 +38,7 @@ import { GameBag } from "../library/game/GameBag";
 import { tunnel, walk } from "./assets/icons";
 
 import city_profile from "./city_profile.svg";
+import { IconCanvas } from "../library/utilities/CanvasStack/IconCanvas";
 
 export * from "../library/utilities/BaseTable";
 
@@ -352,12 +353,12 @@ export class Card3 extends Chit {
 
 export class CounterChit extends SparkChit {
   public get headerIcon() {
-    return cityscape2;
+    return new IconCanvas(cityscape2).get();
   }
 }
 export class BagChit extends BagSparkChit<Card2> {
   public get icon() {
-    return cityscape;
+    return new IconCanvas(cityscape).get();
   }
 }
 

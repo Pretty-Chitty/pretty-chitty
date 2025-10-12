@@ -117,7 +117,7 @@ export default function Viewer({
   // make sure "wireframes" gets set correctly on the render instance
   useEffect(() => {
     if (chitRenderInstance) {
-      chitRenderInstance.wireframes = !!wireframes;
+      chitRenderInstance.wireframes = true; //!!wireframes;
     }
   }, [chitRenderInstance, wireframes]);
 
