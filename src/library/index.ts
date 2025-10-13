@@ -59,4 +59,4 @@ export type { ExtrudeFromSVGOptions } from "./utilities/SvgExtruder";
 export { extrudeSVGToGeometry } from "./utilities/SvgExtruder";
 
 export { createLayoutFromTree } from "./utilities/LayoutHelper";
-export type { LayoutNode, PanelNode, ContainerNode, LayoutDirection } from "./utilities/LayoutHelper";
+export type { LayoutNode, PanelNode, ContainerNode, CollapsedNode, LayoutDirection } from "./utilities/LayoutHelper";

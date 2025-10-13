@@ -8,10 +8,6 @@ interface Point3d {
   y: number;
   z: number;
 }
-interface Point2d {
-  x: number;
-  y: number;
-}
 
 export class CameraWrapperPerspective {
   public cameraSpec = new CameraSpec();

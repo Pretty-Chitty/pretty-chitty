@@ -26,7 +26,7 @@ export class RootChit<P extends PlayerChit> extends Chit {
 
   getLayout(_width: number, _height: number, _playerId: string): LayoutNode {
     return {
-      panel: this,
+      chit: this,
       minWidth: 0,
       minHeight: 0,
     };

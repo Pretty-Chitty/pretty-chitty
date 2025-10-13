@@ -270,7 +270,7 @@ export class Card2 extends Chit {
     const card2side = new MeshPhongMaterial({
       color: 0x999999,
     });
-    const card2boxGeometry = new BoxGeometry(0.25, 0.25, 10.25);
+    const card2boxGeometry = new BoxGeometry(0.25, 0.25, 2.25);
     const side = card2side;
 
     const mesh = new Mesh(card2boxGeometry, [
@@ -396,7 +396,7 @@ export class Root extends RootChit<MyPlayer> {
       collapseOrder: 3, // Collapse last if players collapsing doesn't help
       splits: [
         {
-          panel: this.mainBoard,
+          chit: this.mainBoard,
           minWidth: 300,
           minHeight: 250,
         },
@@ -410,13 +410,13 @@ export class Root extends RootChit<MyPlayer> {
               splits: this.players
                 .filter((p) => p.id !== _playerId)
                 .map((player) => ({
-                  panel: player,
+                  chit: player,
                   minWidth: 250,
                   minHeight: 200,
                 })),
             },
             {
-              panel: this.players.find((p) => p.id === _playerId)!,
+              chit: this.players.find((p) => p.id === _playerId)!,
               minWidth: 250,
               minHeight: 200,
             },

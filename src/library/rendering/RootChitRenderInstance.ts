@@ -1,10 +1,9 @@
 import { Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { ChitRenderInstance } from "./ChitRenderInstance";
 import { Chit } from "../game/Chit";
-import { Box3, BufferGeometry, Group, Material, Mesh, Object3D, Raycaster, Vector2, Vector3 } from "three";
+import { Box3, Group, Object3D, Raycaster, Vector2, Vector3 } from "three";
 import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
 import { LightWrapper } from "./LightWrapper";
-import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
 import { GalleryState } from "../game/GalleryState";
 import { GalleryItemSource } from "../components/GalleryViewer";
 import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
