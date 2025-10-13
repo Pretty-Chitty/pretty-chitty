@@ -26,7 +26,7 @@ export interface PanelNode {
   panel: Chit | Chit[];
   minWidth: number;
   minHeight: number;
-  collapseOrder?: number;
+  order?: number;
 }
 export interface ContainerNode {
   direction: LayoutDirection;
@@ -135,14 +135,14 @@ function buildValidTree(tree: LayoutNode, width: number, height: number): Concre
   }
 
   // Step 3: Scan ENTIRE tree for the container with smallest collapseOrder
-  const toCollapse = findSmallestCollapseOrder(tree);
+  const toCollapse = findSmallestCollapseOrder(concreteTree);
 
   if (!toCollapse) {
     return concreteTree;
   }
 
   // Step 4: Collapse that container to create NEW tree
-  const newTree = collapseContainer(tree, toCollapse);
+  const newTree = collapseContainer(tree, toCollapse.collapseOrder!);
 
   // Step 5: Recursively build valid tree from the new tree
   return buildValidTree(newTree, width, height);
@@ -290,12 +290,16 @@ function checkConcreteViolations(node: ConcreteLayoutNode): boolean {
 /**
  * Scans entire tree for the container with smallest collapseOrder
  */
-function findSmallestCollapseOrder(node: LayoutNode): ContainerNode | null {
+function findSmallestCollapseOrder(node: ConcreteLayoutNode): ContainerNode | null {
   if (isPanelNode(node)) {
     return null;
   }
+  // no point in collapsing anything that thinks it is all good
+  if (!checkConcreteViolations(node) && node.collapseOrder !== undefined) {
+    return null;
+  }
 
-  const container = node as ContainerNode;
+  const container = node as ConcreteContainerNode;
   let smallest: ContainerNode | null = container.collapseOrder !== undefined ? container : null;
 
   for (const split of container.splits) {
@@ -421,17 +425,17 @@ function findBestGridConfig(splits: LayoutNode[], width: number, height: number)
 /**
  * Collapse a container - replaces it with a PanelNode (tabs) and removes collapseOrder
  */
-function collapseContainer(tree: LayoutNode, targetContainer: ContainerNode): LayoutNode {
-  if (tree === targetContainer) {
+function collapseContainer(tree: LayoutNode, targetCollapseOrder: number): LayoutNode {
+  if (!isPanelNode(tree) && tree.collapseOrder === targetCollapseOrder) {
     // This is the container to collapse
     const panels: PanelNode[] = [];
-    collectPanels(targetContainer, panels);
+    collectPanels(tree, panels);
 
     // Sort panels by collapseOrder (stable sort)
     // Panels without collapseOrder go to the end
     const sortedPanels = panels.slice().sort((a, b) => {
-      const orderA = a.collapseOrder ?? Number.MAX_SAFE_INTEGER;
-      const orderB = b.collapseOrder ?? Number.MAX_SAFE_INTEGER;
+      const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
+      const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
       return orderA - orderB;
     });
 
@@ -455,7 +459,7 @@ function collapseContainer(tree: LayoutNode, targetContainer: ContainerNode): La
   const container = tree as ContainerNode;
   return {
     ...container,
-    splits: container.splits.map((split) => collapseContainer(split, targetContainer)),
+    splits: container.splits.map((split) => collapseContainer(split, targetCollapseOrder)),
   };
 }
 

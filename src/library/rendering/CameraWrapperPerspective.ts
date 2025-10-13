@@ -405,19 +405,20 @@ export class CameraWrapperPerspective {
       //   /* swallow debug errors */
       // }
 
-      const visibleWorldPerPixelX = (2 * xTan * Math.max(0.0001, distance)) / this.width;
-      const visibleWorldPerPixelY = (2 * yTan * Math.max(0.0001, distance)) / this.height;
+      const fixedD = distance - this.bbox.max.z;
+      const visibleWorldPerPixelX = (2 * xTan * Math.max(0.0001, fixedD)) / this.width;
+      const visibleWorldPerPixelY = (2 * yTan * Math.max(0.0001, fixedD)) / this.height;
 
       const paddedHalfWidthUsed = gameHalfWidth + (Math.max(0, padLeftPx + padRightPx) * visibleWorldPerPixelX) / 2;
       const paddedHalfHeightUsed = gameHalfHeight + (Math.max(0, padTopPx + padBottomPx) * visibleWorldPerPixelY) / 2;
 
       // wiggleRoom should consider padded sizes
-      this.wiggleRoomX = (1 - (Math.atan(paddedHalfWidthUsed / distance) * 2) / fovRadsX) * this.width;
-      this.wiggleRoomY = (1 - (Math.atan(paddedHalfHeightUsed / distance) * 2) / fovRadsY) * this.height;
+      this.wiggleRoomX = (1 - (Math.atan(paddedHalfWidthUsed / fixedD) * 2) / fovRadsX) * this.width;
+      this.wiggleRoomY = (1 - (Math.atan(paddedHalfHeightUsed / fixedD) * 2) / fovRadsY) * this.height;
 
       // visible sizes in world units
-      this.visibleGameWidth = xTan * distance * 2;
-      this.visibleGameHeight = yTan * distance * 2;
+      this.visibleGameWidth = xTan * fixedD * 2;
+      this.visibleGameHeight = yTan * fixedD * 2;
     }
 
     const currentPosition = this.camera.position.clone(),

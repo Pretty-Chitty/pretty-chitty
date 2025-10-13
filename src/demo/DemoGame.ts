@@ -208,6 +208,10 @@ export class DemoGame implements Game<MyPlayer, Root> {
 
     spec.camera = new CameraSpec();
     spec.camera.targetFov = 45;
+    spec.camera.paddingRight = 0;
+    spec.camera.paddingTop = 0;
+    spec.camera.paddingBottom = 0;
+    spec.camera.paddingLeft = 0;
 
     spec.lightSpec = LightSpec.realistic();
   }

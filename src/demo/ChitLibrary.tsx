@@ -270,7 +270,7 @@ export class Card2 extends Chit {
     const card2side = new MeshPhongMaterial({
       color: 0x999999,
     });
-    const card2boxGeometry = new BoxGeometry(0.25, 0.25, 2.25);
+    const card2boxGeometry = new BoxGeometry(0.25, 0.25, 10.25);
     const side = card2side;
 
     const mesh = new Mesh(card2boxGeometry, [

@@ -16,7 +16,7 @@ export default function GridZoomButton() {
   }
 
   const isLarge = window.innerWidth > 800;
-  const zooms = isLarge ? [0.33, 1, 3] : [1, 3];
+  const zooms = isLarge ? [0.66, 1, 3] : [1, 3];
   const labels = isLarge ? ["0.5x", "Grid", "3x"] : ["Grid", "3x"];
 
   function toggleZoom() {
@@ -32,10 +32,6 @@ export default function GridZoomButton() {
   }
 
   return (
-    <BottomBarButton
-      icon={CalendarViewMonth}
-      label={labels[zooms.indexOf(scale)] ?? "Grid"}
-      onClick={toggleZoom}
-    />
+    <BottomBarButton icon={CalendarViewMonth} label={labels[zooms.indexOf(scale)] ?? "Grid"} onClick={toggleZoom} />
   );
 }
