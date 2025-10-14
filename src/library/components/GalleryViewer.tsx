@@ -47,6 +47,9 @@ export interface GalleryItem {
   maximumWidth?: number;
   maximumHeight?: number;
 
+  preferredWidth?: number;
+  preferredHeight?: number;
+
   summary?: string;
   summaryIconMap?: IconMap;
   summaryRenderingOptions?: RichTextRenderOptionsParameters;
@@ -198,6 +201,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
     this.camera.updateProjectionMatrix();
 
     // reset the world
+    this.setItems(this.items.map((item) => item.item));
     this.pan(0, true);
   }
 
@@ -361,6 +365,11 @@ class GalleryController implements TextureReferenceCounterRootGroup {
   }
 
   scaleItem(item: BuiltItem, maximumWidth?: number, maximumHeight?: number) {
+    if (item.mesh) {
+      item.mesh.removeFromParent();
+    }
+
+    item.mesh = item.item.createMesh(this.sceneWrapper);
     const box3 = new Box3();
     box3.expandByObject(item.mesh);
     if (!box3.isEmpty()) {
@@ -370,11 +379,13 @@ class GalleryController implements TextureReferenceCounterRootGroup {
       const yScale = Math.min(this.itemHeight, (maximumHeight ?? Number.MAX_SAFE_INTEGER) / SCALE_FACTOR) / size.y;
       const scale = Math.min(xScale, yScale);
       item.mesh.scale.set(scale, scale, scale);
+      item.mesh.updateMatrix();
       item.center = center.multiplyScalar(scale).negate();
       item.center.z = 0; // i want to "floor" everything... but that is hard?
       item.height = size.y * scale;
       item.depth = size.z * scale;
     }
+    item.group.add(item.mesh);
   }
 
   updateHelpText(item: BuiltItem) {
@@ -459,8 +470,6 @@ class GalleryController implements TextureReferenceCounterRootGroup {
             this.changed = true;
 
             builtItem.group = new Group();
-            builtItem.mesh = item.createMesh(this.sceneWrapper);
-            builtItem.group.add(builtItem.mesh);
 
             this.sceneWrapper.scene.add(builtItem.group);
 
@@ -494,6 +503,10 @@ class GalleryController implements TextureReferenceCounterRootGroup {
             builtItem.enteredTween = undefined;
           })
           .start();
+      } else {
+        const it = this.itemLookup[item.id];
+        this.scaleItem(it, it.item.maximumWidth, it.item.maximumHeight);
+        this.positionItem(it);
       }
     });
 
@@ -581,29 +594,31 @@ export function GalleryViewer({
   onClose?: () => void;
   showSummary?: boolean;
 }) {
+  const calcedItemWidth =
+    items.length && items.every((item) => item.preferredWidth !== undefined)
+      ? Math.min(...items.map((item) => item.preferredWidth!))
+      : galleryItemWidth;
+  const calcedItemHeight =
+    items.length && items.every((item) => item.preferredHeight !== undefined)
+      ? Math.min(...items.map((item) => item.preferredHeight!))
+      : galleryItemHeight;
+
   const [id] = useState(`GalleryViewer${ID_COUNTER++}`);
   const refContainer = useRef<HTMLCanvasElement>(null);
   const rendererWrapper = useWebGlRenderer();
   const theme = useGameTheme();
   const [galleryController] = useState(new GalleryController(new SceneWrapper(new Scene()), theme));
-  const [itemWidth, setItemWidth] = useState(galleryItemWidth);
-  const [itemHeight, setItemHeight] = useState(galleryItemHeight);
 
   galleryController.tweenDuration = tweenDuration;
   galleryController.showSummary = showSummary;
 
   useEffect(() => {
-    galleryController.setSize(w, h, itemWidth, itemHeight, itemSpacing);
-  }, [itemWidth, itemSpacing, itemHeight, w, h, galleryController]);
+    galleryController.setSize(w, h, calcedItemWidth, calcedItemHeight, itemSpacing);
+  }, [calcedItemWidth, itemSpacing, calcedItemHeight, w, h, galleryController]);
 
   useEffect(() => {
     galleryController.setItems(items);
   }, [items, galleryController]);
-
-  useEffect(() => {
-    setItemWidth(galleryItemWidth);
-    setItemHeight(galleryItemHeight);
-  }, [items, galleryItemWidth, galleryItemHeight, setItemWidth, setItemHeight]);
 
   useEffect(() => {
     const canvas = refContainer.current;

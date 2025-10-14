@@ -40,6 +40,9 @@ theme.chitOutlineDownsample = 1;
 theme.chitOutlineWidth = 3;
 theme.chitOutlineStrength = 1;
 
+theme.galleryItemWidth = 50;
+theme.galleryItemHeight = 50;
+
 export class DemoGame implements Game<MyPlayer, Root> {
   name = "Demo Game";
 
@@ -163,7 +166,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
           }
         })
           .message("pick a piece to take")
-          // .toggleButton(new HandButton())
+          .toggleButton(new HandButton())
           .context(pieces[7]),
       );
     });

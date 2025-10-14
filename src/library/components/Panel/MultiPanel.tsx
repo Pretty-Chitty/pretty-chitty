@@ -70,6 +70,7 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
   const timeMultiplier = useAnimationSpeedMultiplier();
 
   const [ignoreChangesBefore, setIgnoreChangesBefore] = useState(0);
+
   const [isSliding, setIsSliding] = useState(false);
   const [isLoading] = useEventChannelState(timeState.isLoading);
   const [selectedIndex, setSelectedIndex] = useDebounce(0);
@@ -90,6 +91,13 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
     },
     [selectedIndex, setSelectedIndex, live, maxClock, setTargetClock],
   );
+
+  useEffect(() => {
+    if (ignoreChangesBefore) {
+      const to = setTimeout(() => setIgnoreChangesBefore(0), ignoreChangesBefore - Date.now());
+      return () => clearTimeout(to);
+    }
+  }, [ignoreChangesBefore]);
 
   const effectiveSelectedIndex = selectedIndex >= chits.length ? 0 : selectedIndex;
 
@@ -119,7 +127,7 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
   }
 
   if (ignoringChanges) {
-    chits.forEach((chit) => chit.renderInstance?.rootRenderInstance.resetMarks());
+    rootRenders.forEach((chit) => chit && chit.resetMarks());
   }
 
   useEffect(() => {
@@ -134,7 +142,7 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
   }, [selectedIndex, timeState, timeMultiplier]);
 
   const key = `panel--${chits.map((c) => c.id).join("-")}`;
-  const isAnimating = Math.max(leavingIndex, enteringIndex, pendingIndex) >= 0;
+  const isAnimating = ignoringChanges ? false : Math.max(leavingIndex, enteringIndex, pendingIndex) >= 0;
   useEffect(() => {
     timeState.setAnimationState(key, isAnimating);
     return () => timeState.setAnimationState(key, false);

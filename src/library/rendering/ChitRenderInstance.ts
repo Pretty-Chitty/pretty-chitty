@@ -414,6 +414,8 @@ export class ChitRenderInstance {
   public createGalleryItem(item: ChitGalleryItemInstance) {
     item.maximumWidth = this.renderSpec?.galleryMaximumWidth;
     item.maximumHeight = this.renderSpec?.galleryMaximumHeight;
+    item.preferredHeight = this.renderSpec?.galleryPreferredHeight;
+    item.preferredWidth = this.renderSpec?.galleryPreferredWidth;
     item.summary = this.renderSpec?.summary;
     item.originalSummary = item.summary;
     item.summaryIconMap = this.renderSpec?.summaryIconMap;

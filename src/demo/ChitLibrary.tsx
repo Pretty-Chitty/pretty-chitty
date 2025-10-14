@@ -246,6 +246,9 @@ export class Card extends Chit {
 
     spec.galleryMaximumWidth = 300;
 
+    spec.galleryPreferredWidth = 300;
+    spec.galleryPreferredHeight = 800;
+
     // make sure it reports it out?
     spec.setOutletPositionFromCanvas(ts);
   }

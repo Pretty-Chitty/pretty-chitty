@@ -44,6 +44,8 @@ export class ChitRenderSpec {
 
   public galleryMaximumWidth: number | undefined;
   public galleryMaximumHeight: number | undefined;
+  public galleryPreferredWidth: number | undefined;
+  public galleryPreferredHeight: number | undefined;
 
   public ownerOrigin: string | OwnerOriginPosition = OwnerOriginPosition.Default;
   public outletPositions: { [key: string]: Vector3 } = {};
