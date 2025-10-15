@@ -171,10 +171,9 @@ export function TokenizedMessage({ message, fontSize, tokenMap = {} }: Tokenized
 
   return (
     <Box
-      component="span"
       sx={{
         fontSize: `${fontSize}px`,
-        lineHeight: 1,
+        lineHeight: `${fontSize * 1.1}px`,
       }}
     >
       {elements.map((element) =>

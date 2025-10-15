@@ -10,9 +10,10 @@ import TopBar from "./TopBar";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { MatchEndDisplay } from "./MatchEndDisplay";
 import { PanelScaleProvider } from "../hooks/usePanelScale";
-import { GalleryProvider } from "../hooks/useGalleryState";
+import { ModalProvider } from "../hooks/useModalState";
 import { GalleryDisplay } from "./GalleryDisplay";
 import { ActionLogDisplay } from "./ActionLogDisplay";
+import { ActionLogHistoryDisplay } from "./ActionLogHistoryDisplay";
 import { PanelContents } from "./Panel/PanelContents";
 import useSize from "@react-hook/size";
 
@@ -65,6 +66,8 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
         <Box flex={1} style={{ display: "flex", position: "relative" }}>
           <MatchEndDisplay />
           <GalleryDisplay />
+          <ActionLogHistoryDisplay />
+
           {!errorMessage && rootChit && <PanelContents rootChit={rootChit} scaleWidth={width} scaleHeight={height} />}
           {errorMessage}
         </Box>
@@ -81,13 +84,13 @@ export function MatchViewer({ onBack }: { onBack?: () => void }) {
     <TimeControllerProvider>
       <CssBaseline />
       <PanelScaleProvider>
-        <GalleryProvider>
+        <ModalProvider>
           <GameThemeProvider theme={game.theme}>
             <ThemeProvider theme={theme}>
               <InnerMatchViewer onBack={onBack} />
             </ThemeProvider>
           </GameThemeProvider>
-        </GalleryProvider>
+        </ModalProvider>
       </PanelScaleProvider>
     </TimeControllerProvider>
   );

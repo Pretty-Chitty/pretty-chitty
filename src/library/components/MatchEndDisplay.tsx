@@ -3,9 +3,9 @@ import React from "react";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { useClientStatus, useTimeController, useTimeState } from "../hooks/useTimeController";
 import { useEventChannelState } from "../hooks/useEventChannelState";
-import { ZINDEX_MATCH_END_DISPLAY } from "../utilities/zIndex";
 import { useChits } from "../hooks/useChits";
 import { PlayerChit } from "../game/PlayerChit";
+import { GameModalBackdrop } from "./GameModalBackdrop";
 
 export function MatchEndDisplay() {
   const theme = useGameTheme();
@@ -18,29 +18,28 @@ export function MatchEndDisplay() {
   const [currentClock] = useEventChannelState(timeController.currentClock);
   const winnerPlayers = useChits<PlayerChit>(matchResult?.winnerIds ?? []);
 
-  if (!matchResult || !isLive || maxClock.clock !== currentClock.clock) {
-    return null;
-  }
+  const visible = !!matchResult && !!isLive && maxClock.clock === currentClock.clock;
 
   return (
-    <Box
-      sx={{
-        position: "absolute",
-        zIndex: ZINDEX_MATCH_END_DISPLAY,
-        borderRadius: 1,
-        color: theme.endGameTextColor,
-        background: theme.endGameBackgroundColor,
-        left: theme.spacing * 4,
-        top: theme.spacing * 4,
-        right: theme.spacing * 4,
-        bottom: theme.spacing * 6,
-        padding: `${theme.spacing * 2}px`,
-      }}
-    >
-      <Typography align="center">The winner is</Typography>
-      <Typography align="center" variant="h3">
-        {winnerPlayers?.map((winner) => winner.name)}
-      </Typography>
-    </Box>
+    <GameModalBackdrop visible={visible}>
+      <Box
+        sx={{
+          position: "absolute",
+          borderRadius: 1,
+          color: theme.endGameTextColor,
+          background: theme.endGameBackgroundColor,
+          left: theme.spacing * 4,
+          top: theme.spacing * 4,
+          right: theme.spacing * 4,
+          bottom: theme.spacing * 6,
+          padding: `${theme.spacing * 2}px`,
+        }}
+      >
+        <Typography align="center">The winner is</Typography>
+        <Typography align="center" variant="h3">
+          {winnerPlayers?.map((winner) => winner.name)}
+        </Typography>
+      </Box>
+    </GameModalBackdrop>
   );
 }

@@ -8,7 +8,7 @@ import { useEventChannelState } from "../hooks/useEventChannelState";
 import Hammer from "@egjs/hammerjs";
 import { addWheelListener, removeWheelListener } from "wheel";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
-import { useGalleryState } from "../hooks/useGalleryState";
+import { useModalState } from "../hooks/useModalState";
 import { usePlayerId } from "../hooks/usePlayer";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { requestSharedAnimationFrame } from "../utilities/RequestSharedAnimationFrame";
@@ -44,7 +44,7 @@ export default function Viewer({
   const rendererWrapper = useWebGlRenderer();
   const theme = useGameTheme();
 
-  const galleryState = useGalleryState();
+  const modalState = useModalState();
   const [chitRenderInstance, setChitRenderInstance] = useState<RootChitRenderInstance | null>(null);
 
   if (chitRenderInstance) {
@@ -109,10 +109,10 @@ export default function Viewer({
 
         return new Vector2((x / rect.width) * 2 - 1, -((y / rect.height) * 2 - 1));
       };
-      newInstance.setup(galleryState);
+      newInstance.setup(modalState);
       setChitRenderInstance(newInstance);
     }
-  }, [actualRef, playerId, animationSpeedMultiplier, chit, chitRenderInstance, R, galleryState]);
+  }, [actualRef, playerId, animationSpeedMultiplier, chit, chitRenderInstance, R, modalState]);
 
   // make sure "wireframes" gets set correctly on the render instance
   useEffect(() => {
@@ -320,7 +320,7 @@ export default function Viewer({
         removeWheelListener(el, wheelListener);
       };
     }
-  }, [myRefContainer, chitRenderInstance, galleryState, panCallback]);
+  }, [myRefContainer, chitRenderInstance, modalState, panCallback]);
 
   return (
     <PersistentCanvas

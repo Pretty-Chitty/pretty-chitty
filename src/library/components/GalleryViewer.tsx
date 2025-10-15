@@ -613,6 +613,9 @@ export function GalleryViewer({
   galleryController.showSummary = showSummary;
 
   useEffect(() => {
+    if (!w || !h) {
+      return;
+    }
     galleryController.setSize(w, h, calcedItemWidth, calcedItemHeight, itemSpacing);
   }, [calcedItemWidth, itemSpacing, calcedItemHeight, w, h, galleryController]);
 

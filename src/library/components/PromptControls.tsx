@@ -11,13 +11,13 @@ import GameDialog from "./GameDialog";
 import Markdown from "react-markdown";
 import { ZINDEX_PROMPT_CONTROLS } from "../utilities/zIndex";
 import { GameButton, ToggleGalleryButton } from "../game/GameButton";
-import { useGalleryState } from "../hooks/useGalleryState";
+import { useModalState } from "../hooks/useModalState";
 import { ContextGalleryDisplay } from "./ContextGalleryDisplay";
 import { NoValidMovesPrompt } from "../game/Prompt";
 
 function GameButtonWrapper({ button }: { button: GameButton }) {
-  const galleryState = useGalleryState();
-  const [source, setSource] = useEventChannelState(galleryState.source);
+  const modalState = useModalState();
+  const [source, setSource] = useEventChannelState(modalState.gallerySource);
 
   let highlight = false;
   let cb = button.cb;

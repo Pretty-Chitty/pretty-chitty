@@ -1,17 +1,40 @@
 import React, { useRef } from "react";
-import { Box } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 import { useGameTheme } from "../hooks/useGameTheme";
 import useSize from "@react-hook/size";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { useClientPrompts, useTimeController } from "../hooks/useTimeController";
-import { TokenDefinition, TokenizedMessage } from "./TokenizedMessage";
+import { TokenizedMessage } from "./TokenizedMessage";
 import { useChit, useChits } from "../hooks/useChits";
 import { PlayerChit } from "../game/PlayerChit";
 import { RootChit } from "../game/RootChit";
 import { usePlayerId } from "../hooks/usePlayer";
 import { NoValidMovesPrompt } from "../game/Prompt";
+import { useTokenMap } from "../hooks/useTokenMap";
+import { useModalState } from "../hooks/useModalState";
+import { KeyboardDoubleArrowUp } from "@mui/icons-material";
+
+function Arrow({ flipped }: { flipped?: boolean }) {
+  const theme = useGameTheme();
+  return (
+    <Box
+      sx={{
+        color: theme.actionLogTextColor,
+        opacity: 0.25,
+        alignItems: "center",
+        display: "flex",
+        transform: flipped ? "rotate(180deg)" : "rotate(0deg)",
+        transition: "transform 0.1s ease-in-out",
+      }}
+    >
+      <KeyboardDoubleArrowUp />
+    </Box>
+  );
+}
 
 export function ActionLogDisplay() {
+  const modalState = useModalState();
+  const [visible, setVisible] = useEventChannelState(modalState.actionLogVisible);
   const timeController = useTimeController();
   const [currentClock] = useEventChannelState(timeController.currentClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
@@ -22,18 +45,13 @@ export function ActionLogDisplay() {
   const layoutSize = theme.layoutSize(width);
   const clientPrompt = useClientPrompts();
   const [prompt] = useEventChannelState(clientPrompt.currentPrompt);
+  const tokenMap = useTokenMap();
 
   const PADDING_SIZE = 8; // bs i know
 
   const playerId = usePlayerId();
   const root = useChit<RootChit<PlayerChit>>("root");
   const playerChits = useChits<PlayerChit>(root?.players.map((p) => p.id ?? "") ?? []);
-
-  const tokenMap: { [key: string]: TokenDefinition } = {};
-  playerChits?.forEach((p) => {
-    tokenMap[p.playerId] = { label: p.name ?? "??", color: p.color ?? theme.actionLogTextColor, image: p.imageUrl };
-  });
-  tokenMap["warning"] = { label: "⚠️" };
 
   let message: string = "";
   if (prompt) {
@@ -50,22 +68,25 @@ export function ActionLogDisplay() {
   }
 
   return (
-    <Box
+    <Stack
+      direction={"row"}
       ref={containerRef}
       sx={{
         background: theme.actionLogBackgroundColor,
       }}
+      onClick={() => setVisible(!visible)}
     >
+      <Box flex={1} />
+      <Arrow flipped={visible} />
       <Box
+        flex={1000}
         sx={{
           p: 1,
-          marginLeft: "auto",
-          marginRight: "auto",
           lineHeight: 1,
           textAlign: "center",
-          minHeight: 14 * theme.actionBarLinesToShow + PADDING_SIZE * 2, // 8px for padding?
+          minHeight: 14 * theme.actionBarLinesToShow * 1.1 + PADDING_SIZE * 2, // 8px for padding?
           color: theme.actionLogTextColor,
-          maxWidth: layoutSize !== "mobile" ? `${theme.actionBarWidth}px` : undefined,
+          maxWidth: layoutSize !== "mobile" ? `${theme.actionBarWidth - 40}px` : undefined,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -73,6 +94,8 @@ export function ActionLogDisplay() {
       >
         <TokenizedMessage message={message} fontSize={14} tokenMap={tokenMap} />
       </Box>
-    </Box>
+      <Arrow flipped={visible} />
+      <Box flex={1} />
+    </Stack>
   );
 }

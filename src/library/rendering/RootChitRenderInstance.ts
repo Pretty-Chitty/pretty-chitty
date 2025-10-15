@@ -4,7 +4,7 @@ import { Chit } from "../game/Chit";
 import { Box3, Group, Object3D, Raycaster, Vector2, Vector3 } from "three";
 import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
 import { LightWrapper } from "./LightWrapper";
-import { GalleryState } from "../game/GalleryState";
+import { ModalState } from "../game/ModalState";
 import { GalleryItemSource } from "../components/GalleryViewer";
 import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
 import { GalleryItemRawSource } from "../game/GalleryItemRawSource";
@@ -102,10 +102,10 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     }
   }
 
-  private galleryState?: GalleryState;
-  public setup(galleryState: GalleryState) {
+  private modalState?: ModalState;
+  public setup(modalState: ModalState) {
     this.init();
-    this.galleryState = galleryState;
+    this.modalState = modalState;
   }
 
   public override checkPreDestroy() {
@@ -375,7 +375,7 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     const chits = this.findEligibleRenderInstances((c) => !!c.onClick, x, y, distance, precision);
 
     if (chits.length > 0) {
-      if (this.galleryState && chits.length >= 2) {
+      if (this.modalState && chits.length >= 2) {
         const items = chitsToGalleryItems(chits);
         if (items.length >= 2) {
           items.forEach((item) => {
@@ -383,13 +383,13 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
             if (orig) {
               item.onClick = () => {
                 orig();
-                if (this.galleryState) {
-                  this.galleryState.source.value = undefined;
+                if (this.modalState) {
+                  this.modalState.gallerySource.value = undefined;
                 }
               };
             }
           });
-          this.galleryState.source.value = new GalleryItemRawSource(items);
+          this.modalState.gallerySource.value = new GalleryItemRawSource(items);
           return;
         }
       }
@@ -409,15 +409,15 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
       distance,
       precision,
     );
-    if (this.galleryState && chits.length > 0) {
+    if (this.modalState && chits.length > 0) {
       const items = chitsToGalleryItems(chits);
-      this.galleryState.source.value = new GalleryItemRawSource(items);
+      this.modalState.gallerySource.value = new GalleryItemRawSource(items);
     }
   }
 
   public showGallery(source: GalleryItemSource) {
-    if (this.galleryState) {
-      const s = this.galleryState.source;
+    if (this.modalState) {
+      const s = this.modalState.gallerySource;
       s.value = source;
       return () => {
         if (s.value === source) {
@@ -428,8 +428,8 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     return () => {};
   }
   public hideGallery(source: GalleryItemSource) {
-    if (this.galleryState && this.galleryState.source.value === source) {
-      this.galleryState.source.value = undefined;
+    if (this.modalState && this.modalState.gallerySource.value === source) {
+      this.modalState.gallerySource.value = undefined;
     }
   }
 
