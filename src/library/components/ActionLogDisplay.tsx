@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Box, Stack } from "@mui/material";
-import { useDebounce } from "@react-hook/debounce";
 import { useGameTheme } from "../hooks/useGameTheme";
 import useSize from "@react-hook/size";
 import { useEventChannelState } from "../hooks/useEventChannelState";
@@ -46,6 +45,7 @@ export function ActionLogDisplay() {
   const timeController = useTimeController();
   const timeState = useTimeState();
   const [currentClock] = useEventChannelState(timeController.currentClock);
+  const [targetClock] = useEventChannelState(timeState.targetClock);
   const [live] = useEventChannelState(timeState.live);
   const [maxClock] = useEventChannelState(timeController.maxClock);
 
@@ -61,6 +61,7 @@ export function ActionLogDisplay() {
     interval: 1000 * animationSpeedMultiplier,
     immediate: 50,
   });
+  const [finalMessage, setFinalMessage] = useSmartDebouncedState<string>("", { interval: 150 });
   const [isSteppingBack, setIsSteppingBack] = useState(false);
   const [messageHasntChanged, setMessageHasntChanged] = useState(false);
   const [logMessage] = useEventChannelState(timeController.activeLog);
@@ -105,11 +106,11 @@ export function ActionLogDisplay() {
 
   // mark if we are stepping back
   useEffect(() => {
-    if (live && currentClock.clock > maxClock.clock) {
+    if (live && targetClock < currentClock.clock) {
       setIsSteppingBack(true);
       setTimeout(() => setIsSteppingBack(false), 1000 * animationSpeedMultiplier);
     }
-  }, [live, currentClock.clock, maxClock.clock, animationSpeedMultiplier]);
+  }, [live, currentClock.clock, targetClock, animationSpeedMultiplier]);
 
   let messageToShow = message;
   if (promptMessage) {
@@ -123,6 +124,8 @@ export function ActionLogDisplay() {
       setMessage(undefined);
     }
   }
+
+  setFinalMessage(messageToShow ?? "");
 
   return (
     <Stack
@@ -150,7 +153,7 @@ export function ActionLogDisplay() {
           justifyContent: "center",
         }}
       >
-        <TokenizedMessage message={messageToShow ?? ""} fontSize={14} tokenMap={tokenMap} />
+        <TokenizedMessage message={finalMessage} fontSize={14} tokenMap={tokenMap} />
       </Box>
       <Arrow flipped={visible} />
       <Box flex={1} />

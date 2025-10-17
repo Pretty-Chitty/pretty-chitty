@@ -86,7 +86,8 @@ export class CameraWrapperPerspective {
     const closestDistance = Math.sqrt(closestDistanceSquared);
     const farthestDistance = Math.sqrt(farthestDistanceSquared);
 
-    // Apply 20% padding as requested
+    // Apply padding - more aggressive for near plane to avoid clipping
+    // Use a larger multiplier for far plane with tall objects
     const near = Math.max(0.001, closestDistance * 0.5);
     const far = farthestDistance * 1.5;
 
@@ -160,8 +161,13 @@ export class CameraWrapperPerspective {
 
       const halfWidth = this.width / 2;
       const halfHeight = this.height / 2;
-      const maxX = (halfWidth - this.wiggleRoomX / 2) * this.current.z;
-      const maxY = (halfHeight - this.wiggleRoomY / 2) * this.current.z;
+
+      // Use a more generous constraint that allows proper panning when zoomed
+      // The original formula was: (halfWidth - this.wiggleRoomX / 2) * this.current.z
+      // This was too restrictive, so we reduce the wiggleRoom impact
+      const maxX = (halfWidth - this.wiggleRoomX / 4) * this.current.z;
+      const maxY = (halfHeight - this.wiggleRoomY / 4) * this.current.z;
+
       if (this.current.x + halfWidth > maxX) this.current.x = maxX - halfWidth;
       if (this.current.x - halfWidth < -maxX) this.current.x = -maxX + halfWidth;
       if (this.current.y + halfHeight > maxY) this.current.y = maxY - halfHeight;
@@ -196,6 +202,7 @@ export class CameraWrapperPerspective {
     // content sizes (world units)
     const contentWidth = this.bbox.max.x - this.bbox.min.x;
     const contentHeight = this.bbox.max.y - this.bbox.min.y;
+    const contentDepth = this.bbox.max.z - this.bbox.min.z;
     const gameHalfWidth = contentWidth / 2;
     const gameHalfHeight = contentHeight / 2;
     const gameAreaX = this.bbox.min.x + gameHalfWidth;
@@ -237,7 +244,10 @@ export class CameraWrapperPerspective {
         distanceY = gameHalfHeight / yTan;
       }
 
-      distance = Math.max(this.cameraSpec.minCameraDistance, Math.max(distanceX, distanceY));
+      // Add extra distance to account for Z-depth of the bbox
+      // This ensures the camera is far enough back to see tall objects
+      const depthAdjustment = contentDepth * 0.5;
+      distance = Math.max(this.cameraSpec.minCameraDistance, Math.max(distanceX, distanceY) + depthAdjustment);
     }
 
     // If padding occupies an excessive fraction of the viewport, fall back to ignoring per-side padding.
@@ -249,7 +259,8 @@ export class CameraWrapperPerspective {
       // Fallback: ignore per-side pixel padding entirely and compute distance from content size only.
       centerShiftX = 0;
       centerShiftY = 0;
-      distance = Math.max(this.cameraSpec.minCameraDistance, gameHalfWidth / xTan, gameHalfHeight / yTan);
+      const depthAdjustment = contentDepth * 0.5;
+      distance = Math.max(this.cameraSpec.minCameraDistance, gameHalfWidth / xTan, gameHalfHeight / yTan) + depthAdjustment;
 
       const fallbackPaddedHalfWidth = gameHalfWidth;
       const fallbackPaddedHalfHeight = gameHalfHeight;
@@ -401,9 +412,12 @@ export class CameraWrapperPerspective {
       //   /* swallow debug errors */
       // }
 
-      const fixedD = distance - this.bbox.max.z;
-      const visibleWorldPerPixelX = (2 * xTan * Math.max(0.0001, fixedD)) / this.width;
-      const visibleWorldPerPixelY = (2 * yTan * Math.max(0.0001, fixedD)) / this.height;
+      // Use the center of the bbox in Z for depth calculations
+      // This prevents issues when bbox has large Z extent
+      const bboxCenterZ = (this.bbox.min.z + this.bbox.max.z) / 2;
+      const fixedD = Math.max(0.1, distance - bboxCenterZ);
+      const visibleWorldPerPixelX = (2 * xTan * fixedD) / this.width;
+      const visibleWorldPerPixelY = (2 * yTan * fixedD) / this.height;
 
       const paddedHalfWidthUsed = gameHalfWidth + (Math.max(0, padLeftPx + padRightPx) * visibleWorldPerPixelX) / 2;
       const paddedHalfHeightUsed = gameHalfHeight + (Math.max(0, padTopPx + padBottomPx) * visibleWorldPerPixelY) / 2;

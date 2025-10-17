@@ -9,7 +9,12 @@ import { useTokenMap } from "../hooks/useTokenMap";
 import { GameTheme } from "../game/GameTheme";
 import { useModalState } from "../hooks/useModalState";
 import { useEventChannelState } from "../hooks/useEventChannelState";
-import { useAnimationSpeedMultiplier, useTimeController, useTimeState } from "../hooks/useTimeController";
+import {
+  useAnimationSpeedMultiplier,
+  useClientPrompts,
+  useTimeController,
+  useTimeState,
+} from "../hooks/useTimeController";
 
 interface LogEntry {
   message: string;
@@ -24,13 +29,16 @@ interface RowData {
 }
 
 function RowComponent({ index, messages, style, tokenMap, theme }: RowComponentProps<RowData>) {
+  const clientPrompt = useClientPrompts();
+  const [prompt] = useEventChannelState(clientPrompt.currentPrompt);
   const modalState = useModalState();
   const clientTime = useTimeController();
   const clientTimeState = useTimeState();
   const [currentClock] = useEventChannelState(clientTime.currentClock);
   const [, setTargetClock] = useEventChannelState(clientTimeState.targetClock);
   const [, setLive] = useEventChannelState(clientTimeState.live);
-  const isCurrent = currentClock.clock > messages[index].clock && currentClock.clock <= messages[index].endClock;
+  const isCurrent =
+    !prompt && currentClock.clock > messages[index].clock && currentClock.clock <= messages[index].endClock;
 
   return (
     <Stack
@@ -72,11 +80,16 @@ export function ActionLogHistoryDisplay() {
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
   const [messages, setMessages] = useState<LogEntry[]>([]);
   const listRef = useListRef(null);
+  const timeState = useTimeState();
   const clientTime = useTimeController();
   const [maxClock] = useEventChannelState(clientTime.maxClock);
   const [currentClock] = useEventChannelState(clientTime.currentClock);
 
   const dynamicRowHeight = useDynamicRowHeight({ defaultRowHeight: 40 });
+
+  useEffect(() => {
+    timeState.setAnimationState("actionLogOpen", visible);
+  }, [visible, timeState]);
 
   useEffect(() => {
     let ignoreResponse = false;
@@ -143,7 +156,7 @@ export function ActionLogHistoryDisplay() {
               fontWeight: "bold",
             }}
           >
-            Action Log
+            Log
           </Box>
           <List<RowData>
             listRef={listRef}
