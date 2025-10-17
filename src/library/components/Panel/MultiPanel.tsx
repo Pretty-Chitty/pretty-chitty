@@ -73,7 +73,7 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
 
   const [isSliding, setIsSliding] = useState(false);
   const [isLoading] = useEventChannelState(timeState.isLoading);
-  const [selectedIndex, setSelectedIndex] = useDebounce(0);
+  const [selectedIndex, setSelectedIndex] = useDebounce(0, 250, true);
   const rootRenders = chits.map((c) =>
     c.renderInstance instanceof RootChitRenderInstance ? c.renderInstance : undefined,
   );

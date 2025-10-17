@@ -1,9 +1,15 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Box, Stack } from "@mui/material";
+import { useDebounce } from "@react-hook/debounce";
 import { useGameTheme } from "../hooks/useGameTheme";
 import useSize from "@react-hook/size";
 import { useEventChannelState } from "../hooks/useEventChannelState";
-import { useClientPrompts, useTimeController } from "../hooks/useTimeController";
+import {
+  useAnimationSpeedMultiplier,
+  useClientPrompts,
+  useTimeController,
+  useTimeState,
+} from "../hooks/useTimeController";
 import { TokenizedMessage } from "./TokenizedMessage";
 import { useChit, useChits } from "../hooks/useChits";
 import { PlayerChit } from "../game/PlayerChit";
@@ -13,6 +19,7 @@ import { NoValidMovesPrompt } from "../game/Prompt";
 import { useTokenMap } from "../hooks/useTokenMap";
 import { useModalState } from "../hooks/useModalState";
 import { KeyboardDoubleArrowUp } from "@mui/icons-material";
+import { useSmartDebouncedState } from "../hooks/useSmartDebouncedState";
 
 function Arrow({ flipped }: { flipped?: boolean }) {
   const theme = useGameTheme();
@@ -34,9 +41,12 @@ function Arrow({ flipped }: { flipped?: boolean }) {
 
 export function ActionLogDisplay() {
   const modalState = useModalState();
+  const animationSpeedMultiplier = useAnimationSpeedMultiplier();
   const [visible, setVisible] = useEventChannelState(modalState.actionLogVisible);
   const timeController = useTimeController();
+  const timeState = useTimeState();
   const [currentClock] = useEventChannelState(timeController.currentClock);
+  const [live] = useEventChannelState(timeState.live);
   const [maxClock] = useEventChannelState(timeController.maxClock);
 
   const theme = useGameTheme();
@@ -47,23 +57,70 @@ export function ActionLogDisplay() {
   const [prompt] = useEventChannelState(clientPrompt.currentPrompt);
   const tokenMap = useTokenMap();
 
+  const [message, setMessage] = useSmartDebouncedState<string | undefined>(undefined, {
+    interval: 1000 * animationSpeedMultiplier,
+    immediate: 50,
+  });
+  const [isSteppingBack, setIsSteppingBack] = useState(false);
+  const [messageHasntChanged, setMessageHasntChanged] = useState(false);
+  const [logMessage] = useEventChannelState(timeController.activeLog);
+
   const PADDING_SIZE = 8; // bs i know
 
   const playerId = usePlayerId();
   const root = useChit<RootChit<PlayerChit>>("root");
-  const playerChits = useChits<PlayerChit>(root?.players.map((p) => p.id ?? "") ?? []);
 
-  let message: string = "";
+  const playerChits = useChits<PlayerChit>(root?.players.map((p) => p.id ?? "") ?? []);
+  playerChits.map((p) => p.promptStatus.latestPromptMessage).fill;
+
+  // calc if a prompt message.  this has highest priority
+  let promptMessage: string | undefined;
   if (prompt) {
     if (prompt instanceof NoValidMovesPrompt) {
-      message = `:warning: ${prompt?.message ?? ""}`;
+      promptMessage = `:warning: ${prompt?.message ?? ""}`;
     } else {
-      message = `:${playerId}: to ${prompt?.message ?? ""}`;
+      promptMessage = `:${playerId}: to ${prompt?.message ?? ""}`;
     }
-  } else if (currentClock.clock === maxClock.clock) {
+  }
+
+  // debounce messages and lock up animation loop
+  useEffect(() => {
+    if (promptMessage) {
+      return;
+    }
+
+    setMessage(logMessage);
+    setMessageHasntChanged(false);
+    const key = `ActionLogDisplay${Date.now()}`;
+    const to = setTimeout(() => timeState.setAnimationState(key, false), 1000 * animationSpeedMultiplier);
+    const to2 = setTimeout(() => {
+      setMessageHasntChanged(true);
+    }, 5000 * animationSpeedMultiplier);
+    return () => {
+      clearTimeout(to);
+      clearTimeout(to2);
+      timeState.setAnimationState(key, false);
+    };
+  }, [promptMessage, logMessage, animationSpeedMultiplier, timeState, setMessage]);
+
+  // mark if we are stepping back
+  useEffect(() => {
+    if (live && currentClock.clock > maxClock.clock) {
+      setIsSteppingBack(true);
+      setTimeout(() => setIsSteppingBack(false), 1000 * animationSpeedMultiplier);
+    }
+  }, [live, currentClock.clock, maxClock.clock, animationSpeedMultiplier]);
+
+  let messageToShow = message;
+  if (promptMessage) {
+    messageToShow = promptMessage;
+  } else if (isSteppingBack) {
+    messageToShow = "↩ Stepping back...";
+  } else if (messageHasntChanged && live) {
     const waitingPlayers = playerChits.filter((p) => p.promptStatus?.latestPromptMessage);
     if (waitingPlayers.length > 0 && !waitingPlayers.find((p) => p.playerId === playerId)) {
-      message = `Waiting for ${waitingPlayers.map((p) => `:${p.playerId}:`).join(" and ")}`;
+      messageToShow = `Waiting for ${waitingPlayers.map((p) => `:${p.playerId}:`).join(" and ")}`;
+      setMessage(undefined);
     }
   }
 
@@ -92,7 +149,7 @@ export function ActionLogDisplay() {
           justifyContent: "center",
         }}
       >
-        <TokenizedMessage message={message} fontSize={14} tokenMap={tokenMap} />
+        <TokenizedMessage message={messageToShow ?? ""} fontSize={14} tokenMap={tokenMap} />
       </Box>
       <Arrow flipped={visible} />
       <Box flex={1} />

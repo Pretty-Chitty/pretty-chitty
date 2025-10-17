@@ -56,8 +56,15 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
         clockDetails: result.clockDetails,
         newStates,
         chits: chitIdToStateCounter,
+        log: result.log,
       };
     }
     throw new Error("No match or match hasn't started");
+  }
+
+  async gameLog() {
+    if (this.match.turn.value) {
+      return this.match.turn.value.gameLog(this.playerId);
+    }
   }
 }

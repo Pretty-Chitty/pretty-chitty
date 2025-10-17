@@ -49,7 +49,12 @@ export class ClientTime extends ConnectionObject {
   private chitLookup: { [id: string]: Chit } = {};
   public maxClock = new EventChannel<ClockDetails>({ clock: 0, pass: -1 });
   public rootChit = new EventChannel<RootChit<any> | undefined>(undefined);
+  public activeLog = new EventChannel<string | undefined>(undefined);
   private startTime = 1;
+
+  public async gameLogs() {
+    return await this.serverTime.gameLog();
+  }
 
   public readonly findChit: (id: string) => Chit = (id: string) => {
     const result = this.chitLookup[id];
@@ -131,6 +136,9 @@ export class ClientTime extends ConnectionObject {
       if (newTargetClock > this.startTime) {
         this.clientTimeState.isLoading.value = false;
       }
+
+      // track the active log message
+      this.activeLog.value = response.log?.message;
 
       // first make sure all chits exist (because they may link to each other)
       Object.entries(serializedChits).forEach(([id, value]) => {

@@ -9,9 +9,15 @@ import { PlayerChit } from "./PlayerChit";
 import { RootChit } from "./RootChit";
 import { ClockDetails } from "./ClockDetails";
 
+type LogMessageSerializationResponse = {
+  message: string;
+  clock: number;
+};
+
 type ChitSerializationResponse = {
   chits: ChitStateLookup;
   clockDetails: ClockDetails;
+  log?: LogMessageSerializationResponse;
 };
 
 type ValidPick = undefined | false | Pick | Pick[] | ButtonPick | ButtonPick[] | GameButton | GameButton[];
@@ -154,6 +160,48 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
       return results[counter++];
     };
+  }
+
+  /**
+   * Add a game log message to the last flush step
+   * @param message
+   */
+  log(message: string) {
+    let step = this.clockSteps[this.clockSteps.length - 1];
+    if (!step || !(step instanceof FlushClockStep)) {
+      // flushing any changes while there are active subturns makes timelines *VERY* difficult
+      if (this.activeSubTurns.length) {
+        throw new Error("Cannot flush while subturns are active");
+      }
+
+      step = new FlushClockStep(this.clock, {});
+      this.clockSteps.push(step);
+    }
+
+    const flushStep = step as FlushClockStep;
+    if (!flushStep.logs) {
+      flushStep.logs = [];
+    }
+    flushStep.logs.push(message);
+    flushStep.log = message;
+  }
+
+  /**
+   * Append a game log message to the last flush step that has a game log message
+   * @param message
+   * @returns
+   */
+  appendLog(message: string) {
+    const lastIndex = this.clockSteps.findLastIndex(
+      (step) => step instanceof FlushClockStep && step.logs && step.logs.length > 0,
+    );
+    if (lastIndex < 0) {
+      this.log(message);
+      return;
+    }
+    const step = this.clockSteps[lastIndex] as FlushClockStep;
+    step.logs!.push(message);
+    step.log = step.logs!.join(", "); // TODO: better way to join this for sure
   }
 
   /**
@@ -636,6 +684,18 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     }
     return 0;
   }
+  private findIndexOfLastFlushStepWithLogMessageBefore(clock: number): number {
+    for (let j = this.clockSteps.length - 1; j >= 0; j--) {
+      if (
+        this.clockSteps[j] instanceof FlushClockStep &&
+        this.clockSteps[j].startClock < clock &&
+        (this.clockSteps[j] as FlushClockStep).log
+      ) {
+        return j;
+      }
+    }
+    return -1;
+  }
 
   /** @internal */
   serialize(playerId: string, clock: number): ChitSerializationResponse {
@@ -646,6 +706,17 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     // going forwards
     let index = this.findIndexOfLastFlushStepBefore(clock);
+    const lastLogIndex = this.findIndexOfLastFlushStepWithLogMessageBefore(clock);
+
+    // set up logs
+    let log: LogMessageSerializationResponse | undefined;
+    if (lastLogIndex >= 0) {
+      const messageStep = this.clockSteps[lastLogIndex] as FlushClockStep;
+      log = {
+        message: messageStep.log!,
+        clock: messageStep.startClock,
+      };
+    }
     let subTurns: { [turnId: string]: ClockDetails } | undefined = undefined;
 
     // eslint-disable-next-line no-constant-condition
@@ -681,11 +752,16 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           resultingClock += serialized.clockDetails.clock;
           remainingClocksToSpend -= serialized.clockDetails.clock;
           subTurns[turn.id] = serialized.clockDetails;
+          if (serialized.log) {
+            log = serialized.log;
+            log.clock += clockStep.startClock;
+          }
         }
       }
     }
 
     return {
+      log,
       chits,
       clockDetails: {
         pass: this.pass,
@@ -693,6 +769,30 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         subTurns,
       },
     };
+  }
+
+  /** @internal */
+  gameLog(playerId: string): LogMessageSerializationResponse[] {
+    return this.clockSteps
+      .map((step, index) => {
+        if (step instanceof FlushClockStep && step.log) {
+          return { message: step.log, clock: index };
+        } else if (step instanceof SubTurnsClockStep) {
+          let offset = step.startClock;
+          return step.turns
+            .map((turn) => {
+              const logs = turn.gameLog(playerId).map((l) => {
+                l.clock += offset;
+                return l;
+              });
+              offset += turn.clockDetails(playerId).clock;
+              return logs;
+            })
+            .flat();
+        }
+      })
+      .flat()
+      .filter((d) => d) as LogMessageSerializationResponse[];
   }
 
   /*
@@ -1026,6 +1126,8 @@ class SubTurnsClockStep<P extends PlayerChit, R extends RootChit<P>> extends Clo
 }
 
 class FlushClockStep extends ClockStep {
+  public logs?: string[];
+  public log?: string;
   public endClock() {
     return this.startClock + 1;
   }

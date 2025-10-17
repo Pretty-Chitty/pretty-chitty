@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect, useCallback } from "react";
+import React, { useMemo, useRef, useEffect, useCallback, useState } from "react";
 import { Box, Stack } from "@mui/material";
 import { useListRef, type RowComponentProps } from "react-window";
 import { List, useDynamicRowHeight } from "react-window";
@@ -9,38 +9,7 @@ import { useTokenMap } from "../hooks/useTokenMap";
 import { GameTheme } from "../game/GameTheme";
 import { useModalState } from "../hooks/useModalState";
 import { useEventChannelState } from "../hooks/useEventChannelState";
-import { useAnimationSpeedMultiplier } from "../hooks/useTimeController";
-
-// Generate sample messages for testing
-function generateSampleMessages(count: number): string[] {
-  const messages: string[] = [];
-  const actions = [
-    "moved to position",
-    "attacked",
-    "defended",
-    "collected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resourcescollected resources",
-    "built structurebuilt structurebuilt structurebuilt structurebuilt structurebuilt structurebuilt structurebuilt structure",
-    "upgraded unit",
-    "formed alliance with",
-    "declared war on",
-    "traded with",
-    "explored territory",
-  ];
-
-  for (let i = 0; i < count; i++) {
-    const playerIndex = Math.floor(Math.random() * 3);
-    const action = actions[Math.floor(Math.random() * actions.length)];
-    const targetIndex = Math.floor(Math.random() * 3);
-
-    if (Math.random() > 0.5) {
-      messages.push(`:p${playerIndex}: ${action}`);
-    } else {
-      messages.push(`:p${playerIndex}: ${action} :p${targetIndex}:`);
-    }
-  }
-
-  return messages;
-}
+import { useAnimationSpeedMultiplier, useTimeController } from "../hooks/useTimeController";
 
 interface RowData {
   messages: string[];
@@ -77,10 +46,24 @@ export function ActionLogHistoryDisplay() {
   const theme = useGameTheme();
   const tokenMap = useTokenMap();
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
-  const messages = useMemo(() => generateSampleMessages(1000), []);
+  const [messages, setMessages] = useState<string[]>([]);
   const listRef = useListRef(null);
+  const clientTime = useTimeController();
+  const [maxClock] = useEventChannelState(clientTime.maxClock);
 
   const dynamicRowHeight = useDynamicRowHeight({ defaultRowHeight: 40 });
+
+  useEffect(() => {
+    let ignoreResponse = false;
+    clientTime.gameLogs().then((logs) => {
+      if (!ignoreResponse) {
+        setMessages(logs?.map((l) => l.message) ?? []); // TODO: track timestamp and reverse order?
+      }
+    });
+    return () => {
+      ignoreResponse = true;
+    };
+  }, [maxClock, clientTime]);
 
   // Scroll to top when visible changes from false to true
   useEffect(() => {

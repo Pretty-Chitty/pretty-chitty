@@ -100,6 +100,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
       }),
     );
     setup.flush();
+    setup.log("Cards set up!");
 
     // for (let i = 0; i < 3000; i++) {
     //   for (let c = 0; c < 6; c++) {
@@ -126,6 +127,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     // setup.flush();
     pieces[1].add(b.draw());
     setup.flush();
+    setup.log("Gave :p2: a card");
     // pieces[2].add(new Card2());
     // setup.flush();
 
@@ -151,10 +153,13 @@ export class DemoGame implements Game<MyPlayer, Root> {
           players[0].add(c);
 
           if (c === pieces[1]) {
+            turn.log(":p1: chose the first card");
             await turn.pick([
               Chit.pick(pieces, async (c2: Card) => {
                 c2.something = 8888;
                 players[0].add(c2);
+
+                turn.appendLog("followed by a new card");
               }).message(
                 "pick a second piece to take, or if you don't want to, then don't.  it's totally up to you, you can do whatever you want.  I don't really care.  I bet you wish i did, but i don't",
               ),
