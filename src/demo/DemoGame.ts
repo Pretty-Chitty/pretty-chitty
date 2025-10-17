@@ -96,6 +96,8 @@ export class DemoGame implements Game<MyPlayer, Root> {
         c.token2 = new Card2();
         // c.add(new Card2(), "testoutlet");
         c.add(new Card3(), "testoutlet2");
+        setup.flush();
+        setup.log(`Created a card, ${c.id}`);
         // c.add(new Card(), "testoutlet3");
       }),
     );

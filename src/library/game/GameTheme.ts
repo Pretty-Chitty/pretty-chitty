@@ -67,6 +67,7 @@ export class GameTheme {
 
   public actionLogBackgroundColor = "rgba(255,255,255,0.05)";
   public actionLogDialogBackgroundColor = "#000000";
+  public actionLogDialogHighlightBackgroundColor = "rgba(255,255,255,0.3)";
   public actionLogTextColor = "#ffffff";
   public actionBarWidth = 600;
   public actionBarLinesToShow = 2;

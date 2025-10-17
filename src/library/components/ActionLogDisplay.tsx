@@ -130,6 +130,7 @@ export function ActionLogDisplay() {
       ref={containerRef}
       sx={{
         background: theme.actionLogBackgroundColor,
+        cursor: "pointer",
       }}
       onClick={() => setVisible(!visible)}
     >

@@ -9,17 +9,36 @@ import { useTokenMap } from "../hooks/useTokenMap";
 import { GameTheme } from "../game/GameTheme";
 import { useModalState } from "../hooks/useModalState";
 import { useEventChannelState } from "../hooks/useEventChannelState";
-import { useAnimationSpeedMultiplier, useTimeController } from "../hooks/useTimeController";
+import { useAnimationSpeedMultiplier, useTimeController, useTimeState } from "../hooks/useTimeController";
+
+interface LogEntry {
+  message: string;
+  clock: number;
+  endClock: number;
+}
 
 interface RowData {
-  messages: string[];
+  messages: LogEntry[];
   tokenMap: Record<string, TokenDefinition>;
   theme: GameTheme;
 }
 
 function RowComponent({ index, messages, style, tokenMap, theme }: RowComponentProps<RowData>) {
+  const modalState = useModalState();
+  const clientTime = useTimeController();
+  const clientTimeState = useTimeState();
+  const [currentClock] = useEventChannelState(clientTime.currentClock);
+  const [, setTargetClock] = useEventChannelState(clientTimeState.targetClock);
+  const [, setLive] = useEventChannelState(clientTimeState.live);
+  const isCurrent = currentClock.clock > messages[index].clock && currentClock.clock <= messages[index].endClock;
+
   return (
     <Stack
+      onClick={() => {
+        setTargetClock(messages[index].clock + 1);
+        setLive(false);
+        modalState.actionLogVisible.value = false;
+      }}
       direction={"row"}
       style={style}
       sx={{
@@ -28,13 +47,18 @@ function RowComponent({ index, messages, style, tokenMap, theme }: RowComponentP
         p: 1,
         pl: 2,
         pr: 2,
+        cursor: "pointer",
         color: theme.actionLogTextColor,
-        background: index % 2 === 0 ? "rgba(128,128,128,0.1)" : "transparent",
+        background: isCurrent
+          ? theme.actionLogDialogHighlightBackgroundColor
+          : index % 2 === 0
+            ? "rgba(128,128,128,0.1)"
+            : "transparent",
       }}
     >
-      <Box sx={{ width: 25, fontSize: 11, textAlign: "right" }}>{index}</Box>
+      <Box sx={{ width: 25, fontSize: 11, textAlign: "right" }}>{messages[index].clock + 1}</Box>
       <Box flex={1} sx={{ pl: 2 }}>
-        <TokenizedMessage message={messages[index]} fontSize={14} tokenMap={tokenMap} />
+        <TokenizedMessage message={messages[index].message} fontSize={14} tokenMap={tokenMap} />
       </Box>
     </Stack>
   );
@@ -46,10 +70,11 @@ export function ActionLogHistoryDisplay() {
   const theme = useGameTheme();
   const tokenMap = useTokenMap();
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
-  const [messages, setMessages] = useState<string[]>([]);
+  const [messages, setMessages] = useState<LogEntry[]>([]);
   const listRef = useListRef(null);
   const clientTime = useTimeController();
   const [maxClock] = useEventChannelState(clientTime.maxClock);
+  const [currentClock] = useEventChannelState(clientTime.currentClock);
 
   const dynamicRowHeight = useDynamicRowHeight({ defaultRowHeight: 40 });
 
@@ -57,7 +82,15 @@ export function ActionLogHistoryDisplay() {
     let ignoreResponse = false;
     clientTime.gameLogs().then((logs) => {
       if (!ignoreResponse) {
-        setMessages(logs?.map((l) => l.message) ?? []); // TODO: track timestamp and reverse order?
+        setMessages(
+          logs
+            ?.map((l, i) => ({
+              message: l.message,
+              clock: l.clock,
+              endClock: logs[i + 1]?.clock ?? Number.MAX_SAFE_INTEGER,
+            }))
+            .reverse() ?? [],
+        );
       }
     });
     return () => {
@@ -68,9 +101,12 @@ export function ActionLogHistoryDisplay() {
   // Scroll to top when visible changes from false to true
   useEffect(() => {
     if (visible && listRef.current) {
-      listRef.current.scrollToRow({ index: 0 });
+      const index = messages.findIndex((m) => m.clock <= currentClock.clock && m.endClock > currentClock.clock);
+      if (index >= 0) {
+        listRef.current.scrollToRow({ index });
+      }
     }
-  }, [visible, listRef]);
+  }, [visible, listRef, messages, currentClock]);
 
   return (
     <GameModalBackdrop visible={visible} persist>
