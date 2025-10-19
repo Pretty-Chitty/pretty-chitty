@@ -1,9 +1,12 @@
 import React from "react";
 import { Box } from "@mui/material";
 import Color from "color";
+import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
+import { UpdatingCanvasImage } from "./UpdatingCanvasImage";
+import { StaticImage } from "../utilities/StaticImage";
 
 export interface TokenDefinition {
-  image?: string;
+  image?: string | ImageSpec;
   label?: string;
   color?: string;
 }
@@ -41,28 +44,45 @@ function calculateBackgroundColor(textColor: string): string {
 
 // Token Image Component
 interface TokenImageProps {
-  src: string;
+  src: string | ImageSpec;
   alt: string;
   fontSize: number;
   hasLabel: boolean;
 }
 
 function TokenImage({ src, alt, fontSize, hasLabel }: TokenImageProps) {
-  return (
-    <Box
-      component="img"
-      src={src}
-      alt={alt}
-      sx={{
-        height: `${fontSize - 4}px`,
-        marginRight: hasLabel ? "4px" : 0,
-        transform: `scale(1.2)`,
-        top: "-1px",
-        position: "relative",
-        marginLeft: "2px",
-      }}
-    />
-  );
+  if (typeof src !== "string") {
+    const updatingCanvas = new StaticImage(src).get();
+    return (
+      <UpdatingCanvasImage
+        image={updatingCanvas}
+        style={{
+          height: `${fontSize - 4}px`,
+          marginRight: hasLabel ? "4px" : 0,
+          transform: `scale(1.4)`,
+          top: "-1px",
+          position: "relative",
+          marginLeft: "2px",
+        }}
+      />
+    );
+  } else {
+    return (
+      <Box
+        component="img"
+        src={src}
+        alt={alt}
+        sx={{
+          height: `${fontSize - 4}px`,
+          marginRight: hasLabel ? "4px" : 0,
+          transform: `scale(1.4)`,
+          top: "-1px",
+          position: "relative",
+          marginLeft: "2px",
+        }}
+      />
+    );
+  }
 }
 
 // Token Label Component

@@ -139,6 +139,7 @@ export class ClientTime extends ConnectionObject {
 
       // track the active log message
       this.activeLog.value = response.log?.message;
+      this.clientPrompt?.fixActiveLog();
 
       // first make sure all chits exist (because they may link to each other)
       Object.entries(serializedChits).forEach(([id, value]) => {

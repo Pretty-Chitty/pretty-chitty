@@ -7,6 +7,7 @@ import { GameButton } from "./GameButton";
 import { PlayerChit } from "./PlayerChit";
 import { RootChit } from "./RootChit";
 import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
+import { TokenDefinition } from "../components/TokenizedMessage";
 
 export interface IChitLibrary {
   [key: string]: new () => Chit;
@@ -44,4 +45,6 @@ export interface Game<P extends PlayerChit, R extends RootChit<P>> {
    * @param spec
    */
   renderDefaultRootChit?(spec: ChitRenderSpec): void;
+
+  tokenMap?: { [key: string]: TokenDefinition };
 }

@@ -27,7 +27,14 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
     this.register(this.clientTime.maxClock.on(this.checkIfPromptCanBeInflated.bind(this)));
     this.register(this.clientTime.clientTimeState.live.on(this.checkIfPromptCanBeInflated.bind(this)));
     this.register(this.clientTime.clientTimeState.isWaitingOnAnimations.on(this.checkIfPromptCanBeInflated.bind(this)));
+    this.register(this.clientTime.activeLog.on(this.fixActiveLog.bind(this)));
     this.register(this.getPromptEventChannelForPlayer(this.playerId).on(this.checkIfPromptCanBeInflated.bind(this)));
+  }
+
+  fixActiveLog() {
+    if (this.currentPrompt.value && this.clientTime.activeLog.value) {
+      this.clientTime.activeLog.value = undefined;
+    }
   }
 
   private checkIfPromptCanBeInflated() {
@@ -55,31 +62,34 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
       this._currentPromptSpec = promptSpec;
       const prompt = Prompt.deserialize(promptSpec, this.clientTime.findChit, this.clientTime.game.buttonLibrary);
       prompt.onResolve(async (success) => {
+        this.fixActiveLog();
         if (success) {
           const newPromptSpec = await this.serverPrompts.resolvePrompt(prompt.response);
           this.getPromptEventChannelForPlayer(this.playerId).value = newPromptSpec ?? undefined;
         } else if (prompt.shouldStepBack) {
           this.getPromptEventChannelForPlayer(this.playerId).value = undefined;
-          this.serverPrompts.stepBackPrompt(prompt.shouldReset ?? false);
+          await this.serverPrompts.stepBackPrompt(prompt.shouldReset ?? false);
         }
       });
       prompt.stageIn();
 
       this.currentPrompt.value = prompt;
+      this.fixActiveLog();
     } else {
       this._currentPromptSpec = undefined;
       if (this.currentPrompt.value) {
         this.currentPrompt.value.stageOut();
       }
       this.currentPrompt.value = undefined;
+      this.fixActiveLog();
     }
   }
 
   public async setPromptForPlayer(playerId: string, prompt?: PromptSerialization, clockDetails?: ClockDetails) {
+    this.getPromptEventChannelForPlayer(playerId).value = prompt;
     if (clockDetails) {
       this.clientTime.newMaxClock(clockDetails);
     }
-    this.getPromptEventChannelForPlayer(playerId).value = prompt;
   }
 
   public getPromptEventChannelForPlayer(playerId: string) {

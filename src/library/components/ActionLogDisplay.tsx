@@ -54,21 +54,23 @@ export function ActionLogDisplay() {
   const [width] = useSize(containerRef);
   const layoutSize = theme.layoutSize(width);
   const clientPrompt = useClientPrompts();
+
   const [prompt] = useEventChannelState(clientPrompt.currentPrompt);
+  const [promptMode, setPromptMode] = useState(false);
+  const playerId = usePlayerId();
+  const [promptSpec] = useEventChannelState(clientPrompt.getPromptEventChannelForPlayer(playerId));
   const tokenMap = useTokenMap();
 
   const [message, setMessage] = useSmartDebouncedState<string | undefined>(undefined, {
     interval: 1000 * animationSpeedMultiplier,
-    immediate: 50,
+    // immediate: 50,
   });
-  const [finalMessage, setFinalMessage] = useSmartDebouncedState<string>("", { interval: 150 });
   const [isSteppingBack, setIsSteppingBack] = useState(false);
   const [messageHasntChanged, setMessageHasntChanged] = useState(false);
   const [logMessage] = useEventChannelState(timeController.activeLog);
 
   const PADDING_SIZE = 8; // bs i know
 
-  const playerId = usePlayerId();
   const root = useChit<RootChit<PlayerChit>>("root");
 
   const playerChits = useChits<PlayerChit>(root?.players.map((p) => p.id ?? "") ?? []);
@@ -84,25 +86,31 @@ export function ActionLogDisplay() {
     }
   }
 
+  useEffect(() => {
+    if (!live) {
+      setPromptMode(false);
+    } else if (!prompt) {
+      // duplicated from promptcontrols... not ideal, but can fix later if this works
+      const to = setTimeout(() => setPromptMode(false), promptSpec ? 4000 : 400);
+      return () => clearTimeout(to);
+    } else {
+      setPromptMode(true);
+    }
+  }, [live, prompt, promptSpec]);
+
   // debounce messages and lock up animation loop
   useEffect(() => {
-    if (promptMessage) {
-      return;
-    }
-
     setMessage(logMessage);
     setMessageHasntChanged(false);
     const key = `ActionLogDisplay${Date.now()}`;
-    const to = setTimeout(() => timeState.setAnimationState(key, false), 1000 * animationSpeedMultiplier);
+    setTimeout(() => timeState.setAnimationState(key, false), 1000 * animationSpeedMultiplier);
     const to2 = setTimeout(() => {
       setMessageHasntChanged(true);
     }, 5000 * animationSpeedMultiplier);
     return () => {
-      clearTimeout(to);
       clearTimeout(to2);
-      timeState.setAnimationState(key, false);
     };
-  }, [promptMessage, logMessage, animationSpeedMultiplier, timeState, setMessage]);
+  }, [logMessage, animationSpeedMultiplier, timeState, setMessage]);
 
   // mark if we are stepping back
   useEffect(() => {
@@ -110,10 +118,10 @@ export function ActionLogDisplay() {
       setIsSteppingBack(true);
       setTimeout(() => setIsSteppingBack(false), 1000 * animationSpeedMultiplier);
     }
-  }, [live, currentClock.clock, targetClock, animationSpeedMultiplier]);
+  }, [live, currentClock.clock, currentClock.pass, targetClock, maxClock.pass, animationSpeedMultiplier]);
 
   let messageToShow = message;
-  if (promptMessage) {
+  if (promptMode) {
     messageToShow = promptMessage;
   } else if (isSteppingBack) {
     messageToShow = "↩ Stepping back...";
@@ -121,11 +129,8 @@ export function ActionLogDisplay() {
     const waitingPlayers = playerChits.filter((p) => p.promptStatus?.latestPromptMessage);
     if (waitingPlayers.length > 0 && !waitingPlayers.find((p) => p.playerId === playerId)) {
       messageToShow = `Waiting for ${waitingPlayers.map((p) => `:${p.playerId}:`).join(" and ")}`;
-      setMessage(undefined);
     }
   }
-
-  setFinalMessage(messageToShow ?? "");
 
   return (
     <Stack
@@ -153,7 +158,7 @@ export function ActionLogDisplay() {
           justifyContent: "center",
         }}
       >
-        <TokenizedMessage message={finalMessage} fontSize={14} tokenMap={tokenMap} />
+        <TokenizedMessage message={messageToShow ?? ""} fontSize={14} tokenMap={tokenMap} />
       </Box>
       <Arrow flipped={visible} />
       <Box flex={1} />

@@ -92,6 +92,10 @@ export function ActionLogHistoryDisplay() {
   }, [visible, timeState]);
 
   useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
     let ignoreResponse = false;
     clientTime.gameLogs().then((logs) => {
       if (!ignoreResponse) {
@@ -109,7 +113,7 @@ export function ActionLogHistoryDisplay() {
     return () => {
       ignoreResponse = true;
     };
-  }, [maxClock, clientTime]);
+  }, [maxClock, clientTime, visible]);
 
   // Scroll to top when visible changes from false to true
   useEffect(() => {

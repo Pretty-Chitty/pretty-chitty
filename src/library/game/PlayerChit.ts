@@ -21,6 +21,10 @@ export class PlayerChit extends Chit {
     return new PlayerCanvas(this).get();
   }
 
+  public get logKey() {
+    return `:${this.playerId}:`;
+  }
+
   public constructor(playerInfo?: PlayerInfo) {
     super();
 

@@ -168,21 +168,17 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    */
   log(message: string) {
     let step = this.clockSteps[this.clockSteps.length - 1];
-    if (!step || !(step instanceof FlushClockStep)) {
+    if (!step || !(step instanceof FlushClockStep) || (step as FlushClockStep).log !== undefined) {
       // flushing any changes while there are active subturns makes timelines *VERY* difficult
       if (this.activeSubTurns.length) {
         throw new Error("Cannot flush while subturns are active");
       }
 
-      step = new FlushClockStep(this.clock, {});
-      this.clockSteps.push(step);
+      this.flush(true);
+      step = this.clockSteps[this.clockSteps.length - 1];
     }
 
     const flushStep = step as FlushClockStep;
-    if (!flushStep.logs) {
-      flushStep.logs = [];
-    }
-    flushStep.logs.push(message);
     flushStep.log = message;
   }
 
@@ -191,17 +187,25 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    * @param message
    * @returns
    */
-  appendLog(message: string) {
+  amendLog(message: string | ((previous: string) => string)) {
+    const lastSubTurnIndex = this.clockSteps.findLastIndex((step) => step instanceof SubTurnsClockStep);
     const lastIndex = this.clockSteps.findLastIndex(
-      (step) => step instanceof FlushClockStep && step.logs && step.logs.length > 0,
+      (step, index) => index > lastSubTurnIndex && step instanceof FlushClockStep && step.log,
     );
     if (lastIndex < 0) {
+      if (message instanceof Function) {
+        message = message("");
+      }
+
       this.log(message);
       return;
     }
+
     const step = this.clockSteps[lastIndex] as FlushClockStep;
-    step.logs!.push(message);
-    step.log = step.logs!.join(", "); // TODO: better way to join this for sure
+    if (message instanceof Function) {
+      message = message(step.log!);
+    }
+    step.log = message;
   }
 
   /**
@@ -209,10 +213,10 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    * "ClockStep".  If any new chits appear, then add them to our lookup.  If any chits are deleted (orphaned),
    * then we have to identify those as well.
    */
-  flush() {
+  flush(force = false) {
     const seenIds = new Set<string>();
     const newStates: ChitStateLookup = {};
-    let sawChange = false;
+    let sawChange = force;
 
     // first ensure they all are locked and all have ids
     const chitsToAddIdsTo: Chit[] = [];
@@ -774,12 +778,14 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   /** @internal */
   gameLog(playerId: string): LogMessageSerializationResponse[] {
     return this.clockSteps
-      .map((step, index) => {
+      .map((step) => {
         if (step instanceof FlushClockStep && step.log) {
-          return { message: step.log, clock: index };
+          return { message: step.log, clock: step.startClock };
         } else if (step instanceof SubTurnsClockStep) {
           let offset = step.startClock;
-          return step.turns
+
+          return step
+            .visibleTurns(playerId)
             .map((turn) => {
               const logs = turn.gameLog(playerId).map((l) => {
                 l.clock += offset;
@@ -1126,7 +1132,6 @@ class SubTurnsClockStep<P extends PlayerChit, R extends RootChit<P>> extends Clo
 }
 
 class FlushClockStep extends ClockStep {
-  public logs?: string[];
   public log?: string;
   public endClock() {
     return this.startClock + 1;

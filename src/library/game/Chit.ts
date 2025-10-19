@@ -9,7 +9,6 @@ import { OrderedOutlet } from "./OrderedOutlet";
 import { SparkChit } from "./SparkChit";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
 import type { Game } from "./Game";
-import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 
 export const ORDERED_CHILDREN = "orderedChildren";

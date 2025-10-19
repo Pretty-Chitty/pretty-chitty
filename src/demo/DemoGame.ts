@@ -31,6 +31,8 @@ import {
 import * as CanvasLibrary from "./CanvasLibrary";
 import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
+import { TokenDefinition } from "../library/components/TokenizedMessage";
+import { cityscape } from "./assets/network_overload";
 
 const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
@@ -68,6 +70,12 @@ export class DemoGame implements Game<MyPlayer, Root> {
 
   theme = theme;
 
+  tokenMap = {
+    thingy2: { image: cityscape },
+    thingy: { label: "Thingy", color: "#ff00ff", image: cityscape },
+    stuff: { label: "Stuff", color: "#00ffff" },
+  };
+
   async run(players: MyPlayer[], setup: Turn<any, MyPlayer, Root>, rootChit: Root) {
     players[0].color = "#ed00cb";
     players[1].color = "#00edcb";
@@ -97,7 +105,9 @@ export class DemoGame implements Game<MyPlayer, Root> {
         // c.add(new Card2(), "testoutlet");
         c.add(new Card3(), "testoutlet2");
         setup.flush();
-        setup.log(`Created a card, ${c.id}`);
+        setup.log(
+          i % 2 === 0 ? `Created a card, ${c.id} :stuff: that is :thingy:` : `Created a card, ${c.id} :thingy2:`,
+        );
         // c.add(new Card(), "testoutlet3");
       }),
     );
@@ -161,7 +171,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
                 c2.something = 8888;
                 players[0].add(c2);
 
-                turn.appendLog("followed by a new card");
+                turn.amendLog((oldLog) => oldLog + " followed by a new card");
               }).message(
                 "pick a second piece to take, or if you don't want to, then don't.  it's totally up to you, you can do whatever you want.  I don't really care.  I bet you wish i did, but i don't",
               ),
