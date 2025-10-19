@@ -697,6 +697,10 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       ) {
         return j;
       }
+      if (this.clockSteps[j] instanceof SubTurnsClockStep) {
+        // logs cannot be inside subturns
+        break;
+      }
     }
     return -1;
   }

@@ -13,7 +13,7 @@ export class PlayerChit extends Chit {
   public imageUrl?: string;
 
   /** @internal */
-  public matchScoreNumber?: number;
+  @NonEditable public matchScoreNumber?: number;
 
   @ChildOutlet promptStatus = new PlayerPromptStatus();
 

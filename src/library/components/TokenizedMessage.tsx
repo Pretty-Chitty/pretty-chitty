@@ -37,7 +37,7 @@ type ParsedElement = ParsedToken | ParsedText;
 function calculateBackgroundColor(textColor: string): string {
   const color = Color(textColor);
   const lightness = color.lightness();
-  return lightness > 25
+  return lightness > 45
     ? color.lightness(5).hex() // 5% brightness for light colors
     : color.lightness(95).hex(); // 95% brightness for dark colors
 }
@@ -58,9 +58,8 @@ function TokenImage({ src, alt, fontSize, hasLabel }: TokenImageProps) {
         image={updatingCanvas}
         style={{
           height: `${fontSize - 4}px`,
-          marginRight: hasLabel ? "4px" : 0,
+          marginRight: "4px",
           transform: `scale(1.4)`,
-          top: "-1px",
           position: "relative",
           marginLeft: "2px",
         }}
@@ -74,9 +73,8 @@ function TokenImage({ src, alt, fontSize, hasLabel }: TokenImageProps) {
         alt={alt}
         sx={{
           height: `${fontSize - 4}px`,
-          marginRight: hasLabel ? "4px" : 0,
+          marginRight: "4px",
           transform: `scale(1.4)`,
-          top: "-1px",
           position: "relative",
           marginLeft: "2px",
         }}
