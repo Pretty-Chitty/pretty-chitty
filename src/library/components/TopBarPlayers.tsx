@@ -118,35 +118,19 @@ function PlayerInfoRow({ headers, player }: { player: PlayerChit; headers?: bool
 
 export default function TopBarPlayers() {
   const theme = useGameTheme();
-  const playerId = usePlayerId();
   const root = useChit<RootChit<PlayerChit>>("root");
   const playerChits = useChits<PlayerChit>(root?.players.map((p) => p.id ?? "") ?? []);
-  const promptStatuses = useChits<PlayerPromptStatus>(playerChits.map((p) => p.promptStatus.id ?? "")).concat();
 
-  // make sure the current player is first
-  promptStatuses.sort((a, b) => {
-    if ((a.parent as PlayerChit).playerId === playerId) {
-      return -1;
-    }
-    if ((b.parent as PlayerChit).playerId === playerId) {
-      return 1;
-    }
-    return (a.id ?? "").localeCompare(b.id ?? "");
-  });
-
-  const playersWithMessages = promptStatuses.filter((p) => p.latestPromptMessage).map((p) => p.parent as PlayerChit);
-  const message = promptStatuses
-    .map((c) => c.latestPromptMessage)
-    .filter((p) => p)
-    .join(", ");
+  useChits<PlayerPromptStatus>(playerChits.map((p) => p.promptStatus.id ?? "")); // necessary for side effects so this recomputes when the status or prompt changes
 
   return (
     <TopBarDropdown
       label={
         <Stack direction={"row"} sx={{ pt: 1, pb: 1, maxWidth: "100%" }}>
-          {playersWithMessages.reverse().map((player, index) => (
+          {playerChits.map((player) => (
             <PlayerImage
-              sx={{ ml: index === 0 ? -1 : -3 }}
+              sx={{ ml: -1 }}
+              borderColor={player.promptStatus.latestPromptMessage ? theme.chitHighlightColor : undefined}
               size={theme.topBarHeight - theme.spacing * 2}
               key={player.id}
               player={player}
@@ -163,7 +147,7 @@ export default function TopBarPlayers() {
               overflow: "hidden",
             }}
           >
-            {message?.length > 0 ? message : <>&nbsp;</>}
+            Players
           </Typography>
         </Stack>
       }

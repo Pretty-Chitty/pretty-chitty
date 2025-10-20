@@ -189,6 +189,19 @@ export class CameraWrapperPerspective {
       return;
     }
 
+    // Prevent bbox z-height from decreasing too quickly (causes jarring camera adjustments)
+    // Only allow z-height to decrease if it drops by more than 25% (i.e., less than 75% of previous)
+    const previousZHeight = this.bbox.max.z - this.bbox.min.z;
+    const newZHeight = bbox.max.z - bbox.min.z;
+
+    if (previousZHeight > 0 && newZHeight < previousZHeight) {
+      const zHeightRatio = newZHeight / previousZHeight;
+      if (zHeightRatio > 0.25) {
+        bbox = bbox.clone();
+        bbox.max.z = bbox.min.z + previousZHeight;
+      }
+    }
+
     this.bbox = bbox;
     this.offsetTween.stop();
     this.rotationTween.stop();
@@ -260,7 +273,8 @@ export class CameraWrapperPerspective {
       centerShiftX = 0;
       centerShiftY = 0;
       const depthAdjustment = contentDepth * 0.5;
-      distance = Math.max(this.cameraSpec.minCameraDistance, gameHalfWidth / xTan, gameHalfHeight / yTan) + depthAdjustment;
+      distance =
+        Math.max(this.cameraSpec.minCameraDistance, gameHalfWidth / xTan, gameHalfHeight / yTan) + depthAdjustment;
 
       const fallbackPaddedHalfWidth = gameHalfWidth;
       const fallbackPaddedHalfHeight = gameHalfHeight;

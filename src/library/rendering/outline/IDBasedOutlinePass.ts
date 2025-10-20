@@ -96,9 +96,15 @@ export class IDBasedOutlinePass extends Pass {
   private initializeIDComponents(): void {
     // Create ID buffer render target with depth buffer at downsampled resolution for performance
     // Use NearestFilter for exact ID values without interpolation
+    // Note: Using standard 8-bit RGBA. Shader code uses rounding to handle precision loss on 6-bit displays.
     const resx = Math.round(this.resolution.x / this.downSampleRatio);
     const resy = Math.round(this.resolution.y / this.downSampleRatio);
-    const pars = { minFilter: NearestFilter, magFilter: NearestFilter, format: RGBAFormat, depthBuffer: true };
+    const pars = {
+      minFilter: NearestFilter,
+      magFilter: NearestFilter,
+      format: RGBAFormat,
+      depthBuffer: true
+    };
     this.renderTargetIDBuffer = new WebGLRenderTarget(resx, resy, pars);
     this.renderTargetIDBuffer.texture.name = "IDBasedOutline.idBuffer";
     this.renderTargetIDBuffer.texture.generateMipmaps = false;

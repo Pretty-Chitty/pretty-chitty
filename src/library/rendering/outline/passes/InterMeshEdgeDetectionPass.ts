@@ -178,8 +178,12 @@ export class InterMeshEdgeDetectionPass extends Pass {
             return vec4(0.0, 0.0, 0.0, 0.0);
           }
 
-          // Decode ID from RGB
-          float id = encodedIdColor.r * 255.0 * 65536.0 + encodedIdColor.g * 255.0 * 256.0 + encodedIdColor.b * 255.0;
+          // Decode ID from RGB with rounding to handle precision loss from reduced color depth devices
+          // Round to nearest integer byte value to handle quantization errors
+          float r = floor(encodedIdColor.r * 255.0 + 0.5);
+          float g = floor(encodedIdColor.g * 255.0 + 0.5);
+          float b = floor(encodedIdColor.b * 255.0 + 0.5);
+          float id = r * 65536.0 + g * 256.0 + b;
 
           // Convert ID to texture coordinates
           float x = mod(id, 256.0) / 256.0;

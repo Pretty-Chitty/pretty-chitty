@@ -28,6 +28,9 @@ export class SparkChit extends Chit {
   }
 
   public get headerIcon(): IUpdatingCanvas | undefined {
+    if (this._boundPlayer) {
+      return undefined;
+    }
     return this.icon;
   }
 
