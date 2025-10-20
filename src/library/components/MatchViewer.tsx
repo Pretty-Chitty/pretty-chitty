@@ -16,6 +16,7 @@ import { ActionLogDisplay } from "./ActionLogDisplay";
 import { ActionLogHistoryDisplay } from "./ActionLogHistoryDisplay";
 import { PanelContents } from "./Panel/PanelContents";
 import useSize from "@react-hook/size";
+import { SettingsDisplay } from "./SettingsDisplay";
 
 const theme = createTheme({
   typography: {
@@ -66,6 +67,7 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
         <Box flex={1} style={{ display: "flex", position: "relative" }}>
           <MatchEndDisplay />
           <GalleryDisplay />
+          <SettingsDisplay />
           <ActionLogHistoryDisplay />
 
           {!errorMessage && rootChit && <PanelContents rootChit={rootChit} scaleWidth={width} scaleHeight={height} />}

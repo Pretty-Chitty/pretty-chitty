@@ -897,6 +897,7 @@ export class ChitRenderInstance {
           const distance = Math.sqrt(Math.pow(target.x - position.x, 2) + Math.pow(target.y - position.y, 2));
 
           duration =
+            this.animationSpeedMultiplier *
             (this.renderSpec ? this.renderSpec.offsetSpeed : 500) *
             Math.min(this.renderSpec ? this.renderSpec.maxDistanceForSpeed : 10, distance);
         }

@@ -1,34 +1,33 @@
 import React from "react";
 import { Box, Stack } from "@mui/material";
-import { FastForward, Settings, FastRewind, SkipNext, Speed } from "@mui/icons-material";
+import {
+  FastForward,
+  Settings,
+  FastRewind,
+  SkipNext,
+  Speed,
+  SettingsApplications,
+  SettingsApplicationsOutlined,
+  SettingsBackupRestore,
+  SettingsBrightness,
+  SettingsOutlined,
+} from "@mui/icons-material";
 import { useTimeController, useTimeState } from "../hooks/useTimeController";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import BottomBarButton from "./BottomBarButton";
 import { useGameTheme } from "../hooks/useGameTheme";
 import LiveButton from "./LiveButton";
-import GridZoomButton from "./GridZoomButton";
+import { useModalState } from "../hooks/useModalState";
 
-const SPEEDS = [1, 2 / 3, 0.5, 0.25, 0.125, 2];
-
-export default function TimeControlBar({
-  autoLive = false,
-  includeGridButton = false,
-}: {
-  autoLive?: boolean;
-  includeGridButton?: boolean;
-}) {
+export default function TimeControlBar({ autoLive = false }: { autoLive?: boolean; includeGridButton?: boolean }) {
   const theme = useGameTheme();
   const timeController = useTimeController();
   const timeState = useTimeState();
   const [live, setLive] = useEventChannelState(timeState.live);
-  const [speed, setSpeed] = useEventChannelState(timeState.animationSpeedMultiplier);
   const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
-
-  const toggleSpeed = () => {
-    const currentIndex = SPEEDS.indexOf(speed);
-    setSpeed(SPEEDS[(currentIndex + 1) % SPEEDS.length]);
-  };
+  const modalState = useModalState();
+  const [settingsVisible, setSettingsVisible] = useEventChannelState(modalState.settingsVisible);
 
   return (
     <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
@@ -46,8 +45,12 @@ export default function TimeControlBar({
       </Box>
 
       <Stack direction="row" sx={{ width: "100%", height: "100%", pl: 1, pr: 1 }}>
-        {includeGridButton && <GridZoomButton />}
-        <BottomBarButton icon={Speed} label={`${1 / speed}x`} onClick={toggleSpeed} />
+        <BottomBarButton
+          icon={SettingsOutlined}
+          label={"Settings"}
+          onClick={() => setSettingsVisible(!settingsVisible)}
+          highlight={settingsVisible}
+        />
         <Box flex={1} />
         <BottomBarButton
           icon={FastRewind}

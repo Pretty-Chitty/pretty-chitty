@@ -43,6 +43,13 @@ export class ClientTime extends ConnectionObject {
         localStorage["animationSpeedMultiplier"] = targetSpeed;
       }),
     );
+
+    this.clientTimeState.skipReplay.value = parseFloat(localStorage["skipReplay"] ?? "0") === 1;
+    this.register(
+      this.clientTimeState.skipReplay.on((skipReplay) => {
+        localStorage["skipReplay"] = skipReplay ? "1" : "0";
+      }),
+    );
   }
 
   public currentClock = new EventChannel<ClockDetails>({ clock: 0, pass: -1 });
@@ -71,10 +78,15 @@ export class ClientTime extends ConnectionObject {
   private serverTime: ServerTime<any, any>;
 
   public async setStartTime(newTime: number) {
-    if (this.clientTimeState.targetClock.value <= newTime) {
+    if (this.clientTimeState.targetClock.value <= newTime || newTime === 0) {
       this.clientTimeState.isLoading.value = true;
-      this.startTime = newTime;
-      this.clientTimeState.targetClock.value = newTime;
+
+      if (!this.clientTimeState.skipReplay.value) {
+        this.startTime = newTime;
+        this.clientTimeState.targetClock.value = newTime;
+      } else {
+        this.clientTimeState.goLive(this.maxClock.value.clock);
+      }
     }
   }
 

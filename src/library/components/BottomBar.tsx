@@ -1,14 +1,9 @@
 import React, { ReactNode, useRef } from "react";
 import { Box, Stack } from "@mui/material";
-import { Speed } from "@mui/icons-material";
-import { useTimeState } from "../hooks/useTimeController";
-import { useEventChannelState } from "../hooks/useEventChannelState";
-import BottomBarButton from "./BottomBarButton";
 import { useGameTheme } from "../hooks/useGameTheme";
 import TimeControlBar from "./TimeControlBar";
 import PromptControls from "./PromptControls";
 import GridZoomButton from "./GridZoomButton";
-import LiveButton from "./LiveButton";
 import useSize from "@react-hook/size";
 
 function BaseBottomBar({ children }: { children: ReactNode | ReactNode[] }) {
@@ -29,8 +24,6 @@ function BaseBottomBar({ children }: { children: ReactNode | ReactNode[] }) {
 
 export default function BottomBar() {
   const theme = useGameTheme();
-  const timeState = useTimeState();
-  const [live, setLive] = useEventChannelState(timeState.live);
   const containerRef = useRef<HTMLDivElement>(null);
   const [width] = useSize(containerRef);
 
@@ -38,24 +31,12 @@ export default function BottomBar() {
 
   // Mobile: current behavior (live mode shows buttons, timeline mode shows TimeControlBar)
   if (layoutSize === "mobile") {
-    if (!live) {
-      return (
-        <BaseBottomBar>
-          <Box ref={containerRef} sx={{ width: "100%", height: "100%" }}>
-            <TimeControlBar />
-          </Box>
-        </BaseBottomBar>
-      );
-    }
-
     return (
       <BaseBottomBar>
         <Stack ref={containerRef} direction="row" sx={{ width: "100%", height: "100%", pl: 1, pr: 1 }}>
-          <GridZoomButton />
-          <BottomBarButton icon={Speed} label={"Timeline"} onClick={() => setLive(false)} />
+          <TimeControlBar />
           <Box flex={1} />
           <PromptControls collapsible />
-          <LiveButton />
         </Stack>
       </BaseBottomBar>
     );

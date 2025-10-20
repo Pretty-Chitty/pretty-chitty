@@ -28,6 +28,7 @@ export default function PlayerImage({
         position: "relative",
         width: size,
         height: size,
+        lineHeight: `${IMAGE_SIZE}px`,
         ...sx,
       }}
     >

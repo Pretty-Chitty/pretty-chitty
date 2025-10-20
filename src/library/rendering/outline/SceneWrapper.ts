@@ -148,6 +148,7 @@ export class SceneWrapper {
   fullUpdate(): void {
     this._dirty = false;
 
+    this.markMaterialsDirty();
     this.executeRebuild();
 
     // Log memory before flush if significant changes expected
