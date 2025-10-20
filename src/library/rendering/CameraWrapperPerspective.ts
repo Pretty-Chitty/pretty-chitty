@@ -25,6 +25,7 @@ export class CameraWrapperPerspective {
 
   protected offsetTween = new Tween<Point3d>({ x: 0, y: 0, z: 0 });
   protected rotationTween = new Tween<Point3d>({ x: 0, y: 0, z: 0 });
+  protected nearFarTween = new Tween<{ near: number; far: number }>({ near: 0.1, far: 1000 });
 
   private bbox = new Box3();
 
@@ -39,6 +40,7 @@ export class CameraWrapperPerspective {
   zeroTween() {
     this.offsetTween.duration(0);
     this.rotationTween.duration(0);
+    this.nearFarTween.duration(0);
   }
 
   destroy() {}
@@ -115,6 +117,7 @@ export class CameraWrapperPerspective {
 
     this.offsetTween.stop();
     this.rotationTween.stop();
+    this.nearFarTween.stop();
     this.camera.updateProjectionMatrix();
     this.adjust(this.bbox);
   }
@@ -205,6 +208,7 @@ export class CameraWrapperPerspective {
     this.bbox = bbox;
     this.offsetTween.stop();
     this.rotationTween.stop();
+    this.nearFarTween.stop();
 
     const fovRadsY = (this.camera.fov * Math.PI) / 180;
     const fovRadsX = fovRadsY * this.camera.aspect;
@@ -473,16 +477,6 @@ export class CameraWrapperPerspective {
 
     const optimalPlanes = this.calculateOptimalNearFar(this.bbox, finalCameraPosition);
 
-    // Only update if planes changed significantly (avoid unnecessary projection matrix updates)
-    const nearChanged = Math.abs(this.camera.near - optimalPlanes.near) / this.camera.near > 0.1;
-    const farChanged = Math.abs(this.camera.far - optimalPlanes.far) / this.camera.far > 0.1;
-
-    if (nearChanged || farChanged || !Number.isFinite(this.camera.near) || !Number.isFinite(this.camera.far)) {
-      this.camera.near = optimalPlanes.near;
-      this.camera.far = optimalPlanes.far;
-      this.camera.updateProjectionMatrix();
-    }
-
     // Safety guard: ensure camera's Z (depth) is positive so camera looks toward scene plane.
     // If rotation causes camZ <= 0 (camera pointing below horizon / behind plane) increase distance slightly until valid.
     {
@@ -535,6 +529,10 @@ export class CameraWrapperPerspective {
 
     if (!this.firstPositionedCamera || Math.abs(Date.now() - this.firstPositionedCamera) < 100) {
       this.firstPositionedCamera ??= Date.now();
+      // On first positioning, set near/far immediately
+      this.camera.near = optimalPlanes.near;
+      this.camera.far = optimalPlanes.far;
+      this.camera.updateProjectionMatrix();
       return;
     }
 
@@ -545,6 +543,11 @@ export class CameraWrapperPerspective {
       rotationDistance = new Vector3()
         .setFromEuler(currentRotation)
         .distanceTo(new Vector3().setFromEuler(newRotation));
+
+    // Store current near/far values
+    const currentNear = this.camera.near;
+    const currentFar = this.camera.far;
+    const nearFarDistance = Math.abs(optimalPlanes.near - currentNear) + Math.abs(optimalPlanes.far - currentFar);
 
     // restore previous camera position/rotation now that we've computed new ones; we'll tween from current -> new
     this.camera.position.set(currentPosition.x, currentPosition.y, currentPosition.z);
@@ -577,9 +580,33 @@ export class CameraWrapperPerspective {
               .onUpdate((obj) => this.camera.rotation.set(obj.x, obj.y, obj.z)),
         );
       }
+
+      // Always tween near/far if they differ, even slightly
+      if (nearFarDistance > 0.001) {
+        this.nearFarTween = this.chit.createTween(
+          { near: currentNear, far: currentFar },
+          (tween) =>
+            tween
+              .to({ near: optimalPlanes.near, far: optimalPlanes.far }, duration)
+              .easing(Easing.Quadratic.InOut)
+              .onUpdate((obj) => {
+                this.camera.near = obj.near;
+                this.camera.far = obj.far;
+                this.camera.updateProjectionMatrix();
+              }),
+        );
+      } else if (nearFarDistance > 0) {
+        // If difference is tiny, just set immediately
+        this.camera.near = optimalPlanes.near;
+        this.camera.far = optimalPlanes.far;
+        this.camera.updateProjectionMatrix();
+      }
     } else {
       this.camera.rotation.set(newRotation.x, newRotation.y, newRotation.z);
       this.camera.position.set(newPosition.x, newPosition.y, newPosition.z);
+      this.camera.near = optimalPlanes.near;
+      this.camera.far = optimalPlanes.far;
+      this.camera.updateProjectionMatrix();
     }
   }
 }

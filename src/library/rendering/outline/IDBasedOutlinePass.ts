@@ -103,7 +103,7 @@ export class IDBasedOutlinePass extends Pass {
       minFilter: NearestFilter,
       magFilter: NearestFilter,
       format: RGBAFormat,
-      depthBuffer: true
+      depthBuffer: true,
     };
     this.renderTargetIDBuffer = new WebGLRenderTarget(resx, resy, pars);
     this.renderTargetIDBuffer.texture.name = "IDBasedOutline.idBuffer";
