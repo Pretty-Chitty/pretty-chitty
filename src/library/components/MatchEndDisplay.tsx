@@ -13,7 +13,7 @@ export function MatchEndDisplay() {
   const timeState = useTimeState();
   const timeController = useTimeController();
   const [matchResult] = useEventChannelState(clientStatus.matchResult);
-  const [isLive] = useEventChannelState(timeState.live);
+  const [isLive, setLive] = useEventChannelState(timeState.live);
   const [maxClock] = useEventChannelState(timeController.maxClock);
   const [currentClock] = useEventChannelState(timeController.currentClock);
   const winnerPlayers = useChits<PlayerChit>(matchResult?.winnerIds ?? []);
@@ -23,6 +23,9 @@ export function MatchEndDisplay() {
   return (
     <GameModalBackdrop visible={visible}>
       <Box
+        onClick={() => {
+          setLive(false);
+        }}
         sx={{
           position: "absolute",
           borderRadius: 1,

@@ -74,12 +74,13 @@ export function SettingsDisplay() {
   const timeState = useTimeState();
   const [speed, setSpeed] = useEventChannelState(timeState.animationSpeedMultiplier);
   const [skipReplay, setSkipReplay] = useEventChannelState(timeState.skipReplay);
+  const [showLog, setShowLog] = useEventChannelState(timeState.showLog);
 
   const [visible, setVisible] = useEventChannelState(modalState.settingsVisible);
 
   return (
     <GameModalDialog visible={visible} onClose={() => setVisible(false)} title="Settings">
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: 3, overflowY: "auto" }}>
         <Stack spacing={4}>
           <SettingSlider label="Scale" value={scale} onChange={setScale} min={0.5} max={3} />
           <SettingSlider
@@ -102,11 +103,22 @@ export function SettingsDisplay() {
                 }}
               />
             }
-            label={
-              <Typography sx={{ color: theme.actionLogTextColor }}>
-                Skip Replay
-              </Typography>
+            label={<Typography sx={{ color: theme.actionLogTextColor }}>Skip Replay</Typography>}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={showLog}
+                onChange={(e) => setShowLog(e.target.checked)}
+                sx={{
+                  color: theme.actionLogTextColor,
+                  "&.Mui-checked": {
+                    color: theme.actionLogTextColor,
+                  },
+                }}
+              />
             }
+            label={<Typography sx={{ color: theme.actionLogTextColor }}>Show Log (on larger screens)</Typography>}
           />
         </Stack>
       </Box>

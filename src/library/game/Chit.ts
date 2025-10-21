@@ -20,6 +20,11 @@ export type HiddenPropertySerializationRule = {
   playerIds: string[];
 };
 
+export type PanelTab = {
+  color: string;
+  icon: IUpdatingCanvas;
+};
+
 let CHIT_CREATED_ORDER = 0;
 export class Chit extends ObjectWithProps {
   /** @internal */
@@ -101,17 +106,7 @@ export class Chit extends ObjectWithProps {
     return this._lastParent;
   }
 
-  /** @internal */
-  private colorValue: string = "";
-
-  public get color(): string {
-    return this.colorValue;
-  }
-  public set color(value: string) {
-    this.colorValue = value;
-  }
-
-  public get icon(): IUpdatingCanvas | undefined {
+  public get panelTab(): PanelTab | undefined {
     return undefined;
   }
 

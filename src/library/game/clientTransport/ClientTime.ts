@@ -50,6 +50,13 @@ export class ClientTime extends ConnectionObject {
         localStorage["skipReplay"] = skipReplay ? "1" : "0";
       }),
     );
+
+    this.clientTimeState.showLog.value = parseFloat(localStorage["showLog"] ?? "0") === 1;
+    this.register(
+      this.clientTimeState.showLog.on((showLog) => {
+        localStorage["showLog"] = showLog ? "1" : "0";
+      }),
+    );
   }
 
   public currentClock = new EventChannel<ClockDetails>({ clock: 0, pass: -1 });

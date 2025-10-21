@@ -199,7 +199,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
           // target.add(c);
         }),
       );
-      await turn.noValidMoves("You did thing", "bad thing");
+      // await turn.noValidMoves("You did thing", "bad thing");
     });
 
     return {

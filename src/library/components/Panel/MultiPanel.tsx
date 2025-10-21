@@ -20,7 +20,11 @@ const TAB_WIDTH = TAB_HEIGHT * 2;
 const PANEL_ADJUST_IGNORE_DURATION = 5000;
 
 function PanelTab({ chit, onClick, selected }: { selected?: boolean; chit: Chit; onClick: () => void }) {
-  const color = chit.color.length > 0 ? chit.color : "#ffffff";
+  // eslint-disable-next-line prefer-const
+  let { color, icon } = chit.panelTab ?? {};
+  if (!color) {
+    color = "#ffffff";
+  }
   const lightness = Color(color).lightness();
 
   const outlineColor = Color(color)
@@ -48,9 +52,7 @@ function PanelTab({ chit, onClick, selected }: { selected?: boolean; chit: Chit;
           borderBottomRightRadius: TAB_HEIGHT / 4,
         }}
       >
-        {chit.icon && (
-          <UpdatingCanvasImage image={chit.icon} style={{ height: TAB_HEIGHT - 2, width: TAB_HEIGHT - 2 }} />
-        )}
+        {icon && <UpdatingCanvasImage image={icon} style={{ height: TAB_HEIGHT - 2, width: TAB_HEIGHT - 2 }} />}
       </Box>
     </Box>
   );

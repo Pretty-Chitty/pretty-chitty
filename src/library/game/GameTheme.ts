@@ -94,8 +94,8 @@ export class GameTheme {
     result.endGameTextColor = Color(textColor).alpha(1).hexa();
 
     result.barDisabledTextColor = Color(result.barColor).isLight()
-      ? Color(result.barColor).darken(1).hexa()
-      : Color(result.barColor).lighten(1).hexa();
+      ? Color(result.barColor).darken(0.75).hexa()
+      : Color(result.barColor).lighten(0.75).hexa();
 
     result.actionLogTextColor = result.barActiveTextColor;
     result.actionLogDialogBackgroundColor = result.backgroundColor;

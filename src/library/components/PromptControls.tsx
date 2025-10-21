@@ -79,7 +79,7 @@ export default function PromptControls({ collapsible }: { collapsible?: boolean 
         overflow: "hidden",
         zIndex: ZINDEX_PROMPT_CONTROLS,
         background: theme.actionBarColor,
-        maxWidth: "calc(100% - 30px)",
+        maxWidth: collapsible ? "calc(100% - 30px)" : undefined,
         width: collapsible ? "97%" : "100%",
         minWidth: "100px",
         height: theme.bottomBarHeight,

@@ -25,6 +25,7 @@ import {
   OrderedOutlet,
   StaticImage,
   extrudeSVGToGeometry,
+  CameraSpec,
 } from "../library";
 import type { LayoutNode } from "../library";
 
@@ -382,6 +383,9 @@ export class MyPlayer extends PlayerChit {
 
   override render(spec: ChitRenderSpec): void {
     spec.worthSlidingToPanelToShowChange = false;
+
+    spec.camera = new CameraSpec();
+    // spec.camera.horizontalRadiansRotation = 0.1;
   }
 }
 

@@ -1,17 +1,6 @@
 import React from "react";
 import { Box, Stack } from "@mui/material";
-import {
-  FastForward,
-  Settings,
-  FastRewind,
-  SkipNext,
-  Speed,
-  SettingsApplications,
-  SettingsApplicationsOutlined,
-  SettingsBackupRestore,
-  SettingsBrightness,
-  SettingsOutlined,
-} from "@mui/icons-material";
+import { FastForward, FastRewind, SettingsOutlined } from "@mui/icons-material";
 import { useTimeController, useTimeState } from "../hooks/useTimeController";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import BottomBarButton from "./BottomBarButton";
@@ -47,7 +36,7 @@ export default function TimeControlBar({ autoLive = false }: { autoLive?: boolea
       <Stack direction="row" sx={{ width: "100%", height: "100%", pl: 1, pr: 1 }}>
         <BottomBarButton
           icon={SettingsOutlined}
-          label={"Settings"}
+          label={"Menu"}
           onClick={() => setSettingsVisible(!settingsVisible)}
           highlight={settingsVisible}
         />

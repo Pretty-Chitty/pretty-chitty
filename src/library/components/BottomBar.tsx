@@ -33,7 +33,7 @@ export default function BottomBar() {
   if (layoutSize === "mobile") {
     return (
       <BaseBottomBar>
-        <Stack ref={containerRef} direction="row" sx={{ width: "100%", height: "100%", pl: 1, pr: 1 }}>
+        <Stack ref={containerRef} direction="row" sx={{ width: "100%", height: "100%" }}>
           <TimeControlBar />
           <Box flex={1} />
           <PromptControls collapsible />
@@ -47,10 +47,10 @@ export default function BottomBar() {
     return (
       <BaseBottomBar>
         <Stack ref={containerRef} direction="row" sx={{ width: "100%", height: "100%" }}>
-          <Box sx={{ width: "50%", display: "flex", alignItems: "center" }}>
+          <Box sx={{ width: "50%", display: "flex" }}>
             <TimeControlBar autoLive includeGridButton />
           </Box>
-          <Box sx={{ width: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Box sx={{ width: "50%", display: "flex" }}>
             <PromptControls />
           </Box>
         </Stack>
@@ -65,15 +65,12 @@ export default function BottomBar() {
         <Box flex={1}>
           <TimeControlBar autoLive />
         </Box>
-        <Box
-          sx={{ width: `${theme.actionBarWidth}px`, display: "flex", alignItems: "center", justifyContent: "center" }}
-        >
+        <Box sx={{ width: `${theme.actionBarWidth}px`, display: "flex" }}>
           <PromptControls />
         </Box>
         <Box flex={1}>
           <Stack direction="row" sx={{ pr: 1, pl: 1, height: "100%", width: "100%" }}>
             <Box flex={1} />
-            <GridZoomButton />
           </Stack>
         </Box>
       </Stack>

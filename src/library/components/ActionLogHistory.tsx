@@ -8,11 +8,7 @@ import { useTokenMap } from "../hooks/useTokenMap";
 import { GameTheme } from "../game/GameTheme";
 import { useModalState } from "../hooks/useModalState";
 import { useEventChannelState } from "../hooks/useEventChannelState";
-import {
-  useClientPrompts,
-  useTimeController,
-  useTimeState,
-} from "../hooks/useTimeController";
+import { useClientPrompts, useTimeController, useTimeState } from "../hooks/useTimeController";
 
 interface LogEntry {
   message: string;
@@ -79,16 +75,11 @@ export function ActionLogHistory({ visible }: ActionLogHistoryProps) {
   const tokenMap = useTokenMap();
   const [messages, setMessages] = useState<LogEntry[]>([]);
   const listRef = useListRef(null);
-  const timeState = useTimeState();
   const clientTime = useTimeController();
   const [maxClock] = useEventChannelState(clientTime.maxClock);
   const [currentClock] = useEventChannelState(clientTime.currentClock);
 
   const dynamicRowHeight = useDynamicRowHeight({ defaultRowHeight: 40 });
-
-  useEffect(() => {
-    timeState.setAnimationState("actionLogOpen", visible);
-  }, [visible, timeState]);
 
   useEffect(() => {
     if (!visible) {

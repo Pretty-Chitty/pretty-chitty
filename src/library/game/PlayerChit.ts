@@ -11,11 +11,19 @@ export class PlayerChit extends Chit {
   public playerId: string = "no id";
   public name: string = "no name";
   public imageUrl?: string;
+  public color: string = "#000000";
 
   /** @internal */
   @NonEditable public matchScoreNumber?: number;
 
   @ChildOutlet promptStatus = new PlayerPromptStatus();
+
+  public get panelTab() {
+    return {
+      color: this.color,
+      icon: new PlayerCanvas(this).get(),
+    };
+  }
 
   public get icon() {
     return new PlayerCanvas(this).get();

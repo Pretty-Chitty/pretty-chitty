@@ -17,6 +17,8 @@ import { ActionLogHistoryDisplay } from "./ActionLogHistoryDisplay";
 import { PanelContents } from "./Panel/PanelContents";
 import useSize from "@react-hook/size";
 import { SettingsDisplay } from "./SettingsDisplay";
+import { ActionLogHistory } from "./ActionLogHistory";
+import { ActionLogSidebar } from "./ActionLogSidebar";
 
 const theme = createTheme({
   typography: {
@@ -31,7 +33,10 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
   const [errorMessage] = useEventChannelState(clientStatus.errorMessage);
   const [rootChit, setRootChit] = useState(timeController.rootChit.value);
   const ref = useRef(null);
+  const outerRef = useRef(null);
   const [width, height] = useSize(ref);
+  const [outerWidth, outerHeight] = useSize(outerRef);
+  const [showLog] = useEventChannelState(timeController.clientTimeState.showLog);
 
   useEffect(
     () =>
@@ -45,6 +50,8 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
 
   return (
     <Stack
+      direction={"row"}
+      ref={outerRef}
       sx={{
         width: "100%",
         height: "100%",
@@ -55,27 +62,31 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
         WebkitTouchCallout: "none", // Prevent highlighting phone numbers on iOS
       }}
     >
-      <TopBar onBack={onBack} />
-      <Stack
-        direction={"column"}
-        flex={1}
-        ref={ref}
-        sx={{
-          background: `${theme.backgroundColor} linear-gradient(${theme.backgroundGradientAngle}deg, rgba(255,255,255,${theme.backgroundGradientPercent}) 0%, rgba(0,0,0,${theme.backgroundGradientPercent}) 100%)`,
-        }}
-      >
-        <Box flex={1} style={{ display: "flex", position: "relative" }}>
-          <MatchEndDisplay />
-          <GalleryDisplay />
-          <SettingsDisplay />
-          <ActionLogHistoryDisplay />
+      <Stack flex={1}>
+        <TopBar onBack={onBack} />
+        <Stack
+          direction={"column"}
+          flex={1}
+          ref={ref}
+          sx={{
+            background: `${theme.backgroundColor} linear-gradient(${theme.backgroundGradientAngle}deg, rgba(255,255,255,${theme.backgroundGradientPercent}) 0%, rgba(0,0,0,${theme.backgroundGradientPercent}) 100%)`,
+          }}
+        >
+          <Box flex={1} style={{ display: "flex", position: "relative" }}>
+            <MatchEndDisplay />
+            <GalleryDisplay />
+            <SettingsDisplay />
+            <ActionLogHistoryDisplay />
 
-          {!errorMessage && rootChit && <PanelContents rootChit={rootChit} scaleWidth={width} scaleHeight={height} />}
-          {errorMessage}
-        </Box>
-        <ActionLogDisplay />
+            {!errorMessage && rootChit && <PanelContents rootChit={rootChit} scaleWidth={width} scaleHeight={height} />}
+            {errorMessage}
+          </Box>
+          <ActionLogDisplay />
+        </Stack>
+        <BottomBar />
       </Stack>
-      <BottomBar />
+
+      {outerWidth > 800 && showLog && <ActionLogSidebar height={outerHeight} />}
     </Stack>
   );
 }

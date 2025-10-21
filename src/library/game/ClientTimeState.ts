@@ -6,6 +6,7 @@ export class ClientTimeState {
   public targetClock = new EventChannel<number>(1, 250);
 
   public skipReplay = new EventChannel<boolean>(false);
+  public showLog = new EventChannel<boolean>(false);
   public animationSpeedMultiplier = new EventChannel<number>(1);
   public animationSpeedOverrideMultiplier = new EventChannel<number | undefined>(undefined);
   public isLoading = new EventChannel<boolean>(true);

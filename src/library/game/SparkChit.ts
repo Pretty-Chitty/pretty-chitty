@@ -10,14 +10,15 @@ export class SparkChit extends Chit {
   /** @internal */
   @NonEditable type = "spark";
 
+  private _color: string = "#ffffff";
   public get color() {
     if (this._boundPlayer) {
       return this._boundPlayer.color ?? "#ffffff";
     }
-    return super.color;
+    return this._color;
   }
   public set color(newColor: string) {
-    super.color = newColor;
+    this._color = newColor;
   }
 
   public get icon(): IUpdatingCanvas | undefined {

@@ -1,5 +1,6 @@
 import React, { ReactNode } from "react";
-import { Box, Stack } from "@mui/material";
+import { Box, Stack, IconButton } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { GameModalBackdrop } from "./GameModalBackdrop";
 import { useAnimationSpeedMultiplier } from "../hooks/useTimeController";
@@ -48,9 +49,24 @@ export function GameModalDialog({ visible, onClose, title, children }: GameModal
               borderBottom: `2px solid ${theme.actionLogBackgroundColor}`,
               color: theme.actionLogTextColor,
               fontWeight: "bold",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            {title}
+            <Box>{title}</Box>
+            <IconButton
+              onClick={onClose}
+              size="small"
+              sx={{
+                color: theme.actionLogTextColor,
+                "&:hover": {
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
           </Box>
           {children}
         </Stack>
