@@ -48,7 +48,7 @@ class DestroyedError extends Error {}
 
 export class ChitRenderInstance {
   private static ID_COUNTER = 0;
-  protected id: string;
+  public id: string;
 
   // rendering info
   protected renderSpec: ChitRenderSpec | null = null;

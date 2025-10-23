@@ -49,7 +49,7 @@ export function PanelContents({
       >
         {layout.map((cell) => {
           if (Array.isArray(cell.chit)) {
-            return <MultiPanel key={cell.id} chits={cell.chit} w={cell.w} h={cell.h} x={cell.x} y={cell.y} />;
+            return <MultiPanel key={"m" + cell.id} chits={cell.chit} w={cell.w} h={cell.h} x={cell.x} y={cell.y} />;
           } else {
             return <SinglePanel key={cell.id} chit={cell.chit} w={cell.w} h={cell.h} x={cell.x} y={cell.y} />;
           }

@@ -167,9 +167,11 @@ export class InterMeshEdgeDetectionPass extends Pass {
 
           float sceneDepth = texture2D(sceneDepthTexture, uv).r;
           float idDepth = texture2D(idDepthTexture, uv).r;
-          float depthTolerance = 0.003;
+          float depthTolerance = 0.005;
 
-          return abs(sceneDepth - idDepth) <= depthTolerance;
+          return idDepth < sceneDepth + depthTolerance;
+
+          // return abs(sceneDepth - idDepth) <= depthTolerance;
         }
 
         // Decode ID from RGB and lookup outline color in texture
@@ -228,8 +230,16 @@ export class InterMeshEdgeDetectionPass extends Pass {
               vec2 sampleUv = vUv + vec2(x, y) * lowResInvSize;
               vec4 neighbor = texture2D(idTexture, sampleUv);
 
-              // If neighbor is different from center, we found an edge
-              if (!colorsMatch(center.rgb, neighbor.rgb)) {
+              vec2 sampleUv2 = vUv + vec2(x*2.0, y*2.0) * lowResInvSize;
+              vec4 neighbor2 = texture2D(idTexture, sampleUv2);
+
+
+              // Edge detection: neighbor is different if colors don't match OR if neighbor is not visible
+              // (visibility transition should create an edge even with matching colors)
+              bool neighborVisible = isPixelVisible(sampleUv);
+              bool neighborVisible2 = isPixelVisible(sampleUv2);
+              if (((!colorsMatch(center.rgb, neighbor.rgb) || !neighborVisible) && 
+                ((!colorsMatch(center.rgb, neighbor2.rgb) || !neighborVisible2)))) {
                 float dist = length(vec2(x, y));
                 edgeDistance = min(edgeDistance, dist);
               }

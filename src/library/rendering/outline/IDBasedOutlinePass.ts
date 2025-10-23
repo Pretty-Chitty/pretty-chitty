@@ -154,11 +154,17 @@ export class IDBasedOutlinePass extends Pass {
         uniform vec2 resolution;
         varying vec2 vUv;
         varying vec4 vProjectedCoord;
+        varying vec3 vViewNormal;
+        varying vec3 vViewPosition;
 
         void main() {
           vUv = uv;
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           vProjectedCoord = projectionMatrix * mvPosition;
+
+          // Pass view-space normal and position to fragment shader
+          vViewNormal = normalize(normalMatrix * normal);
+          vViewPosition = mvPosition.xyz;
 
           // Apply pixel offset in screen space
           vec2 pixelSize = 2.0 / resolution; // Size of one pixel in NDC
@@ -178,11 +184,30 @@ export class IDBasedOutlinePass extends Pass {
         uniform bool hasOriginalMap;
         varying vec2 vUv;
         varying vec4 vProjectedCoord;
+        varying vec3 vViewNormal;
+        varying vec3 vViewPosition;
 
         void main() {
           // Handle backface culling
           if (!gl_FrontFacing) {
             discard; // Only render front faces
+          }
+
+          // Calculate actual view direction from fragment to camera (in view space, camera is at origin)
+          // This properly accounts for perspective - fragments far from center have different view vectors
+          vec3 viewDir = normalize(-vViewPosition);
+
+          // Calculate how much the face points toward the camera from this fragment's perspective
+          float facingRatio = abs(dot(vViewNormal, viewDir));
+
+          // For faces nearly perpendicular to view, move them closer to camera by adjusting depth
+          // This prevents z-fighting and ensures edge-on faces render properly
+          if (facingRatio < 0.1) {
+            // Move fragment 1% closer to camera in depth
+            gl_FragDepth = gl_FragCoord.z * 0.99;
+          } else {
+            // Keep original depth
+            gl_FragDepth = gl_FragCoord.z;
           }
 
           // Handle alpha testing for transparent materials
@@ -400,12 +425,12 @@ export class IDBasedOutlinePass extends Pass {
     renderer.autoClear = false;
 
     // Disable antialiasing for ID buffer render to get exact colors
-    const gl = renderer.getContext();
-    const wasAntialiasingEnabled = gl.getParameter(gl.SAMPLE_COVERAGE);
-    if (wasAntialiasingEnabled) {
-      gl.disable(gl.SAMPLE_COVERAGE);
-      gl.disable(gl.SAMPLE_ALPHA_TO_COVERAGE);
-    }
+    // const gl = renderer.getContext();
+    // const wasAntialiasingEnabled = gl.getParameter(gl.SAMPLE_COVERAGE);
+    // if (wasAntialiasingEnabled) {
+    //   gl.disable(gl.SAMPLE_COVERAGE);
+    //   gl.disable(gl.SAMPLE_ALPHA_TO_COVERAGE);
+    // }
 
     // Materials already prepared by SceneWrapper calling prepareShadowMesh
 
@@ -416,21 +441,21 @@ export class IDBasedOutlinePass extends Pass {
     renderer.setClearColor(this.savedState.clearColor, this.savedState.clearAlpha);
 
     // First pass: Normal rendering (no offset)
-    this.updateSharedMaterialUniforms(-2.5, -2.5);
+    // this.updateSharedMaterialUniforms(-2.5, -2.5);
     ensureCorrectRenderState(renderer);
     renderer.render(this.sceneWrapper.outlineShadowScene, this.camera);
 
     // Second pass: 1-pixel right shift (additive to same buffer)
-    renderer.autoClear = false; // Don't clear between passes
-    this.updateSharedMaterialUniforms(2.5, 2.5);
-    ensureCorrectRenderState(renderer);
-    renderer.render(this.sceneWrapper.outlineShadowScene, this.camera);
+    // renderer.autoClear = false; // Don't clear between passes
+    // this.updateSharedMaterialUniforms(2.5, 2.5);
+    // ensureCorrectRenderState(renderer);
+    // renderer.render(this.sceneWrapper.outlineShadowScene, this.camera);
 
     // Re-enable antialiasing if it was enabled
-    if (wasAntialiasingEnabled) {
-      gl.enable(gl.SAMPLE_COVERAGE);
-      gl.enable(gl.SAMPLE_ALPHA_TO_COVERAGE);
-    }
+    // if (wasAntialiasingEnabled) {
+    //   gl.enable(gl.SAMPLE_COVERAGE);
+    //   gl.enable(gl.SAMPLE_ALPHA_TO_COVERAGE);
+    // }
 
     renderer.autoClear = oldAutoClear;
   }
