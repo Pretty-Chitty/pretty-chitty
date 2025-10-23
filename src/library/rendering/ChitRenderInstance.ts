@@ -25,6 +25,7 @@ import { outlineGeometry } from "../utilities/OutlineGeometry";
 import { fixBbox } from "../utilities/BboxUtils";
 import { ChitGalleryItemInstance } from "./ChitGalleryItemInstance";
 import Color from "color";
+import nextTick from "next-tick";
 
 const LINE_COLOR = new MeshBasicMaterial({ color: 0xff0000, wireframe: true, wireframeLinewidth: 2 });
 const CLICK_LINE_COLOR = new MeshBasicMaterial({ color: 0xffff00, wireframe: true, wireframeLinewidth: 2 });
@@ -722,10 +723,17 @@ export class ChitRenderInstance {
     return renderSpec;
   }
 
+  private _boundingBoxDirty = false;
   protected notifyBoundingBoxChanged() {
     this.parentRenderInstance?.notifyBoundingBoxChanged();
     if (this.isUsingSyntheticBbox) {
-      this.updateBoundingBox();
+      if (!this._boundingBoxDirty) {
+        this._boundingBoxDirty = true;
+        nextTick(() => {
+          this.updateBoundingBox();
+          this._boundingBoxDirty = false;
+        });
+      }
     }
   }
 

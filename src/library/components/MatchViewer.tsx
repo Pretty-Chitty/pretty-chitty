@@ -17,7 +17,6 @@ import { ActionLogHistoryDisplay } from "./ActionLogHistoryDisplay";
 import { PanelContents } from "./Panel/PanelContents";
 import useSize from "@react-hook/size";
 import { SettingsDisplay } from "./SettingsDisplay";
-import { ActionLogHistory } from "./ActionLogHistory";
 import { ActionLogSidebar } from "./ActionLogSidebar";
 
 const theme = createTheme({
@@ -35,7 +34,7 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
   const ref = useRef(null);
   const outerRef = useRef(null);
   const [width, height] = useSize(ref);
-  const [outerWidth, outerHeight] = useSize(outerRef);
+  const [outerWidth] = useSize(outerRef);
   const [showLog] = useEventChannelState(timeController.clientTimeState.showLog);
 
   useEffect(
@@ -47,6 +46,8 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
       }),
     [timeController],
   );
+
+  const largeEnoughToShowLogSidebar = outerWidth >= 1000;
 
   return (
     <Stack
@@ -81,12 +82,12 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
             {!errorMessage && rootChit && <PanelContents rootChit={rootChit} scaleWidth={width} scaleHeight={height} />}
             {errorMessage}
           </Box>
-          <ActionLogDisplay />
+          <ActionLogDisplay toggleSidebarLog={largeEnoughToShowLogSidebar} />
         </Stack>
         <BottomBar />
       </Stack>
 
-      {outerWidth > 800 && showLog && <ActionLogSidebar height={outerHeight} />}
+      {largeEnoughToShowLogSidebar && showLog && <ActionLogSidebar />}
     </Stack>
   );
 }

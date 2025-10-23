@@ -20,6 +20,15 @@ type ChitSerializationResponse = {
   log?: LogMessageSerializationResponse;
 };
 
+type ChitHistoryItem = {
+  clock: number;
+  state: string;
+};
+
+type ChitHistoryResponse = {
+  [id: string]: ChitHistoryItem[];
+};
+
 type ValidPick = undefined | false | Pick | Pick[] | ButtonPick | ButtonPick[] | GameButton | GameButton[];
 export type Picks = ValidPick | ValidPick[];
 
@@ -703,6 +712,40 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
     }
     return -1;
+  }
+
+  /** @internal */
+  chitsHistory(playerId: string, ids: string[]): ChitHistoryResponse {
+    const result: ChitHistoryResponse = {};
+
+    const appendLog = (id: string, clock: number, state: string) => {
+      if (!state) {
+        return;
+      }
+      result[id] = result[id] ?? [];
+      if (result[id][result[id].length - 1]?.state !== state) {
+        result[id].push({
+          clock,
+          state,
+        });
+      }
+    };
+
+    this.clockSteps.forEach((step) => {
+      if (step instanceof FlushClockStep) {
+        ids.forEach((id) => appendLog(id, step.startClock, step.state[id]));
+      } else if (step instanceof SubTurnsClockStep) {
+        for (const turn of step.visibleTurns(playerId)) {
+          const turnResponse = turn.chitsHistory(playerId, ids);
+          Object.entries(turnResponse).forEach(([id, value]) => {
+            value.forEach((v) => {
+              appendLog(id, step.startClock + v.clock, v.state);
+            });
+          });
+        }
+      }
+    });
+    return result;
   }
 
   /** @internal */

@@ -67,8 +67,12 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
 
   private _notifyTimeout?: NodeJS.Timeout;
   protected override notifyBoundingBoxChanged(): void {
-    clearTimeout(this._notifyTimeout);
+    if (this._notifyTimeout) {
+      return;
+    }
+
     this._notifyTimeout = setTimeout(() => {
+      this._notifyTimeout = undefined;
       // find our bounds
       const bbox = new Box3();
       this.bboxGroup.updateWorldMatrix(false, true);

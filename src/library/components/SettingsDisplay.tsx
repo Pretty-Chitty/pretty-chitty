@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Box, Stack, Slider, Typography, Button, Checkbox, FormControlLabel } from "@mui/material";
 import { GameModalDialog } from "./GameModalDialog";
 import { useModalState } from "../hooks/useModalState";
@@ -71,6 +71,16 @@ export function SettingsDisplay() {
   const scale = usePanelScale();
   const setScale = usePanelSetScale();
 
+  const [adjustingScale, setAdjustingScale] = useState(false);
+
+  useEffect(() => {
+    setAdjustingScale(true);
+    const to = setTimeout(() => {
+      setAdjustingScale(false);
+    }, 2000);
+    return () => clearTimeout(to);
+  }, [scale]);
+
   const timeState = useTimeState();
   const [speed, setSpeed] = useEventChannelState(timeState.animationSpeedMultiplier);
   const [skipReplay, setSkipReplay] = useEventChannelState(timeState.skipReplay);
@@ -79,7 +89,12 @@ export function SettingsDisplay() {
   const [visible, setVisible] = useEventChannelState(modalState.settingsVisible);
 
   return (
-    <GameModalDialog visible={visible} onClose={() => setVisible(false)} title="Settings">
+    <GameModalDialog
+      visible={visible}
+      opacity={adjustingScale ? 0.3 : 1}
+      onClose={() => setVisible(false)}
+      title="Settings"
+    >
       <Box sx={{ p: 3, overflowY: "auto" }}>
         <Stack spacing={4}>
           <SettingSlider label="Scale" value={scale} onChange={setScale} min={0.5} max={3} />

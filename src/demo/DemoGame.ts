@@ -108,6 +108,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
         setup.log(
           i % 2 === 0 ? `Created a card, ${c.id} :stuff: that is :thingy:` : `Created a card, ${c.id} :thingy2:`,
         );
+        players[i % players.length].counter.value += (c.parentOutletIndex ?? 0) % 2 === 0 ? 1 : i % players.length;
         // c.add(new Card(), "testoutlet3");
       }),
     );

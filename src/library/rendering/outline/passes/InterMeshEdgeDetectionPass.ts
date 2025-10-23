@@ -167,7 +167,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
 
           float sceneDepth = texture2D(sceneDepthTexture, uv).r;
           float idDepth = texture2D(idDepthTexture, uv).r;
-          float depthTolerance = 0.001;
+          float depthTolerance = 0.003;
 
           return abs(sceneDepth - idDepth) <= depthTolerance;
         }

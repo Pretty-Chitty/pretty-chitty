@@ -120,9 +120,10 @@ export class SceneWrapper {
     }
 
     // Update materials if needed
-    if (this.materialsDirty && this.outlinePass) {
-      this.updateMaterials();
-    }
+    // TODO: remove this if unnecessary
+    // if (this.materialsDirty && this.outlinePass) {
+    //   this.updateMaterials();
+    // }
 
     for (const [meshId, originalObject] of this.outlinedObjects) {
       const shadowMesh = this.shadowMeshes.get(meshId);

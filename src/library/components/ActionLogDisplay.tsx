@@ -20,7 +20,7 @@ import { useModalState } from "../hooks/useModalState";
 import { KeyboardDoubleArrowUp } from "@mui/icons-material";
 import { useSmartDebouncedState } from "../hooks/useSmartDebouncedState";
 
-function Arrow({ flipped }: { flipped?: boolean }) {
+function Arrow({ flipped, sideways }: { flipped?: boolean; sideways?: boolean }) {
   const theme = useGameTheme();
   return (
     <Box
@@ -29,7 +29,13 @@ function Arrow({ flipped }: { flipped?: boolean }) {
         opacity: 0.25,
         alignItems: "center",
         display: "flex",
-        transform: flipped ? "rotate(180deg)" : "rotate(0deg)",
+        transform: !sideways
+          ? flipped
+            ? "rotate(180deg)"
+            : "rotate(0deg)"
+          : flipped
+            ? "rotate(90deg)"
+            : "rotate(270deg)",
         transition: "transform 0.1s ease-in-out",
       }}
     >
@@ -38,7 +44,7 @@ function Arrow({ flipped }: { flipped?: boolean }) {
   );
 }
 
-export function ActionLogDisplay() {
+export function ActionLogDisplay({ toggleSidebarLog }: { toggleSidebarLog: boolean }) {
   const modalState = useModalState();
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
   const [visible, setVisible] = useEventChannelState(modalState.actionLogVisible);
@@ -48,6 +54,7 @@ export function ActionLogDisplay() {
   const [targetClock] = useEventChannelState(timeState.targetClock);
   const [live] = useEventChannelState(timeState.live);
   const [maxClock] = useEventChannelState(timeController.maxClock);
+  const [showLog, setShowLog] = useEventChannelState(timeController.clientTimeState.showLog);
 
   const theme = useGameTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -132,6 +139,14 @@ export function ActionLogDisplay() {
     }
   }
 
+  const toggle = () => {
+    if (toggleSidebarLog) {
+      setShowLog(!showLog);
+    } else {
+      setVisible(!visible);
+    }
+  };
+
   return (
     <Stack
       direction={"row"}
@@ -140,10 +155,10 @@ export function ActionLogDisplay() {
         background: theme.actionLogBackgroundColor,
         cursor: "pointer",
       }}
-      onClick={() => setVisible(!visible)}
+      onClick={toggle}
     >
       <Box flex={1} />
-      <Arrow flipped={visible} />
+      {!toggleSidebarLog && <Arrow flipped={visible} />}
       <Box
         flex={1000}
         sx={{
@@ -160,8 +175,9 @@ export function ActionLogDisplay() {
       >
         <TokenizedMessage message={messageToShow ?? ""} fontSize={14} tokenMap={tokenMap} />
       </Box>
-      <Arrow flipped={visible} />
+      {!toggleSidebarLog && <Arrow flipped={visible} />}
       <Box flex={1} />
+      {toggleSidebarLog && <Arrow sideways flipped={showLog} />}
     </Stack>
   );
 }

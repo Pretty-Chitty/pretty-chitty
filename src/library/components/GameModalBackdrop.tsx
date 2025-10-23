@@ -10,9 +10,10 @@ interface GameModalBackdropProps {
   visible: boolean;
   children: ReactNode;
   persist?: boolean;
+  opacity?: number;
 }
 
-export function GameModalBackdrop({ visible, children, persist = false }: GameModalBackdropProps) {
+export function GameModalBackdrop({ opacity, visible, children, persist = false }: GameModalBackdropProps) {
   const theme = useGameTheme();
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
   const [visibleDelayed, setVisibleDelayed] = useState(false);
@@ -30,6 +31,7 @@ export function GameModalBackdrop({ visible, children, persist = false }: GameMo
     <Box
       sx={{
         position: "absolute",
+        opacity: opacity,
         top: 0,
         left: 0,
         right: 0,

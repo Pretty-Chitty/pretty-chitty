@@ -62,6 +62,10 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
     throw new Error("No match or match hasn't started");
   }
 
+  async chitHistory(ids: string[]) {
+    return this.match.turn.value!.chitsHistory(this.playerId, ids);
+  }
+
   async gameLog() {
     if (this.match.turn.value) {
       return this.match.turn.value.gameLog(this.playerId);

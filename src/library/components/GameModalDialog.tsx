@@ -6,18 +6,19 @@ import { GameModalBackdrop } from "./GameModalBackdrop";
 import { useAnimationSpeedMultiplier } from "../hooks/useTimeController";
 
 interface GameModalDialogProps {
+  opacity?: number;
   visible: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
 }
 
-export function GameModalDialog({ visible, onClose, title, children }: GameModalDialogProps) {
+export function GameModalDialog({ opacity, visible, onClose, title, children }: GameModalDialogProps) {
   const theme = useGameTheme();
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
 
   return (
-    <GameModalBackdrop visible={visible} persist>
+    <GameModalBackdrop visible={visible} persist opacity={opacity}>
       <Box
         sx={{
           display: "grid",

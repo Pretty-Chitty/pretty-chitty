@@ -361,6 +361,9 @@ export class CounterChit extends SparkChit {
   }
 }
 export class BagChit extends BagSparkChit<Card2> {
+  override get endGameLabel(): string {
+    return "Bag";
+  }
   public get icon() {
     return new IconCanvas(cityscape).get();
   }

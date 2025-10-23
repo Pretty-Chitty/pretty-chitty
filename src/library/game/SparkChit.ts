@@ -10,6 +10,10 @@ export class SparkChit extends Chit {
   /** @internal */
   @NonEditable type = "spark";
 
+  public get endGameLabel() {
+    return "Score";
+  }
+
   private _color: string = "#ffffff";
   public get color() {
     if (this._boundPlayer) {

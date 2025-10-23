@@ -1,3 +1,4 @@
+import { SparkChit } from "../SparkChit";
 import { EventChannel } from "../../utilities/EventChannel";
 import { Chit } from "../Chit";
 import { ClientTimeState } from "../ClientTimeState";
@@ -217,5 +218,39 @@ export class ClientTime extends ConnectionObject {
     } else {
       this.clientTimeState.setAnimationState(animationKey, false);
     }
+  }
+
+  public async chitHistory(chits: Chit[]) {
+    const sparkHistory = await this.serverTime.chitHistory(chits.map((s) => s.id!));
+    const result: { [id: string]: { clock: number; chit: Chit }[] } = {};
+
+    const chitLookup: { [id: string]: Chit } = Object.entries(this.chitLookup).reduce(
+      (acc, [id, chit]) => {
+        const serialized = chit.serialize();
+        const c = Chit.deflate(serialized, this.game);
+        if (c) {
+          acc[id] = c;
+        }
+        return acc;
+      },
+      {} as { [id: string]: Chit },
+    );
+    const findChit = (id: string) => chitLookup[id];
+
+    Object.keys(chitLookup).forEach((id: string) => {
+      chitLookup[id].deserialize(this.chitLookup[id].serialize(), findChit);
+    });
+
+    Object.entries(sparkHistory).forEach(([id, history]) => {
+      result[id] = [];
+      history.forEach((h) => {
+        const c = Chit.deflate(h.state, this.game);
+        if (c) {
+          c.deserialize(h.state, findChit);
+          result[id].push({ clock: h.clock, chit: c });
+        }
+      });
+    });
+    return result;
   }
 }
