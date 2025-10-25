@@ -31,16 +31,15 @@ import {
 import * as CanvasLibrary from "./CanvasLibrary";
 import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
-import { TokenDefinition } from "../library/components/TokenizedMessage";
 import { cityscape } from "./assets/network_overload";
 
 const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
 theme.dialogForegroundColor = "#000000ee";
 theme.chitHighlightColor = "#ffffff";
-theme.chitOutlineDownsample = 1;
+theme.chitOutlineDownsample = 2;
 theme.chitOutlineWidth = 3;
-theme.chitOutlineStrength = 1;
+theme.chitOutlineStrength = 0.8;
 
 theme.galleryItemWidth = 50;
 theme.galleryItemHeight = 50;

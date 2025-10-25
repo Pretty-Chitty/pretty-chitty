@@ -97,7 +97,7 @@ class WebGLRendererWrapper {
       }
 
       // Configure outline pass
-      outlinePass.edgeStrength = theme.chitOutlineStrength;
+      outlinePass.edgeStrength = theme.chitOutlineStrength * theme.chitOutlineDownsample;
       outlinePass.edgeThickness = theme.chitOutlineWidth / theme.chitOutlineDownsample;
 
       const depthPass = new DepthVisualizationPass();

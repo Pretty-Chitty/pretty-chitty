@@ -204,7 +204,7 @@ export class IDBasedOutlinePass extends Pass {
           // This prevents z-fighting and ensures edge-on faces render properly
           if (facingRatio < 0.1) {
             // Move fragment 1% closer to camera in depth
-            gl_FragDepth = gl_FragCoord.z * 0.99;
+            gl_FragDepth = gl_FragCoord.z * (1.0 - (mix(0.0, 0.1, facingRatio) * 0.01));
           } else {
             // Keep original depth
             gl_FragDepth = gl_FragCoord.z;

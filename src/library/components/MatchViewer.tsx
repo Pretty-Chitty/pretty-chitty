@@ -63,7 +63,7 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
         WebkitTouchCallout: "none", // Prevent highlighting phone numbers on iOS
       }}
     >
-      <Stack flex={1}>
+      <Stack flex={1} sx={{ maxWidth: "100%" }}>
         <TopBar onBack={onBack} />
         <Stack
           direction={"column"}

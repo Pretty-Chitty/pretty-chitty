@@ -30,6 +30,8 @@ export interface ContainerNode {
   direction: LayoutDirection;
   splits: LayoutNode[];
   collapseOrder?: number;
+  reversedIfVertical?: boolean;
+  reversedIfHorizontal?: boolean;
 }
 export interface CollapsedNode {
   panels: PanelNode[];
@@ -178,6 +180,10 @@ function createHorizontalLayout(node: ContainerNode, width: number, height: numb
   const scale = width / totalUsedWidth;
   const splits = node.splits.map((split, i) => createConcreteLayout(split, widths[i] * scale, height));
 
+  if (node.reversedIfHorizontal) {
+    splits.reverse();
+  }
+
   return {
     width,
     height,
@@ -192,6 +198,10 @@ function createVerticalLayout(node: ContainerNode, width: number, height: number
   const totalUsedHeight = heights.reduce((sum, h) => sum + h, 0);
   const scale = height / totalUsedHeight;
   const splits = node.splits.map((split, i) => createConcreteLayout(split, width, heights[i] * scale));
+
+  if (node.reversedIfVertical) {
+    splits.reverse();
+  }
 
   return {
     collapseOrder: node.collapseOrder,

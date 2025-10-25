@@ -55,7 +55,16 @@ export function PanelContents({
           }
         })}
 
-        {!hasRootChitInLayout && <SinglePanel paused chit={rootChit} x={-5} y={0} w={1} h={1} />}
+        {!hasRootChitInLayout && (
+          <SinglePanel
+            paused
+            chit={rootChit}
+            x={-5 - theme.spacing * 3}
+            y={0}
+            w={theme.spacing * 3}
+            h={theme.spacing * 3}
+          />
+        )}
       </Box>
     </Box>
   );
