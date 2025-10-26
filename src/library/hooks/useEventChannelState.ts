@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { EventChannel } from "../utilities/EventChannel";
 
 export function useEventChannelState<T>(e: EventChannel<T>): [T, (a: T) => void] {
@@ -10,12 +10,14 @@ export function useEventChannelState<T>(e: EventChannel<T>): [T, (a: T) => void]
     setV(e.value);
     e.on(setV, false);
   }, [e]);
-  return [
-    v,
+
+  const setter = useCallback(
     (newValue: T) => {
       e.value = newValue;
     },
-  ];
+    [e],
+  );
+  return [v, setter];
 }
 
 export function useMultiEventChannelState<T, Z>(list: Z[], mapper: (arg: Z) => EventChannel<T>): T[] {

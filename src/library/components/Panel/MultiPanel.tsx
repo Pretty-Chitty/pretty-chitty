@@ -7,10 +7,10 @@ import { useAnimationSpeedMultiplier, useTimeController, useTimeState } from "..
 import { usePanelStates } from "../../hooks/usePanelStates";
 import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
 import { useEventChannelState } from "../../hooks/useEventChannelState";
-import { ViewerWrapper } from "./ViewerWrapper";
 import { panelTransition } from "./util";
 import { PanelTabStack, TAB_HEIGHT } from "./PanelTabStack";
-import { ZINDEX_PINCH_OUT_FOCUSED } from "../../utilities/zIndex";
+import { usePanelPositioning } from "../../hooks/usePanelPositioning";
+import { useSmartDebouncedState } from "../../hooks/useSmartDebouncedState";
 
 const ANIMATION_DURATION = 0.125;
 
@@ -22,24 +22,25 @@ export function MultiPanel({
   y,
   w,
   h,
+  isFocusedPanel = false,
   focusedPanel,
   setFocusedPanel,
-  totalWidth,
-  totalHeight,
+  enabled,
 }: {
   chits: Chit[];
   x: number;
   y: number;
   w: number;
   h: number;
-  totalWidth: number;
-  totalHeight: number;
+  enabled: boolean;
+  isFocusedPanel: boolean;
   focusedPanel?: Chit | undefined;
   setFocusedPanel: (chit: Chit | undefined) => void;
 }) {
   const theme = useGameTheme();
   const refContainer = useRef(null);
   const timeState = useTimeState();
+  const { registerPosition } = usePanelPositioning();
 
   const timeController = useTimeController();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -53,7 +54,14 @@ export function MultiPanel({
 
   const [isSliding, setIsSliding] = useState(false);
   const [isLoading] = useEventChannelState(timeState.isLoading);
-  const [selectedIndex, setSelectedIndex] = useDebounce(0, 250, true);
+  const [selectedIndex, setSelectedIndex] = useSmartDebouncedState(0, {
+    interval: 250,
+  });
+
+  // Create a stable string of chit IDs for dependency tracking
+  const chitIdsString = chits.map((c) => c.id).join("-");
+  const chitsLength = chits.length;
+
   const rootRenders = chits.map((c) =>
     c.renderInstance instanceof RootChitRenderInstance ? c.renderInstance : undefined,
   );
@@ -63,13 +71,17 @@ export function MultiPanel({
     (index: number) => {
       if (index !== selectedIndex) {
         setSelectedIndex(index);
+        if (isFocusedPanel) {
+          (chits[index].renderInstance as RootChitRenderInstance)?.cameraWrapper?.handleZoom(0, 0, 0.0001, false);
+        }
         if (live) {
           setTargetClock(maxClock.clock);
         }
         setIgnoreChangesBefore(Date.now() + PANEL_ADJUST_IGNORE_DURATION);
       }
     },
-    [selectedIndex, setSelectedIndex, live, maxClock, setTargetClock],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedIndex, setSelectedIndex, live, maxClock, setTargetClock, isFocusedPanel, chitIdsString],
   );
 
   useEffect(() => {
@@ -79,7 +91,7 @@ export function MultiPanel({
     }
   }, [ignoreChangesBefore]);
 
-  let effectiveSelectedIndex = selectedIndex >= chits.length ? 0 : selectedIndex;
+  const effectiveSelectedIndex = selectedIndex >= chitsLength ? 0 : selectedIndex;
 
   const leavingIndex = panelStates.findIndex((p) => p.state === "leaving");
   const enteringIndex = panelStates.findIndex((p) => p.state === "entering");
@@ -110,6 +122,10 @@ export function MultiPanel({
     rootRenders.forEach((chit) => chit && chit.resetMarks());
   }
 
+  if (isFocusedPanel && focusedPanel !== chits[effectiveSelectedIndex]) {
+    setFocusedPanel(chits[effectiveSelectedIndex]);
+  }
+
   useEffect(() => {
     setIsSliding(true);
     const to = setTimeout(
@@ -121,7 +137,7 @@ export function MultiPanel({
     return () => clearTimeout(to);
   }, [selectedIndex, timeState, timeMultiplier]);
 
-  const key = `panel--${chits.map((c) => c.id).join("-")}`;
+  const key = `panel--${chitIdsString}`;
   const isAnimating = ignoringChanges ? false : Math.max(leavingIndex, enteringIndex, pendingIndex) >= 0;
   useEffect(() => {
     timeState.setAnimationState(key, isAnimating);
@@ -131,28 +147,72 @@ export function MultiPanel({
   const panCallback = useCallback(
     (direction: "left" | "right") => {
       if (direction === "left") {
-        manuallyChangeSelectedIndex((chits.length + selectedIndex - 1) % chits.length);
+        manuallyChangeSelectedIndex((chitsLength + selectedIndex - 1) % chitsLength);
       } else {
-        manuallyChangeSelectedIndex((chits.length + selectedIndex + 1) % chits.length);
+        manuallyChangeSelectedIndex((chitsLength + selectedIndex + 1) % chitsLength);
       }
     },
-    [selectedIndex, chits, manuallyChangeSelectedIndex],
+    [selectedIndex, chitsLength, manuallyChangeSelectedIndex],
   );
 
-  let effectiveTabHeight = TAB_HEIGHT;
-  let zIndex: string | number = "auto";
-  if (focusedPanel) {
-    w = totalWidth;
-    h = totalHeight - TAB_HEIGHT;
-    x = 0;
-    y = 0;
-
-    if (chits.find((chit) => focusedPanel === chit)) {
-      effectiveSelectedIndex = chits.findIndex((chit) => focusedPanel === chit);
-      effectiveTabHeight = 0;
-      zIndex = ZINDEX_PINCH_OUT_FOCUSED;
+  // Register positions for all chits in this MultiPanel
+  useEffect(() => {
+    if (!enabled) {
+      return;
     }
-  }
+
+    const transition = isLoading ? null : `left ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`;
+
+    chits.forEach((chit, index) => {
+      const chitId = chit.id ?? "";
+      const isPaused =
+        focusedPanel && focusedPanel !== chit
+          ? true
+          : isLoading || ignoringChanges
+            ? false
+            : isSliding
+              ? true
+              : effectiveSelectedIndex !== index;
+
+      // Calculate the x offset based on sliding position
+      let xOffset = 0;
+      if (index !== effectiveSelectedIndex) {
+        // Off-screen panels are positioned 110% to the left or right
+        xOffset = index > effectiveSelectedIndex ? w * 1.1 : -w * 1.1;
+      }
+
+      registerPosition(chitId, {
+        chitId,
+        x: x + theme.spacing / 4 + xOffset,
+        y: y + theme.spacing / 4,
+        w: w - theme.spacing / 2,
+        h: h - TAB_HEIGHT - theme.spacing / 2,
+        paused: isPaused,
+        refContainer,
+        panCallback,
+        visible: true,
+        transition,
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    chitIdsString,
+    effectiveSelectedIndex,
+    w,
+    h,
+    x,
+    y,
+    enabled,
+    isLoading,
+    ignoringChanges,
+    isSliding,
+    focusedPanel,
+    registerPosition,
+    theme.spacing,
+    refContainer,
+    panCallback,
+    timeMultiplier,
+  ]);
 
   return (
     <Stack
@@ -162,55 +222,14 @@ export function MultiPanel({
         left: `${x}px`,
         top: `${y}px`,
         position: "absolute",
+        zIndex: enabled ? "auto" : -1,
         p: `${theme.spacing / 4}px`,
-        zIndex,
-        transition: focusedPanel ? panelTransition(theme, timeMultiplier) : null,
+        transition: panelTransition(theme, timeMultiplier),
       }}
     >
-      <Box
-        ref={refContainer}
-        sx={{ width: "100%", flex: 1, position: "relative", borderRadius: "10px", overflow: "hidden" }}
-      >
-        {chits.map((chit, index) => (
-          <Box
-            key={chit.id}
-            sx={{
-              overflow: "hidden",
-              width: "100%",
-              height: "100%",
-              transition: isLoading ? null : `transform ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
-              position: "absolute",
-              left: 0,
-              top: 0,
-              transform:
-                index === effectiveSelectedIndex
-                  ? `translateX(0)`
-                  : `translateX(${index > effectiveSelectedIndex ? "110%" : "-110%"})`,
-            }}
-          >
-            <ViewerWrapper
-              refContainer={refContainer}
-              paused={
-                focusedPanel && focusedPanel !== chit
-                  ? true
-                  : isLoading || ignoringChanges
-                    ? false
-                    : isSliding
-                      ? true
-                      : effectiveSelectedIndex !== index
-              }
-              chit={chit}
-              w={w - theme.spacing / 2}
-              h={h - effectiveTabHeight - theme.spacing / 2}
-              panCallback={panCallback}
-              focusedPanel={focusedPanel}
-              setFocusedPanel={setFocusedPanel}
-            />
-          </Box>
-        ))}
-      </Box>
+      <Box ref={refContainer} sx={{ width: "100%", flex: 1, position: "relative" }} />
 
-      {!focusedPanel && (
+      {enabled && (
         <PanelTabStack
           chits={chits}
           selectedIndex={effectiveSelectedIndex}

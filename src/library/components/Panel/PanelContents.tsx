@@ -9,7 +9,8 @@ import { SinglePanel } from "./SinglePanel";
 import { MultiPanel } from "./MultiPanel";
 import { Chit } from "../../game/Chit";
 import Hammer from "@egjs/hammerjs";
-import { PanelTabStack, TAB_HEIGHT } from "./PanelTabStack";
+import { PanelPositioningContext, ViewerPosition } from "../../hooks/usePanelPositioning";
+import { ViewerWrapper } from "./ViewerWrapper";
 
 // Types for gesture handling
 export interface ViewerGestureHandlers {
@@ -71,6 +72,20 @@ export function PanelContents({
     return () => {
       viewerRegistrationsRef.current.delete(registration.id);
     };
+  }, []);
+
+  // Panel positioning system
+  const positionsRef = useRef<Map<string, ViewerPosition>>(new Map());
+  const [, forceUpdate] = useState({});
+
+  const registerPosition = useCallback((chitId: string, position: ViewerPosition) => {
+    positionsRef.current.set(chitId, position);
+    forceUpdate({});
+  }, []);
+
+  const unregisterPosition = useCallback((chitId: string) => {
+    positionsRef.current.delete(chitId);
+    forceUpdate({});
   }, []);
 
   // Find which viewer contains a point
@@ -212,90 +227,120 @@ export function PanelContents({
   }, [findViewerAtPoint]);
 
   const gestureContextValue = { registerViewer };
+  const positioningContextValue = {
+    positions: positionsRef.current,
+    registerPosition,
+    unregisterPosition,
+  };
 
   const fullChitList = layout.flatMap((cell) => (Array.isArray(cell.chit) ? cell.chit : [cell.chit]));
-  const focusedChitIndex = fullChitList.findIndex((chit) => chit === focusedPanel);
-  const setFocusedChitIndex = (newIndex: number) => {
-    setFocusedPanel(fullChitList[newIndex]);
-  };
 
   return (
     <GestureContext.Provider value={gestureContextValue}>
-      <Box
-        sx={{
-          position: "relative",
-          flex: 1,
-          p: `${theme.spacing * 0.75}px`,
-        }}
-      >
+      <PanelPositioningContext.Provider value={positioningContextValue}>
         <Box
-          ref={ref}
           sx={{
             position: "relative",
-            width: "100%",
-            height: "100%",
+            flex: 1,
+            p: `${theme.spacing * 0.75}px`,
           }}
         >
-          {layout.map((cell) => {
-            if (Array.isArray(cell.chit)) {
-              return (
-                <MultiPanel
-                  focusedPanel={focusedPanel}
-                  setFocusedPanel={setFocusedPanel}
-                  key={"m" + cell.id}
-                  chits={cell.chit}
-                  w={cell.w}
-                  h={cell.h}
-                  x={cell.x}
-                  y={cell.y}
-                  totalWidth={width}
-                  totalHeight={height}
-                />
-              );
-            } else {
-              return (
-                <SinglePanel
-                  focusedPanel={focusedPanel}
-                  setFocusedPanel={setFocusedPanel}
-                  key={cell.id}
-                  chit={cell.chit}
-                  w={cell.w}
-                  h={cell.h}
-                  x={cell.x}
-                  y={cell.y}
-                  totalWidth={width}
-                  totalHeight={height}
-                />
-              );
-            }
-          })}
+          <Box
+            ref={ref}
+            sx={{
+              position: "relative",
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            {layout.map((cell) => {
+              if (Array.isArray(cell.chit)) {
+                return (
+                  <MultiPanel
+                    enabled={focusedPanel === undefined}
+                    focusedPanel={focusedPanel}
+                    setFocusedPanel={setFocusedPanel}
+                    key={"m" + cell.id}
+                    chits={cell.chit}
+                    w={cell.w}
+                    h={cell.h}
+                    x={cell.x}
+                    y={cell.y}
+                  />
+                );
+              } else {
+                return (
+                  <SinglePanel
+                    enabled={focusedPanel === undefined}
+                    focusedPanel={focusedPanel}
+                    setFocusedPanel={setFocusedPanel}
+                    key={cell.id}
+                    chit={cell.chit}
+                    w={cell.w}
+                    h={cell.h}
+                    x={cell.x}
+                    y={cell.y}
+                  />
+                );
+              }
+            })}
 
-          {!hasRootChitInLayout && (
-            <SinglePanel
-              focusedPanel={focusedPanel}
-              setFocusedPanel={setFocusedPanel}
-              paused
-              chit={rootChit}
-              x={-5 - theme.spacing * 3}
-              y={0}
-              w={theme.spacing * 3}
-              h={theme.spacing * 3}
-              totalWidth={width}
-              totalHeight={height}
-            />
-          )}
-
-          {focusedPanel && (
-            <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
-              <PanelTabStack
-                chits={fullChitList}
-                selectedIndex={focusedChitIndex}
-                onSelectedIndexChange={setFocusedChitIndex}
+            {!hasRootChitInLayout && (
+              <SinglePanel
+                focusedPanel={focusedPanel}
+                setFocusedPanel={setFocusedPanel}
+                paused
+                chit={rootChit}
+                x={-5 - theme.spacing * 3}
+                y={0}
+                w={theme.spacing * 3}
+                h={theme.spacing * 3}
+                enabled={true}
               />
-            </Box>
-          )}
+            )}
+
+            {/* Full-screen MultiPanel (visible when focusedPanel is set) */}
+            {focusedPanel && (
+              <MultiPanel
+                isFocusedPanel
+                enabled={focusedPanel !== undefined}
+                focusedPanel={focusedPanel}
+                setFocusedPanel={setFocusedPanel}
+                chits={fullChitList}
+                x={0}
+                y={0}
+                w={width}
+                h={height}
+              />
+            )}
+
+            {/* Render all ViewerWrappers directly here with stable keys */}
+            {fullChitList.map((chit) => {
+              const chitId = chit.id ?? "";
+              const position = positionsRef.current.get(chitId);
+              if (!position || !position.visible) {
+                return null;
+              }
+              return (
+                <ViewerWrapper
+                  key={chitId}
+                  focusedPanel={focusedPanel}
+                  setFocusedPanel={setFocusedPanel}
+                  chit={chit}
+                  w={position.w}
+                  h={position.h}
+                  x={position.x}
+                  y={position.y}
+                  paused={position.paused}
+                  refContainer={position.refContainer}
+                  panCallback={position.panCallback}
+                  transition={position.transition}
+                />
+              );
+            })}
+          </Box>
         </Box>
-      </Box>
+      </PanelPositioningContext.Provider>
     </GestureContext.Provider>
   );
 }

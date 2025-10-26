@@ -15,20 +15,26 @@ export function ViewerWrapper({
   chit,
   w,
   h,
+  x,
+  y,
   paused,
   panCallback,
   refContainer,
   focusedPanel,
   setFocusedPanel,
+  transition,
 }: {
   chit: Chit;
   w: number;
   h: number;
+  x?: number;
+  y?: number;
   paused: boolean;
   panCallback?: (direction: "left" | "right") => void;
   refContainer: React.RefObject<HTMLElement> | null;
   focusedPanel?: Chit | undefined;
   setFocusedPanel: (chit: Chit | undefined) => void;
+  transition?: string | null;
 }) {
   const chitInstance = useChit(chit.id ?? "nochit");
   const theme = useGameTheme();
@@ -67,12 +73,24 @@ export function ViewerWrapper({
   }
 
   return (
-    <>
+    <Box
+      sx={{
+        borderRadius: "10px",
+        overflow: "hidden",
+        position: "absolute",
+        left: x !== undefined ? `${x}px` : 0,
+        top: y !== undefined ? `${y}px` : 0,
+        width: `${w}px`,
+        height: `${h}px`,
+        transition: transition || undefined,
+      }}
+    >
       <Stack direction={"row"} flexWrap={"wrap"} sx={{ position: "absolute", zIndex: ZINDEX_SPARKS }}>
         {sparks.map((spark, i) => (
           <PanelSpark zIndex={ZINDEX_SPARKS + sparks.length - i} key={spark.id} chit={spark} paused={paused} />
         ))}
       </Stack>
+
       {focusedPanel === chit && (
         <Box
           sx={{
@@ -107,6 +125,6 @@ export function ViewerWrapper({
         zoomCallback={zoomCallback}
         enableGestures={!focusedPanel || focusedPanel === chit}
       />
-    </>
+    </Box>
   );
 }

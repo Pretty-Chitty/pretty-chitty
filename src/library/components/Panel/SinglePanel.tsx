@@ -1,12 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Box } from "@mui/material";
 import { Chit } from "../../game/Chit";
 import { useGameTheme } from "../../hooks/useGameTheme";
-import { ViewerWrapper } from "./ViewerWrapper";
 import { panelTransition } from "./util";
 import { useAnimationSpeedMultiplier } from "../../hooks/useTimeController";
-import { TAB_HEIGHT } from "./PanelTabStack";
 import { ZINDEX_PINCH_OUT_FOCUSED } from "../../utilities/zIndex";
+import { usePanelPositioning } from "../../hooks/usePanelPositioning";
 
 export function SinglePanel({
   chit,
@@ -14,36 +13,46 @@ export function SinglePanel({
   y,
   w,
   h,
+  enabled,
   paused = false,
   focusedPanel,
-  setFocusedPanel,
-  totalWidth,
-  totalHeight,
+  setFocusedPanel: _setFocusedPanel,
 }: {
   chit: Chit;
   x: number;
   y: number;
   w: number;
   h: number;
+  enabled: boolean;
   paused?: boolean;
   focusedPanel?: Chit | undefined;
   setFocusedPanel: (chit: Chit | undefined) => void;
-  totalWidth: number;
-  totalHeight: number;
 }) {
   const theme = useGameTheme();
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
+  const { registerPosition } = usePanelPositioning();
 
-  if (focusedPanel) {
-    w = totalWidth;
-    h = totalHeight - TAB_HEIGHT;
-    x = 0;
-    y = 0;
+  const effectivePaused = !enabled ? true : paused;
 
-    if (focusedPanel !== chit) {
-      paused = true;
+  // Register position for ViewerWrapper (only when NOT in full-screen focus mode)
+  useEffect(() => {
+    // If focusedPanel is set, don't register - the full-screen MultiPanel in PanelContents handles it
+    if (!enabled) {
+      return;
     }
-  }
+
+    const chitId = chit.id ?? "";
+    registerPosition(chitId, {
+      chitId,
+      x: x + theme.spacing / 4,
+      y: y + theme.spacing / 4,
+      w: w - theme.spacing / 2,
+      h: h - theme.spacing / 2,
+      paused: effectivePaused,
+      refContainer: null,
+      visible: true,
+    });
+  }, [chit, x, y, w, h, effectivePaused, enabled, focusedPanel, registerPosition, theme.spacing]);
 
   return (
     <Box
@@ -55,22 +64,11 @@ export function SinglePanel({
         top: `${y}px`,
         position: "absolute",
         p: `${theme.spacing / 4}px`,
-        transition: focusedPanel ? panelTransition(theme, animationSpeedMultiplier) : null,
-        zIndex: focusedPanel === chit ? ZINDEX_PINCH_OUT_FOCUSED : "auto",
-        opacity: !focusedPanel || focusedPanel === chit ? 1 : 0,
+        transition: panelTransition(theme, animationSpeedMultiplier),
+        zIndex: enabled ? "auto" : -1,
       }}
     >
-      <Box sx={{ width: "100%", height: "100%", position: "relative", borderRadius: "10px", overflow: "hidden" }}>
-        <ViewerWrapper
-          focusedPanel={focusedPanel}
-          setFocusedPanel={setFocusedPanel}
-          chit={chit}
-          w={w - theme.spacing / 2}
-          h={h - theme.spacing / 2}
-          paused={paused}
-          refContainer={null}
-        />
-      </Box>
+      <Box sx={{ width: "100%", height: "100%", position: "relative", borderRadius: "10px", overflow: "hidden" }} />
     </Box>
   );
 }

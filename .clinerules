@@ -1,0 +1,38 @@
+# Pretty Chitty Project Guidelines
+
+## Project Structure
+- This is a React + TypeScript game engine library
+- Components are in `src/library/components/`
+- Hooks are in `src/library/hooks/`
+- Game logic is in `src/library/game/`
+- Rendering logic is in `src/library/rendering/`
+
+## Code Style
+- Use functional React components (not class components)
+- Prefer hooks over class-based patterns
+- Use TypeScript strictly - avoid `any` types when possible
+- Keep components focused and single-purpose
+- JSX files need to `import React from "react";` at the top (plus other hooks, if necessary)
+- I hate loops or if statements that don't use braces `{}` - always use braces for clarity
+
+
+
+## File Organization
+- New hooks should go in `src/library/hooks/` (not inline in component files)
+- Context definitions and custom hooks should be separate files
+- Components that are tightly related to panels should go in `src/library/components/Panel/`
+
+## Testing
+- Run `yarn build` to verify TypeScript compilation and build the project
+- The build process includes documentation generation and webpack bundling
+
+## Important Patterns
+- Components use MUI (Material-UI) for styling with the `sx` prop
+- The project uses a custom theme system via `useGameTheme()`
+- Game state is managed through event channels and custom hooks
+- WebGL rendering is handled through Three.js
+
+## What to Avoid
+- Don't add emoji unless explicitly requested
+- Don't create markdown documentation files unless asked
+- Don't use `React.` prefix for hooks (import them directly)
