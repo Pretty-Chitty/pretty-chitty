@@ -415,7 +415,7 @@ export class Root extends RootChit<MyPlayer> {
           collapseOrder: 2, // Collapse second
           splits: [
             {
-              direction: "optimizeGrid",
+              direction: "optimizePreferHorizontal",
               collapseOrder: 1, // Collapse first
               splits: this.players
                 .filter((p) => p.id !== _playerId)

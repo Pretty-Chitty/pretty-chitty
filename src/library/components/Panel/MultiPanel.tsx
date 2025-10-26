@@ -58,7 +58,27 @@ function PanelTab({ chit, onClick, selected }: { selected?: boolean; chit: Chit;
   );
 }
 
-export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y: number; w: number; h: number }) {
+export function MultiPanel({
+  chits,
+  x,
+  y,
+  w,
+  h,
+  focusedPanel,
+  setFocusedPanel,
+  totalWidth,
+  totalHeight,
+}: {
+  chits: Chit[];
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  totalWidth: number;
+  totalHeight: number;
+  focusedPanel?: Chit | undefined;
+  setFocusedPanel: (chit: Chit | undefined) => void;
+}) {
   const theme = useGameTheme();
   const refContainer = useRef(null);
   const timeState = useTimeState();
@@ -101,7 +121,7 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
     }
   }, [ignoreChangesBefore]);
 
-  const effectiveSelectedIndex = selectedIndex >= chits.length ? 0 : selectedIndex;
+  let effectiveSelectedIndex = selectedIndex >= chits.length ? 0 : selectedIndex;
 
   const leavingIndex = panelStates.findIndex((p) => p.state === "leaving");
   const enteringIndex = panelStates.findIndex((p) => p.state === "entering");
@@ -161,6 +181,18 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
     [selectedIndex, chits, manuallyChangeSelectedIndex],
   );
 
+  let effectiveTabHeight = TAB_HEIGHT;
+  let zIndex: string | number = "auto";
+  if (chits.find((chit) => focusedPanel === chit)) {
+    w = totalWidth;
+    h = totalHeight;
+    x = 0;
+    y = 0;
+    effectiveSelectedIndex = chits.findIndex((chit) => focusedPanel === chit);
+    effectiveTabHeight = 0;
+    zIndex = 1000;
+  }
+
   return (
     <Stack
       sx={{
@@ -169,8 +201,9 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
         left: `${x}px`,
         top: `${y}px`,
         position: "absolute",
-        p: `${theme.spacing / 2}px`,
-        transition: panelTransition(theme, timeMultiplier),
+        p: `${theme.spacing / 4}px`,
+        zIndex,
+        transition: focusedPanel ? panelTransition(theme, timeMultiplier) : null,
       }}
     >
       <Box
@@ -198,39 +231,43 @@ export function MultiPanel({ chits, x, y, w, h }: { chits: Chit[]; x: number; y:
               refContainer={refContainer}
               paused={isLoading || ignoringChanges ? false : isSliding ? true : effectiveSelectedIndex !== index}
               chit={chit}
-              w={w - theme.spacing}
-              h={h - TAB_HEIGHT - theme.spacing}
+              w={w - theme.spacing / 2}
+              h={h - effectiveTabHeight - theme.spacing / 2}
               panCallback={panCallback}
+              focusedPanel={focusedPanel}
+              setFocusedPanel={setFocusedPanel}
             />
           </Box>
         ))}
       </Box>
 
-      <Stack direction="row" sx={{ height: TAB_HEIGHT }}>
-        <Box flex={1} />
-        <Stack direction="row" sx={{ position: "relative", width: TAB_WIDTH * chits.length }}>
-          {chits.map((chit, index) => (
-            <PanelTab
-              key={chit.id}
-              chit={chit}
-              onClick={() => manuallyChangeSelectedIndex(index)}
-              selected={index === effectiveSelectedIndex}
+      {!focusedPanel && (
+        <Stack direction="row" sx={{ height: TAB_HEIGHT }}>
+          <Box flex={1} />
+          <Stack direction="row" sx={{ position: "relative", width: TAB_WIDTH * chits.length }}>
+            {chits.map((chit, index) => (
+              <PanelTab
+                key={chit.id}
+                chit={chit}
+                onClick={() => manuallyChangeSelectedIndex(index)}
+                selected={index === effectiveSelectedIndex}
+              />
+            ))}
+            <Box
+              sx={{
+                height: "2px",
+                width: TAB_WIDTH * 0.75,
+                transition: `left ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
+                background: theme.panelSelectionCutoutSelected,
+                position: "absolute",
+                bottom: -2,
+                left: effectiveSelectedIndex * TAB_WIDTH + TAB_WIDTH * 0.125,
+              }}
             />
-          ))}
-          <Box
-            sx={{
-              height: "2px",
-              width: TAB_WIDTH * 0.75,
-              transition: `left ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
-              background: theme.panelSelectionCutoutSelected,
-              position: "absolute",
-              bottom: -2,
-              left: effectiveSelectedIndex * TAB_WIDTH + TAB_WIDTH * 0.125,
-            }}
-          />
+          </Stack>
+          <Box flex={1} />
         </Stack>
-        <Box flex={1} />
-      </Stack>
+      )}
     </Stack>
   );
 }

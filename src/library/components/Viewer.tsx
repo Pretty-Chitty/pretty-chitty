@@ -24,6 +24,7 @@ export default function Viewer({
   h = 0,
   paddingTop = 0,
   panCallback,
+  zoomCallback,
   refContainer = null,
 }: {
   chit: Chit;
@@ -33,6 +34,7 @@ export default function Viewer({
   paddingTop?: number;
   paused?: boolean;
   panCallback?: (direction: "left" | "right") => void;
+  zoomCallback?: (newZoom: number, oldZoom: number) => void;
   refContainer?: React.RefObject<HTMLElement> | null;
 }) {
   const playerId = usePlayerId();
@@ -133,7 +135,7 @@ export default function Viewer({
       return;
     }
 
-    chitRenderInstance.sceneWrapper.markDirty();
+    // chitRenderInstance.sceneWrapper.markDirty();
 
     let renderNextFrame: boolean | undefined;
     let cancelled = false;
@@ -213,7 +215,6 @@ export default function Viewer({
 
       hammer.add(new Hammer.Press({ event: "longtap", time: 600 }));
 
-      hammer.get("doubletap").recognizeWith("singletap");
       hammer.get("singletap").requireFailure("doubletap");
 
       hammer.get("longtap").recognizeWith("singletap");
@@ -231,7 +232,12 @@ export default function Viewer({
       });
       hammer.on("doubletap", (ev) => {
         const pos = fixPosition(ev);
-        chitRenderInstance.handleZoom(pos.x, pos.y, chitRenderInstance.cameraZoom <= 1.1 ? 20 : -20, true);
+        const prev = chitRenderInstance.cameraZoom;
+        chitRenderInstance.handleZoom(pos.x, pos.y, chitRenderInstance.cameraZoom <= 1 ? 0.0001 : -20, !!zoomCallback);
+        if (zoomCallback) {
+          zoomCallback(chitRenderInstance.cameraZoom, prev);
+          setTimeout(() => chitRenderInstance.handleZoom(pos.x, pos.y, 0, false), 100);
+        }
       });
 
       hammer.on("pinch", (ev) => {
@@ -262,7 +268,7 @@ export default function Viewer({
 
         if (panCallback) {
           const isMouse = ev.pointerType === "mouse";
-          const neededVelocity = chitRenderInstance.cameraZoom <= 1.1 ? 0.3 : isMouse ? 7.5 : 2.5;
+          const neededVelocity = chitRenderInstance.cameraZoom <= 1 ? 0.3 : isMouse ? 7.5 : 2.5;
           if (Math.abs(ev.velocityX) > neededVelocity && ev.distance > 20 && Math.abs(ev.velocityY) < 0.2) {
             const direction = ev.velocityX > 0 ? "left" : "right";
             panCallback(direction);
@@ -278,27 +284,37 @@ export default function Viewer({
       });
 
       let lastScale = 1,
-        pinchScale = 1;
+        pinchScale = 1,
+        pinchCancelled = false;
       hammer.on("pinchstart", () => {
         lastScale = 1;
         pinchScale = chitRenderInstance.cameraZoom;
-        cancelled = false;
+        pinchCancelled = false;
       });
       hammer.on("pinchend", () => {
-        cancelled = true;
+        pinchCancelled = true;
         pinchEndedRecently = true;
         setTimeout(() => (pinchEndedRecently = false), 200);
       });
       hammer.on("pinch", (ev) => {
-        if (cancelled) {
+        if (pinchCancelled) {
           return;
         }
+
+        const prev = chitRenderInstance.cameraZoom;
 
         const pos = fixPosition(ev);
         const sx = ev.scale - lastScale;
         lastScale = ev.scale;
 
         chitRenderInstance.handleZoom(pos.x, pos.y, pinchScale * sx, false);
+
+        if (zoomCallback) {
+          zoomCallback(chitRenderInstance.cameraZoom, prev);
+        }
+        if (chitRenderInstance.cameraZoom <= 1 && prev > 1) {
+          pinchCancelled = true;
+        }
       });
 
       const wheelListener = (ev: any) => {
@@ -308,7 +324,12 @@ export default function Viewer({
           ev.preventDefault();
         } else {
           const dy = ev.wheelDeltaY as number;
+          const prev = chitRenderInstance.cameraZoom;
           chitRenderInstance.handleZoom(ev.layerX as number, ev.layerY as number, dy / 120, false);
+
+          if (zoomCallback) {
+            zoomCallback(chitRenderInstance.cameraZoom, prev);
+          }
           ev.preventDefault();
         }
       };

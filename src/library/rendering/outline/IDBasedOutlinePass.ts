@@ -171,6 +171,11 @@ export class IDBasedOutlinePass extends Pass {
           vec2 offset = pixelOffset * pixelSize;
 
           gl_Position = vProjectedCoord + vec4(offset, 0.0, 0.0);
+
+          // Expand geometry outward in screen space to make pixels appear 2x bigger
+          vec2 ndc = gl_Position.xy / gl_Position.w;
+          ndc += normalize(ndc) * pixelSize;
+          gl_Position.xy = ndc * gl_Position.w;
         }
       `,
       fragmentShader: `
