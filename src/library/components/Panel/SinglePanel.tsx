@@ -50,6 +50,8 @@ export function SinglePanel({
       h: h - theme.spacing / 2,
       paused: effectivePaused,
       refContainer: null,
+      front: true,
+      transitionDelay: 0,
       visible: true,
     });
   }, [chit, x, y, w, h, effectivePaused, enabled, focusedPanel, registerPosition, theme.spacing]);

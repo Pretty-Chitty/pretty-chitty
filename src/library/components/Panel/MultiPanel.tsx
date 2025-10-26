@@ -54,9 +54,12 @@ export function MultiPanel({
 
   const [isSliding, setIsSliding] = useState(false);
   const [isLoading] = useEventChannelState(timeState.isLoading);
-  const [selectedIndex, setSelectedIndex] = useSmartDebouncedState(0, {
-    interval: 250,
-  });
+  const [selectedIndex, setSelectedIndex] = useSmartDebouncedState(
+    focusedPanel ? Math.max(0, chits.indexOf(focusedPanel)) : 0,
+    {
+      interval: 250,
+    },
+  );
 
   // Create a stable string of chit IDs for dependency tracking
   const chitIdsString = chits.map((c) => c.id).join("-");
@@ -71,9 +74,6 @@ export function MultiPanel({
     (index: number) => {
       if (index !== selectedIndex) {
         setSelectedIndex(index);
-        if (isFocusedPanel) {
-          (chits[index].renderInstance as RootChitRenderInstance)?.cameraWrapper?.handleZoom(0, 0, 0.0001, false);
-        }
         if (live) {
           setTargetClock(maxClock.clock);
         }
@@ -81,7 +81,7 @@ export function MultiPanel({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedIndex, setSelectedIndex, live, maxClock, setTargetClock, isFocusedPanel, chitIdsString],
+    [selectedIndex, setSelectedIndex, live, maxClock, setTargetClock, chitIdsString],
   );
 
   useEffect(() => {
@@ -91,7 +91,24 @@ export function MultiPanel({
     }
   }, [ignoreChangesBefore]);
 
+  useEffect(() => {
+    if (isFocusedPanel) {
+      const focusedPanelIndex = chits.findIndex((c) => c === focusedPanel);
+      if (focusedPanelIndex >= 0) {
+        manuallyChangeSelectedIndex(focusedPanelIndex);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFocusedPanel, enabled]);
+
   const effectiveSelectedIndex = selectedIndex >= chitsLength ? 0 : selectedIndex;
+
+  useEffect(() => {
+    if (isFocusedPanel && enabled) {
+      setFocusedPanel(chits[effectiveSelectedIndex]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFocusedPanel, enabled, effectiveSelectedIndex, chitIdsString, setFocusedPanel]);
 
   const leavingIndex = panelStates.findIndex((p) => p.state === "leaving");
   const enteringIndex = panelStates.findIndex((p) => p.state === "entering");
@@ -120,10 +137,6 @@ export function MultiPanel({
 
   if (ignoringChanges) {
     rootRenders.forEach((chit) => chit && chit.resetMarks());
-  }
-
-  if (isFocusedPanel && focusedPanel !== chits[effectiveSelectedIndex]) {
-    setFocusedPanel(chits[effectiveSelectedIndex]);
   }
 
   useEffect(() => {
@@ -161,9 +174,9 @@ export function MultiPanel({
       return;
     }
 
-    const transition = isLoading ? null : `left ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`;
-
     chits.forEach((chit, index) => {
+      const transition = isLoading ? null : panelTransition(theme, timeMultiplier);
+
       const chitId = chit.id ?? "";
       const isPaused =
         focusedPanel && focusedPanel !== chit
@@ -174,16 +187,9 @@ export function MultiPanel({
               ? true
               : effectiveSelectedIndex !== index;
 
-      // Calculate the x offset based on sliding position
-      let xOffset = 0;
-      if (index !== effectiveSelectedIndex) {
-        // Off-screen panels are positioned 110% to the left or right
-        xOffset = index > effectiveSelectedIndex ? w * 1.1 : -w * 1.1;
-      }
-
       registerPosition(chitId, {
         chitId,
-        x: x + theme.spacing / 4 + xOffset,
+        x: x + theme.spacing / 4,
         y: y + theme.spacing / 4,
         w: w - theme.spacing / 2,
         h: h - TAB_HEIGHT - theme.spacing / 2,
@@ -191,7 +197,9 @@ export function MultiPanel({
         refContainer,
         panCallback,
         visible: true,
+        front: index === effectiveSelectedIndex,
         transition,
+        transitionDelay: index === effectiveSelectedIndex ? 0 : 125,
       });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

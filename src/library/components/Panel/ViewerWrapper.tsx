@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Stack } from "@mui/material";
 import { Chit } from "../../game/Chit";
 import Viewer from "../Viewer";
@@ -10,6 +10,7 @@ import { useChit } from "../../hooks/useChits";
 import { ZINDEX_PINCH_OUT, ZINDEX_SPARKS } from "../../utilities/zIndex";
 import { ZoomOutOutlined } from "@mui/icons-material";
 import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
+import { requestSharedAnimationFrame } from "../../utilities/RequestSharedAnimationFrame";
 
 export function ViewerWrapper({
   chit,
@@ -18,11 +19,13 @@ export function ViewerWrapper({
   x,
   y,
   paused,
+  front,
   panCallback,
   refContainer,
   focusedPanel,
   setFocusedPanel,
   transition,
+  transitionDelay = 0,
 }: {
   chit: Chit;
   w: number;
@@ -30,11 +33,13 @@ export function ViewerWrapper({
   x?: number;
   y?: number;
   paused: boolean;
+  front: boolean;
   panCallback?: (direction: "left" | "right") => void;
   refContainer: React.RefObject<HTMLElement> | null;
   focusedPanel?: Chit | undefined;
   setFocusedPanel: (chit: Chit | undefined) => void;
   transition?: string | null;
+  transitionDelay: number;
 }) {
   const chitInstance = useChit(chit.id ?? "nochit");
   const theme = useGameTheme();
@@ -43,6 +48,7 @@ export function ViewerWrapper({
   // it's likely trying to play "catchup" and will go very very fast
   const timeState = useTimeState();
   const [override] = useEventChannelState(timeState.animationSpeedOverrideMultiplier);
+  const [opacity, setOpacity] = useState(front ? 1 : 0);
 
   const sparks = chitInstance?.getSparks("panel") ?? [];
 
@@ -50,8 +56,24 @@ export function ViewerWrapper({
   const focusedPanelRef = useRef(focusedPanel);
   const setFocusedPanelRef = useRef(setFocusedPanel);
 
+  useEffect(() => {
+    const to = setTimeout(
+      () => {
+        if (front) {
+          setOpacity(1);
+        } else {
+          setOpacity(0);
+        }
+      },
+      front ? 0 : 250,
+    );
+    return () => {
+      clearTimeout(to);
+    };
+  }, [front]);
+
   // Update refs on each render
-  React.useEffect(() => {
+  useEffect(() => {
     focusedPanelRef.current = focusedPanel;
     setFocusedPanelRef.current = setFocusedPanel;
   }, [focusedPanel, setFocusedPanel]);
@@ -68,9 +90,13 @@ export function ViewerWrapper({
     [chit],
   );
 
-  if (focusedPanel !== chit) {
-    (chit.renderInstance as RootChitRenderInstance)?.cameraWrapper?.handleZoom(0, 0, -20, false);
-  }
+  useEffect(() => {
+    if (focusedPanel !== chit) {
+      (chit.renderInstance as RootChitRenderInstance)?.cameraWrapper?.handleZoom(0, 0, -20, false);
+    } else {
+      (chit.renderInstance as RootChitRenderInstance)?.cameraWrapper?.handleZoom(0, 0, 0.00001, false);
+    }
+  }, [focusedPanel, chit]);
 
   return (
     <Box
@@ -82,7 +108,9 @@ export function ViewerWrapper({
         top: y !== undefined ? `${y}px` : 0,
         width: `${w}px`,
         height: `${h}px`,
-        transition: transition || undefined,
+        transition: transition,
+        zIndex: front ? 1 : 0,
+        opacity,
       }}
     >
       <Stack direction={"row"} flexWrap={"wrap"} sx={{ position: "absolute", zIndex: ZINDEX_SPARKS }}>
@@ -118,6 +146,7 @@ export function ViewerWrapper({
       <Viewer
         refContainer={refContainer}
         paused={override ? false : paused}
+        hardPaused={override ? false : !front}
         chit={chit}
         w={Math.ceil(w)}
         h={Math.ceil(h)}

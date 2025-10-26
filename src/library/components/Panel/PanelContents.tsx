@@ -75,7 +75,14 @@ export function PanelContents({
   }, []);
 
   // Panel positioning system
-  const positionsRef = useRef<Map<string, ViewerPosition>>(new Map());
+  const positionsRef = useRef<Map<string, ViewerPosition>>(
+    new Map([
+      [
+        "root",
+        { chitId: "root", x: -40, y: 0, w: 30, h: 30, front: true, visible: true, paused: true, refContainer: null },
+      ],
+    ]),
+  );
   const [, forceUpdate] = useState({});
 
   const registerPosition = useCallback((chitId: string, position: ViewerPosition) => {
@@ -234,6 +241,10 @@ export function PanelContents({
   };
 
   const fullChitList = layout.flatMap((cell) => (Array.isArray(cell.chit) ? cell.chit : [cell.chit]));
+  const tabChitList = fullChitList.concat();
+  if (!hasRootChitInLayout) {
+    fullChitList.push(rootChit);
+  }
 
   return (
     <GestureContext.Provider value={gestureContextValue}>
@@ -266,6 +277,7 @@ export function PanelContents({
                     h={cell.h}
                     x={cell.x}
                     y={cell.y}
+                    isFocusedPanel={false}
                   />
                 );
               } else {
@@ -306,7 +318,7 @@ export function PanelContents({
                 enabled={focusedPanel !== undefined}
                 focusedPanel={focusedPanel}
                 setFocusedPanel={setFocusedPanel}
-                chits={fullChitList}
+                chits={tabChitList}
                 x={0}
                 y={0}
                 w={width}
@@ -326,6 +338,7 @@ export function PanelContents({
                   key={chitId}
                   focusedPanel={focusedPanel}
                   setFocusedPanel={setFocusedPanel}
+                  front={position.front}
                   chit={chit}
                   w={position.w}
                   h={position.h}
@@ -335,6 +348,7 @@ export function PanelContents({
                   refContainer={position.refContainer}
                   panCallback={position.panCallback}
                   transition={position.transition}
+                  transitionDelay={position.transitionDelay ?? 0}
                 />
               );
             })}

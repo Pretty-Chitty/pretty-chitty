@@ -8,9 +8,11 @@ export interface ViewerPosition {
   h: number;
   paused: boolean;
   refContainer: React.RefObject<HTMLElement> | null;
+  front: boolean;
   panCallback?: (direction: "left" | "right") => void;
   visible: boolean; // For MultiPanel sliding animations
   transition?: string | null; // CSS transition for animated position changes
+  transitionDelay?: number; // Delay before applying the transition
 }
 
 interface PanelPositioningContextValue {

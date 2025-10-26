@@ -18,6 +18,7 @@ let ID_COUNTER = 1;
 
 export default function Viewer({
   paused = false,
+  hardPaused = false,
   chit,
   wireframes,
   w = 0,
@@ -33,6 +34,7 @@ export default function Viewer({
   w: number;
   h: number;
   paddingTop?: number;
+  hardPaused?: boolean;
   paused?: boolean;
   panCallback?: (direction: "left" | "right") => void;
   zoomCallback?: (newZoom: number, oldZoom: number) => void;
@@ -137,6 +139,10 @@ export default function Viewer({
       return;
     }
 
+    if (hardPaused) {
+      return;
+    }
+
     // chitRenderInstance.sceneWrapper.markDirty();
 
     let renderNextFrame: boolean | undefined;
@@ -181,7 +187,7 @@ export default function Viewer({
       timeState.setAnimationState(id, false);
       cancelled = true;
     };
-  }, [id, timeState, rendererWrapper, chitRenderInstance, paused, actualRef, myRefContainer, theme]);
+  }, [id, timeState, hardPaused, rendererWrapper, chitRenderInstance, paused, actualRef, myRefContainer, theme]);
 
   useEffect(() => {
     if (chitRenderInstance) {
@@ -200,7 +206,7 @@ export default function Viewer({
 
   useEffect(() => {
     const el = myRefContainer.current as unknown as HTMLElement;
-    if (!el || !chitRenderInstance) {
+    if (!el || !chitRenderInstance || hardPaused) {
       return;
     }
 
@@ -260,7 +266,7 @@ export default function Viewer({
 
           if (panCallback) {
             const isMouse = ev.pointerType === "mouse";
-            const neededVelocity = chitRenderInstance.cameraZoom <= 1 ? 0.3 : isMouse ? 7.5 : 2.5;
+            const neededVelocity = chitRenderInstance.cameraZoom <= 1.1 ? 0.3 : isMouse ? 7.5 : 2.5;
             if (Math.abs(ev.velocityX) > neededVelocity && ev.distance > 20 && Math.abs(ev.velocityY) < 0.2) {
               const direction = ev.velocityX > 0 ? "left" : "right";
               panCallback(direction);
@@ -313,7 +319,17 @@ export default function Viewer({
     return () => {
       removeWheelListener(el, wheelListener);
     };
-  }, [id, myRefContainer, chitRenderInstance, modalState, panCallback, zoomCallback, gestureContext, enableGestures]);
+  }, [
+    id,
+    myRefContainer,
+    hardPaused,
+    chitRenderInstance,
+    modalState,
+    panCallback,
+    zoomCallback,
+    gestureContext,
+    enableGestures,
+  ]);
 
   return (
     <PersistentCanvas
