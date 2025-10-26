@@ -8,8 +8,7 @@ import { useEventChannelState } from "../../hooks/useEventChannelState";
 import PanelSpark from "../PanelSpark";
 import { useChit } from "../../hooks/useChits";
 import { ZINDEX_PINCH_OUT, ZINDEX_SPARKS } from "../../utilities/zIndex";
-import { PinchOutlined, ZoomOutOutlined } from "@mui/icons-material";
-import { ZoomOut, ZoomOutMapOutlined } from "@material-ui/icons";
+import { ZoomOutOutlined } from "@mui/icons-material";
 import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
 
 export function ViewerWrapper({
@@ -63,6 +62,10 @@ export function ViewerWrapper({
     [chit],
   );
 
+  if (focusedPanel !== chit) {
+    (chit.renderInstance as RootChitRenderInstance)?.cameraWrapper?.handleZoom(0, 0, -20, false);
+  }
+
   return (
     <>
       <Stack direction={"row"} flexWrap={"wrap"} sx={{ position: "absolute", zIndex: ZINDEX_SPARKS }}>
@@ -102,6 +105,7 @@ export function ViewerWrapper({
         h={Math.ceil(h)}
         panCallback={panCallback}
         zoomCallback={zoomCallback}
+        enableGestures={!focusedPanel || focusedPanel === chit}
       />
     </>
   );

@@ -155,7 +155,6 @@ export class IDBasedOutlinePass extends Pass {
         varying vec2 vUv;
         varying vec4 vProjectedCoord;
         varying vec3 vViewNormal;
-        varying vec3 vViewPosition;
 
         void main() {
           vUv = uv;
@@ -164,7 +163,6 @@ export class IDBasedOutlinePass extends Pass {
 
           // Pass view-space normal and position to fragment shader
           vViewNormal = normalize(normalMatrix * normal);
-          vViewPosition = mvPosition.xyz;
 
           // Apply pixel offset in screen space
           vec2 pixelSize = 2.0 / resolution; // Size of one pixel in NDC
@@ -190,29 +188,11 @@ export class IDBasedOutlinePass extends Pass {
         varying vec2 vUv;
         varying vec4 vProjectedCoord;
         varying vec3 vViewNormal;
-        varying vec3 vViewPosition;
 
         void main() {
           // Handle backface culling
           if (!gl_FrontFacing) {
             discard; // Only render front faces
-          }
-
-          // Calculate actual view direction from fragment to camera (in view space, camera is at origin)
-          // This properly accounts for perspective - fragments far from center have different view vectors
-          vec3 viewDir = normalize(-vViewPosition);
-
-          // Calculate how much the face points toward the camera from this fragment's perspective
-          float facingRatio = abs(dot(vViewNormal, viewDir));
-
-          // For faces nearly perpendicular to view, move them closer to camera by adjusting depth
-          // This prevents z-fighting and ensures edge-on faces render properly
-          if (facingRatio < 0.1) {
-            // Move fragment 1% closer to camera in depth
-            gl_FragDepth = gl_FragCoord.z * (1.0 - (mix(0.0, 0.1, facingRatio) * 0.01));
-          } else {
-            // Keep original depth
-            gl_FragDepth = gl_FragCoord.z;
           }
 
           // Handle alpha testing for transparent materials

@@ -1,4 +1,3 @@
-import Color from "color";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Stack } from "@mui/material";
 import { useDebounce } from "@react-hook/debounce";
@@ -10,53 +9,12 @@ import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
 import { useEventChannelState } from "../../hooks/useEventChannelState";
 import { ViewerWrapper } from "./ViewerWrapper";
 import { panelTransition } from "./util";
-import { UpdatingCanvasImage } from "../UpdatingCanvasImage";
-import { ZINDEX_PANEL_CUTOUTS } from "../../utilities/zIndex";
+import { PanelTabStack, TAB_HEIGHT } from "./PanelTabStack";
+import { ZINDEX_PINCH_OUT_FOCUSED } from "../../utilities/zIndex";
 
-const TAB_HEIGHT = 20;
 const ANIMATION_DURATION = 0.125;
-const TAB_WIDTH = TAB_HEIGHT * 2;
 
 const PANEL_ADJUST_IGNORE_DURATION = 5000;
-
-function PanelTab({ chit, onClick, selected }: { selected?: boolean; chit: Chit; onClick: () => void }) {
-  // eslint-disable-next-line prefer-const
-  let { color, icon } = chit.panelTab ?? {};
-  if (!color) {
-    color = "#ffffff";
-  }
-  const lightness = Color(color).lightness();
-
-  const outlineColor = Color(color)
-    .lightness(lightness < 35 ? lightness + 10 : 20)
-    .hex();
-
-  return (
-    <Box
-      onMouseDown={onClick}
-      sx={{ pt: 1, pb: 1, mt: -1, mb: -1, position: "relative", zIndex: ZINDEX_PANEL_CUTOUTS }}
-    >
-      <Box
-        sx={{
-          opacity: selected ? 1 : 0.75,
-          transition: "opacity linear 0.25s",
-          background: color,
-          border: `2px solid ${outlineColor}`,
-          borderTop: "none",
-          overflow: "hidden",
-          cursor: "pointer",
-          height: TAB_HEIGHT,
-          textAlign: "center",
-          width: TAB_WIDTH,
-          borderBottomLeftRadius: TAB_HEIGHT / 4,
-          borderBottomRightRadius: TAB_HEIGHT / 4,
-        }}
-      >
-        {icon && <UpdatingCanvasImage image={icon} style={{ height: TAB_HEIGHT - 2, width: TAB_HEIGHT - 2 }} />}
-      </Box>
-    </Box>
-  );
-}
 
 export function MultiPanel({
   chits,
@@ -183,14 +141,17 @@ export function MultiPanel({
 
   let effectiveTabHeight = TAB_HEIGHT;
   let zIndex: string | number = "auto";
-  if (chits.find((chit) => focusedPanel === chit)) {
+  if (focusedPanel) {
     w = totalWidth;
-    h = totalHeight;
+    h = totalHeight - TAB_HEIGHT;
     x = 0;
     y = 0;
-    effectiveSelectedIndex = chits.findIndex((chit) => focusedPanel === chit);
-    effectiveTabHeight = 0;
-    zIndex = 1000;
+
+    if (chits.find((chit) => focusedPanel === chit)) {
+      effectiveSelectedIndex = chits.findIndex((chit) => focusedPanel === chit);
+      effectiveTabHeight = 0;
+      zIndex = ZINDEX_PINCH_OUT_FOCUSED;
+    }
   }
 
   return (
@@ -229,7 +190,15 @@ export function MultiPanel({
           >
             <ViewerWrapper
               refContainer={refContainer}
-              paused={isLoading || ignoringChanges ? false : isSliding ? true : effectiveSelectedIndex !== index}
+              paused={
+                focusedPanel && focusedPanel !== chit
+                  ? true
+                  : isLoading || ignoringChanges
+                    ? false
+                    : isSliding
+                      ? true
+                      : effectiveSelectedIndex !== index
+              }
               chit={chit}
               w={w - theme.spacing / 2}
               h={h - effectiveTabHeight - theme.spacing / 2}
@@ -242,31 +211,11 @@ export function MultiPanel({
       </Box>
 
       {!focusedPanel && (
-        <Stack direction="row" sx={{ height: TAB_HEIGHT }}>
-          <Box flex={1} />
-          <Stack direction="row" sx={{ position: "relative", width: TAB_WIDTH * chits.length }}>
-            {chits.map((chit, index) => (
-              <PanelTab
-                key={chit.id}
-                chit={chit}
-                onClick={() => manuallyChangeSelectedIndex(index)}
-                selected={index === effectiveSelectedIndex}
-              />
-            ))}
-            <Box
-              sx={{
-                height: "2px",
-                width: TAB_WIDTH * 0.75,
-                transition: `left ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
-                background: theme.panelSelectionCutoutSelected,
-                position: "absolute",
-                bottom: -2,
-                left: effectiveSelectedIndex * TAB_WIDTH + TAB_WIDTH * 0.125,
-              }}
-            />
-          </Stack>
-          <Box flex={1} />
-        </Stack>
+        <PanelTabStack
+          chits={chits}
+          selectedIndex={effectiveSelectedIndex}
+          onSelectedIndexChange={manuallyChangeSelectedIndex}
+        />
       )}
     </Stack>
   );

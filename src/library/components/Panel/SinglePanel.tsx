@@ -5,6 +5,8 @@ import { useGameTheme } from "../../hooks/useGameTheme";
 import { ViewerWrapper } from "./ViewerWrapper";
 import { panelTransition } from "./util";
 import { useAnimationSpeedMultiplier } from "../../hooks/useTimeController";
+import { TAB_HEIGHT } from "./PanelTabStack";
+import { ZINDEX_PINCH_OUT_FOCUSED } from "../../utilities/zIndex";
 
 export function SinglePanel({
   chit,
@@ -32,11 +34,15 @@ export function SinglePanel({
   const theme = useGameTheme();
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
 
-  if (focusedPanel === chit) {
+  if (focusedPanel) {
     w = totalWidth;
-    h = totalHeight;
+    h = totalHeight - TAB_HEIGHT;
     x = 0;
     y = 0;
+
+    if (focusedPanel !== chit) {
+      paused = true;
+    }
   }
 
   return (
@@ -50,7 +56,8 @@ export function SinglePanel({
         position: "absolute",
         p: `${theme.spacing / 4}px`,
         transition: focusedPanel ? panelTransition(theme, animationSpeedMultiplier) : null,
-        zIndex: focusedPanel === chit ? 1000 : "auto",
+        zIndex: focusedPanel === chit ? ZINDEX_PINCH_OUT_FOCUSED : "auto",
+        opacity: !focusedPanel || focusedPanel === chit ? 1 : 0,
       }}
     >
       <Box sx={{ width: "100%", height: "100%", position: "relative", borderRadius: "10px", overflow: "hidden" }}>
