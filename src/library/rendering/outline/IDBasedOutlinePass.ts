@@ -17,17 +17,9 @@ import {
 } from "three";
 import { Pass } from "./types";
 
-// Utility to ensure correct WebGL state for rendering
-function ensureCorrectRenderState(renderer: WebGLRenderer) {
-  const context = renderer.getContext();
-
-  // Always ensure correct depth testing state
-  context.enable(context.DEPTH_TEST);
-  context.depthFunc(context.LESS);
-  context.depthMask(true);
-}
 import { InterMeshEdgeDetectionPass } from "./passes/InterMeshEdgeDetectionPass";
 import { DebugIDMappingPass } from "./passes/DebugIDMappingPass";
+import { DepthOcclusionPass } from "./passes/DepthOcclusionPass";
 import { FullScreenQuad } from "./FullScreenQuad";
 import { CopyShader } from "./shaders";
 import { SceneWrapper } from "./SceneWrapper";
@@ -37,7 +29,7 @@ export class IDBasedOutlinePass extends Pass {
   edgeThickness = 2;
   edgeStrength = 3.0;
   forceVisibleOutlines = false; // Debug: force outlines to be visible
-  debugMode = false;
+  debugMode = true;
 
   // Constants
   private static readonly INSTANCE_COUNTER = 0;
@@ -54,16 +46,16 @@ export class IDBasedOutlinePass extends Pass {
 
   // Render targets
   private renderTargetIDBuffer!: WebGLRenderTarget;
+  private renderTargetIDBufferFiltered!: WebGLRenderTarget; // Filtered ID buffer after depth occlusion
   private renderTargetTempBuffer!: WebGLRenderTarget; // Dedicated temp buffer to avoid sharing conflicts
   private renderTargetEdgeBuffer1!: WebGLRenderTarget;
+  private renderTargetEdgeBuffer2!: WebGLRenderTarget; // For depth occlusion pass output
 
   // ID rendering components
   private sharedIDMaterial!: ShaderMaterial; // Single shared material
   private idBasedEdgeDetectionPass!: InterMeshEdgeDetectionPass;
   private debugIDMappingPass!: DebugIDMappingPass;
-
-  // Scene depth texture (set externally)
-  sceneDepthTexture: any = null;
+  private depthOcclusionPass!: DepthOcclusionPass;
 
   constructor(
     resolution: Vector2,
@@ -113,6 +105,11 @@ export class IDBasedOutlinePass extends Pass {
     this.renderTargetIDBuffer.depthTexture = new DepthTexture(resx, resy);
     this.renderTargetIDBuffer.depthTexture.type = UnsignedShortType;
 
+    // Create filtered ID buffer (same resolution as ID buffer, for after occlusion filtering)
+    this.renderTargetIDBufferFiltered = new WebGLRenderTarget(resx, resy, pars);
+    this.renderTargetIDBufferFiltered.texture.name = "IDBasedOutline.idBufferFiltered";
+    this.renderTargetIDBufferFiltered.texture.generateMipmaps = false;
+
     // Create dedicated temp buffer to avoid cross-contamination
     this.renderTargetTempBuffer = new WebGLRenderTarget(
       this.resolution.x * this.pixelRatio,
@@ -128,30 +125,23 @@ export class IDBasedOutlinePass extends Pass {
     // Create debug ID mapping pass
     this.debugIDMappingPass = new DebugIDMappingPass();
 
+    // Create depth occlusion pass
+    this.depthOcclusionPass = new DepthOcclusionPass();
+
     // Create single shared ID material
     this.createSharedIDMaterial();
   }
 
   private createSharedIDMaterial(): void {
-    // Use downsampled resolution for ID material since ID buffer is downsampled
-    const resx = Math.round(this.resolution.x / this.downSampleRatio);
-    const resy = Math.round(this.resolution.y / this.downSampleRatio);
-
     this.sharedIDMaterial = new ShaderMaterial({
       uniforms: {
         outlineIdColor: { value: new Color(1, 1, 1) }, // Will be updated per mesh (encoded outlineId)
-        sceneDepthTexture: { value: null }, // Will be set before rendering
-        useDepthTest: { value: false }, // Will be updated before rendering
-        resolution: { value: new Vector2(resx, resy) },
-        pixelOffset: { value: new Vector2(0.0, 0.0) }, // For multiple pass rendering
         originalMap: { value: null }, // Original diffuse texture for alpha testing
         originalOpacity: { value: 1.0 }, // Original material opacity
         alphaTest: { value: 0.0 }, // Alpha test threshold
         hasOriginalMap: { value: false }, // Whether original material has a map
       },
       vertexShader: `
-        uniform vec2 pixelOffset;
-        uniform vec2 resolution;
         varying vec2 vUv;
         varying vec4 vProjectedCoord;
         varying vec3 vViewNormal;
@@ -164,18 +154,11 @@ export class IDBasedOutlinePass extends Pass {
           // Pass view-space normal and position to fragment shader
           vViewNormal = normalize(normalMatrix * normal);
 
-          // Apply pixel offset in screen space
-          vec2 pixelSize = 2.0 / resolution; // Size of one pixel in NDC
-          vec2 offset = pixelOffset * pixelSize;
-
-          gl_Position = vProjectedCoord + vec4(offset, 0.0, 0.0);
+          gl_Position = vProjectedCoord;
         }
       `,
       fragmentShader: `
         uniform vec3 outlineIdColor;
-        uniform sampler2D sceneDepthTexture;
-        uniform bool useDepthTest;
-        uniform vec2 resolution;
         uniform sampler2D originalMap;
         uniform float originalOpacity;
         uniform float alphaTest;
@@ -201,37 +184,10 @@ export class IDBasedOutlinePass extends Pass {
             discard; // Respect original material's transparency (lower threshold for mipmaps)
           }
 
-          if (useDepthTest) {
-            // Convert screen space position to UV coordinates
-            vec2 screenUV = (vProjectedCoord.xy / vProjectedCoord.w) * 0.5 + 0.5;
-
-            // Sample the main scene depth at this pixel
-            float sceneDepth = texture2D(sceneDepthTexture, screenUV).r;
-
-            // Current fragment depth in screen space
-            float currentDepth = (gl_FragCoord.z);
-
-            // Only draw if depths approximately match (mesh is visible in main scene)
-            // Use adaptive tolerance: more tolerance for near objects, less for far objects
-            float nearTolerance = 0.007;   // Loose tolerance for close objects (depth ≈ 0)
-            float farTolerance = 0.003;  // Tight tolerance for far objects (depth ≈ 1)
-
-            // Interpolate tolerance based on current depth
-            // Near camera (depth ≈ 0): use nearTolerance
-            // Far from camera (depth ≈ 1): use farTolerance
-            float tolerance = mix(nearTolerance, farTolerance, currentDepth);
-
-            float low = currentDepth - tolerance;
-            float high = currentDepth + tolerance;
-            if (sceneDepth < low || sceneDepth > high) {
-              discard;
-            }
-          }
-
           // Write the encoded outlineId to the buffer
           gl_FragColor = vec4(outlineIdColor, 1.0);
 
-          
+
         }
       `,
       side: FrontSide, // Default to front side, will be overridden per material
@@ -248,9 +204,6 @@ export class IDBasedOutlinePass extends Pass {
     maskActive: boolean,
   ): void {
     const renderStart = performance.now();
-
-    // Set the depth texture from the read buffer (output of previous render pass)
-    this.setSceneDepthTexture(readBuffer.depthTexture);
 
     if (this._lastSceneWrapper !== this.sceneWrapper) {
       // Mark materials dirty when scene wrapper changes
@@ -296,8 +249,16 @@ export class IDBasedOutlinePass extends Pass {
     this.renderIDBuffer(renderer);
     const idBufferTime = performance.now() - idBufferStart;
 
+    const occlusionStart = performance.now();
+    // Step 2: Apply depth occlusion to filter ID buffer before edge detection
+    this.depthOcclusionPass.setInputTexture(this.renderTargetIDBuffer.texture);
+    this.depthOcclusionPass.setIDDepthTexture(this.renderTargetIDBuffer.depthTexture);
+    this.depthOcclusionPass.setSceneDepthTexture(readBuffer.depthTexture);
+    this.depthOcclusionPass.render(renderer, this.renderTargetIDBufferFiltered);
+    const occlusionTime = performance.now() - occlusionStart;
+
     const edgeDetectStart = performance.now();
-    // Step 2: Use ID-based edge detection instead of the original method
+    // Step 3: Use ID-based edge detection on the filtered ID buffer
     this.performIDBasedEdgeDetection(renderer);
     const edgeDetectTime = performance.now() - edgeDetectStart;
 
@@ -310,7 +271,7 @@ export class IDBasedOutlinePass extends Pass {
     renderer.clear(); // Clear temp buffer first
     this.fsQuad.render(renderer);
 
-    // Use edge buffer directly - blur is causing issues
+    // Use edge buffer from edge detection pass
     const edgeTexture = this.renderTargetEdgeBuffer1.texture;
 
     // Then composite temp + edges to final buffer (writeBuffer, not readBuffer!)
@@ -357,6 +318,7 @@ export class IDBasedOutlinePass extends Pass {
   SceneWrapper Update: ${updateTime.toFixed(2)}ms
   ID Buffer Render: ${idBufferTime.toFixed(2)}ms
   Edge Detection: ${edgeDetectTime.toFixed(2)}ms
+  Depth Occlusion: ${occlusionTime.toFixed(2)}ms
   Compositing: ${compositingTime.toFixed(2)}ms`);
     }
   }
@@ -374,29 +336,16 @@ export class IDBasedOutlinePass extends Pass {
     // Use linear filtering for smooth edge output
     this.renderTargetEdgeBuffer1.texture.minFilter = LinearFilter;
     this.renderTargetEdgeBuffer1.texture.magFilter = LinearFilter;
-  }
 
-  setSceneDepthTexture(depthTexture: any): void {
-    // Only update if the depth texture actually changed
-    if (this.sceneDepthTexture === depthTexture) {
-      return;
-    }
-
-    this.sceneDepthTexture = depthTexture;
-
-    // Mark materials as dirty in the scene wrapper - it will handle the update
-    if (this.sceneWrapper) {
-      this.sceneWrapper.markMaterialsDirty();
-    }
-  }
-
-  // DEPRECATED: This method is no longer needed. Material updates are now handled
-  // by SceneWrapper.updateMaterials() in a consolidated way.
-  fixDepthTextureReferences(): void {
-    // Legacy method - now handled by SceneWrapper.updateMaterials()
-    if (this.sceneWrapper) {
-      this.sceneWrapper.markMaterialsDirty();
-    }
+    this.renderTargetEdgeBuffer2 = new WebGLRenderTarget(
+      this.resolution.x * this.pixelRatio,
+      this.resolution.y * this.pixelRatio,
+      pars,
+    );
+    this.renderTargetEdgeBuffer2.texture.name = "OutlinePass.edge2";
+    this.renderTargetEdgeBuffer2.texture.generateMipmaps = false;
+    this.renderTargetEdgeBuffer2.texture.minFilter = LinearFilter;
+    this.renderTargetEdgeBuffer2.texture.magFilter = LinearFilter;
   }
 
   private renderIDBuffer(renderer: WebGLRenderer): void {
@@ -420,39 +369,9 @@ export class IDBasedOutlinePass extends Pass {
     // Restore original clear color immediately after clearing ID buffer
     renderer.setClearColor(this.savedState.clearColor, this.savedState.clearAlpha);
 
-    // First pass: Normal rendering (no offset)
-    // this.updateSharedMaterialUniforms(-2.5, -2.5);
-    ensureCorrectRenderState(renderer);
     renderer.render(this.sceneWrapper.outlineShadowScene, this.camera);
 
-    // Second pass: 1-pixel right shift (additive to same buffer)
-    // renderer.autoClear = false; // Don't clear between passes
-    // this.updateSharedMaterialUniforms(2.5, 2.5);
-    // ensureCorrectRenderState(renderer);
-    // renderer.render(this.sceneWrapper.outlineShadowScene, this.camera);
-
-    // Re-enable antialiasing if it was enabled
-    // if (wasAntialiasingEnabled) {
-    //   gl.enable(gl.SAMPLE_COVERAGE);
-    //   gl.enable(gl.SAMPLE_ALPHA_TO_COVERAGE);
-    // }
-
     renderer.autoClear = oldAutoClear;
-  }
-
-  private updateSharedMaterialUniforms(offsetX: number, offsetY: number): void {
-    const fixMat = (mat: Material) =>
-      (mat as any).uniforms && (mat as any).uniforms["pixelOffset"].value.set(offsetX, offsetY);
-    // Update all cloned materials with the new pixel offset
-    this.sceneWrapper.outlineShadowScene.traverse((object: any) => {
-      if (object.isMesh) {
-        if (Array.isArray(object.material)) {
-          object.material.map(fixMat);
-        } else {
-          fixMat(object.material);
-        }
-      }
-    });
   }
 
   // Method called by SceneWrapper to prepare shadow meshes with ID materials
@@ -489,14 +408,6 @@ export class IDBasedOutlinePass extends Pass {
         this.clonedMaterials.add(meshMaterial); // Track for disposal
 
         meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
-
-        // Set static uniforms that don't change per frame (use downsampled resolution)
-        const resx = Math.round(this.resolution.x / this.downSampleRatio);
-        const resy = Math.round(this.resolution.y / this.downSampleRatio);
-        meshMaterial.uniforms["resolution"].value.set(resx, resy);
-
-        // Note: sceneDepthTexture and useDepthTest are now set by SceneWrapper.updateMaterials()
-        // This avoids redundant updates and ensures consistency
         meshMaterial.needsUpdate = true;
 
         this.copyMaterialProperties(meshMaterial, originalMaterial);
@@ -510,14 +421,6 @@ export class IDBasedOutlinePass extends Pass {
       this.clonedMaterials.add(meshMaterial); // Track for disposal
 
       meshMaterial.uniforms["outlineIdColor"].value = new Color(r, g, b);
-
-      // Set static uniforms that don't change per frame (use downsampled resolution)
-      const resx = Math.round(this.resolution.x / this.downSampleRatio);
-      const resy = Math.round(this.resolution.y / this.downSampleRatio);
-      meshMaterial.uniforms["resolution"].value.set(resx, resy);
-
-      // Note: sceneDepthTexture and useDepthTest are now set by SceneWrapper.updateMaterials()
-      // This avoids redundant updates and ensures consistency
       meshMaterial.needsUpdate = true;
 
       this.copyMaterialProperties(meshMaterial, originalMesh.material);
@@ -604,17 +507,16 @@ export class IDBasedOutlinePass extends Pass {
     });
 
     if (this.debugMode) {
-      this.debugIDMappingPass.setIDTexture(this.renderTargetIDBuffer.texture);
+      this.debugIDMappingPass.setIDTexture(this.renderTargetIDBufferFiltered.texture);
       this.debugIDMappingPass.setOutliningMeshes(outliningMeshes);
       this.debugIDMappingPass.setTextureSize(this.resolution.x * this.pixelRatio, this.resolution.y * this.pixelRatio);
       this.debugIDMappingPass.render(renderer, this.renderTargetEdgeBuffer1);
     } else {
-      // Use normal edge detection pass
-      this.idBasedEdgeDetectionPass.setIDTexture(this.renderTargetIDBuffer.texture);
+      // Use normal edge detection pass on the filtered ID buffer
+      this.idBasedEdgeDetectionPass.setIDTexture(this.renderTargetIDBufferFiltered.texture);
       this.idBasedEdgeDetectionPass.setIDDepthTexture(this.renderTargetIDBuffer.depthTexture);
-      this.idBasedEdgeDetectionPass.setSceneDepthTexture(this.sceneDepthTexture);
       this.idBasedEdgeDetectionPass.setOutliningMeshes(outliningMeshes);
-      // Edge detection renders at full resolution but samples from downsampled ID buffer
+      // Edge detection renders at full resolution but samples from filtered ID buffer
       const resx = Math.round(this.resolution.x / this.downSampleRatio);
       const resy = Math.round(this.resolution.y / this.downSampleRatio);
       this.idBasedEdgeDetectionPass.setTextureSize(resx, resy); // ID buffer size for sampling
@@ -684,8 +586,11 @@ export class IDBasedOutlinePass extends Pass {
     }
 
     this.renderTargetIDBuffer.dispose();
+    this.renderTargetIDBufferFiltered.dispose();
     this.renderTargetTempBuffer.dispose();
     this.renderTargetEdgeBuffer1.dispose();
+    this.renderTargetEdgeBuffer2.dispose();
     this.idBasedEdgeDetectionPass.dispose();
+    this.depthOcclusionPass.dispose();
   }
 }

@@ -2,14 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Stack } from "@mui/material";
 import { Chit } from "../../game/Chit";
 import Viewer from "../Viewer";
-import { useGameTheme } from "../../hooks/useGameTheme";
 import { useTimeState } from "../../hooks/useTimeController";
 import { useEventChannelState } from "../../hooks/useEventChannelState";
 import PanelSpark from "../PanelSpark";
 import { useChit } from "../../hooks/useChits";
-import { ZINDEX_PINCH_OUT, ZINDEX_SPARKS } from "../../utilities/zIndex";
-import { ZoomInMap, ZoomOutOutlined } from "@mui/icons-material";
+import { ZINDEX_SPARKS } from "../../utilities/zIndex";
 import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
+import { ViewerZoomControls } from "./ViewerZoomControls";
 
 export function ViewerWrapper({
   chit,
@@ -39,7 +38,6 @@ export function ViewerWrapper({
   transition?: string | null;
 }) {
   const chitInstance = useChit(chit.id ?? "nochit");
-  const theme = useGameTheme();
 
   // if time is overridden, we don't want to pause ourselves (ever)
   // it's likely trying to play "catchup" and will go very very fast
@@ -117,29 +115,21 @@ export function ViewerWrapper({
       </Stack>
 
       {focusedPanel === chit && (
-        <Box
-          sx={{
-            cursor: "pointer",
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            backgroundColor: theme.barColor,
-            color: theme.barTextColor,
-            p: `${theme.spacing / 2}px`,
-            zIndex: ZINDEX_PINCH_OUT,
-            borderTopRightRadius: "6px",
-            height: `${theme.spacing * 4}px`,
-          }}
-          onClick={() => {
+        <ViewerZoomControls
+          onZoomOut={() => {
             setFocusedPanel(undefined);
             (chit.renderInstance as RootChitRenderInstance)?.handleZoom(0, 0, -20, false);
             setTimeout(() => {
               (chit.renderInstance as RootChitRenderInstance)?.handleZoom(0, 0, 0, false);
             }, 100);
           }}
-        >
-          <ZoomInMap sx={{ width: `${theme.spacing * 2}px` }} />
-        </Box>
+          onZoomIn={() => {
+            (chit.renderInstance as RootChitRenderInstance)?.handleZoom(w / 2, h / 2, 20, true);
+          }}
+          onZoomChange={(delta) => {
+            (chit.renderInstance as RootChitRenderInstance)?.handleZoom(w / 2, h / 2, delta, false);
+          }}
+        />
       )}
       <Viewer
         refContainer={refContainer}

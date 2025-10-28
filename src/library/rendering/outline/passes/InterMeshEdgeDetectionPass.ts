@@ -28,7 +28,6 @@ export class InterMeshEdgeDetectionPass extends Pass {
   backgroundThreshold = 0.01; // RGB threshold to consider a pixel as background
 
   private selectedIDs = new Set<number>();
-  private sceneDepthTexture: any = null;
   private lookupTexture: DataTexture;
 
   clear = true;
@@ -69,11 +68,6 @@ export class InterMeshEdgeDetectionPass extends Pass {
     this.edgeDetectionMaterial.uniforms["strength"].value = strength;
   }
 
-  setSceneDepthTexture(depthTexture: any): void {
-    this.sceneDepthTexture = depthTexture;
-    this.edgeDetectionMaterial.uniforms["sceneDepthTexture"].value = depthTexture;
-    this.edgeDetectionMaterial.uniforms["useDepthTest"].value = depthTexture !== null;
-  }
 
   setOutliningMeshes(outliningMeshes: Array<{ id: number; color: Color }>): void {
     this.selectedIDs.clear();
@@ -116,8 +110,6 @@ export class InterMeshEdgeDetectionPass extends Pass {
       uniforms: {
         idTexture: { value: null },
         idDepthTexture: { value: null },
-        sceneDepthTexture: { value: null },
-        useDepthTest: { value: false },
         texSize: { value: new Vector2(0.5, 0.5) },
         backgroundThreshold: { value: 0.01 },
         lookupTexture: { value: this.lookupTexture },
@@ -132,8 +124,6 @@ export class InterMeshEdgeDetectionPass extends Pass {
       fragmentShader: `
         uniform sampler2D idTexture;
         uniform sampler2D idDepthTexture;
-        uniform sampler2D sceneDepthTexture;
-        uniform bool useDepthTest;
         uniform vec2 texSize;
         uniform float backgroundThreshold;
         uniform sampler2D lookupTexture;
@@ -158,18 +148,6 @@ export class InterMeshEdgeDetectionPass extends Pass {
             return vec4(0.0, 0.0, 0.0, 0.0); // Background
           }
           return texture2D(tex, uv);
-        }
-
-        // Check if a pixel is visible by comparing scene depth vs ID depth
-        bool isPixelVisible(vec2 uv) {
-          if (!useDepthTest) return true;
-          if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return false;
-
-          float sceneDepth = texture2D(sceneDepthTexture, uv).r;
-          float idDepth = texture2D(idDepthTexture, uv).r;
-          float depthTolerance = 0.005;
-
-          return idDepth < sceneDepth + depthTolerance;
         }
 
         // Decode ID from RGB and lookup outline color in texture
@@ -213,12 +191,6 @@ export class InterMeshEdgeDetectionPass extends Pass {
             return;
           }
 
-          // Additional depth test - only draw outlines for visible pixels
-          if (!isPixelVisible(vUv)) {
-            gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
-            return;
-          }
-
           // Check neighbors to see if we're near an edge
           float edgeDistance = 1000.0; // Very far away initially
 
@@ -231,13 +203,9 @@ export class InterMeshEdgeDetectionPass extends Pass {
               vec2 sampleUv2 = vUv + vec2(x*2.0, y*2.0) * lowResInvSize;
               vec4 neighbor2 = texture2D(idTexture, sampleUv2);
 
-
-              // Edge detection: neighbor is different if colors don't match OR if neighbor is not visible
-              // (visibility transition should create an edge even with matching colors)
-              bool neighborVisible = isPixelVisible(sampleUv);
-              bool neighborVisible2 = isPixelVisible(sampleUv2);
-              if (((!colorsMatch(center.rgb, neighbor.rgb) || !neighborVisible) && 
-                ((!colorsMatch(center.rgb, neighbor2.rgb) || !neighborVisible2)))) {
+              // Edge detection: neighbor is different if colors don't match
+              if ((!colorsMatch(center.rgb, neighbor.rgb) &&
+                (!colorsMatch(center.rgb, neighbor2.rgb)))) {
                 float dist = length(vec2(x, y));
                 edgeDistance = min(edgeDistance, dist);
               }
