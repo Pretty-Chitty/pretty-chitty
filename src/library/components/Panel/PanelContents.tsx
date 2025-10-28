@@ -348,7 +348,6 @@ export function PanelContents({
                   refContainer={position.refContainer}
                   panCallback={position.panCallback}
                   transition={position.transition}
-                  transitionDelay={position.transitionDelay ?? 0}
                 />
               );
             })}

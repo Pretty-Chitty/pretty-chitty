@@ -140,6 +140,7 @@ export default function Viewer({
     }
 
     if (hardPaused) {
+      chitRenderInstance?.update(true);
       return;
     }
 

@@ -32,7 +32,7 @@ class WebGLRendererWrapper {
   private maxComposers = 8;
 
   constructor() {
-    this.renderer = new WebGLRenderer({ alpha: true, antialias: false });
+    this.renderer = new WebGLRenderer({ alpha: true, antialias: true });
 
     // Check if WebGL context is available
     if (!this.renderer.getContext()) {

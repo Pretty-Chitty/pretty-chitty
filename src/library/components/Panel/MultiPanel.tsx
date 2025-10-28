@@ -199,7 +199,6 @@ export function MultiPanel({
         visible: true,
         front: index === effectiveSelectedIndex,
         transition,
-        transitionDelay: index === effectiveSelectedIndex ? 0 : 125,
       });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -32,6 +32,7 @@ import * as CanvasLibrary from "./CanvasLibrary";
 import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
 import { cityscape } from "./assets/network_overload";
+import { Bookshelf, ShelfRow, ShelfSpace } from "./Bookshelft";
 
 const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
@@ -55,12 +56,15 @@ export class DemoGame implements Game<MyPlayer, Root> {
     Table,
     Bag,
     SideBoards,
+    ShelfRow,
+    ShelfSpace,
     Root,
     Deck,
     MyPlayer,
     PlayerAid,
     CounterChit,
     BagChit,
+    Bookshelf,
     Row,
     Hand,
   };
@@ -91,6 +95,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     // );
 
     const b = new Bag();
+    rootChit.shelf.setup();
     rootChit.mainBoard.add(b);
 
     const pieces = [...new Array(W * H)].map((d, i) =>

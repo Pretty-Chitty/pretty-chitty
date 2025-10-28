@@ -223,13 +223,13 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     return n - this._totalPauseDuration - (this._isPaused ? n - this._pausedAt : 0);
   }
 
-  public update() {
+  public update(background = false) {
     if (this._isPaused) {
       return false;
     }
     if (this._tweenGroup) {
       const hasChange = this._tweenGroup.update(this.now);
-      if (!hasChange && (this._hasPendingChanges || this._hasChitsEntering || this._hasChitsLeaving)) {
+      if (!background && !hasChange && (this._hasPendingChanges || this._hasChitsEntering || this._hasChitsLeaving)) {
         this._hasPendingChanges = false;
         this._hasChitsEntering = false;
         this._hasChitsLeaving = false;

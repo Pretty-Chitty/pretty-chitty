@@ -12,7 +12,6 @@ export interface ViewerPosition {
   panCallback?: (direction: "left" | "right") => void;
   visible: boolean; // For MultiPanel sliding animations
   transition?: string | null; // CSS transition for animated position changes
-  transitionDelay?: number; // Delay before applying the transition
 }
 
 interface PanelPositioningContextValue {

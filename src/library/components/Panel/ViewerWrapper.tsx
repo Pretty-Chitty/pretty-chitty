@@ -8,9 +8,8 @@ import { useEventChannelState } from "../../hooks/useEventChannelState";
 import PanelSpark from "../PanelSpark";
 import { useChit } from "../../hooks/useChits";
 import { ZINDEX_PINCH_OUT, ZINDEX_SPARKS } from "../../utilities/zIndex";
-import { ZoomOutOutlined } from "@mui/icons-material";
+import { ZoomInMap, ZoomOutOutlined } from "@mui/icons-material";
 import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
-import { requestSharedAnimationFrame } from "../../utilities/RequestSharedAnimationFrame";
 
 export function ViewerWrapper({
   chit,
@@ -25,7 +24,6 @@ export function ViewerWrapper({
   focusedPanel,
   setFocusedPanel,
   transition,
-  transitionDelay = 0,
 }: {
   chit: Chit;
   w: number;
@@ -39,7 +37,6 @@ export function ViewerWrapper({
   focusedPanel?: Chit | undefined;
   setFocusedPanel: (chit: Chit | undefined) => void;
   transition?: string | null;
-  transitionDelay: number;
 }) {
   const chitInstance = useChit(chit.id ?? "nochit");
   const theme = useGameTheme();
@@ -122,14 +119,15 @@ export function ViewerWrapper({
       {focusedPanel === chit && (
         <Box
           sx={{
+            cursor: "pointer",
             position: "absolute",
             bottom: 0,
-            right: 0,
+            left: 0,
             backgroundColor: theme.barColor,
             color: theme.barTextColor,
             p: `${theme.spacing / 2}px`,
             zIndex: ZINDEX_PINCH_OUT,
-            borderTopLeftRadius: "6px",
+            borderTopRightRadius: "6px",
             height: `${theme.spacing * 4}px`,
           }}
           onClick={() => {
@@ -140,7 +138,7 @@ export function ViewerWrapper({
             }, 100);
           }}
         >
-          <ZoomOutOutlined sx={{ width: `${theme.spacing * 2}px` }} />
+          <ZoomInMap sx={{ width: `${theme.spacing * 2}px` }} />
         </Box>
       )}
       <Viewer

@@ -40,6 +40,7 @@ import { tunnel, walk } from "./assets/icons";
 
 import city_profile from "./city_profile.svg";
 import { IconCanvas } from "../library/utilities/CanvasStack/IconCanvas";
+import { Bookshelf } from "./Bookshelft";
 
 export * from "../library/utilities/BaseTable";
 
@@ -394,6 +395,7 @@ export class MyPlayer extends PlayerChit {
 
 export class Root extends RootChit<MyPlayer> {
   @ChildOutlet public mainBoard = new Table();
+  @ChildOutlet public shelf = new Bookshelf();
   @ChildOutlet public playerAid = new PlayerAid();
 
   override getDropdowns(): DropdownChit[] {
@@ -406,9 +408,20 @@ export class Root extends RootChit<MyPlayer> {
       collapseOrder: 3, // Collapse last if players collapsing doesn't help
       splits: [
         {
-          chit: this.mainBoard,
-          minWidth: 300,
-          minHeight: 250,
+          direction: "optimizePreferHorizontal",
+          collapseOrder: 5, // Collapse first
+          splits: [
+            {
+              chit: this.mainBoard,
+              minWidth: 300,
+              minHeight: 250,
+            },
+            {
+              chit: this.shelf,
+              minWidth: 300,
+              minHeight: 250,
+            },
+          ],
         },
         {
           direction: "optimizePreferVertical",
