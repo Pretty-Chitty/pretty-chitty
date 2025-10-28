@@ -11,6 +11,7 @@ import { panelTransition } from "./util";
 import { PanelTabStack, TAB_HEIGHT } from "./PanelTabStack";
 import { usePanelPositioning } from "../../hooks/usePanelPositioning";
 import { useSmartDebouncedState } from "../../hooks/useSmartDebouncedState";
+import { ViewerZoomControls } from "./ViewerZoomControls";
 
 const ANIMATION_DURATION = 0.125;
 
@@ -221,6 +222,8 @@ export function MultiPanel({
     timeMultiplier,
   ]);
 
+  const focusedRoot = focusedPanel?.renderInstance as RootChitRenderInstance;
+
   return (
     <Stack
       sx={{
@@ -234,7 +237,28 @@ export function MultiPanel({
         transition: panelTransition(theme, timeMultiplier),
       }}
     >
-      <Box ref={refContainer} sx={{ width: "100%", flex: 1, position: "relative" }} />
+      <Box ref={refContainer} sx={{ width: "100%", flex: 1, position: "relative" }}>
+        {isFocusedPanel && (
+          <ViewerZoomControls
+            onZoomOut={() => {
+              setFocusedPanel(undefined);
+              focusedRoot?.handleZoom(0, 0, -20, false);
+              setTimeout(() => {
+                focusedRoot?.handleZoom(0, 0, 0, false);
+              }, 100);
+            }}
+            onZoomIn={() => {
+              focusedRoot?.handleZoom(w / 2, h / 2, 20, true);
+            }}
+            onZoomChange={(delta, totalDelta) => {
+              focusedRoot?.handleZoom(w / 2, h / 2, delta, false);
+              if (totalDelta < -2 && focusedRoot?.cameraWrapper.zoom <= 1) {
+                setFocusedPanel(undefined);
+              }
+            }}
+          />
+        )}
+      </Box>
 
       {enabled && (
         <PanelTabStack

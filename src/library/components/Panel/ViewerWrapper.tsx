@@ -8,7 +8,6 @@ import PanelSpark from "../PanelSpark";
 import { useChit } from "../../hooks/useChits";
 import { ZINDEX_SPARKS } from "../../utilities/zIndex";
 import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
-import { ViewerZoomControls } from "./ViewerZoomControls";
 
 export function ViewerWrapper({
   chit,
@@ -116,26 +115,6 @@ export function ViewerWrapper({
         ))}
       </Stack>
 
-      {focusedPanel === chit && (
-        <ViewerZoomControls
-          onZoomOut={() => {
-            setFocusedPanel(undefined);
-            rootRenderInstance?.handleZoom(0, 0, -20, false);
-            setTimeout(() => {
-              rootRenderInstance?.handleZoom(0, 0, 0, false);
-            }, 100);
-          }}
-          onZoomIn={() => {
-            rootRenderInstance?.handleZoom(w / 2, h / 2, 20, true);
-          }}
-          onZoomChange={(delta, totalDelta) => {
-            rootRenderInstance?.handleZoom(w / 2, h / 2, delta, false);
-            if (totalDelta < -2 && rootRenderInstance?.cameraWrapper.zoom <= 1) {
-              setFocusedPanel(undefined);
-            }
-          }}
-        />
-      )}
       <Viewer
         refContainer={refContainer}
         paused={override ? false : paused}
