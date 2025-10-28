@@ -68,6 +68,10 @@ export class InterMeshEdgeDetectionPass extends Pass {
     this.edgeDetectionMaterial.uniforms["strength"].value = strength;
   }
 
+  setStepSize(stepSize: number): void {
+    this.edgeDetectionMaterial.uniforms["stepSize"].value = stepSize;
+  }
+
 
   setOutliningMeshes(outliningMeshes: Array<{ id: number; color: Color }>): void {
     this.selectedIDs.clear();
@@ -115,6 +119,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
         lookupTexture: { value: this.lookupTexture },
         thickness: { value: 4.0 },
         strength: { value: 1.0 },
+        stepSize: { value: 1.0 },
       },
       vertexShader: `varying vec2 vUv;
         void main() {
@@ -129,6 +134,7 @@ export class InterMeshEdgeDetectionPass extends Pass {
         uniform sampler2D lookupTexture;
         uniform float thickness;
         uniform float strength;
+        uniform float stepSize;
         varying vec2 vUv;
 
         // Compare two RGB colors (object IDs) with tolerance
@@ -195,8 +201,9 @@ export class InterMeshEdgeDetectionPass extends Pass {
           float edgeDistance = 1000.0; // Very far away initially
 
           float checkRadius = max(1.0, thickness);
-          for (float x = -checkRadius; x <= checkRadius; x += 1.0) {
-            for (float y = -checkRadius; y <= checkRadius; y += 1.0) {
+          float step = max(1.0, stepSize);
+          for (float x = -checkRadius; x <= checkRadius; x += step) {
+            for (float y = -checkRadius; y <= checkRadius; y += step) {
               vec2 sampleUv = vUv + vec2(x, y) * lowResInvSize;
               vec4 neighbor = texture2D(idTexture, sampleUv);
 

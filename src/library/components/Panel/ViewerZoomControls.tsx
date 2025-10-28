@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Box, Stack } from "@mui/material";
-import { ZoomIn, ZoomInMap, ZoomOutMap } from "@mui/icons-material";
+import { ZoomIn, ZoomInMap } from "@mui/icons-material";
 import { useGameTheme } from "../../hooks/useGameTheme";
 import { ZINDEX_PINCH_OUT } from "../../utilities/zIndex";
 
 interface ViewerZoomControlsProps {
   onZoomOut: () => void;
   onZoomIn: () => void;
-  onZoomChange: (delta: number) => void;
+  onZoomChange: (delta: number, totalDelta: number) => void;
 }
 
 export function ViewerZoomControls({ onZoomOut, onZoomIn, onZoomChange }: ViewerZoomControlsProps) {
@@ -15,6 +15,7 @@ export function ViewerZoomControls({ onZoomOut, onZoomIn, onZoomChange }: Viewer
   const sliderRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const startYRef = useRef<number>(0);
+  const totalDeltaRef = useRef<number>(0);
   const hasDraggedRef = useRef<boolean>(false);
 
   const handleSliderStart = (clientY: number) => {
@@ -33,8 +34,10 @@ export function ViewerZoomControls({ onZoomOut, onZoomIn, onZoomChange }: Viewer
       hasDraggedRef.current = true;
     }
 
+    totalDeltaRef.current += deltaY;
+
     const sensitivity = 0.05; // Adjust this to control zoom sensitivity
-    onZoomChange(deltaY * sensitivity);
+    onZoomChange(deltaY * sensitivity, totalDeltaRef.current * sensitivity);
 
     startYRef.current = clientY;
   };
@@ -46,6 +49,8 @@ export function ViewerZoomControls({ onZoomOut, onZoomIn, onZoomChange }: Viewer
   // Add global mouse/touch move and up listeners when dragging
   useEffect(() => {
     if (!isDragging) return;
+
+    totalDeltaRef.current = 0;
 
     const handleGlobalMouseMove = (e: MouseEvent) => {
       handleSliderMove(e.clientY);
@@ -72,6 +77,7 @@ export function ViewerZoomControls({ onZoomOut, onZoomIn, onZoomChange }: Viewer
       window.removeEventListener("touchmove", handleGlobalTouchMove);
       window.removeEventListener("touchend", handleGlobalEnd);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDragging]);
 
   return (
@@ -79,21 +85,23 @@ export function ViewerZoomControls({ onZoomOut, onZoomIn, onZoomChange }: Viewer
       direction="column"
       sx={{
         position: "absolute",
-        bottom: 0,
-        left: 0,
+        bottom: `${theme.spacing}px`,
+        left: `${theme.spacing}px`,
         zIndex: ZINDEX_PINCH_OUT,
+        opacity: 0.5,
       }}
     >
       {/* Zoom In Button */}
       <Box
         sx={{
-          cursor: "ns-resize",
+          cursor: "pointer",
           backgroundColor: theme.barColor,
           color: theme.barTextColor,
           p: `${theme.spacing / 2}px`,
-          borderTopRightRadius: "6px",
-          height: `${theme.spacing * 2}px`,
-          width: `${theme.spacing * 2}px`,
+          borderTopRightRadius: `${theme.spacing}px`,
+          borderTopLeftRadius: `${theme.spacing}px`,
+          height: `${theme.spacing * 4}px`,
+          width: `${theme.spacing * 4}px`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -125,7 +133,7 @@ export function ViewerZoomControls({ onZoomOut, onZoomIn, onZoomChange }: Viewer
           cursor: "ns-resize",
           backgroundColor: theme.barColor,
           color: theme.barTextColor,
-          width: `${theme.spacing * 2}px`,
+          width: `${theme.spacing * 4}px`,
           height: `${theme.spacing * 8}px`, // 4x taller than wide
           display: "flex",
           alignItems: "center",
@@ -172,16 +180,18 @@ export function ViewerZoomControls({ onZoomOut, onZoomIn, onZoomChange }: Viewer
       {/* Zoom Out Button */}
       <Box
         sx={{
-          cursor: "ns-resize",
+          cursor: "pointer",
           backgroundColor: theme.barColor,
           color: theme.barTextColor,
           p: `${theme.spacing / 2}px`,
-          height: `${theme.spacing * 2}px`,
-          width: `${theme.spacing * 2}px`,
+          height: `${theme.spacing * 4}px`,
+          width: `${theme.spacing * 4}px`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           userSelect: "none",
+          borderBottomRightRadius: `${theme.spacing}px`,
+          borderBottomLeftRadius: `${theme.spacing}px`,
         }}
         onClick={() => {
           if (!hasDraggedRef.current) {

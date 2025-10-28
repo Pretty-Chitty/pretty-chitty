@@ -93,6 +93,8 @@ export function ViewerWrapper({
     }
   }, [focusedPanel, chit]);
 
+  const rootRenderInstance = chit.renderInstance as RootChitRenderInstance;
+
   return (
     <Box
       sx={{
@@ -118,16 +120,19 @@ export function ViewerWrapper({
         <ViewerZoomControls
           onZoomOut={() => {
             setFocusedPanel(undefined);
-            (chit.renderInstance as RootChitRenderInstance)?.handleZoom(0, 0, -20, false);
+            rootRenderInstance?.handleZoom(0, 0, -20, false);
             setTimeout(() => {
-              (chit.renderInstance as RootChitRenderInstance)?.handleZoom(0, 0, 0, false);
+              rootRenderInstance?.handleZoom(0, 0, 0, false);
             }, 100);
           }}
           onZoomIn={() => {
-            (chit.renderInstance as RootChitRenderInstance)?.handleZoom(w / 2, h / 2, 20, true);
+            rootRenderInstance?.handleZoom(w / 2, h / 2, 20, true);
           }}
-          onZoomChange={(delta) => {
-            (chit.renderInstance as RootChitRenderInstance)?.handleZoom(w / 2, h / 2, delta, false);
+          onZoomChange={(delta, totalDelta) => {
+            rootRenderInstance?.handleZoom(w / 2, h / 2, delta, false);
+            if (totalDelta < -2 && rootRenderInstance?.cameraWrapper.zoom <= 1) {
+              setFocusedPanel(undefined);
+            }
           }}
         />
       )}

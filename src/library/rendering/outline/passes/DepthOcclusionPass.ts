@@ -51,7 +51,7 @@ export class DepthOcclusionPass extends Pass {
         inputTexture: { value: null },
         idDepthTexture: { value: null },
         sceneDepthTexture: { value: null },
-        depthTolerance: { value: 0.05 },
+        depthTolerance: { value: 0.0001 },
       },
       vertexShader: `
         varying vec2 vUv;

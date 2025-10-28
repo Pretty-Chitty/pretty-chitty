@@ -99,6 +99,8 @@ class WebGLRendererWrapper {
       // Configure outline pass
       outlinePass.edgeStrength = theme.chitOutlineStrength;
       outlinePass.edgeThickness = (theme.chitOutlineWidth / theme.chitOutlineDownsample) * this.pixelRatio;
+      // outlinePass.debugShowIDDepth = true; // Uncomment to show ID depth buffer
+      // outlinePass.debugShowDepthDiff = true; // Uncomment to show depth difference visualization
 
       const depthPass = new DepthVisualizationPass();
       depthPass.renderToScreen = false;
@@ -106,7 +108,7 @@ class WebGLRendererWrapper {
       // renderPass.needsSwap = true;
 
       composer.addPass(renderPass);
-      // composer.addPass(depthPass);
+      // composer.addPass(depthPass); // Uncomment to show scene depth buffer
       composer.addPass(outlinePass);
       composer.addPass(outputPass);
 
