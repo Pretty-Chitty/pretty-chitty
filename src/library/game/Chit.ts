@@ -10,6 +10,7 @@ import { SparkChit } from "./SparkChit";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
 import type { Game } from "./Game";
 import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
+import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 
 export const ORDERED_CHILDREN = "orderedChildren";
 
@@ -22,7 +23,7 @@ export type HiddenPropertySerializationRule = {
 
 export type PanelTab = {
   color: string;
-  icon: IUpdatingCanvas;
+  icon: IUpdatingCanvas | ImageSpec;
 };
 
 let CHIT_CREATED_ORDER = 0;

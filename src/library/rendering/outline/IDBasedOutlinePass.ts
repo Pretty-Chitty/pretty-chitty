@@ -39,7 +39,6 @@ export class IDBasedOutlinePass extends Pass {
   private static readonly INSTANCE_COUNTER = 0;
   private static instanceCounter = IDBasedOutlinePass.INSTANCE_COUNTER;
   private readonly instanceId: number;
-  readonly downSampleRatio: number;
   readonly resolution: Vector2;
 
   // Core materials and components
@@ -66,12 +65,10 @@ export class IDBasedOutlinePass extends Pass {
   constructor(
     resolution: Vector2,
     private pixelRatio: number,
-    downSampleRatio: number,
   ) {
     super();
     this.resolution = resolution ? new Vector2(resolution.x, resolution.y) : new Vector2(256, 256);
     this.instanceId = ++IDBasedOutlinePass.instanceCounter;
-    this.downSampleRatio = downSampleRatio;
     // Initialize ID-based components
     this.initializeMaterials();
     this.initializeRenderTargets();
@@ -92,11 +89,10 @@ export class IDBasedOutlinePass extends Pass {
   }
 
   private initializeIDComponents(): void {
-    // Create ID buffer render target with depth buffer at downsampled resolution for performance
     // Use NearestFilter for exact ID values without interpolation
     // Note: Using standard 8-bit RGBA. Shader code uses rounding to handle precision loss on 6-bit displays.
-    const resx = Math.round((this.resolution.x * this.pixelRatio) / this.downSampleRatio);
-    const resy = Math.round((this.resolution.y * this.pixelRatio) / this.downSampleRatio);
+    const resx = Math.round(this.resolution.x * this.pixelRatio);
+    const resy = Math.round(this.resolution.y * this.pixelRatio);
     const pars = {
       minFilter: NearestFilter,
       magFilter: NearestFilter,
@@ -189,8 +185,6 @@ export class IDBasedOutlinePass extends Pass {
 
           // Write the encoded outlineId to the buffer
           gl_FragColor = vec4(outlineIdColor, 1.0);
-
-
         }
       `,
       depthTest: true,
@@ -667,8 +661,8 @@ export class IDBasedOutlinePass extends Pass {
       this.idBasedEdgeDetectionPass.setIDDepthTexture(this.renderTargetIDBuffer.depthTexture);
       this.idBasedEdgeDetectionPass.setOutliningMeshes(outliningMeshes);
       // Edge detection renders at full resolution but samples from filtered ID buffer
-      const resx = Math.round((this.resolution.x * this.pixelRatio) / this.downSampleRatio);
-      const resy = Math.round((this.resolution.y * this.pixelRatio) / this.downSampleRatio);
+      const resx = Math.round(this.resolution.x * this.pixelRatio);
+      const resy = Math.round(this.resolution.y * this.pixelRatio);
       this.idBasedEdgeDetectionPass.setTextureSize(resx, resy); // ID buffer size for sampling
       this.idBasedEdgeDetectionPass.setThickness(this.edgeThickness);
       this.idBasedEdgeDetectionPass.setStrength(this.edgeStrength);

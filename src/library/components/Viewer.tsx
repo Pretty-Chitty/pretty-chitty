@@ -139,11 +139,6 @@ export default function Viewer({
       return;
     }
 
-    if (hardPaused) {
-      chitRenderInstance?.update(true);
-      return;
-    }
-
     // chitRenderInstance.sceneWrapper.markDirty();
 
     let renderNextFrame: boolean | undefined;
@@ -163,13 +158,15 @@ export default function Viewer({
             rendererWrapper &&
             (paused || prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
           ) {
-            // Clear canvas and render
-            rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme);
+            if (!hardPaused) {
+              // Clear canvas and render
+              rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme);
 
-            // Clear snapshot after first render at new size
-            const canvasEl = canvas as any;
-            if (canvasEl.clearSnapshot) {
-              canvasEl.clearSnapshot();
+              // Clear snapshot after first render at new size
+              const canvasEl = canvas as any;
+              if (canvasEl.clearSnapshot) {
+                canvasEl.clearSnapshot();
+              }
             }
 
             chitRenderInstance.resetDirty();

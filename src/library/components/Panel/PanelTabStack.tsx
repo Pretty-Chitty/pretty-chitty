@@ -6,6 +6,9 @@ import { useGameTheme } from "../../hooks/useGameTheme";
 import { useAnimationSpeedMultiplier } from "../../hooks/useTimeController";
 import { UpdatingCanvasImage } from "../UpdatingCanvasImage";
 import { ZINDEX_PANEL_CUTOUTS } from "../../utilities/zIndex";
+import { IconCanvas } from "../../utilities/CanvasStack/IconCanvas";
+import { IUpdatingCanvas } from "../../utilities/IUpdatingCanvas";
+import { ImageSpec } from "../../utilities/CanvasStack/CanvasOperations";
 
 const TAB_HEIGHT = 20;
 const ANIMATION_DURATION = 0.125;
@@ -22,6 +25,12 @@ function PanelTab({ chit, onClick, selected }: { selected?: boolean; chit: Chit;
   const outlineColor = Color(color)
     .lightness(lightness < 35 ? lightness + 10 : 20)
     .hex();
+
+  const image = icon
+    ? (icon as any)?.canvas
+      ? (icon as IUpdatingCanvas)
+      : new IconCanvas(icon as ImageSpec).get()
+    : undefined;
 
   return (
     <Box
@@ -44,7 +53,7 @@ function PanelTab({ chit, onClick, selected }: { selected?: boolean; chit: Chit;
           borderBottomRightRadius: TAB_HEIGHT / 4,
         }}
       >
-        {icon && <UpdatingCanvasImage image={icon} style={{ height: TAB_HEIGHT - 2, width: TAB_HEIGHT - 2 }} />}
+        {image && <UpdatingCanvasImage image={image} style={{ height: TAB_HEIGHT - 2, width: TAB_HEIGHT - 2 }} />}
       </Box>
     </Box>
   );

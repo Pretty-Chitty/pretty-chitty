@@ -82,11 +82,7 @@ class WebGLRendererWrapper {
 
       const composer = new EffectComposer(this.renderer, width, height);
       const renderPass = new RenderPass();
-      const outlinePass = new IDBasedOutlinePass(
-        new Vector2(width, height),
-        this.pixelRatio,
-        theme.chitOutlineDownsample,
-      );
+      const outlinePass = new IDBasedOutlinePass(new Vector2(width, height), this.pixelRatio);
       const outputPass = new OutputPass();
 
       // Configure transparency
@@ -98,7 +94,7 @@ class WebGLRendererWrapper {
 
       // Configure outline pass
       outlinePass.edgeStrength = theme.chitOutlineStrength;
-      outlinePass.edgeThickness = (theme.chitOutlineWidth / theme.chitOutlineDownsample) * this.pixelRatio;
+      outlinePass.edgeThickness = theme.chitOutlineWidth * this.pixelRatio;
       // outlinePass.debugShowIDDepth = true; // Uncomment to show ID depth buffer
       // outlinePass.debugShowDepthDiff = true; // Uncomment to show depth difference visualization
 

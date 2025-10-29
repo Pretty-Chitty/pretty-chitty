@@ -78,11 +78,13 @@ export function MultiPanel({
         if (live) {
           setTargetClock(maxClock.clock);
         }
-        setIgnoreChangesBefore(Date.now() + PANEL_ADJUST_IGNORE_DURATION);
+        if (!prompt) {
+          setIgnoreChangesBefore(Date.now() + PANEL_ADJUST_IGNORE_DURATION);
+        }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedIndex, setSelectedIndex, live, maxClock, setTargetClock, chitIdsString],
+    [prompt, selectedIndex, setSelectedIndex, live, maxClock, setTargetClock, chitIdsString],
   );
 
   useEffect(() => {
@@ -155,8 +157,10 @@ export function MultiPanel({
   const isAnimating = ignoringChanges ? false : Math.max(leavingIndex, enteringIndex, pendingIndex) >= 0;
   useEffect(() => {
     timeState.setAnimationState(key, isAnimating);
-    return () => timeState.setAnimationState(key, false);
-  }, [key, isAnimating, timeState]);
+    if (isAnimating) {
+      return () => timeState.setAnimationState(key, false);
+    }
+  }, [timeMultiplier, key, isAnimating, timeState]);
 
   const panCallback = useCallback(
     (direction: "left" | "right") => {

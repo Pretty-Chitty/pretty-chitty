@@ -38,8 +38,6 @@ const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
 theme.dialogForegroundColor = "#000000ee";
 theme.chitHighlightColor = "#ffffff";
-theme.chitOutlineDownsample = 1;
-theme.chitOutlineWidth = 3;
 theme.chitOutlineStrength = 0.5;
 
 theme.galleryItemWidth = 50;

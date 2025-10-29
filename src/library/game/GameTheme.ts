@@ -35,8 +35,7 @@ export class GameTheme {
   public endGameTextColor = "rgba(255,255,255,1)";
 
   public chitHighlightColor = "#66d5c1";
-  public chitOutlineWidth = 2;
-  public chitOutlineDownsample = 4;
+  public chitOutlineWidth = 3;
   public chitOutlineStrength = 0.75;
 
   public panelSelectionCutoutBackground = "#ffffff";
