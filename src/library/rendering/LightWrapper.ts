@@ -21,7 +21,12 @@ export class LightWrapper {
 
   private ambient = new AmbientLight();
   private directionalLights: DirectionalLight[] = [];
-  private shadowMesh = new Mesh(new PlaneGeometry(1000, 1000), new ShadowMaterial());
+  private shadowMesh = new Mesh(
+    new PlaneGeometry(1000, 1000),
+    new ShadowMaterial({
+      depthWrite: false,
+    }),
+  );
 
   constructor() {
     this.group.add(this.ambient);

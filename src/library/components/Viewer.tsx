@@ -170,7 +170,9 @@ export default function Viewer({
             }
 
             chitRenderInstance.resetDirty();
-            timeState.setAnimationState(id, !paused);
+            if (!hardPaused) {
+              timeState.setAnimationState(id, !paused);
+            }
           } else {
             timeState.setAnimationState(id, false);
           }
