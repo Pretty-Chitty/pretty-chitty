@@ -78,7 +78,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         rootChit.id = "root";
         rootChit.game = this.game;
 
-        const players = this.players.map((p) => {
+        this.players.forEach((p) => {
           const player = this.game.generatePlayer(p);
           player.promptStatus.latestPrompt.on(() => this.notify(), false);
           rootChit.players.add(player);
@@ -96,7 +96,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
           "root",
           this,
           this.state,
-          (turn) => this.game.run(players, turn, rootChit),
+          (turn) => this.game.run(turn, rootChit),
           [rootChit],
         );
         rootChit._setupTurn = this.turn.value;

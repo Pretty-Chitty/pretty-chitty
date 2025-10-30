@@ -100,6 +100,7 @@ export class Bag extends GameBag<Card2> {
 
 export class Deck extends GameDeck<Card> {
   tapped = false;
+  flipped = false;
 
   constructor() {
     super();
@@ -125,6 +126,8 @@ export class Deck extends GameDeck<Card> {
     spec.object = new Mesh(boxGeometry, [side, side, side, side, face, side]);
     spec.offsetX = -2;
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0;
+    spec.rotateY = this.flipped ? Math.PI / 2 : 0;
+    spec.rotateX = this.tapped && this.flipped ? Math.PI : 0;
     spec.object.castShadow = true;
 
     spec.showChildrenAsGallery();

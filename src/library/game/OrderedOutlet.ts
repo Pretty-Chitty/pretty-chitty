@@ -54,6 +54,20 @@ export class OrderedOutlet<C extends Chit> {
     this.fixOrder();
   }
 
+  public async shuffle() {
+    if (this.parent) {
+      const from = await this.parent.currentTurn.takeRng(this.length);
+      const to = await this.parent.currentTurn.takeRng(this.length);
+      for (let i = 0; i < this.chits.length; i++) {
+        const j = Math.floor(from() * this.chits.length);
+        const k = Math.floor(to() * this.chits.length);
+        const temp = this.chits[j];
+        this.chits[j] = this.chits[k];
+        this.chits[k] = temp;
+      }
+    }
+  }
+
   // public on(cb: (c: C[]) => void) {
   //   return () => {};
   // }

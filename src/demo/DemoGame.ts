@@ -77,10 +77,13 @@ export class DemoGame implements Game<MyPlayer, Root> {
     stuff: { label: "Stuff", color: "#00ffff" },
   };
 
-  async run(players: MyPlayer[], setup: Turn<any, MyPlayer, Root>, rootChit: Root) {
-    players[0].color = "#ed00cb";
-    players[1].color = "#00edcb";
-    players[2].color = "#002244";
+  async run(setup: Turn<any, MyPlayer, Root>, rootChit: Root) {
+    await rootChit.players.shuffle();
+    const players = rootChit.players.copy();
+    const color = ["#ed00cb", "#00edcb", "#002244"];
+    for (let i = 0; i < players.length; i++) {
+      players[i].color = color[i % color.length];
+    }
 
     const W = 10;
     const H = 10;
@@ -146,7 +149,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     // pieces[2].add(new Card2());
     // setup.flush();
 
-    await setup.createTurn([rootChit], players[2], async (turn) => {
+    await setup.createTurn([rootChit], players[0], async (turn) => {
       // const c = new Card();
       // rootChit.mainBoard.add(c);
       // turn.flush();

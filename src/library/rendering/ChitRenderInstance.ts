@@ -814,18 +814,23 @@ export class ChitRenderInstance {
       [...this.bboxAnchorPoints.entries()].forEach(([key, value]) => this.updateGroupPosition(value, key));
 
       this.fixObjectPosition();
-      this.bbox.position.z = this.centerZ + this.sizeZ / 2;
+      this.bbox.position.z = this.centerZ;
       this.bbox.position.x = this.centerX;
       this.bbox.position.y = this.centerY;
 
-      this.clickbox.position.z = (clickBox3.max.z - clickBox3.min.z) / 2 + clickBox3.min.z + this.sizeZ / 2;
+      this.clickbox.position.z = (clickBox3.max.z - clickBox3.min.z) / 2 + clickBox3.min.z;
       this.clickbox.position.x = (clickBox3.max.x - clickBox3.min.x) / 2 + clickBox3.min.x;
       this.clickbox.position.y = (clickBox3.max.y - clickBox3.min.y) / 2 + clickBox3.min.y;
 
-      const targetOffset = { x: this.renderSpec.offsetX, y: this.renderSpec.offsetY, z: this.renderSpec.offsetZ };
+      const targetOffset = {
+        x: this.renderSpec.offsetX,
+        y: this.renderSpec.offsetY,
+        z: this.renderSpec.offsetZ + this.sizeZ / 2,
+      };
       this.handleOffsetForSplay(targetOffset);
 
       this.bboxGroup.position.set(targetOffset.x, targetOffset.y, targetOffset.z);
+      this.bboxGroup.rotation.order = "ZYX";
       this.bboxGroup.rotation.set(this.renderSpec.rotateX, this.renderSpec.rotateY, this.renderSpec.rotateZ);
 
       Object.entries(this.renderSpec.outletPositions).forEach(([key, position]) => {
@@ -840,7 +845,7 @@ export class ChitRenderInstance {
 
   private fixObjectPosition() {
     if (this.renderSpec?.object) {
-      this.renderSpec.object.position.z = this.sizeZ / 2 + this.innateObjectZ;
+      this.renderSpec.object.position.z = this.innateObjectZ;
     }
 
     // this.renderSpec?.ornaments.forEach(
@@ -987,7 +992,11 @@ export class ChitRenderInstance {
     }
 
     const { position, rotation } = this.group;
-    const targetOffset = { x: this.renderSpec.offsetX, y: this.renderSpec.offsetY, z: this.renderSpec.offsetZ };
+    const targetOffset = {
+      x: this.renderSpec.offsetX,
+      y: this.renderSpec.offsetY,
+      z: this.renderSpec.offsetZ + this.sizeZ / 2,
+    };
     const targetRotation = { x: this.renderSpec.rotateX, y: this.renderSpec.rotateY, z: this.renderSpec.rotateZ };
 
     this.handleOffsetForSplay(targetOffset);
