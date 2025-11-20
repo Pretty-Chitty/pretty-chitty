@@ -33,6 +33,7 @@ import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
 import { cityscape } from "./assets/network_overload";
 import { Bookshelf, ShelfRow, ShelfSpace } from "./Bookshelft";
+import { Dice } from "./Dice";
 
 const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
@@ -65,6 +66,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     Bookshelf,
     Row,
     Hand,
+    Dice,
   };
   canvasLibrary = CanvasLibrary;
   buttonLibrary = { FlipButton, PassButton, HandButton };
