@@ -54,6 +54,8 @@ export function ContextGalleryDisplay({ size }: { size: number }) {
         }}
       >
         <GalleryViewer
+          fov={2}
+          angle={0}
           showSummary={false}
           paused={items.length > 0 ? false : true}
           items={items ?? []}

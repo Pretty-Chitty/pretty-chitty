@@ -365,7 +365,7 @@ export class ChitRenderInstance {
   }
 
   protected updateGroupPosition(group: Group, position: OwnerOriginPosition | string) {
-    const z = this.sizeZ + (this.renderSpec?.childrenOffsetZ ?? 0);
+    const z = this.sizeZ / 2 + (this.renderSpec?.childrenOffsetZ ?? 0);
     switch (position) {
       case OwnerOriginPosition.TopLeft: {
         group.position.set(-this.sizeX / 2, this.sizeY / 2, z);
@@ -578,12 +578,12 @@ export class ChitRenderInstance {
       const id = outlineContext.renderSpec.object.id % 60000;
       const color = Color(c);
       const threeColor = new ThreeColor(color.red() / 256, color.green() / 256, color.blue() / 256);
-      this.renderSpec.object.traverse((o) => {
+      this.renderSpec.object.traverseVisible((o) => {
         o.userData.outlineId = id;
         o.userData.outlineColor = threeColor;
       });
     } else {
-      this.renderSpec.object.traverse((o) => {
+      this.renderSpec.object.traverseVisible((o) => {
         delete o.userData.outlineId;
         delete o.userData.outlineColor;
       });
@@ -834,7 +834,7 @@ export class ChitRenderInstance {
       this.bboxGroup.rotation.set(this.renderSpec.rotateX, this.renderSpec.rotateY, this.renderSpec.rotateZ);
 
       Object.entries(this.renderSpec.outletPositions).forEach(([key, position]) => {
-        this.setOutletPosition(key, new Vector3(position.x, position.y, position.z + this.sizeZ));
+        this.setOutletPosition(key, new Vector3(position.x, position.y, position.z + this.sizeZ / 2));
       });
 
       if (keyChanged) {
@@ -1033,13 +1033,26 @@ export class ChitRenderInstance {
     }
 
     // rotation has to change
-    if (rotation.x !== targetRotation.x || rotation.y !== targetRotation.y || rotation.z !== targetRotation.z) {
+    // Use quaternions to properly compare rotations, as Euler angles can represent the same rotation differently
+    // Note: quaternions have double-cover property where q and -q represent the same rotation
+    const currentQuat = new Quaternion().setFromEuler(rotation);
+    const targetQuat = new Quaternion().setFromEuler(new Euler(targetRotation.x, targetRotation.y, targetRotation.z));
+    let rotationAngleDifference = currentQuat.angleTo(targetQuat);
+
+    // Account for quaternion double-cover: if angle is close to π, check if they're actually the same rotation
+    // by also checking the dot product (which should be close to -1 if they're opposite quaternions)
+    if (Math.abs(rotationAngleDifference - Math.PI) < 0.001) {
+      const dot = currentQuat.dot(targetQuat);
+      if (dot < -0.999) {
+        // They're opposite quaternions representing the same rotation
+        rotationAngleDifference = 0;
+      }
+    }
+
+    if (rotationAngleDifference > 0.00001) {
       rotationEasing = this.rotationTween.isPlaying() ? Easing.Quadratic.Out : Easing.Quadratic.InOut;
 
-      const radiansDistance = new Quaternion()
-        .setFromEuler(rotation)
-        .angleTo(new Quaternion().setFromEuler(new Euler(targetRotation.x, targetRotation.y, targetRotation.z)));
-      const rotations = Math.min(radiansDistance / (2 * Math.PI), 2 * Math.PI);
+      const rotations = Math.min(rotationAngleDifference / (2 * Math.PI), 2 * Math.PI);
 
       const nonZRadiansDistance = new Quaternion()
         .setFromEuler(new Euler(rotation.x, rotation.y, 0))

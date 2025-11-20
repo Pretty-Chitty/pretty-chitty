@@ -160,7 +160,7 @@ export class SceneWrapper {
     const currentOutlineIds = new Set<number>();
 
     // Traverse real scene to find meshes with outline userData
-    this.realScene.traverse((object: any) => {
+    this.realScene.traverseVisible((object: any) => {
       if (object.isMesh && object.userData?.outlineColor) {
         const meshId = object.id;
         currentOutlineIds.add(meshId);

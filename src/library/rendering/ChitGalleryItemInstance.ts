@@ -85,6 +85,7 @@ export class ChitGalleryItemInstance implements GalleryItem {
       mesh.rotation.set(0, 0, 0);
       mesh.position.set(0, 0, 0);
       g.add(mesh);
+      g.rotation.order = "ZYX";
       g.rotation.setFromVector3(renderInstance.galleryRotation());
     }
     return g;

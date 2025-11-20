@@ -637,7 +637,7 @@ export class IDBasedOutlinePass extends Pass {
     // Use a Map to avoid O(N^2) lookups for large numbers of meshes
     const idToMesh: Map<number, Color> = new Map();
 
-    this.sceneWrapper.outlineShadowScene.traverse((object: any) => {
+    this.sceneWrapper.outlineShadowScene.traverseVisible((object: any) => {
       if (object.userData?.outlineColor && object.userData?.outlineId !== undefined) {
         const meshID = object.userData.outlineId;
         if (!idToMesh.has(meshID)) {
