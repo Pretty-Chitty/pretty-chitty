@@ -21,6 +21,7 @@ export type { IChitLibrary, GameResult, IButtonLibrary, ICanvasLibrary } from ".
 export type { Picks } from "./game/Turn";
 
 export type { IconMap } from "./utilities/CanvasStack/RichTextRenderer";
+export { Dice } from "./utilities/Dice";
 
 export { MatchViewer } from "./components/MatchViewer";
 export { ClientTrustMatchViewer } from "./components/ClientTrustMatchViewer";

@@ -1036,7 +1036,9 @@ export class ChitRenderInstance {
     // Use quaternions to properly compare rotations, as Euler angles can represent the same rotation differently
     // Note: quaternions have double-cover property where q and -q represent the same rotation
     const currentQuat = new Quaternion().setFromEuler(rotation);
-    const targetQuat = new Quaternion().setFromEuler(new Euler(targetRotation.x, targetRotation.y, targetRotation.z));
+    const targetQuat = new Quaternion().setFromEuler(
+      new Euler(targetRotation.x, targetRotation.y, targetRotation.z, "ZYX"),
+    );
     let rotationAngleDifference = currentQuat.angleTo(targetQuat);
 
     // Account for quaternion double-cover: if angle is close to π, check if they're actually the same rotation
@@ -1055,8 +1057,8 @@ export class ChitRenderInstance {
       const rotations = Math.min(rotationAngleDifference / (2 * Math.PI), 2 * Math.PI);
 
       const nonZRadiansDistance = new Quaternion()
-        .setFromEuler(new Euler(rotation.x, rotation.y, 0))
-        .angleTo(new Quaternion().setFromEuler(new Euler(targetRotation.x, targetRotation.y, 0)));
+        .setFromEuler(new Euler(rotation.x, rotation.y, 0, "ZYX"))
+        .angleTo(new Quaternion().setFromEuler(new Euler(targetRotation.x, targetRotation.y, 0, "ZYX")));
       nonZRotations = Math.min(nonZRadiansDistance / (2 * Math.PI), 2 * Math.PI);
 
       duration = Math.max(duration, this.renderSpec.rotationSpeed * rotations);

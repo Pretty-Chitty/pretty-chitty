@@ -16,7 +16,6 @@ import { metropolis } from "./assets/network_overload";
 // in other modules
 export * from "./TestStack";
 export * from "./TestStack2";
-export * from "./DiceFace";
 
 // can be defined here?
 export class TestStack3 extends ParameterizedCanvas {
