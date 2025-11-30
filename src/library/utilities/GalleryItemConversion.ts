@@ -12,8 +12,8 @@ export function chitsToGalleryItems(chits: Chit[]) {
       return;
     }
     resultChits.push(chit);
-    if (chit.renderInstance?.currentGalleryItem) {
-      result.push(chit.renderInstance?.currentGalleryItem);
+    if (chit.$internal_renderInstance?.currentGalleryItem) {
+      result.push(chit.$internal_renderInstance?.currentGalleryItem);
     } else {
       result.push(new ChitGalleryItemInstance(chit));
     }

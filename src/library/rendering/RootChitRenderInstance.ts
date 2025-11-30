@@ -43,13 +43,11 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     return this._height;
   }
 
-  /** @internal */
-  public get sceneWrapper() {
+  public get $internal_sceneWrapper() {
     return this._sceneWrapper;
   }
 
-  /** @internal */
-  public playerId?: string;
+  public $internal_playerId?: string;
 
   public cameraWrapper = new CameraWrapperPerspective(this);
   public lightWrapper = new LightWrapper();
@@ -190,7 +188,7 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     if (!this._hasPendingChanges) {
       this._hasPendingChanges = true;
       this.notifyPanelStatusChange();
-      this.sceneWrapper.markDirty();
+      this.$internal_sceneWrapper.markDirty();
     }
   }
 
@@ -198,7 +196,7 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     if (!this._hasChitsLeaving) {
       this._hasChitsLeaving = true;
       this.notifyPanelStatusChange();
-      this.sceneWrapper.markDirty();
+      this.$internal_sceneWrapper.markDirty();
     }
   }
 
@@ -206,12 +204,12 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     if (!this._hasChitsEntering) {
       this._hasChitsEntering = true;
       this.notifyPanelStatusChange();
-      this.sceneWrapper.markDirty();
+      this.$internal_sceneWrapper.markDirty();
     }
   }
 
   public markHasChange() {
-    this.sceneWrapper.markDirty();
+    this.$internal_sceneWrapper.markDirty();
   }
 
   getRootGroup(): Object3D {
@@ -307,8 +305,8 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
 
   public createRenderSpec() {
     const result = super.createRenderSpec();
-    if (this.chit.game?.renderDefaultRootChit) {
-      this.chit.game?.renderDefaultRootChit(result);
+    if (this.chit.$internal_game?.renderDefaultRootChit) {
+      this.chit.$internal_game?.renderDefaultRootChit(result);
     }
     return result;
   }
@@ -331,13 +329,13 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     const chitRenderInstances: ChitRenderInstance[] = [];
     const threeJsToChitLookup: { [threejsId: number]: Chit } = {};
 
-    this.chit.walk((c) => {
-      if (filter(c) && c.renderInstance) {
-        chitRenderInstances.push(c.renderInstance);
-        threeJsToChitLookup[c.renderInstance.clickbox.id] = c;
+    this.chit.$internal_walk((c) => {
+      if (filter(c) && c.$internal_renderInstance) {
+        chitRenderInstances.push(c.$internal_renderInstance);
+        threeJsToChitLookup[c.$internal_renderInstance.clickbox.id] = c;
 
         // if this is a "gallery" render instance, no need to check its children for clicks
-        if (c.renderInstance?.absorbsClickEventsForChildren) {
+        if (c.$internal_renderInstance?.absorbsClickEventsForChildren) {
           return false;
         }
       }
@@ -376,7 +374,7 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
   }
 
   public handleClick(x: number, y: number, distance: number, precision: number) {
-    const chits = this.findEligibleRenderInstances((c) => !!c.onClick, x, y, distance, precision);
+    const chits = this.findEligibleRenderInstances((c) => !!c.$internal_onClick, x, y, distance, precision);
 
     if (chits.length > 0) {
       if (this.modalState && chits.length >= 2) {
@@ -399,15 +397,15 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
       }
 
       const chit = chits[0];
-      if (chit && chit.onClick) {
-        chit.onClick();
+      if (chit && chit.$internal_onClick) {
+        chit.$internal_onClick();
       }
     }
   }
 
   public handleLongClick(x: number, y: number, distance: number, precision: number) {
     const chits = this.findEligibleRenderInstances(
-      (c) => !!c.renderInstance?.showDetailsOnLongPress(),
+      (c) => !!c.$internal_renderInstance?.showDetailsOnLongPress(),
       x,
       y,
       distance,

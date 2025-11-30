@@ -24,13 +24,13 @@ function GameButtonWrapper({ button }: { button: GameButton }) {
 
   if (button instanceof ToggleGalleryButton) {
     if (
-      (button.galleryItemSource === source && source) ||
-      (source?.backingObject && button.galleryItemSource?.backingObject === source.backingObject)
+      (button.$internal_galleryItemSource === source && source) ||
+      (source?.backingObject && button.$internal_galleryItemSource?.backingObject === source.backingObject)
     ) {
       highlight = true;
       cb = () => setSource(undefined);
-    } else if (button.galleryItemSource) {
-      const source = button.galleryItemSource;
+    } else if (button.$internal_galleryItemSource) {
+      const source = button.$internal_galleryItemSource;
       cb = () => setSource(source);
     }
   }

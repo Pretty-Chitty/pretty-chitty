@@ -127,8 +127,8 @@ export function FixChildOutlets(instance: Chit) {
         if (!(instance as any)[key]) {
           const v = prop?.initializer?.apply(instance, []);
           if (v) {
-            v.outletName = key;
-            v.parent = instance;
+            v.$internal_outletName = key;
+            v.$internal_parent = instance;
           }
           Object.defineProperty(instance, key, {
             enumerable: true,

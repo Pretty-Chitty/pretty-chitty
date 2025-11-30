@@ -420,13 +420,13 @@ class GalleryController implements TextureReferenceCounterRootGroup {
       height * SCALE_FACTOR * window.devicePixelRatio,
       ops,
     );
-    stack1.render();
+    stack1.$internal_render();
     const stack2 = new CanvasStack(
       this.itemWidth * SCALE_FACTOR * window.devicePixelRatio,
       markdown.height + this.theme.spacing * 2 * window.devicePixelRatio,
       ops,
     );
-    stack2.render();
+    stack2.$internal_render();
 
     const material = stack2.material;
     material.transparent = true;

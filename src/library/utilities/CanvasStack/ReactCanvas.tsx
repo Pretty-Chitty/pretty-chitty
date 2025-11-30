@@ -26,13 +26,11 @@ export interface DefaultProps {
   size?: number;
 }
 
-/** @internal */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function WrappedCanvasOperation({ operation }: { operation: CanvasOperation }): ReactNode {
   return <></>;
 }
 
-/** @internal */
 export function unwrapCanvasNode(node: ReactNode): CanvasOperation {
   if (Array.isArray(node)) {
     return new LayeredCanvasOperation(node.map(unwrapCanvasNode));

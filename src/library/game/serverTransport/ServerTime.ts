@@ -20,7 +20,7 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
     this.register(
       match.onChange(() => {
         if (match.turn.value) {
-          this.clientTime.newMaxClock(match.turn.value.clockDetails(this.playerId));
+          this.clientTime.newMaxClock(match.turn.value.$internal_clockDetails(this.playerId));
         }
 
         if (!this.hasSentLastActionTime) {
@@ -28,7 +28,7 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
 
           const player = match.turn.value?.rootChit.players.find((p) => p.id === playerId);
           if (player) {
-            this.clientTime.setStartTime(player.promptStatus.latestPromptResponseTime);
+            this.clientTime.setStartTime(player.promptStatus.$internal_latestPromptResponseTime);
           }
         }
       }),
@@ -39,15 +39,15 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
   private stateLookups: { [chitId: string]: number } = {};
   async serializeDelta(to: number) {
     if (this.match.turn.value) {
-      const result = this.match.turn.value.serialize(this.playerId, to);
+      const result = this.match.turn.value.$internal_serialize(this.playerId, to);
 
       const newStates: { [stateId: number]: string } = {};
       const chitIdToStateCounter: { [chitId: string]: number } = {};
-      Object.entries(result.chits).forEach(([key, value]) => {
+      Object.entries(result.chits).forEach(([key, value]: [string, string]) => {
         let state = this.stateLookups[value];
         if (state === undefined) {
           state = this.stateLookups[key] = ++this.stateCounter;
-          newStates[this.stateCounter] = Chit.fixVisibility(value, this.playerId);
+          newStates[this.stateCounter] = Chit.$internal_fixVisibility(value, this.playerId);
         }
         chitIdToStateCounter[key] = state;
       });
@@ -63,12 +63,12 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
   }
 
   async chitHistory(ids: string[]) {
-    return this.match.turn.value!.chitsHistory(this.playerId, ids);
+    return this.match.turn.value!.$internal_chitsHistory(this.playerId, ids);
   }
 
   async gameLog() {
     if (this.match.turn.value) {
-      return this.match.turn.value.gameLog(this.playerId);
+      return this.match.turn.value.$internal_gameLog(this.playerId);
     }
   }
 }

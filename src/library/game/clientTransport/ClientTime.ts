@@ -165,7 +165,7 @@ export class ClientTime extends ConnectionObject {
       Object.entries(serializedChits).forEach(([id, value]) => {
         let chit = this.chitLookup[id];
         if (!chit) {
-          const c = Chit.deflate(value, this.game);
+          const c = Chit.$internal_deflate(value, this.game);
           if (c) {
             chit = this.chitLookup[id] = c;
           }
@@ -175,9 +175,9 @@ export class ClientTime extends ConnectionObject {
       Object.values(this.chitLookup).forEach((chit) => {
         if (chit.id && !serializedChits[chit.id]) {
           if (chit.parentFallback) {
-            chit.beginDeserializing();
+            chit.$internal_beginDeserializing();
             chit.setParent(chit.parentFallback, chit.parentOutlet ?? "graveyard");
-            chit.doneDeserializing();
+            chit.$internal_doneDeserializing();
           } else {
             chit.removeFromParent();
           }
@@ -198,17 +198,17 @@ export class ClientTime extends ConnectionObject {
         .filter(([id, value]) => this.chitLookup[id] && this.lastSerializedState[id] !== value)
         .map(([id]) => this.chitLookup[id]);
 
-      chits.forEach((chit) => chit.beginDeserializing());
+      chits.forEach((chit) => chit.$internal_beginDeserializing());
 
       Object.entries(serializedChits)
         .filter(([id]) => changedIds.has(id))
         .forEach(([id, value]) => {
           const chit = this.chitLookup[id];
-          chit.deserialize(value, this.findChit);
+          chit.$internal_deserialize(value, this.findChit);
           this.lastSerializedState[id] = value;
         });
 
-      chits.forEach((chit) => chit.doneDeserializing());
+      chits.forEach((chit) => chit.$internal_doneDeserializing());
 
       this.rootChit.value = this.findChit("root") as RootChit<any>;
 
@@ -226,8 +226,8 @@ export class ClientTime extends ConnectionObject {
 
     const chitLookup: { [id: string]: Chit } = Object.entries(this.chitLookup).reduce(
       (acc, [id, chit]) => {
-        const serialized = chit.serialize();
-        const c = Chit.deflate(serialized, this.game);
+        const serialized = chit.$internal_serialize();
+        const c = Chit.$internal_deflate(serialized, this.game);
         if (c) {
           acc[id] = c;
         }
@@ -238,15 +238,15 @@ export class ClientTime extends ConnectionObject {
     const findChit = (id: string) => chitLookup[id];
 
     Object.keys(chitLookup).forEach((id: string) => {
-      chitLookup[id].deserialize(this.chitLookup[id].serialize(), findChit);
+      chitLookup[id].$internal_deserialize(this.chitLookup[id].$internal_serialize(), findChit);
     });
 
     Object.entries(sparkHistory).forEach(([id, history]) => {
       result[id] = [];
-      history.forEach((h) => {
-        const c = Chit.deflate(h.state, this.game);
+      history.forEach((h: any) => {
+        const c = Chit.$internal_deflate(h.state, this.game);
         if (c) {
-          c.deserialize(h.state, findChit);
+          c.$internal_deserialize(h.state, findChit);
           result[id].push({ clock: h.clock, chit: c });
         }
       });

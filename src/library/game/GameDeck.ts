@@ -7,13 +7,11 @@ export type Stage<T> = {
 };
 
 export class GameDeck<T extends Chit> extends Chit {
-  /** @internal */
-  @NonEditable type = "deck";
+  @NonEditable $internal_type = "deck";
 
   public chitGenerator?: () => T;
   public stages: Stage<T>[] = [];
 
-  /** @internal */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   override shouldRenderChild(childChit: Chit): boolean {
     return false;

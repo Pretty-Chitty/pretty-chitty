@@ -5,16 +5,14 @@ import { PlayerInfo } from "./PlayerInfo";
 import { PlayerPromptStatus } from "./PlayerPromptStatus";
 
 export class PlayerChit extends Chit {
-  /** @internal */
-  @NonEditable type = "player";
+  @NonEditable $internal_type = "player";
 
   public playerId: string = "no id";
   public name: string = "no name";
   public imageUrl?: string;
   public color: string = "#000000";
 
-  /** @internal */
-  @NonEditable public matchScoreNumber?: number;
+  @NonEditable public $internal_matchScoreNumber?: number;
 
   @ChildOutlet promptStatus = new PlayerPromptStatus();
 

@@ -8,20 +8,18 @@ import { LayoutNode, createLayoutFromTree, PanelLayoutResult } from "../utilitie
 export type { PanelLayoutResult } from "../utilities/LayoutHelper";
 
 export class RootChit<P extends PlayerChit> extends Chit {
-  /** @internal */
-  @NonEditable type = "root";
+  @NonEditable $internal_type = "root";
 
-  /** @internal */
-  @NonEditable public _setupTurn: Turn<any, P, any> | undefined;
+  @NonEditable public $internal__setupTurn: Turn<any, P, any> | undefined;
 
   public override get currentTurn(): Turn<any, P, any> {
-    if (this.lockedBy) {
-      return this.lockedBy;
+    if (this.$internal_lockedBy) {
+      return this.$internal_lockedBy;
     }
-    if (!this._setupTurn) {
+    if (!this.$internal__setupTurn) {
       throw "No current turn";
     }
-    return this._setupTurn;
+    return this.$internal__setupTurn;
   }
 
   getLayout(_width: number, _height: number, _playerId: string): LayoutNode {

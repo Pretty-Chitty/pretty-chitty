@@ -39,12 +39,10 @@ export class CanvasStack implements IUpdatingCanvas {
 
   public createdAt = Date.now();
 
-  /** @internal */
   public get hasBuiltTexture(): boolean {
     return !!this._texture;
   }
 
-  /** @internal */
   onUpdate(cb: () => void): () => void {
     this.cbs.push(cb);
     return () => {
@@ -52,16 +50,15 @@ export class CanvasStack implements IUpdatingCanvas {
     };
   }
 
-  /** @internal */
-  loadUrl(url: string): ImageResult | undefined {
+  $internal_loadUrl(url: string): ImageResult | undefined {
     const result = CanvasStack.imageCache.getImage(url);
-    if (!result.isLoaded.value) {
+    if (!result.$internal_isLoaded.value) {
       if (!this.loadedUrls.has(url)) {
         this.loadedUrls.add(url);
-        const unsub = result.isLoaded.on(() => {
-          if (result.isLoaded.value) {
+        const unsub = result.$internal_isLoaded.on(() => {
+          if (result.$internal_isLoaded.value) {
             unsub();
-            this.render();
+            this.$internal_render();
             if (this._texture) {
               this._texture.needsUpdate = true;
               CanvasStack.disposer.notifyChange(this._texture.uuid);
@@ -74,8 +71,7 @@ export class CanvasStack implements IUpdatingCanvas {
     return result;
   }
 
-  /** @internal */
-  render(): void {
+  $internal_render(): void {
     if (!this.context) {
       return;
     }
@@ -85,7 +81,7 @@ export class CanvasStack implements IUpdatingCanvas {
     this.operation.render(
       this.context,
       { x: 0, y: 0, w: this.width, h: this.height },
-      this.loadUrl.bind(this),
+      this.$internal_loadUrl.bind(this),
       (id: string, coords: Coord) => {
         this._outlets[id] = coords;
       },
@@ -124,7 +120,7 @@ export class CanvasStack implements IUpdatingCanvas {
     }
     this.context = context;
 
-    this.render();
+    this.$internal_render();
   }
 
   get outlets() {

@@ -81,7 +81,7 @@ export function ActionLogDisplay({ toggleSidebarLog }: { toggleSidebarLog: boole
   const root = useChit<RootChit<PlayerChit>>("root");
 
   const playerChits = useChits<PlayerChit>(root?.players.map((p) => p.id ?? "") ?? []);
-  playerChits.map((p) => p.promptStatus.latestPromptMessage).fill;
+  playerChits.map((p) => p.promptStatus.$internal_latestPromptMessage).fill;
 
   // calc if a prompt message.  this has highest priority
   let promptMessage: string | undefined;
@@ -133,7 +133,7 @@ export function ActionLogDisplay({ toggleSidebarLog }: { toggleSidebarLog: boole
   } else if (isSteppingBack) {
     messageToShow = "↩ Stepping back...";
   } else if (messageHasntChanged && live) {
-    const waitingPlayers = playerChits.filter((p) => p.promptStatus?.latestPromptMessage);
+    const waitingPlayers = playerChits.filter((p) => p.promptStatus?.$internal_latestPromptMessage);
     if (waitingPlayers.length > 0 && !waitingPlayers.find((p) => p.playerId === playerId)) {
       messageToShow = `Waiting for ${waitingPlayers.map((p) => `:${p.playerId}:`).join(" and ")}`;
     }

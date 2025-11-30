@@ -26,14 +26,14 @@ export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; c
   const DURATION = theme.sparkDuration;
 
   if (ref) {
-    chit.element = ref;
+    chit.$internal_element = ref;
   }
   const HEIGHT = theme.sparkSize;
 
   useEffect(() => {
     if (targetValue !== value) {
       if (paused && value !== Number.MIN_SAFE_INTEGER) {
-        chit.parent?.renderInstance?.rootRenderInstance.markHasPendingChange();
+        chit.parent?.$internal_renderInstance?.rootRenderInstance.markHasPendingChange();
         return;
       }
 

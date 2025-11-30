@@ -111,7 +111,7 @@ function PlayerInfoRow({ headers, player }: { player: PlayerChit; headers?: bool
         <PlayerInfoCell size={size} key={spark.id} spark={spark} />
       ))}
       <TextPlayerInfoCell size={size} width={NAME_WIDTH} text={player.name} />
-      <TextPlayerInfoCell size={size} width={PROMPT_WIDTH} text={player.promptStatus.latestPromptMessage ?? ""} />
+      <TextPlayerInfoCell size={size} width={PROMPT_WIDTH} text={player.promptStatus.$internal_latestPromptMessage ?? ""} />
     </Stack>
   );
 }
@@ -130,7 +130,7 @@ export default function TopBarPlayers() {
           {playerChits.map((player) => (
             <PlayerImage
               sx={{ ml: -1 }}
-              borderColor={player.promptStatus.latestPromptMessage ? theme.chitHighlightColor : undefined}
+              borderColor={player.promptStatus.$internal_latestPromptMessage ? theme.chitHighlightColor : undefined}
               size={theme.topBarHeight - theme.spacing * 2}
               key={player.id}
               player={player}

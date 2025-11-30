@@ -21,9 +21,9 @@ export function ContextGalleryDisplay({ size }: { size: number }) {
 
   let targetChit: Chit | undefined = undefined;
   if (currentPrompt && currentPrompt instanceof PickPrompt) {
-    const pickWithContext = currentPrompt.picks.find((p) => p.contextChit);
+    const pickWithContext = currentPrompt.picks.find((p) => p.$internal_contextChit);
     if (pickWithContext) {
-      targetChit = pickWithContext.contextChit;
+      targetChit = pickWithContext.$internal_contextChit;
     }
   }
 

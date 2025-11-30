@@ -32,7 +32,7 @@ function Editor({ size, ClassDef }: { size: Size; ClassDef: new () => Parameteri
     }
 
     setCanvas(instance.get());
-    return instance.onChange(null, () => setCanvas(instance.get()));
+    return instance.$internal_onChange(null, () => setCanvas(instance.get()));
   }, [instance]);
 
   return (
