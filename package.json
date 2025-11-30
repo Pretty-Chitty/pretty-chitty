@@ -111,6 +111,6 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "coverage": "vitest run --coverage",
-    "docs": "typedoc ./src/library/index.ts --excludeInternal --excludePrivate"
+    "docs": "typedoc"
   }
 }
