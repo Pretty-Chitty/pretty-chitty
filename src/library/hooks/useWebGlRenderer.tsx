@@ -82,11 +82,7 @@ class WebGLRendererWrapper {
 
       const composer = new EffectComposer(this.renderer, width, height);
       const renderPass = new RenderPass();
-      const outlinePass = new IDBasedOutlinePass(
-        new Vector2(width, height),
-        this.pixelRatio,
-        theme.chitOutlineDownsample,
-      );
+      const outlinePass = new IDBasedOutlinePass(new Vector2(width, height), this.pixelRatio);
       const outputPass = new OutputPass();
 
       // Configure transparency
@@ -98,7 +94,9 @@ class WebGLRendererWrapper {
 
       // Configure outline pass
       outlinePass.edgeStrength = theme.chitOutlineStrength;
-      outlinePass.edgeThickness = theme.chitOutlineWidth / theme.chitOutlineDownsample;
+      outlinePass.edgeThickness = theme.chitOutlineWidth * this.pixelRatio;
+      // outlinePass.debugShowIDDepth = true; // Uncomment to show ID depth buffer
+      // outlinePass.debugShowDepthDiff = true; // Uncomment to show depth difference visualization
 
       const depthPass = new DepthVisualizationPass();
       depthPass.renderToScreen = false;
@@ -106,7 +104,7 @@ class WebGLRendererWrapper {
       // renderPass.needsSwap = true;
 
       composer.addPass(renderPass);
-      // composer.addPass(depthPass);
+      // composer.addPass(depthPass); // Uncomment to show scene depth buffer
       composer.addPass(outlinePass);
       composer.addPass(outputPass);
 
@@ -136,10 +134,10 @@ class WebGLRendererWrapper {
 
   render(sceneWrapper: SceneWrapper, camera: Camera, context2d: CanvasRenderingContext2D, theme: GameTheme) {
     const canvas = context2d.canvas;
-    const width = Math.round(canvas.width / this.pixelRatio);
-    const height = Math.round(canvas.height / this.pixelRatio);
-    const targetWidth = Math.round(width * this.pixelRatio);
-    const targetHeight = Math.round(height * this.pixelRatio);
+    const width = Math.floor(canvas.width / this.pixelRatio);
+    const height = Math.floor(canvas.height / this.pixelRatio);
+    const targetWidth = Math.ceil(width * this.pixelRatio);
+    const targetHeight = Math.ceil(height * this.pixelRatio);
 
     // Ensure renderer can accommodate this size
     this.ensureRendererSize(width, height);

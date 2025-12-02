@@ -44,6 +44,8 @@ export class ChitRenderSpec {
 
   public galleryMaximumWidth: number | undefined;
   public galleryMaximumHeight: number | undefined;
+  public galleryPreferredWidth: number | undefined;
+  public galleryPreferredHeight: number | undefined;
 
   public ownerOrigin: string | OwnerOriginPosition = OwnerOriginPosition.Default;
   public outletPositions: { [key: string]: Vector3 } = {};
@@ -94,16 +96,15 @@ export class ChitRenderSpec {
     return this;
   }
 
-  /** @internal */
-  public isShowingChildrenAsGallery = false;
+  public $internal_isShowingChildrenAsGallery = false;
 
   public showChildrenAsGallery() {
-    this.chit.onClick = () => {
-      this.chit.renderInstance?.rootRenderInstance.showGallery(new GalleryItemChitChildrenSource(this.chit));
+    this.chit.$internal_onClick = () => {
+      this.chit.$internal_renderInstance?.rootRenderInstance.showGallery(new GalleryItemChitChildrenSource(this.chit));
     };
 
     // TODO: this should be a highlight
-    this.isShowingChildrenAsGallery = true;
+    this.$internal_isShowingChildrenAsGallery = true;
   }
 
   public setOutletPosition(key: string, x: number, y: number, z: number = 0) {
@@ -154,7 +155,7 @@ export class ChitRenderSpec {
         itemWidth = fakeRenderSpec.splay.itemWidth ?? itemBox3.max.x - itemBox3.min.x;
         itemHeight = fakeRenderSpec.splay.itemHeight ?? itemBox3.max.y - itemBox3.min.y;
 
-        const positionResult = fakeRenderSpec.splay.splayEndPosition(itemWidth, itemHeight, position);
+        const positionResult = fakeRenderSpec.splay.$internal_splayEndPosition(itemWidth, itemHeight, position);
         offsetX += positionResult.x;
         offsetY += positionResult.y;
       }
@@ -204,7 +205,7 @@ export class ChitRenderSpec {
           break;
       }
 
-      const p = this.outletPositions[ordered.outletName] ?? new Vector3(0, 0, 0);
+      const p = this.outletPositions[ordered.$internal_outletName] ?? new Vector3(0, 0, 0);
       mesh.position.set(p.x + offsetX, p.y + offsetY, box3.max.z - box3.min.z + p.z + 0.001);
       this.ornaments.push(mesh);
     }

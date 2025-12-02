@@ -9,9 +9,24 @@ import { PlayerChit } from "./PlayerChit";
 import { RootChit } from "./RootChit";
 import { ClockDetails } from "./ClockDetails";
 
+type LogMessageSerializationResponse = {
+  message: string;
+  clock: number;
+};
+
 type ChitSerializationResponse = {
   chits: ChitStateLookup;
   clockDetails: ClockDetails;
+  log?: LogMessageSerializationResponse;
+};
+
+type ChitHistoryItem = {
+  clock: number;
+  state: string;
+};
+
+type ChitHistoryResponse = {
+  [id: string]: ChitHistoryItem[];
 };
 
 type ValidPick = undefined | false | Pick | Pick[] | ButtonPick | ButtonPick[] | GameButton | GameButton[];
@@ -22,20 +37,15 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private clockSteps: ClockStep[] = [];
   private decisionIndex = 0; // decision points that can be potentially rolled back
 
-  /** @internal */
-  public unresolvedPrompt?: Prompt;
+  public $internal_unresolvedPrompt?: Prompt;
 
-  /** @internal */
-  public completed = false;
+  public $internal_completed = false;
 
-  /** @internal */
-  public activeSubTurns: Turn<any, P, R>[] = [];
+  public $internal_activeSubTurns: Turn<any, P, R>[] = [];
 
-  /** @internal */
-  public destroyed = false;
+  public $internal_destroyed = false;
 
-  /** @internal */
-  public paused = Promise.resolve();
+  public $internal_paused = Promise.resolve();
 
   private newChitCounter: { [type: string]: number } = {};
   private chitLookup: ChitLookup = {};
@@ -48,61 +58,58 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    * @returns the found chit
    * @throws If the chit is missing
    */
-  /** @internal */
-  public readonly findChit: (id: string) => Chit = (id: string) => {
+  public readonly $internal_findChit: (id: string) => Chit = (id: string) => {
     // store as an arrow fn so it can be passed as a fn reference and retain 'this'
     const result = this.chitLookup[id];
     if (!result) {
-      if (this.parent) {
-        return this.parent.findChit(id);
+      if (this.$internal_parent) {
+        return this.$internal_parent.$internal_findChit(id);
       }
       throw new Error("Cannot find chit");
     }
     return result;
   };
 
+  // Alias for backward compatibility
+  public get findChit() {
+    return this.$internal_findChit;
+  }
+
   /**
    * The root chit instance of the game.  All chits in the game have this chit somewhere in its hierarchy
    */
   public get rootChit(): R {
-    return this.findChit("root") as R;
+    return this.$internal_findChit("root") as R;
   }
 
-  /** @internal */
-  private _playerIds: string[];
+  private $internal__playerIds!: string[];
 
-  /** @internal */
   constructor(
     public id: string,
-    /** @internal */
-    public match: Match<P, R>,
-    /** @internal */
-    public state: TurnState,
-    /** @internal */
-    public fn: (turn: Turn<T, P, R>) => Promise<T>,
-    /** @internal */
-    private chitsToLock: Chit[],
+    public $internal_match: Match<P, R>,
+    public $internal_state: TurnState,
+    public $internal_fn: (turn: Turn<T, P, R>) => Promise<T>,
+    private $internal_chitsToLock: Chit[],
     public player?: P,
-    /** @internal */
-    private parent?: Turn<any, P, R>,
+    private $internal_parent?: Turn<any, P, R>,
   ) {
-    if (chitsToLock.find((chit) => !chit.id)) {
+    if ($internal_chitsToLock.find((chit) => !chit.id)) {
       throw new Error("Cannot lock a chit without an id");
     }
 
     // store our chit lookup plus the initial states of all of those chits
     // so if we have to reset, we can just restore those states
-    Chit.walk(chitsToLock, (c) => {
+    Chit.$internal_walk($internal_chitsToLock, (c) => {
       if (!c.id) {
         throw new Error("Cannot lock a chit without an id");
       }
-      c.lock(this);
+      c.$internal_lock(this);
       this.chitLookup[c.id] = c;
     });
 
     // this has to be done after we capture and lock the chits, but we need player ids so we can properly serialize
     // chits
-    this._playerIds = this.rootChit.players.map((p) => {
+    this.$internal__playerIds = this.rootChit.players.map((p) => {
       if (!p.id) {
         throw new Error("Cannot create turns for players without IDs");
       }
@@ -114,7 +121,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       if (!c.id) {
         throw new Error("Cannot serialize a chit without an id");
       }
-      this.lastChitStates[c.id] = this.lockedChitStates[c.id] = c.serialize(this._playerIds);
+      this.lastChitStates[c.id] = this.lockedChitStates[c.id] = c.$internal_serialize(this.$internal__playerIds);
     });
   }
 
@@ -127,8 +134,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    * @returns A number from 0-1
    */
   async rng() {
-    await this.possiblyConfirm("Confirm draw or roll");
-    const result = this.state.getOrCreateRng(this.decisionIndex);
+    await this.$internal_possiblyConfirm("confirm draw or roll");
+    const result = this.$internal_state.getOrCreateRng(this.decisionIndex);
     this.decisionIndex++;
     return result;
   }
@@ -140,10 +147,10 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    * @returns A parameterless function that will return the next random number in the list.  If you try to select too many random numbers, that method will throw.
    */
   async takeRng(count: number): Promise<() => number> {
-    await this.possiblyConfirm("Confirm draw or roll");
+    await this.$internal_possiblyConfirm("confirm draw or roll");
     const results: number[] = [];
     for (let i = 0; i < count; i++) {
-      results.push(this.state.getOrCreateRng(this.decisionIndex));
+      results.push(this.$internal_state.getOrCreateRng(this.decisionIndex));
       this.decisionIndex++;
     }
 
@@ -157,47 +164,93 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   }
 
   /**
+   * Add a game log message to the last flush step
+   * @param message
+   */
+  log(message: string) {
+    let step = this.clockSteps[this.clockSteps.length - 1];
+    if (!step || !(step instanceof FlushClockStep) || (step as FlushClockStep).log !== undefined) {
+      // flushing any changes while there are active subturns makes timelines *VERY* difficult
+      if (this.$internal_activeSubTurns.length) {
+        throw new Error("Cannot flush while subturns are active");
+      }
+
+      this.flush(true);
+      step = this.clockSteps[this.clockSteps.length - 1];
+    }
+
+    const flushStep = step as FlushClockStep;
+    flushStep.log = message;
+  }
+
+  /**
+   * Append a game log message to the last flush step that has a game log message
+   * @param message
+   * @returns
+   */
+  amendLog(message: string | ((previous: string) => string)) {
+    const lastSubTurnIndex = this.clockSteps.findLastIndex((step) => step instanceof SubTurnsClockStep);
+    const lastIndex = this.clockSteps.findLastIndex(
+      (step, index) => index > lastSubTurnIndex && step instanceof FlushClockStep && step.log,
+    );
+    if (lastIndex < 0) {
+      if (message instanceof Function) {
+        message = message("");
+      }
+
+      this.log(message);
+      return;
+    }
+
+    const step = this.clockSteps[lastIndex] as FlushClockStep;
+    if (message instanceof Function) {
+      message = message(step.log!);
+    }
+    step.log = message;
+  }
+
+  /**
    * Scan all of the chits managed by this turn.  If any of them have changed, group them together into a
    * "ClockStep".  If any new chits appear, then add them to our lookup.  If any chits are deleted (orphaned),
    * then we have to identify those as well.
    */
-  flush() {
+  flush(force = false) {
     const seenIds = new Set<string>();
     const newStates: ChitStateLookup = {};
-    let sawChange = false;
+    let sawChange = force;
 
     // first ensure they all are locked and all have ids
     const chitsToAddIdsTo: Chit[] = [];
-    Chit.walk(this.chitsToLock, (c) => {
+    Chit.$internal_walk(this.$internal_chitsToLock, (c) => {
       if (!c.id) {
         chitsToAddIdsTo.push(c);
       }
     });
 
-    chitsToAddIdsTo.sort((a, b) => a.createdOrder - b.createdOrder);
+    chitsToAddIdsTo.sort((a, b) => a.$internal_createdOrder - b.$internal_createdOrder);
     chitsToAddIdsTo.forEach((c) => {
-      const type = c.chitTypeName();
+      const type = c.$internal_chitTypeName();
       const counter = (this.newChitCounter[type] || 0) + 1;
       this.newChitCounter[type] = counter;
       c.id = `${this.id}.${type}.${counter}`;
-      c.lock(this);
+      c.$internal_lock(this);
 
       const existing = this.chitLookup[c.id];
       this.chitLookup[c.id] = c; // it's possible that this is kicking out an "old" version of this chit from a previous pass
       if (existing) {
         existing.removeFromParent(); // do not want to leave stray references to this cloned chit around!
-        existing.unlock(this);
+        existing.$internal_unlock(this);
       }
     });
 
     // now (once per chit) we serialize the state if it changed
-    Chit.walk(this.chitsToLock, (c) => {
+    Chit.$internal_walk(this.$internal_chitsToLock, (c) => {
       if (!c.id) {
         throw new Error("Should not be possible unless Chit.walk is misbehaving");
       }
       if (!seenIds.has(c.id)) {
         seenIds.add(c.id);
-        const serialized = c.serialize(this._playerIds);
+        const serialized = c.$internal_serialize(this.$internal__playerIds);
         const lastState = this.lastChitStates[c.id];
         if (serialized !== lastState) {
           this.lastChitStates[c.id] = newStates[c.id] = serialized;
@@ -213,14 +266,14 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     // find any chits that we previously serialized that we no longer see
     // these should be marked as deleted now
     const chitsToDelete = Object.keys(this.lastChitStates)
-      .filter((id) => !seenIds.has(id) && this.lastChitStates[id] !== Chit.deletedIfSerialized())
+      .filter((id) => !seenIds.has(id) && this.lastChitStates[id] !== Chit.$internal_deletedIfSerialized())
       .map((id) => this.findChit(id));
 
     // make sure any missing items that were previously also missing are still deleted
     Object.keys(this.lastChitStates)
-      .filter((id) => !seenIds.has(id) && this.lastChitStates[id] == Chit.deletedIfSerialized())
+      .filter((id) => !seenIds.has(id) && this.lastChitStates[id] == Chit.$internal_deletedIfSerialized())
       .forEach((id) => {
-        newStates[id] = Chit.deletedIfSerialized();
+        newStates[id] = Chit.$internal_deletedIfSerialized();
       });
 
     // find all chits without parents - all of their descendants are safe to be purged
@@ -229,15 +282,15 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       .forEach((chit) => {
         if (chit.id) {
           sawChange = true;
-          chit.unlock(this);
-          newStates[chit.id] = Chit.deletedIfSerialized();
+          chit.$internal_unlock(this);
+          newStates[chit.id] = Chit.$internal_deletedIfSerialized();
           // do not store this new state in lastChitStates, but rather delete this record from it altogether
-          chit.walk((c) => {
+          chit.$internal_walk((c) => {
             if (c.id) {
               seenIds.add(c.id);
-              this.lastChitStates[c.id] = Chit.deletedIfSerialized();
-              newStates[c.id] = Chit.deletedIfSerialized();
-              chit.unlock(this);
+              this.lastChitStates[c.id] = Chit.$internal_deletedIfSerialized();
+              newStates[c.id] = Chit.$internal_deletedIfSerialized();
+              chit.$internal_unlock(this);
             }
           });
         }
@@ -251,11 +304,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     if (sawChange) {
       // flushing any changes while there are active subturns makes timelines *VERY* difficult
-      if (this.activeSubTurns.length) {
+      if (this.$internal_activeSubTurns.length) {
         throw new Error("Cannot flush while subturns are active");
       }
 
-      this.clockSteps.push(new FlushClockStep(this.clock, newStates));
+      this.clockSteps.push(new FlushClockStep(this.$internal_clock, newStates));
     }
   }
 
@@ -277,19 +330,19 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    * @returns Whatever the final result of cb() is
    */
   public async createTurn<A>(chits: Chit[], player: P, cb: (turn: Turn<A, P, R>) => Promise<A>): Promise<A> {
-    if (this.unresolvedPrompt) {
+    if (this.$internal_unresolvedPrompt) {
       throw new Error("Still awaiting a prompt result");
     }
-    if (this.destroyed) {
+    if (this.$internal_destroyed) {
       throw new DestroyError(); // do not create more turns if we are destroyed!
     }
 
-    await this.checkPause();
+    await this.$internal_checkPause();
 
     this.flush();
 
     if (player.playerId && player.playerId !== this.player?.playerId) {
-      await this.possiblyConfirm("Confirm switching active player");
+      await this.$internal_possiblyConfirm("confirm switching active player");
       this.flush();
     }
 
@@ -297,21 +350,21 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       chits = chits.concat(player);
     }
 
-    if (player && this.activeSubTurns.find((subTurn) => subTurn.player === player)) {
+    if (player && this.$internal_activeSubTurns.find((subTurn) => subTurn.player === player)) {
       throw new Error("Only one sub-turn can be active at a time per player");
     }
 
     const id = `${this.id}.t${this.decisionIndex}`;
-    const s = this.state.getOrCreateTurnState(this.decisionIndex);
+    const s = this.$internal_state.getOrCreateTurnState(this.decisionIndex);
     s.playerId = player?.playerId;
     s.id = id;
-    Chit.walk(chits, (chit) => chit.unlock(this));
-    const turn = new Turn<A, P, R>(id, this.match, s, cb, chits, player, this);
+    Chit.$internal_walk(chits, (chit) => chit.$internal_unlock(this));
+    const turn = new Turn<A, P, R>(id, this.$internal_match, s, cb, chits, player, this);
 
     this.decisionIndex++;
 
-    if (this.activeSubTurns.length === 0) {
-      this.clockSteps.push(new SubTurnsClockStep(this.clock, [turn]));
+    if (this.$internal_activeSubTurns.length === 0) {
+      this.clockSteps.push(new SubTurnsClockStep(this.$internal_clock, [turn]));
     } else {
       const lastStep = this.clockSteps[this.clockSteps.length - 1];
       if (!(lastStep instanceof SubTurnsClockStep)) {
@@ -320,22 +373,22 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       lastStep.turns.push(turn);
     }
 
-    this.activeSubTurns.push(turn);
+    this.$internal_activeSubTurns.push(turn);
 
     //make sure flow goes to next tick
     await new Promise((resolve) => nextTick(() => resolve(true)));
 
-    await this.checkPause();
+    await this.$internal_checkPause();
 
-    const result = await turn.execute();
+    const result = await turn.$internal_execute();
 
-    await this.checkPause();
+    await this.$internal_checkPause();
 
-    this.activeSubTurns = this.activeSubTurns.filter((t) => t !== turn);
+    this.$internal_activeSubTurns = this.$internal_activeSubTurns.filter((t) => t !== turn);
 
     Object.values(turn.chitLookup).forEach((chit) => {
       if (chit.id) {
-        chit.lock(this);
+        chit.$internal_lock(this);
         this.chitLookup[chit.id] = chit;
       }
     });
@@ -351,7 +404,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     action: (p: P, turn: Turn<A, P, R>) => Promise<A>,
   ): Promise<A[]> {
     // the whole point of this function is so we can mark all players as having a prompt waiting for them
-    players.forEach((player) => (player.promptStatus.latestPromptMessage = "Waiting for turn to complete"));
+    players.forEach((player) => (player.promptStatus.$internal_latestPromptMessage = "Waiting for turn to complete"));
 
     const turns = players.map((player) =>
       this.createTurn(chits(player), player, (turn: Turn<A, P, R>) => action(player, turn)),
@@ -378,7 +431,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.prepareForPrompt(prompt);
 
     // make sure all of these chits are locked by us - otherwise someone has made a mistake.
-    chits.forEach((chit) => chit.confirmLock(this));
+    chits.forEach((chit) => chit.$internal_confirmLock(this));
 
     await this.waitForPromptResolution(prompt);
     if (!prompt.selectedChit) {
@@ -450,7 +503,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         }
         throw new Error("Invalid type");
       })
-      .filter((a) => a && a.numberOfChoices() > 0) as Pick[];
+      .filter((a) => a && a.$internal_numberOfChoices() > 0) as Pick[];
 
     prompt.picks = flatPicks;
 
@@ -464,7 +517,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       this.prepareForPrompt(prompt);
 
       // make sure all of these chits are locked by us - otherwise someone has made a mistake.
-      flatPicks.forEach((pick) => pick.confirmLock(this));
+      flatPicks.forEach((pick) => pick.$internal_confirmLock(this));
 
       await this.waitForPromptResolution(prompt);
 
@@ -472,57 +525,52 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     }
   }
 
-  /** @internal */
-  public rerun(turn: Turn<any, P, R>) {
-    this.activeSubTurns.forEach((t) => t.rerun(turn));
-    if (this.unresolvedPrompt) {
-      this.unresolvedPrompt.shouldRerun = turn;
-      this.unresolvedPrompt.resolve({});
+  public $internal_rerun(turn: Turn<any, P, R>) {
+    this.$internal_activeSubTurns.forEach((t) => t.$internal_rerun(turn));
+    if (this.$internal_unresolvedPrompt) {
+      this.$internal_unresolvedPrompt.shouldRerun = turn;
+      this.$internal_unresolvedPrompt.resolve({});
     }
   }
 
-  /** @internal */
-  async possiblyConfirm(action: string): Promise<void> {
-    if (this.state.hasUserMadeChoiceSinceUserContextChangedOrRng(this.decisionIndex - 1)) {
+  async $internal_possiblyConfirm(action: string): Promise<void> {
+    if (this.$internal_state.hasUserMadeChoiceSinceUserContextChangedOrRng(this.decisionIndex - 1)) {
       const c = new Confirm(() => {});
       c.message = action;
       await this.pick([c]);
     }
   }
 
-  /** @internal */
-  private nextSavedStateToProcess?: TurnState;
+  private $internal_nextSavedStateToProcess?: TurnState;
 
-  /** @internal */
-  private isProcessingSavedState = false;
+  private $internal_isProcessingSavedState = false;
 
-  /** @internal */
   /** This is only useful at the 'root' turn level, really. */
-  public async processNewSavedState(state: TurnState) {
-    if (this.isProcessingSavedState) {
-      this.nextSavedStateToProcess = state;
+  public async $internal_processNewSavedState(state: TurnState) {
+    if (this.$internal_isProcessingSavedState) {
+      this.$internal_nextSavedStateToProcess = state;
       return;
     }
 
     try {
-      this.isProcessingSavedState = true;
-      this.pause();
+      this.$internal_isProcessingSavedState = true;
+      this.$internal_pause();
 
       // defer to next tick on starting
       await new Promise<void>((resolve) => nextTick(() => resolve()));
 
-      const instructions = this.handleNewSavedState(state);
+      const instructions = this.$internal_handleNewSavedState(state);
 
-      this.propagateNewState(state);
+      this.$internal_propagateNewState(state);
 
       for (const instruction of instructions) {
         if (instruction.type === "reset") {
-          this.state = state;
-          instruction.turn.rerun(instruction.turn);
+          this.$internal_state = state;
+          instruction.turn.$internal_rerun(instruction.turn);
         } else if (instruction.type === "prompt") {
           await new Promise<void>((resolve, reject) =>
             nextTick(() => {
-              if (instruction.turn.unresolvedPrompt !== instruction.prompt) {
+              if (instruction.turn.$internal_unresolvedPrompt !== instruction.prompt) {
                 reject("waiting on incorrect prompt");
               }
               instruction.prompt.resolve(instruction.response);
@@ -535,32 +583,30 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       // always defer to next tick again when resuming
       await new Promise<void>((resolve) => nextTick(() => resolve()));
     } finally {
-      this.unpause();
-      this.isProcessingSavedState = false;
+      this.$internal_unpause();
+      this.$internal_isProcessingSavedState = false;
 
-      if (this.nextSavedStateToProcess) {
-        const newState = this.nextSavedStateToProcess;
-        this.nextSavedStateToProcess = undefined;
-        this.processNewSavedState(newState);
+      if (this.$internal_nextSavedStateToProcess) {
+        const newState = this.$internal_nextSavedStateToProcess;
+        this.$internal_nextSavedStateToProcess = undefined;
+        this.$internal_processNewSavedState(newState);
       }
     }
   }
 
-  /** @internal */
-  public propagateNewState(state: TurnState) {
-    this.state = state;
+  public $internal_propagateNewState(state: TurnState) {
+    this.$internal_state = state;
 
-    this.activeSubTurns.forEach((t) => {
+    this.$internal_activeSubTurns.forEach((t) => {
       const newState = state.decisions.find((decision) => decision.type === "turn" && decision.id === t.id);
       if (newState) {
-        t.propagateNewState(newState as TurnState);
+        t.$internal_propagateNewState(newState as TurnState);
       }
     });
   }
 
-  /** @internal */
-  public handleNewSavedState(state: TurnState): SavedStateProcessingInstructions[] {
-    const oldState = this.state;
+  public $internal_handleNewSavedState(state: TurnState): SavedStateProcessingInstructions[] {
+    const oldState = this.$internal_state;
 
     // if we have decisions that the state we are loading does NOT have yet
     // then we have to reset and rerun this turn
@@ -598,14 +644,14 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           oldResponse.response === undefined &&
           newResponse.response !== undefined
         ) {
-          if (!this.unresolvedPrompt) {
+          if (!this.$internal_unresolvedPrompt) {
             return [{ turn: this, type: "reset" }]; // something has gone wrong if we have a response and are not waiting on a response
           }
 
           result.push({
             type: "prompt",
             turn: this,
-            prompt: this.unresolvedPrompt,
+            prompt: this.$internal_unresolvedPrompt,
             response: newResponse.response,
           });
         } else if (JSON.stringify(oldResponse.response) !== JSON.stringify(newResponse.response)) {
@@ -616,9 +662,9 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         const newTurnState = newDecision as TurnState;
 
         // if this turn isn't finished, then let that turn try to resolve the new state
-        const foundTurn = this.activeSubTurns.find((t) => t.id === newTurnState.id);
+        const foundTurn = this.$internal_activeSubTurns.find((t) => t.id === newTurnState.id);
         if (foundTurn) {
-          const subTurnChanges = foundTurn.handleNewSavedState(newTurnState);
+          const subTurnChanges = foundTurn.$internal_handleNewSavedState(newTurnState);
           subTurnChanges.forEach((r) => result.push(r));
         } else if (JSON.stringify(oldTurnState.decisions) !== JSON.stringify(newTurnState.decisions)) {
           return [{ turn: this, type: "reset" }];
@@ -636,16 +682,75 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     }
     return 0;
   }
+  private findIndexOfLastFlushStepWithLogMessageBefore(clock: number): number {
+    for (let j = this.clockSteps.length - 1; j >= 0; j--) {
+      if (
+        this.clockSteps[j] instanceof FlushClockStep &&
+        this.clockSteps[j].startClock < clock &&
+        (this.clockSteps[j] as FlushClockStep).log
+      ) {
+        return j;
+      }
+      if (this.clockSteps[j].startClock < clock && this.clockSteps[j] instanceof SubTurnsClockStep) {
+        // logs cannot be inside subturns
+        break;
+      }
+    }
+    return -1;
+  }
 
-  /** @internal */
-  serialize(playerId: string, clock: number): ChitSerializationResponse {
-    clock = Math.max(0, Math.min(clock, this.playerVisibleClockTime(playerId)));
+  $internal_chitsHistory(playerId: string, ids: string[]): ChitHistoryResponse {
+    const result: ChitHistoryResponse = {};
+
+    const appendLog = (id: string, clock: number, state: string) => {
+      if (!state) {
+        return;
+      }
+      result[id] = result[id] ?? [];
+      if (result[id][result[id].length - 1]?.state !== state) {
+        result[id].push({
+          clock,
+          state,
+        });
+      }
+    };
+
+    this.clockSteps.forEach((step) => {
+      if (step instanceof FlushClockStep) {
+        ids.forEach((id) => appendLog(id, step.startClock, step.state[id]));
+      } else if (step instanceof SubTurnsClockStep) {
+        for (const turn of step.visibleTurns(playerId)) {
+          const turnResponse = turn.$internal_chitsHistory(playerId, ids);
+          Object.entries(turnResponse).forEach(([id, value]) => {
+            value.forEach((v) => {
+              appendLog(id, step.startClock + v.clock, v.state);
+            });
+          });
+        }
+      }
+    });
+    return result;
+  }
+
+  $internal_serialize(playerId: string, clock: number): ChitSerializationResponse {
+    clock = Math.max(0, Math.min(clock, this.$internal_playerVisibleClockTime(playerId)));
 
     let chits = {};
     let resultingClock = -1;
 
     // going forwards
     let index = this.findIndexOfLastFlushStepBefore(clock);
+    const lastLogIndex = this.findIndexOfLastFlushStepWithLogMessageBefore(clock);
+
+    // set up logs
+    let log: LogMessageSerializationResponse | undefined;
+    if (lastLogIndex >= 0) {
+      const messageStep = this.clockSteps[lastLogIndex] as FlushClockStep;
+      log = {
+        message: messageStep.log!,
+        clock: messageStep.startClock,
+      };
+    }
     let subTurns: { [turnId: string]: ClockDetails } | undefined = undefined;
 
     // eslint-disable-next-line no-constant-condition
@@ -675,17 +780,22 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           }
 
           // we are going forward so we never want to have a turn go backwards.  ever.
-          const serialized = turn.serialize(playerId, time);
+          const serialized = turn.$internal_serialize(playerId, time);
           Object.assign(chits, serialized.chits);
 
           resultingClock += serialized.clockDetails.clock;
           remainingClocksToSpend -= serialized.clockDetails.clock;
           subTurns[turn.id] = serialized.clockDetails;
+          if (serialized.log) {
+            log = serialized.log;
+            log.clock += clockStep.startClock;
+          }
         }
       }
     }
 
     return {
+      log,
       chits,
       clockDetails: {
         pass: this.pass,
@@ -695,27 +805,52 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     };
   }
 
+  $internal_gameLog(playerId: string): LogMessageSerializationResponse[] {
+    return this.clockSteps
+      .map((step) => {
+        if (step instanceof FlushClockStep && step.log) {
+          return { message: step.log, clock: step.startClock };
+        } else if (step instanceof SubTurnsClockStep) {
+          let offset = step.startClock;
+
+          return step
+            .visibleTurns(playerId)
+            .map((turn) => {
+              const logs = turn.$internal_gameLog(playerId).map((l) => {
+                l.clock += offset;
+                return l;
+              });
+              offset += turn.$internal_clockDetails(playerId).clock;
+              return logs;
+            })
+            .flat();
+        }
+      })
+      .flat()
+      .filter((d) => d) as LogMessageSerializationResponse[];
+  }
+
   /*
    * Internal helper function to prep a Prompt for prompting
    */
   private prepareForPrompt<A extends Prompt>(prompt: A): A {
-    if (this.unresolvedPrompt) {
+    if (this.$internal_unresolvedPrompt) {
       throw new Error("Already awaiting a prompt result");
     }
     if (!this.player) {
       throw new Error("No player attached to turn");
     }
-    if (this.activeSubTurns.length) {
+    if (this.$internal_activeSubTurns.length) {
       throw new Error("Prompts are not allowed while subturns are not resolved");
     }
 
     prompt.findChit = this.findChit;
     prompt.id = `${this.id} prompt ${this.decisionIndex}`;
-    prompt.clock = this.clock;
-    prompt.canReset = this.state.hasUserMadeChoiceSinceUserContextChangedOrRng(this.decisionIndex - 1);
-    this.player.promptStatus.latestPromptMessage = prompt.message;
-    if (!this.player.promptStatus.latestPromptMessage.length) {
-      this.player.promptStatus.latestPromptMessage = "No prompt set";
+    prompt.clock = this.$internal_clock;
+    prompt.canReset = this.$internal_state.hasUserMadeChoiceSinceUserContextChangedOrRng(this.decisionIndex - 1);
+    this.player.promptStatus.$internal_latestPromptMessage = prompt.message;
+    if (!this.player.promptStatus.$internal_latestPromptMessage.length) {
+      this.player.promptStatus.$internal_latestPromptMessage = "No prompt set";
     }
 
     this.flush();
@@ -731,20 +866,20 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       throw new Error("Must have player specified");
     }
 
-    await this.checkPause();
-    const resolution = this.state.getOrCreatePromptResponse(this.decisionIndex);
-    await this.checkPause(); // state could have gotten funky here?  if we have a resolution already? maybe not so bad?
+    await this.$internal_checkPause();
+    const resolution = this.$internal_state.getOrCreatePromptResponse(this.decisionIndex);
+    await this.$internal_checkPause(); // state could have gotten funky here?  if we have a resolution already? maybe not so bad?
 
     if (resolution.response !== undefined) {
       await new Promise((resolve) => nextTick(() => resolve(true))); // defer to next tick to make sure replay works identically
       prompt.resolve(resolution.response);
     } else {
-      if (this.player.promptStatus.latestPrompt.value) {
+      if (this.player.promptStatus.$internal_latestPrompt.value) {
         throw new Error("Player can only have prompt out at a time");
       }
 
-      this.unresolvedPrompt = prompt;
-      this.player.promptStatus.latestPrompt.value = prompt;
+      this.$internal_unresolvedPrompt = prompt;
+      this.player.promptStatus.$internal_latestPrompt.value = prompt;
 
       // weird anti-pattern which will actually wait for a resolution to the prompt and return flow here.
       let succeeded = false;
@@ -765,23 +900,23 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         throw new StepBackError();
       }
       if (!succeeded) {
-        this.player.promptStatus.latestPrompt.value = undefined;
-        this.unresolvedPrompt = undefined;
+        this.player.promptStatus.$internal_latestPrompt.value = undefined;
+        this.$internal_unresolvedPrompt = undefined;
         // throw new Error("Unknown error");
         return;
       }
 
-      this.player.promptStatus.latestPrompt.value = undefined;
+      this.player.promptStatus.$internal_latestPrompt.value = undefined;
       resolution.response = prompt.response;
-      this.unresolvedPrompt = undefined;
+      this.$internal_unresolvedPrompt = undefined;
     }
 
     // it is possible our state got reset out from under us and the response we have (which is a pointer)
     // to an object -- MAY be writing to the OLD state
-    this.state.setOrCreatePromptResponse(this.decisionIndex, resolution);
+    this.$internal_state.setOrCreatePromptResponse(this.decisionIndex, resolution);
 
-    this.player.promptStatus.latestPromptResponseTime = this.absoluteClock(this.player.id);
-    this.player.promptStatus.latestPromptMessage = undefined;
+    this.player.promptStatus.$internal_latestPromptResponseTime = this.$internal_absoluteClock(this.player.id);
+    this.player.promptStatus.$internal_latestPromptMessage = undefined;
     this.decisionIndex++;
   }
 
@@ -789,18 +924,17 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    * The main runtime.  Will attempt to run `fn` until it succeeds.  Each time it has to loop back,
    * it will reset chit's states to where they should be.
    */
-  /** @internal */
-  async execute() {
+  async $internal_execute() {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
-        await this.checkPause();
+        await this.$internal_checkPause();
 
         // actually execute this fn
-        const result = await this.fn(this);
+        const result = await this.$internal_fn(this);
 
-        if (this.player && this.player !== this.parent?.player) {
-          await this.possiblyConfirm("Confirm turn end");
+        if (this.player && this.player !== this.$internal_parent?.player) {
+          await this.$internal_possiblyConfirm("confirm turn end");
         }
 
         this.cleanUp();
@@ -815,151 +949,141 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         }
         if (error instanceof StepBackError) {
           // bubble it up to parent if we can
-          if (this.decisionIndex === 0 && this.parent?.player === this.player) {
+          if (this.decisionIndex === 0 && this.$internal_parent?.player === this.player) {
             throw error;
           }
 
-          this.state.stepBack(); // once to clear the current prompt
-          this.state.stepBack(); // and again to clear what was before
+          this.$internal_state.stepBack(); // once to clear the current prompt
+          this.$internal_state.stepBack(); // and again to clear what was before
           this.restartExecution();
           continue;
         } else if (error instanceof RollBackError) {
-          this.state.fullStepBack();
+          this.$internal_state.fullStepBack();
           this.restartExecution();
           continue;
-          // TODO: roll back
         }
-        this.destroy();
+        this.$internal_destroy();
         throw error;
       }
     }
   }
 
-  /** @internal */
-  _paused?: () => void;
+  $internal__paused?: () => void;
 
-  /** @internal */
-  pause() {
-    if (this._paused) {
+  $internal_pause() {
+    if (this.$internal__paused) {
       return;
     }
 
-    this.paused = new Promise((resolve) => {
-      this._paused = resolve;
+    this.$internal_paused = new Promise((resolve) => {
+      this.$internal__paused = resolve;
     });
-    this.activeSubTurns.forEach((turn) => turn.pause());
+    this.$internal_activeSubTurns.forEach((turn) => turn.$internal_pause());
   }
 
-  /** @internal */
-  async unpause() {
-    if (this._paused) {
-      this._paused();
-      this._paused = undefined;
+  async $internal_unpause() {
+    if (this.$internal__paused) {
+      this.$internal__paused();
+      this.$internal__paused = undefined;
     }
-    this.activeSubTurns.forEach((turn) => turn.unpause());
+    this.$internal_activeSubTurns.forEach((turn) => turn.$internal_unpause());
   }
 
-  /** @internal */
-  async checkPause() {
-    await this.paused;
-    if (this.destroyed) {
+  async $internal_checkPause() {
+    await this.$internal_paused;
+    if (this.$internal_destroyed) {
       throw new DestroyError();
     }
   }
 
-  /** @internal */
-  destroy() {
-    if (this.destroyed) {
+  $internal_destroy() {
+    if (this.$internal_destroyed) {
       return;
     }
 
-    this.destroyed = true;
-    this.activeSubTurns.forEach((turn) => turn.destroy());
-    Object.values(this.chitLookup).forEach((chit) => chit.unlock(this));
-    if (this.unresolvedPrompt && this.player) {
-      this.player.promptStatus.latestPrompt.value = undefined;
-      this.unresolvedPrompt.destroy();
+    this.$internal_destroyed = true;
+    this.$internal_activeSubTurns.forEach((turn) => turn.$internal_destroy());
+    Object.values(this.chitLookup).forEach((chit) => chit.$internal_unlock(this));
+    if (this.$internal_unresolvedPrompt && this.player) {
+      this.player.promptStatus.$internal_latestPrompt.value = undefined;
+      this.$internal_unresolvedPrompt.destroy();
     }
   }
 
-  /** @internal */
-  fixPass() {
+  $internal_fixPass() {
     this.pass = Date.now();
   }
 
   private cleanUp() {
     if (this.player) {
-      this.player.promptStatus.latestPromptMessage = undefined;
+      this.player.promptStatus.$internal_latestPromptMessage = undefined;
     }
-    this.completed = true;
+    this.$internal_completed = true;
     this.flush();
-    Object.values(this.chitLookup).forEach((chit) => chit.unlock(this));
+    Object.values(this.chitLookup).forEach((chit) => chit.$internal_unlock(this));
   }
 
-  /** @internal */
-  get lastClockStep(): ClockStep | undefined {
+  get $internal_lastClockStep(): ClockStep | undefined {
     return this.clockSteps[this.clockSteps.length - 1];
   }
 
-  /** @internal */
-  get clock() {
-    return this.lastClockStep?.endClock() ?? 0;
+  get $internal_clock() {
+    return this.$internal_lastClockStep?.endClock() ?? 0;
   }
 
-  /** @internal */
-  playerVisibleClockTime(playerId?: string) {
-    return this.lastClockStep?.endClock(playerId) ?? 0;
+  $internal_playerVisibleClockTime(playerId?: string) {
+    return this.$internal_lastClockStep?.endClock(playerId) ?? 0;
   }
 
-  /** @internal */
-  absoluteClock(playerId?: string): number {
-    return this.parent?.absoluteClock(playerId) ?? this.clockDetails(playerId).clock;
+  $internal_absoluteClock(playerId?: string): number {
+    return this.$internal_parent?.$internal_absoluteClock(playerId) ?? this.$internal_clockDetails(playerId).clock;
   }
 
-  /** @internal */
-  clockDetails(playerId?: string): ClockDetails {
+  $internal_clockDetails(playerId?: string): ClockDetails {
     const result: ClockDetails = {
-      clock: this.playerVisibleClockTime(playerId),
+      clock: this.$internal_playerVisibleClockTime(playerId),
       pass: this.pass,
     };
     const visibleActiveTurns =
-      this.lastClockStep instanceof SubTurnsClockStep ? this.lastClockStep.visibleTurns(playerId) : [];
+      this.$internal_lastClockStep instanceof SubTurnsClockStep
+        ? this.$internal_lastClockStep.visibleTurns(playerId)
+        : [];
     if (visibleActiveTurns.length > 0) {
       result.subTurns = {};
 
       for (const turn of visibleActiveTurns) {
-        result.subTurns[turn.id] = turn.clockDetails(playerId);
+        result.subTurns[turn.id] = turn.$internal_clockDetails(playerId);
       }
     }
     return result;
   }
 
   private restartExecution() {
-    this.activeSubTurns.forEach((t) => t.destroy());
+    this.$internal_activeSubTurns.forEach((t) => t.$internal_destroy());
 
     const chits = Object.values(this.chitLookup).filter((chit) => chit.id);
 
-    chits.forEach((chit) => chit.beginDeserializing());
+    chits.forEach((chit) => chit.$internal_beginDeserializing());
 
     chits.forEach((chit) => {
-      chit.lock(this);
+      chit.$internal_lock(this);
       const lockedState = this.lockedChitStates[chit.id ?? ""];
 
       if (lockedState) {
-        chit.deserialize(lockedState, this.findChit);
+        chit.$internal_deserialize(lockedState, this.findChit);
       } else {
         chit.removeFromParent(); // effectively "deletes" it.  In practice, the `fn` will recreate a new chit which will have the new ID, which replaces this one.
       }
     });
 
-    chits.forEach((chit) => chit.doneDeserializing());
+    chits.forEach((chit) => chit.$internal_doneDeserializing());
 
     if (this.player) {
-      this.player.promptStatus.latestPrompt.value = undefined;
+      this.player.promptStatus.$internal_latestPrompt.value = undefined;
     }
 
     this.chitLookup = {};
-    Chit.walk(this.chitsToLock, (c) => {
+    Chit.$internal_walk(this.$internal_chitsToLock, (c) => {
       if (c.id) {
         this.chitLookup[c.id] = c;
       }
@@ -969,8 +1093,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.clockSteps = [];
     this.decisionIndex = 0;
     this.newChitCounter = {};
-    this.unresolvedPrompt = undefined;
-    this.activeSubTurns = [];
+    this.$internal_unresolvedPrompt = undefined;
+    this.$internal_activeSubTurns = [];
     this.pass++;
   }
 }
@@ -994,15 +1118,15 @@ class SubTurnsClockStep<P extends PlayerChit, R extends RootChit<P>> extends Clo
     }
 
     const myTurn = this.turns.find((turn) => turn.player?.id === playerId);
-    if (myTurn && !myTurn?.completed) {
+    if (myTurn && !myTurn?.$internal_completed) {
       return [myTurn];
     }
 
-    if (myTurn?.completed) {
+    if (myTurn?.$internal_completed) {
       return [myTurn, ...this.turns.filter((turn) => turn !== myTurn)];
     }
 
-    const completedTurns = this.turns.filter((turn) => turn.completed);
+    const completedTurns = this.turns.filter((turn) => turn.$internal_completed);
     if (completedTurns.length === this.turns.length) {
       return completedTurns;
     }
@@ -1013,7 +1137,7 @@ class SubTurnsClockStep<P extends PlayerChit, R extends RootChit<P>> extends Clo
   endClock(playerId?: string): number {
     return (
       this.startClock +
-      this.visibleTurns(playerId).reduce((sum, turn) => sum + turn.playerVisibleClockTime(playerId), 0)
+      this.visibleTurns(playerId).reduce((sum, turn) => sum + turn.$internal_playerVisibleClockTime(playerId), 0)
     );
   }
 
@@ -1026,6 +1150,7 @@ class SubTurnsClockStep<P extends PlayerChit, R extends RootChit<P>> extends Clo
 }
 
 class FlushClockStep extends ClockStep {
+  public log?: string;
   public endClock() {
     return this.startClock + 1;
   }

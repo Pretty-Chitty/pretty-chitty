@@ -1,5 +1,5 @@
 export { Chit } from "./game/Chit";
-export type { HiddenPropertySerializationRule } from "./game/Chit";
+export type { HiddenPropertySerializationRule, PanelTab } from "./game/Chit";
 export { DropdownChit } from "./game/DropdownChit";
 export type { Game } from "./game/Game";
 export { GameButton, DynamicGameButton, ToggleGalleryButton } from "./game/GameButton";
@@ -8,7 +8,6 @@ export { GameDeck } from "./game/GameDeck";
 export { GameBag } from "./game/GameBag";
 export { GameTheme } from "./game/GameTheme";
 export { OrderedOutlet } from "./game/OrderedOutlet";
-export { PanelChit } from "./game/PanelChit";
 export type { PanelLayoutResult } from "./utilities/LayoutHelper";
 export { Pick, ButtonPick, ChitPick } from "./game/Pick";
 export { PlayerChit } from "./game/PlayerChit";
@@ -22,6 +21,7 @@ export type { IChitLibrary, GameResult, IButtonLibrary, ICanvasLibrary } from ".
 export type { Picks } from "./game/Turn";
 
 export type { IconMap } from "./utilities/CanvasStack/RichTextRenderer";
+export { Dice } from "./utilities/Dice";
 
 export { MatchViewer } from "./components/MatchViewer";
 export { ClientTrustMatchViewer } from "./components/ClientTrustMatchViewer";
@@ -34,6 +34,7 @@ export { ParameterizedCanvas } from "./utilities/ParameterizedCanvas";
 export { StaticImage } from "./utilities/StaticImage";
 export type { StaticImageOptions } from "./utilities/StaticImage";
 export * as ReactCanvas from "./utilities/CanvasStack/ReactCanvas";
+export { IconCanvas } from "./utilities/CanvasStack/IconCanvas";
 export type { DefaultProps } from "./utilities/CanvasStack/ReactCanvas";
 export type {
   ImageSpec,
@@ -59,4 +60,4 @@ export type { ExtrudeFromSVGOptions } from "./utilities/SvgExtruder";
 export { extrudeSVGToGeometry } from "./utilities/SvgExtruder";
 
 export { createLayoutFromTree } from "./utilities/LayoutHelper";
-export type { LayoutNode, PanelNode, ContainerNode, LayoutDirection } from "./utilities/LayoutHelper";
+export type { LayoutNode, PanelNode, ContainerNode, CollapsedNode, LayoutDirection } from "./utilities/LayoutHelper";

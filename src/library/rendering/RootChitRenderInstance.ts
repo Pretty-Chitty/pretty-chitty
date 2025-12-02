@@ -1,11 +1,10 @@
 import { Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { ChitRenderInstance } from "./ChitRenderInstance";
 import { Chit } from "../game/Chit";
-import { Box3, BufferGeometry, Group, Material, Mesh, Object3D, Raycaster, Vector2, Vector3 } from "three";
+import { Box3, Group, Object3D, Raycaster, Vector2, Vector3 } from "three";
 import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
 import { LightWrapper } from "./LightWrapper";
-import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
-import { GalleryState } from "../game/GalleryState";
+import { ModalState } from "../game/ModalState";
 import { GalleryItemSource } from "../components/GalleryViewer";
 import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
 import { GalleryItemRawSource } from "../game/GalleryItemRawSource";
@@ -44,13 +43,11 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     return this._height;
   }
 
-  /** @internal */
-  public get sceneWrapper() {
+  public get $internal_sceneWrapper() {
     return this._sceneWrapper;
   }
 
-  /** @internal */
-  public playerId?: string;
+  public $internal_playerId?: string;
 
   public cameraWrapper = new CameraWrapperPerspective(this);
   public lightWrapper = new LightWrapper();
@@ -68,8 +65,12 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
 
   private _notifyTimeout?: NodeJS.Timeout;
   protected override notifyBoundingBoxChanged(): void {
-    clearTimeout(this._notifyTimeout);
+    if (this._notifyTimeout) {
+      return;
+    }
+
     this._notifyTimeout = setTimeout(() => {
+      this._notifyTimeout = undefined;
       // find our bounds
       const bbox = new Box3();
       this.bboxGroup.updateWorldMatrix(false, true);
@@ -103,10 +104,10 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     }
   }
 
-  private galleryState?: GalleryState;
-  public setup(galleryState: GalleryState) {
+  private modalState?: ModalState;
+  public setup(modalState: ModalState) {
     this.init();
-    this.galleryState = galleryState;
+    this.modalState = modalState;
   }
 
   public override checkPreDestroy() {
@@ -187,7 +188,7 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     if (!this._hasPendingChanges) {
       this._hasPendingChanges = true;
       this.notifyPanelStatusChange();
-      this.sceneWrapper.markDirty();
+      this.$internal_sceneWrapper.markDirty();
     }
   }
 
@@ -195,7 +196,7 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     if (!this._hasChitsLeaving) {
       this._hasChitsLeaving = true;
       this.notifyPanelStatusChange();
-      this.sceneWrapper.markDirty();
+      this.$internal_sceneWrapper.markDirty();
     }
   }
 
@@ -203,12 +204,12 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     if (!this._hasChitsEntering) {
       this._hasChitsEntering = true;
       this.notifyPanelStatusChange();
-      this.sceneWrapper.markDirty();
+      this.$internal_sceneWrapper.markDirty();
     }
   }
 
   public markHasChange() {
-    this.sceneWrapper.markDirty();
+    this.$internal_sceneWrapper.markDirty();
   }
 
   getRootGroup(): Object3D {
@@ -220,13 +221,13 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     return n - this._totalPauseDuration - (this._isPaused ? n - this._pausedAt : 0);
   }
 
-  public update() {
+  public update(background = false) {
     if (this._isPaused) {
       return false;
     }
     if (this._tweenGroup) {
       const hasChange = this._tweenGroup.update(this.now);
-      if (!hasChange && (this._hasPendingChanges || this._hasChitsEntering || this._hasChitsLeaving)) {
+      if (!background && !hasChange && (this._hasPendingChanges || this._hasChitsEntering || this._hasChitsLeaving)) {
         this._hasPendingChanges = false;
         this._hasChitsEntering = false;
         this._hasChitsLeaving = false;
@@ -304,8 +305,8 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
 
   public createRenderSpec() {
     const result = super.createRenderSpec();
-    if (this.chit.game?.renderDefaultRootChit) {
-      this.chit.game?.renderDefaultRootChit(result);
+    if (this.chit.$internal_game?.renderDefaultRootChit) {
+      this.chit.$internal_game?.renderDefaultRootChit(result);
     }
     return result;
   }
@@ -328,13 +329,13 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     const chitRenderInstances: ChitRenderInstance[] = [];
     const threeJsToChitLookup: { [threejsId: number]: Chit } = {};
 
-    this.chit.walk((c) => {
-      if (filter(c) && c.renderInstance) {
-        chitRenderInstances.push(c.renderInstance);
-        threeJsToChitLookup[c.renderInstance.clickbox.id] = c;
+    this.chit.$internal_walk((c) => {
+      if (filter(c) && c.$internal_renderInstance) {
+        chitRenderInstances.push(c.$internal_renderInstance);
+        threeJsToChitLookup[c.$internal_renderInstance.clickbox.id] = c;
 
         // if this is a "gallery" render instance, no need to check its children for clicks
-        if (c.renderInstance?.absorbsClickEventsForChildren) {
+        if (c.$internal_renderInstance?.absorbsClickEventsForChildren) {
           return false;
         }
       }
@@ -373,10 +374,10 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
   }
 
   public handleClick(x: number, y: number, distance: number, precision: number) {
-    const chits = this.findEligibleRenderInstances((c) => !!c.onClick, x, y, distance, precision);
+    const chits = this.findEligibleRenderInstances((c) => !!c.$internal_onClick, x, y, distance, precision);
 
     if (chits.length > 0) {
-      if (this.galleryState && chits.length >= 2) {
+      if (this.modalState && chits.length >= 2) {
         const items = chitsToGalleryItems(chits);
         if (items.length >= 2) {
           items.forEach((item) => {
@@ -384,41 +385,41 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
             if (orig) {
               item.onClick = () => {
                 orig();
-                if (this.galleryState) {
-                  this.galleryState.source.value = undefined;
+                if (this.modalState) {
+                  this.modalState.gallerySource.value = undefined;
                 }
               };
             }
           });
-          this.galleryState.source.value = new GalleryItemRawSource(items);
+          this.modalState.gallerySource.value = new GalleryItemRawSource(items);
           return;
         }
       }
 
       const chit = chits[0];
-      if (chit && chit.onClick) {
-        chit.onClick();
+      if (chit && chit.$internal_onClick) {
+        chit.$internal_onClick();
       }
     }
   }
 
   public handleLongClick(x: number, y: number, distance: number, precision: number) {
     const chits = this.findEligibleRenderInstances(
-      (c) => !!c.renderInstance?.showDetailsOnLongPress(),
+      (c) => !!c.$internal_renderInstance?.showDetailsOnLongPress(),
       x,
       y,
       distance,
       precision,
     );
-    if (this.galleryState && chits.length > 0) {
+    if (this.modalState && chits.length > 0) {
       const items = chitsToGalleryItems(chits);
-      this.galleryState.source.value = new GalleryItemRawSource(items);
+      this.modalState.gallerySource.value = new GalleryItemRawSource(items);
     }
   }
 
   public showGallery(source: GalleryItemSource) {
-    if (this.galleryState) {
-      const s = this.galleryState.source;
+    if (this.modalState) {
+      const s = this.modalState.gallerySource;
       s.value = source;
       return () => {
         if (s.value === source) {
@@ -429,8 +430,8 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     return () => {};
   }
   public hideGallery(source: GalleryItemSource) {
-    if (this.galleryState && this.galleryState.source.value === source) {
-      this.galleryState.source.value = undefined;
+    if (this.modalState && this.modalState.gallerySource.value === source) {
+      this.modalState.gallerySource.value = undefined;
     }
   }
 

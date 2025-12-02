@@ -59,7 +59,6 @@ export class Splay {
   public itemWidth?: number = undefined;
   public itemHeight?: number = undefined;
 
-  /** @internal */
   toString() {
     return `${this.rows} ${this.columns} ${this.rowOrientation} ${this.columnOrientation} ${this.enabled} ${this.zSpacingMultiplier} ${this.spacingMultiplier} ${this.itemWidth} ${this.itemHeight}`;
   }
@@ -86,8 +85,7 @@ export class Splay {
     };
   }
 
-  /** @internal */
-  splayEndPosition(
+  $internal_splayEndPosition(
     itemWidth: number,
     itemHeight: number,
     position: "top" | "left" | "right" | "bottom" = "bottom",

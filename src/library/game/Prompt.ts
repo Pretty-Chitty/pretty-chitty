@@ -185,11 +185,11 @@ export class SelectPrompt extends Prompt {
   }
 
   stageIn() {
-    this.chits.forEach((c) => (c.onClick = () => this.resolve(c.id)));
+    this.chits.forEach((c) => (c.$internal_onClick = () => this.resolve(c.id)));
   }
 
   stageOut() {
-    this.chits.forEach((c) => (c.onClick = undefined));
+    this.chits.forEach((c) => (c.$internal_onClick = undefined));
   }
 }
 
@@ -210,7 +210,7 @@ export class PickPrompt extends Prompt {
     }
 
     return this.picks
-      .map((p) => p.messageContents)
+      .map((p) => p.$internal_messageContents)
       .filter((d) => d)
       .join(" or ");
   }
@@ -221,14 +221,14 @@ export class PickPrompt extends Prompt {
     }
 
     return this.picks
-      .map((p) => p.helpContents)
+      .map((p) => p.$internal_helpContents)
       .filter((d) => d)
       .join("\n\nor\n\n");
   }
 
   async autoResolve(): Promise<boolean> {
-    if (this.picks.length === 1 && this.picks[0].canAutoResolve()) {
-      await this.picks[0].autoResolve();
+    if (this.picks.length === 1 && this.picks[0].$internal_canAutoResolve()) {
+      await this.picks[0].$internal_autoResolve();
       return true;
     }
     return false;
@@ -238,12 +238,12 @@ export class PickPrompt extends Prompt {
     return {
       message: this._message,
       help: this._help,
-      picks: this.picks.map((p) => p.serialize()),
+      picks: this.picks.map((p) => p.$internal_serialize()),
     };
   }
 
   deserializeDetails(details: { help: string | undefined; message: string | undefined; picks: any[] }): void {
-    this.picks = details.picks.map((d) => Pick.deserialize(d, this.findChit, this.buttonLibrary));
+    this.picks = details.picks.map((d) => Pick.$internal_deserialize(d, this.findChit, this.buttonLibrary));
     this._message = details.message;
     this._help = details.help;
   }
@@ -260,15 +260,15 @@ export class PickPrompt extends Prompt {
 
     this.resolved = true;
     const pick = this.picks[resolution.idx];
-    this.finished = () => pick.resolveDetails(resolution?.value);
+    this.finished = () => pick.$internal_resolveDetails(resolution?.value);
   }
 
   stageIn() {
-    this.picks.forEach((p) => p.stageIn(this));
+    this.picks.forEach((p) => p.$internal_stageIn(this));
   }
 
   stageOut() {
-    this.picks.forEach((p) => p.stageOut());
+    this.picks.forEach((p) => p.$internal_stageOut());
   }
 
   setMessageAndHelp(message?: string, help?: string) {

@@ -51,7 +51,7 @@ export class TextureReferenaceCounter {
 
     // Scan all active root render instances
     TextureReferenaceCounter.instances.forEach((instance) => {
-      instance.getRootGroup().traverse((obj) => {
+      instance.getRootGroup().traverseVisible((obj) => {
         if (obj instanceof Mesh) {
           if (obj.geometry instanceof BufferGeometry) {
             allGeosUsed.set(obj.geometry.uuid, obj.geometry);

@@ -25,10 +25,11 @@ export class DemoGame implements Game<MyPlayer, Root> {
   chitLibrary = { Card, Card2, Table, SideBoards, Root, Deck, MyPlayer, PlayerAid, CounterChit, BagChit, Row, Hand };
   canvasLibrary = CanvasLibrary;
   buttonLibrary = { FlipButton, PassButton, HandButton };
-
+  tokenMap = {};
   theme = GameTheme.withDefaults("#2d3142", "#ef8354");
 
-  async run(players: MyPlayer[], setup: Turn<any, MyPlayer, Root>, rootChit: Root) {
+  async run(setup: Turn<any, MyPlayer, Root>, rootChit: Root) {
+    const players = rootChit.players.copy();
     players[0].color = "#ed00cb";
     players[1].color = "#00edcb";
 

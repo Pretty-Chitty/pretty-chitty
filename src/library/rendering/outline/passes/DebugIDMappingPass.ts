@@ -95,10 +95,13 @@ export class DebugIDMappingPass extends Pass {
         uniform int numOutlineMeshes;
         varying vec2 vUv;
 
-        // Compare two RGB colors (object IDs) with strict tolerance
+        // Compare two RGB colors (object IDs) by rounding to nearest byte value
+        // This handles precision loss from reduced color depth devices (e.g., 6-bit displays)
         bool colorsMatch(vec3 color1, vec3 color2) {
-          vec3 diff = abs(color1 - color2);
-          return diff.r < 0.001 && diff.g < 0.001 && diff.b < 0.001;
+          // Round both colors to nearest byte values
+          vec3 c1 = floor(color1 * 255.0 + 0.5);
+          vec3 c2 = floor(color2 * 255.0 + 0.5);
+          return c1.r == c2.r && c1.g == c2.g && c1.b == c2.b;
         }
 
         // Check if a color represents background (black/near-black)

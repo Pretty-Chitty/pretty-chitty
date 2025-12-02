@@ -11,21 +11,19 @@ import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
 export type ButtonCallback = () => void | Promise<void>;
 
 export class GameButton {
-  /** @internal */
-  @NonEditable type = "button";
+  @NonEditable $internal_type = "button";
 
   public icon: BottomBarButtonIcon = Flip;
   public label: string = "Flip Me";
   public message: string | undefined;
 
-  /** @internal */
-  public canAutoResolve = true;
+  public $internal_canAutoResolve = true;
 
   constructor(public cb?: ButtonCallback) {}
 
   static pick(button: GameButton): ButtonPick {
     const result = new ButtonPick();
-    result.messageContents = button.message;
+    result.$internal_messageContents = button.message;
     result.button = button;
     return result;
   }
@@ -39,52 +37,45 @@ export class GameButton {
     return this;
   }
 
-  /** @internal */
-  serialize(): any {
+  $internal_serialize(): any {
     return {};
   }
 
-  /** @internal */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  deserialize(config: any, findChit: FindChit) {}
+  $internal_deserialize(config: any, findChit: FindChit) {}
 }
 
 export class ToggleGalleryButton extends GameButton {
   autoShow = true;
 
-  /** @internal */
-  parentChit?: Chit;
+  $internal_parentChit?: Chit;
 
-  /** @internal */
-  galleryItemSource?: GalleryItemSource;
+  $internal_galleryItemSource?: GalleryItemSource;
 
   setParentChit(parentChit: Chit): this {
-    this.parentChit = parentChit;
+    this.$internal_parentChit = parentChit;
     return this;
   }
 
-  /** @internal */
-  override serialize() {
+  $internal_serialize() {
     return {
-      parentChitId: this.parentChit?.id,
+      parentChitId: this.$internal_parentChit?.id,
       autoShow: this.autoShow,
     };
   }
 
-  /** @internal */
-  override deserialize({ parentChitId, autoShow }: { parentChitId?: string; autoShow: boolean }, findChit: FindChit) {
+  $internal_deserialize({ parentChitId, autoShow }: { parentChitId?: string; autoShow: boolean }, findChit: FindChit) {
     if (parentChitId) {
-      this.parentChit = findChit(parentChitId);
+      this.$internal_parentChit = findChit(parentChitId);
     }
     this.autoShow = autoShow;
   }
 
-  /** @internal */
-  computeItemSource(chitPick: ChitPick<any>) {
-    if (this.parentChit) {
-      this.galleryItemSource = new GalleryItemChitChildrenSource(this.parentChit);
+  $internal_computeItemSource(chitPick: ChitPick<any>) {
+    if (this.$internal_parentChit) {
+      this.$internal_galleryItemSource = new GalleryItemChitChildrenSource(this.$internal_parentChit);
     } else {
-      this.galleryItemSource = new GalleryItemRawSource(chitsToGalleryItems(chitPick.chits));
+      this.$internal_galleryItemSource = new GalleryItemRawSource(chitsToGalleryItems(chitPick.$internal_chits));
     }
   }
 }
@@ -100,8 +91,7 @@ export abstract class DynamicGameButton<T> extends GameButton {
 
   abstract process(spec: T): void;
 
-  /** @internal */
-  override serialize(): any {
+  $internal_serialize(): any {
     if (this.spec === undefined) {
       throw "Not configured";
     }
@@ -111,9 +101,8 @@ export abstract class DynamicGameButton<T> extends GameButton {
     };
   }
 
-  /** @internal */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  override deserialize({ spec }: { spec: T }) {
+  $internal_deserialize({ spec }: { spec: T }) {
     this.spec = spec;
     this.process(this.spec);
   }
@@ -122,5 +111,5 @@ export abstract class DynamicGameButton<T> extends GameButton {
 export class Confirm extends GameButton {
   label = "Confirm";
   icon = Check;
-  canAutoResolve = false;
+  $internal_canAutoResolve = false;
 }

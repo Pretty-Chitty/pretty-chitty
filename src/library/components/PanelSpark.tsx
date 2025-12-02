@@ -5,40 +5,11 @@ import { Box, Typography } from "@mui/material";
 import { useChit } from "../hooks/useChits";
 import { SparkChit } from "../game/SparkChit";
 import { useTimeState } from "../hooks/useTimeController";
-import { ParameterizedCanvas } from "../utilities/ParameterizedCanvas";
-import { Image, Player } from "../utilities/CanvasStack/ReactCanvas";
 import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 import { UpdatingCanvasImage } from "./UpdatingCanvasImage";
 import { PlayerChit } from "../game/PlayerChit";
-import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
-
-class IconCanvas extends ParameterizedCanvas {
-  constructor(
-    public width: number,
-    public height: number,
-    private image: ImageSpec,
-  ) {
-    super();
-  }
-
-  protected render() {
-    return <Image fill image={this.image} />;
-  }
-}
-
-class PlayerCanvas extends ParameterizedCanvas {
-  constructor(
-    public width: number,
-    public height: number,
-    private player: PlayerChit,
-  ) {
-    super();
-  }
-
-  protected render() {
-    return <Player player={this.player} />;
-  }
-}
+import { PlayerCanvas } from "../utilities/CanvasStack/PlayerCanvas";
+import { IconCanvas } from "../utilities/CanvasStack/IconCanvas";
 
 export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; chit: SparkChit; paused: boolean }) {
   const ref = useRef<HTMLElement>(null);
@@ -55,14 +26,14 @@ export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; c
   const DURATION = theme.sparkDuration;
 
   if (ref) {
-    chit.element = ref;
+    chit.$internal_element = ref;
   }
   const HEIGHT = theme.sparkSize;
 
   useEffect(() => {
     if (targetValue !== value) {
       if (paused && value !== Number.MIN_SAFE_INTEGER) {
-        chit.parent?.renderInstance?.rootRenderInstance.markHasPendingChange();
+        chit.parent?.$internal_renderInstance?.rootRenderInstance.markHasPendingChange();
         return;
       }
 
@@ -82,29 +53,28 @@ export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; c
   if (!chit.icon) {
     return;
   }
+  const image = chit.icon;
 
-  const icon = chit.icon;
-
-  const image =
-    chit.icon instanceof PlayerChit
-      ? new PlayerCanvas(HEIGHT * 3, HEIGHT * 3, chit.icon).get()
-      : "onUpdate" in icon && typeof icon.onUpdate === "function"
-        ? icon
-        : new IconCanvas(HEIGHT * 3, HEIGHT * 3, icon as ImageSpec).get();
-
-  const color = (chit.color.length > 0 ? chit.color : (icon as ImageSpec)?.color) ?? "#ffffff";
+  const color = chit.color.length > 0 ? chit.color : "#ffffff";
 
   if (value === Number.MIN_SAFE_INTEGER) {
     return null;
   }
 
   let backgroundColor = color;
+  let foregroundColor = theme.sparkForegroundColor;
   const borderColor = color;
 
   if (Color(color).isLight()) {
     backgroundColor = Color(color).darken(0.1).hex();
   } else {
     backgroundColor = Color(color).lighten(0.3).hex();
+  }
+
+  if (Color(backgroundColor).lightness() < 30) {
+    foregroundColor = Color(foregroundColor).lightness(80).hex();
+  } else {
+    foregroundColor = Color(foregroundColor).lightness(10).hex();
   }
 
   return (
@@ -114,7 +84,7 @@ export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; c
         position: "relative",
         background: flashed ? theme.sparkFlashColor : backgroundColor,
         transition: flashed ? "background linear 0.02s" : `background linear ${DURATION / 1000}s`,
-        color: theme.sparkForegroundColor,
+        color: foregroundColor,
         p: `${theme.spacing * 0.75}px`,
         pt: 0,
         pb: 0,

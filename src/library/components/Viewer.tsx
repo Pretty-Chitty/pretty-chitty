@@ -5,35 +5,41 @@ import { Chit } from "../game/Chit";
 import { RootChitRenderInstance } from "../rendering/RootChitRenderInstance";
 import { useAnimationSpeedMultiplier, useTimeState } from "../hooks/useTimeController";
 import { useEventChannelState } from "../hooks/useEventChannelState";
-import Hammer from "@egjs/hammerjs";
 import { addWheelListener, removeWheelListener } from "wheel";
 import { useWebGlRenderer } from "../hooks/useWebGlRenderer";
-import { useGalleryState } from "../hooks/useGalleryState";
+import { useModalState } from "../hooks/useModalState";
 import { usePlayerId } from "../hooks/usePlayer";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { requestSharedAnimationFrame } from "../utilities/RequestSharedAnimationFrame";
 import PersistentCanvas from "./PersistentCanvas";
+import { useGestureContext, ViewerGestureHandlers } from "./Panel/PanelContents";
 
 let ID_COUNTER = 1;
 
 export default function Viewer({
   paused = false,
+  hardPaused = false,
   chit,
   wireframes,
   w = 0,
   h = 0,
   paddingTop = 0,
   panCallback,
+  zoomCallback,
   refContainer = null,
+  enableGestures = true,
 }: {
   chit: Chit;
   wireframes?: boolean;
   w: number;
   h: number;
   paddingTop?: number;
+  hardPaused?: boolean;
   paused?: boolean;
   panCallback?: (direction: "left" | "right") => void;
+  zoomCallback?: (newZoom: number, oldZoom: number) => void;
   refContainer?: React.RefObject<HTMLElement> | null;
+  enableGestures?: boolean;
 }) {
   const playerId = usePlayerId();
   const [id] = useState(`Viewer${ID_COUNTER++}`);
@@ -44,7 +50,7 @@ export default function Viewer({
   const rendererWrapper = useWebGlRenderer();
   const theme = useGameTheme();
 
-  const galleryState = useGalleryState();
+  const modalState = useModalState();
   const [chitRenderInstance, setChitRenderInstance] = useState<RootChitRenderInstance | null>(null);
 
   if (chitRenderInstance) {
@@ -81,13 +87,13 @@ export default function Viewer({
         chitRenderInstance.destroy();
       }
 
-      if (chit.renderInstance) {
-        chit.renderInstance.invalidateRootRenderInstance();
-        chit.renderInstance.destroy();
+      if (chit.$internal_renderInstance) {
+        chit.$internal_renderInstance.invalidateRootRenderInstance();
+        chit.$internal_renderInstance.destroy();
       }
 
       const newInstance = new R(chit);
-      newInstance.playerId = playerId;
+      newInstance.$internal_playerId = playerId;
       newInstance.convertCameraSpaceToScreenSpace = (x: number, y: number) => {
         const el = actualRef.current as unknown as HTMLElement;
         if (!el) {
@@ -109,10 +115,10 @@ export default function Viewer({
 
         return new Vector2((x / rect.width) * 2 - 1, -((y / rect.height) * 2 - 1));
       };
-      newInstance.setup(galleryState);
+      newInstance.setup(modalState);
       setChitRenderInstance(newInstance);
     }
-  }, [actualRef, playerId, animationSpeedMultiplier, chit, chitRenderInstance, R, galleryState]);
+  }, [actualRef, playerId, animationSpeedMultiplier, chit, chitRenderInstance, R, modalState]);
 
   // make sure "wireframes" gets set correctly on the render instance
   useEffect(() => {
@@ -133,7 +139,7 @@ export default function Viewer({
       return;
     }
 
-    chitRenderInstance.sceneWrapper.markDirty();
+    // chitRenderInstance.sceneWrapper.markDirty();
 
     let renderNextFrame: boolean | undefined;
     let cancelled = false;
@@ -152,17 +158,21 @@ export default function Viewer({
             rendererWrapper &&
             (paused || prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
           ) {
-            // Clear canvas and render
-            rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme);
+            if (!hardPaused) {
+              // Clear canvas and render
+              rendererWrapper.render(chitRenderInstance.$internal_sceneWrapper, chitRenderInstance.camera, context, theme);
 
-            // Clear snapshot after first render at new size
-            const canvasEl = canvas as any;
-            if (canvasEl.clearSnapshot) {
-              canvasEl.clearSnapshot();
+              // Clear snapshot after first render at new size
+              const canvasEl = canvas as any;
+              if (canvasEl.clearSnapshot) {
+                canvasEl.clearSnapshot();
+              }
             }
 
             chitRenderInstance.resetDirty();
-            timeState.setAnimationState(id, !paused);
+            if (!hardPaused) {
+              timeState.setAnimationState(id, !paused);
+            }
           } else {
             timeState.setAnimationState(id, false);
           }
@@ -177,7 +187,7 @@ export default function Viewer({
       timeState.setAnimationState(id, false);
       cancelled = true;
     };
-  }, [id, timeState, rendererWrapper, chitRenderInstance, paused, actualRef, myRefContainer, theme]);
+  }, [id, timeState, hardPaused, rendererWrapper, chitRenderInstance, paused, actualRef, myRefContainer, theme]);
 
   useEffect(() => {
     if (chitRenderInstance) {
@@ -192,135 +202,134 @@ export default function Viewer({
   }, [chitRenderInstance, id, paused, timeState]);
 
   // hook up interactions
+  const gestureContext = useGestureContext();
+
   useEffect(() => {
     const el = myRefContainer.current as unknown as HTMLElement;
-    if (el) {
-      if (!chitRenderInstance) {
-        return;
+    if (!el || !chitRenderInstance || hardPaused) {
+      return;
+    }
+
+    // Set up wheel listener (not handled by HammerJS)
+    const wheelListener = (ev: any) => {
+      if (panCallback && Math.abs(ev.deltaX) > 30 && Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) {
+        const direction = ev.deltaX > 0 ? "left" : "right";
+        panCallback(direction);
+        ev.preventDefault();
+      } else {
+        const dy = ev.wheelDeltaY as number;
+        const prev = chitRenderInstance.cameraZoom;
+        chitRenderInstance.handleZoom(ev.layerX as number, ev.layerY as number, dy / 120, false);
+
+        if (zoomCallback) {
+          zoomCallback(chitRenderInstance.cameraZoom, prev);
+        }
+        ev.preventDefault();
       }
+    };
 
-      const hammer = new Hammer.Manager(el);
+    addWheelListener(el, wheelListener);
 
-      const fixPosition = (ev: HammerInput) => {
-        const rect = el.getBoundingClientRect();
-        return { x: ev.center.x - rect.left, y: ev.center.y - rect.top };
-      };
+    // If we have a gesture context and gestures are enabled, register with it
+    if (gestureContext && enableGestures) {
+      let cancelled = false;
+      let pinchEndedRecently = false;
+      let pinchScale = 1;
+      let pinchCancelled = false;
 
-      hammer.add(new Hammer.Tap({ event: "doubletap", taps: 2, interval: 300, threshold: 5, posThreshold: 50 }));
-      hammer.add(new Hammer.Tap({ event: "singletap", time: 400 }));
-      hammer.add(new Hammer.Pinch({ event: "pinch", threshold: 0.03 }));
-      hammer.add(new Hammer.Pan({ event: "pan", direction: Hammer.DIRECTION_ALL }));
-
-      hammer.add(new Hammer.Press({ event: "longtap", time: 600 }));
-
-      hammer.get("doubletap").recognizeWith("singletap");
-      hammer.get("singletap").requireFailure("doubletap");
-
-      hammer.get("longtap").recognizeWith("singletap");
-      hammer.get("singletap").requireFailure("longtap");
-
-      hammer.on("longtap", (ev) => {
-        const pos = fixPosition(ev);
-        const isMouse = ev.pointerType === "mouse";
-        chitRenderInstance.handleLongClick(pos.x, pos.y, isMouse ? 3 : 6, isMouse ? 1.5 : 3);
-      });
-      hammer.on("singletap", (ev) => {
-        const pos = fixPosition(ev);
-        const isMouse = ev.pointerType === "mouse";
-        chitRenderInstance.handleClick(pos.x, pos.y, isMouse ? 3 : 6, isMouse ? 1.5 : 3);
-      });
-      hammer.on("doubletap", (ev) => {
-        const pos = fixPosition(ev);
-        chitRenderInstance.handleZoom(pos.x, pos.y, chitRenderInstance.cameraZoom <= 1.1 ? 20 : -20, true);
-      });
-
-      hammer.on("pinch", (ev) => {
-        console.log(ev);
-      });
-
-      let lastDeltaX = 0,
-        lastDeltaY = 0,
-        cancelled = false,
-        pinchEndedRecently = false;
-      hammer.on("panstart", () => {
-        // Prevent a quick pan after pinch
-        if (pinchEndedRecently) {
-          cancelled = true;
-          return;
-        }
-        lastDeltaX = 0;
-        lastDeltaY = 0;
-        cancelled = false;
-      });
-      hammer.on("pan", (ev) => {
-        if (cancelled) {
-          return;
-        }
-
-        const dx = ev.deltaX - lastDeltaX,
-          dy = ev.deltaY - lastDeltaY;
-
-        if (panCallback) {
-          const isMouse = ev.pointerType === "mouse";
-          const neededVelocity = chitRenderInstance.cameraZoom <= 1.1 ? 0.3 : isMouse ? 7.5 : 2.5;
-          if (Math.abs(ev.velocityX) > neededVelocity && ev.distance > 20 && Math.abs(ev.velocityY) < 0.2) {
-            const direction = ev.velocityX > 0 ? "left" : "right";
-            panCallback(direction);
+      const handlers: ViewerGestureHandlers = {
+        onSingleTap: (x, y, isMouse) => {
+          chitRenderInstance.handleClick(x, y, isMouse ? 3 : 6, isMouse ? 1.5 : 3);
+        },
+        onDoubleTap: (x, y) => {
+          const prev = chitRenderInstance.cameraZoom;
+          chitRenderInstance.handleZoom(x, y, chitRenderInstance.cameraZoom <= 1 ? 0.0001 : -20, !!zoomCallback);
+          if (zoomCallback) {
+            zoomCallback(chitRenderInstance.cameraZoom, prev);
+            setTimeout(() => chitRenderInstance.handleZoom(x, y, 0, false), 100);
+          }
+        },
+        onLongTap: (x, y, isMouse) => {
+          chitRenderInstance.handleLongClick(x, y, isMouse ? 3 : 6, isMouse ? 1.5 : 3);
+        },
+        onPanStart: () => {
+          if (pinchEndedRecently) {
             cancelled = true;
             return;
           }
-        }
+          cancelled = false;
+        },
+        onPan: (dx, dy, ev) => {
+          if (cancelled) {
+            return;
+          }
 
-        lastDeltaX = ev.deltaX;
-        lastDeltaY = ev.deltaY;
+          if (panCallback) {
+            const isMouse = ev.pointerType === "mouse";
+            const neededVelocity = chitRenderInstance.cameraZoom <= 1.1 ? 0.3 : isMouse ? 7.5 : 2.5;
+            if (Math.abs(ev.velocityX) > neededVelocity && ev.distance > 20 && Math.abs(ev.velocityY) < 0.2) {
+              const direction = ev.velocityX > 0 ? "left" : "right";
+              panCallback(direction);
+              cancelled = true;
+              return;
+            }
+          }
 
-        chitRenderInstance.handlePan(dx, dy);
-      });
+          chitRenderInstance.handlePan(dx, dy);
+        },
+        onPinchStart: () => {
+          pinchScale = chitRenderInstance.cameraZoom;
+          pinchCancelled = false;
+        },
+        onPinch: (_scale, deltaScale, centerX, centerY) => {
+          if (pinchCancelled) {
+            return;
+          }
 
-      let lastScale = 1,
-        pinchScale = 1;
-      hammer.on("pinchstart", () => {
-        lastScale = 1;
-        pinchScale = chitRenderInstance.cameraZoom;
-        cancelled = false;
-      });
-      hammer.on("pinchend", () => {
-        cancelled = true;
-        pinchEndedRecently = true;
-        setTimeout(() => (pinchEndedRecently = false), 200);
-      });
-      hammer.on("pinch", (ev) => {
-        if (cancelled) {
-          return;
-        }
+          const prev = chitRenderInstance.cameraZoom;
+          chitRenderInstance.handleZoom(centerX, centerY, pinchScale * deltaScale, false);
 
-        const pos = fixPosition(ev);
-        const sx = ev.scale - lastScale;
-        lastScale = ev.scale;
-
-        chitRenderInstance.handleZoom(pos.x, pos.y, pinchScale * sx, false);
-      });
-
-      const wheelListener = (ev: any) => {
-        if (panCallback && Math.abs(ev.deltaX) > 30 && Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) {
-          const direction = ev.deltaX > 0 ? "left" : "right";
-          panCallback(direction);
-          ev.preventDefault();
-        } else {
-          const dy = ev.wheelDeltaY as number;
-          chitRenderInstance.handleZoom(ev.layerX as number, ev.layerY as number, dy / 120, false);
-          ev.preventDefault();
-        }
+          if (zoomCallback) {
+            zoomCallback(chitRenderInstance.cameraZoom, prev);
+          }
+          if (chitRenderInstance.cameraZoom <= 1 && prev > 1) {
+            pinchCancelled = true;
+          }
+        },
+        onPinchEnd: () => {
+          pinchCancelled = true;
+          pinchEndedRecently = true;
+          setTimeout(() => (pinchEndedRecently = false), 200);
+        },
       };
 
-      addWheelListener(el, wheelListener);
+      const unregister = gestureContext.registerViewer({
+        id,
+        getBounds: () => el.getBoundingClientRect(),
+        handlers,
+      });
 
       return () => {
-        hammer.destroy();
+        unregister();
         removeWheelListener(el, wheelListener);
       };
     }
-  }, [myRefContainer, chitRenderInstance, galleryState, panCallback]);
+
+    // Fallback: no gesture context available, so we can't register
+    return () => {
+      removeWheelListener(el, wheelListener);
+    };
+  }, [
+    id,
+    myRefContainer,
+    hardPaused,
+    chitRenderInstance,
+    modalState,
+    panCallback,
+    zoomCallback,
+    gestureContext,
+    enableGestures,
+  ]);
 
   return (
     <PersistentCanvas

@@ -47,6 +47,9 @@ export interface GalleryItem {
   maximumWidth?: number;
   maximumHeight?: number;
 
+  preferredWidth?: number;
+  preferredHeight?: number;
+
   summary?: string;
   summaryIconMap?: IconMap;
   summaryRenderingOptions?: RichTextRenderOptionsParameters;
@@ -91,8 +94,10 @@ class GalleryController implements TextureReferenceCounterRootGroup {
   constructor(
     public sceneWrapper: SceneWrapper,
     private theme: GameTheme,
+    public offsetAngle: number,
+    fov: number,
   ) {
-    this.camera = new PerspectiveCamera(25, 1, 0.1, 10000 / SCALE_FACTOR);
+    this.camera = new PerspectiveCamera(fov, 1, 0.1, 10000 / SCALE_FACTOR);
     this.camera.position.z = 500 / SCALE_FACTOR;
 
     this.light = new DirectionalLight(0xffffff, 1);
@@ -124,7 +129,6 @@ class GalleryController implements TextureReferenceCounterRootGroup {
   private offsetX = 0;
   private light: DirectionalLight;
 
-  private offsetAngle = Math.PI * 0.1;
   private effectiveItemHeight = 0;
   private baseCameraZ = 500 / SCALE_FACTOR;
 
@@ -198,6 +202,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
     this.camera.updateProjectionMatrix();
 
     // reset the world
+    this.setItems(this.items.map((item) => item.item));
     this.pan(0, true);
   }
 
@@ -356,11 +361,16 @@ class GalleryController implements TextureReferenceCounterRootGroup {
       group.rotation.x = -this.offsetAngle;
     }
 
-    group.rotation.x -= Math.min(1, item.depth / this.w);
+    // group.rotation.x -= Math.min(1, item.depth / this.w);
     group.position.add(item.center);
   }
 
   scaleItem(item: BuiltItem, maximumWidth?: number, maximumHeight?: number) {
+    if (item.mesh) {
+      item.mesh.removeFromParent();
+    }
+
+    item.mesh = item.item.createMesh(this.sceneWrapper);
     const box3 = new Box3();
     box3.expandByObject(item.mesh);
     if (!box3.isEmpty()) {
@@ -370,11 +380,13 @@ class GalleryController implements TextureReferenceCounterRootGroup {
       const yScale = Math.min(this.itemHeight, (maximumHeight ?? Number.MAX_SAFE_INTEGER) / SCALE_FACTOR) / size.y;
       const scale = Math.min(xScale, yScale);
       item.mesh.scale.set(scale, scale, scale);
+      item.mesh.updateMatrix();
       item.center = center.multiplyScalar(scale).negate();
       item.center.z = 0; // i want to "floor" everything... but that is hard?
       item.height = size.y * scale;
       item.depth = size.z * scale;
     }
+    item.group.add(item.mesh);
   }
 
   updateHelpText(item: BuiltItem) {
@@ -408,13 +420,13 @@ class GalleryController implements TextureReferenceCounterRootGroup {
       height * SCALE_FACTOR * window.devicePixelRatio,
       ops,
     );
-    stack1.render();
+    stack1.$internal_render();
     const stack2 = new CanvasStack(
       this.itemWidth * SCALE_FACTOR * window.devicePixelRatio,
       markdown.height + this.theme.spacing * 2 * window.devicePixelRatio,
       ops,
     );
-    stack2.render();
+    stack2.$internal_render();
 
     const material = stack2.material;
     material.transparent = true;
@@ -459,8 +471,6 @@ class GalleryController implements TextureReferenceCounterRootGroup {
             this.changed = true;
 
             builtItem.group = new Group();
-            builtItem.mesh = item.createMesh(this.sceneWrapper);
-            builtItem.group.add(builtItem.mesh);
 
             this.sceneWrapper.scene.add(builtItem.group);
 
@@ -494,6 +504,10 @@ class GalleryController implements TextureReferenceCounterRootGroup {
             builtItem.enteredTween = undefined;
           })
           .start();
+      } else {
+        const it = this.itemLookup[item.id];
+        this.scaleItem(it, it.item.maximumWidth, it.item.maximumHeight);
+        this.positionItem(it);
       }
     });
 
@@ -562,6 +576,8 @@ export function GalleryViewer({
   items,
   paused = false,
   galleryItemWidth = 200,
+  fov = 15,
+  angle = Math.PI * 0.1,
   onClose,
   itemSpacing = 50,
   tweenDuration = 250,
@@ -573,6 +589,8 @@ export function GalleryViewer({
   items: GalleryItem[];
   w: number;
   h: number;
+  fov?: number;
+  angle?: number;
   itemSpacing: number;
   paused?: boolean;
   tweenDuration?: number;
@@ -581,29 +599,32 @@ export function GalleryViewer({
   onClose?: () => void;
   showSummary?: boolean;
 }) {
+  const calcedItemWidth = Math.min(...items.map((item) => item.preferredWidth ?? galleryItemWidth));
+  const calcedItemHeight = Math.min(...items.map((item) => item.preferredHeight ?? galleryItemHeight));
+
   const [id] = useState(`GalleryViewer${ID_COUNTER++}`);
   const refContainer = useRef<HTMLCanvasElement>(null);
   const rendererWrapper = useWebGlRenderer();
   const theme = useGameTheme();
-  const [galleryController] = useState(new GalleryController(new SceneWrapper(new Scene()), theme));
-  const [itemWidth, setItemWidth] = useState(galleryItemWidth);
-  const [itemHeight, setItemHeight] = useState(galleryItemHeight);
+  const [galleryController] = useState(new GalleryController(new SceneWrapper(new Scene()), theme, angle, fov));
 
   galleryController.tweenDuration = tweenDuration;
   galleryController.showSummary = showSummary;
 
   useEffect(() => {
-    galleryController.setSize(w, h, itemWidth, itemHeight, itemSpacing);
-  }, [itemWidth, itemSpacing, itemHeight, w, h, galleryController]);
+    if (!w || !h) {
+      return;
+    }
+    if (!Number.isFinite(calcedItemHeight) || !Number.isFinite(calcedItemWidth)) {
+      return;
+    }
+
+    galleryController.setSize(w, h, calcedItemWidth, calcedItemHeight, itemSpacing);
+  }, [calcedItemWidth, itemSpacing, calcedItemHeight, w, h, galleryController]);
 
   useEffect(() => {
     galleryController.setItems(items);
   }, [items, galleryController]);
-
-  useEffect(() => {
-    setItemWidth(galleryItemWidth);
-    setItemHeight(galleryItemHeight);
-  }, [items, galleryItemWidth, galleryItemHeight, setItemWidth, setItemHeight]);
 
   useEffect(() => {
     const canvas = refContainer.current;

@@ -1,106 +1,41 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useGame } from "../hooks/useGame";
 import { Box, CssBaseline, Stack, ThemeProvider, createTheme } from "@mui/material";
-import {
-  TimeControllerProvider,
-  useAnimationSpeedMultiplier,
-  useClientStatus,
-  useTimeController,
-} from "../hooks/useTimeController";
+import { TimeControllerProvider, useClientStatus, useTimeController } from "../hooks/useTimeController";
 import BottomBar from "./BottomBar";
 import { GameThemeProvider, useGameTheme } from "../hooks/useGameTheme";
-import { Game } from "../game/Game";
 
 import "@fontsource/raleway/400.css";
-import Panel from "./Panel";
-import { Chit } from "../game/Chit";
-import useSize from "@react-hook/size";
 import TopBar from "./TopBar";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { MatchEndDisplay } from "./MatchEndDisplay";
 import { PanelScaleProvider } from "../hooks/usePanelScale";
-import { GalleryProvider, useGalleryState } from "../hooks/useGalleryState";
+import { ModalProvider } from "../hooks/useModalState";
 import { GalleryDisplay } from "./GalleryDisplay";
+import { ActionLogDisplay } from "./ActionLogDisplay";
+import { ActionLogHistoryDisplay } from "./ActionLogHistoryDisplay";
+import { PanelContents } from "./Panel/PanelContents";
+import useSize from "@react-hook/size";
+import { SettingsDisplay } from "./SettingsDisplay";
+import { ActionLogSidebar } from "./ActionLogSidebar";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function generateTheme(game: Game<any, any>) {
-  const theme = createTheme({
-    typography: {
-      fontFamily: ["Raleway", "sans-serif"].join(","),
-    },
-  });
-
-  return theme;
-}
-
-function PanelContents({ rootChit }: { rootChit: Chit }) {
-  const theme = useGameTheme();
-  const ref = useRef(null);
-  const [width, height] = useSize(ref);
-
-  return (
-    <Box
-      sx={{
-        position: "relative",
-        flex: 1,
-        p: `${theme.spacing / 2}px`,
-        background: `${theme.backgroundColor} linear-gradient(${theme.backgroundGradientAngle}deg, rgba(255,255,255,${theme.backgroundGradientPercent}) 0%, rgba(0,0,0,${theme.backgroundGradientPercent}) 100%)`,
-      }}
-    >
-      <Box
-        ref={ref}
-        sx={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-        }}
-      >
-        <Panel chit={rootChit} x={0} y={0} w={width} h={height} />
-      </Box>
-    </Box>
-  );
-}
-
-function BlurringGalleryWrapper({ children }: { children: React.ReactNode }) {
-  const galleryState = useGalleryState();
-  const [isShowingGallery, setIsShowingGallery] = useState(false);
-  const [source] = useEventChannelState(galleryState.source);
-  const theme = useGameTheme();
-  const animationSpeedMultiplier = useAnimationSpeedMultiplier();
-
-  useEffect(() => {
-    if (source) {
-      setIsShowingGallery(source.items.length > 0);
-      return source.registerUpdateHandler(() => {
-        setIsShowingGallery(source.items.length > 0);
-      });
-    } else {
-      setIsShowingGallery(false);
-    }
-  }, [source, setIsShowingGallery]);
-
-  return (
-    <Box
-      sx={{
-        position: "relative",
-        flex: 1,
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        // filter: isShowingGallery ? `blur(${theme.galleryBlur}px)` : "blur(0.0001px)",
-        // transition: `filter ${0.3 * animationSpeedMultiplier}s`,
-      }}
-    >
-      {children}
-    </Box>
-  );
-}
+const theme = createTheme({
+  typography: {
+    fontFamily: ["Raleway", "sans-serif"].join(","),
+  },
+});
 
 function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
   const timeController = useTimeController();
+  const theme = useGameTheme();
   const clientStatus = useClientStatus();
   const [errorMessage] = useEventChannelState(clientStatus.errorMessage);
   const [rootChit, setRootChit] = useState(timeController.rootChit.value);
+  const ref = useRef(null);
+  const outerRef = useRef(null);
+  const [width, height] = useSize(ref);
+  const [outerWidth] = useSize(outerRef);
+  const [showLog] = useEventChannelState(timeController.clientTimeState.showLog);
 
   useEffect(
     () =>
@@ -112,8 +47,12 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
     [timeController],
   );
 
+  const largeEnoughToShowLogSidebar = outerWidth >= 1000;
+
   return (
     <Stack
+      direction={"row"}
+      ref={outerRef}
       sx={{
         width: "100%",
         height: "100%",
@@ -124,17 +63,31 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
         WebkitTouchCallout: "none", // Prevent highlighting phone numbers on iOS
       }}
     >
-      <TopBar onBack={onBack} />
-      <Box flex={1} style={{ display: "flex", position: "relative" }}>
-        <MatchEndDisplay />
-        <GalleryDisplay />
+      <Stack flex={1} sx={{ maxWidth: "100%" }}>
+        <TopBar onBack={onBack} />
+        <Stack
+          direction={"column"}
+          flex={1}
+          ref={ref}
+          sx={{
+            background: `${theme.backgroundColor} linear-gradient(${theme.backgroundGradientAngle}deg, rgba(255,255,255,${theme.backgroundGradientPercent}) 0%, rgba(0,0,0,${theme.backgroundGradientPercent}) 100%)`,
+          }}
+        >
+          <Box flex={1} style={{ display: "flex", position: "relative" }}>
+            <MatchEndDisplay />
+            <GalleryDisplay />
+            <SettingsDisplay />
+            <ActionLogHistoryDisplay />
 
-        <BlurringGalleryWrapper>
-          {!errorMessage && rootChit && <PanelContents rootChit={rootChit} />}
-        </BlurringGalleryWrapper>
-        {errorMessage}
-      </Box>
-      <BottomBar />
+            {!errorMessage && rootChit && <PanelContents rootChit={rootChit} scaleWidth={width} scaleHeight={height} />}
+            {errorMessage}
+          </Box>
+          <ActionLogDisplay toggleSidebarLog={largeEnoughToShowLogSidebar} />
+        </Stack>
+        <BottomBar />
+      </Stack>
+
+      {largeEnoughToShowLogSidebar && showLog && <ActionLogSidebar />}
     </Stack>
   );
 }
@@ -145,13 +98,13 @@ export function MatchViewer({ onBack }: { onBack?: () => void }) {
     <TimeControllerProvider>
       <CssBaseline />
       <PanelScaleProvider>
-        <GalleryProvider>
+        <ModalProvider>
           <GameThemeProvider theme={game.theme}>
-            <ThemeProvider theme={generateTheme(game)}>
+            <ThemeProvider theme={theme}>
               <InnerMatchViewer onBack={onBack} />
             </ThemeProvider>
           </GameThemeProvider>
-        </GalleryProvider>
+        </ModalProvider>
       </PanelScaleProvider>
     </TimeControllerProvider>
   );

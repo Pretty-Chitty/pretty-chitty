@@ -28,11 +28,11 @@ export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
 
           if (newTurn) {
             unsubs = newTurn.rootChit.players.map((player) =>
-              player.promptStatus.latestPrompt.on((latestPrompt) =>
+              player.promptStatus.$internal_latestPrompt.on((latestPrompt: any) =>
                 this.clientPrompts.setPromptForPlayer(
                   player.playerId,
                   latestPrompt?.serialize(),
-                  this.match.turn.value?.clockDetails(playerId),
+                  this.match.turn.value?.$internal_clockDetails(playerId),
                 ),
               ),
             );
@@ -53,24 +53,24 @@ export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
 
   async resolvePrompt(response: any): Promise<void | PromptSerialization> {
     const player = this.playerChits?.find((p) => p.playerId === this.playerId);
-    if (player && player.promptStatus.latestPrompt.value) {
+    if (player && player.promptStatus.$internal_latestPrompt.value) {
       let cb: (() => void) | undefined;
       const p = new Promise((resolve) => {
         cb = this.match.onChange(() => resolve(0), false);
       });
-      player.promptStatus.latestPrompt.value.resolve(response);
+      player.promptStatus.$internal_latestPrompt.value.resolve(response);
       await p;
       if (cb) {
         cb();
       }
-      return player.promptStatus.latestPrompt.value?.serialize();
+      return player.promptStatus.$internal_latestPrompt.value?.serialize();
     }
   }
 
   async stepBackPrompt(fullReset: boolean = false) {
     const player = this.playerChits?.find((p) => p.playerId === this.playerId);
-    if (player && player.promptStatus.latestPrompt.value && player.promptStatus.latestPrompt.value.canReset) {
-      player.promptStatus.latestPrompt.value.stepBack(fullReset);
+    if (player && player.promptStatus.$internal_latestPrompt.value && player.promptStatus.$internal_latestPrompt.value.canReset) {
+      player.promptStatus.$internal_latestPrompt.value.stepBack(fullReset);
     }
   }
 }

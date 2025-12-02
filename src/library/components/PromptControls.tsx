@@ -11,26 +11,26 @@ import GameDialog from "./GameDialog";
 import Markdown from "react-markdown";
 import { ZINDEX_PROMPT_CONTROLS } from "../utilities/zIndex";
 import { GameButton, ToggleGalleryButton } from "../game/GameButton";
-import { useGalleryState } from "../hooks/useGalleryState";
+import { useModalState } from "../hooks/useModalState";
 import { ContextGalleryDisplay } from "./ContextGalleryDisplay";
 import { NoValidMovesPrompt } from "../game/Prompt";
 
 function GameButtonWrapper({ button }: { button: GameButton }) {
-  const galleryState = useGalleryState();
-  const [source, setSource] = useEventChannelState(galleryState.source);
+  const modalState = useModalState();
+  const [source, setSource] = useEventChannelState(modalState.gallerySource);
 
   let highlight = false;
   let cb = button.cb;
 
   if (button instanceof ToggleGalleryButton) {
     if (
-      (button.galleryItemSource === source && source) ||
-      (source?.backingObject && button.galleryItemSource?.backingObject === source.backingObject)
+      (button.$internal_galleryItemSource === source && source) ||
+      (source?.backingObject && button.$internal_galleryItemSource?.backingObject === source.backingObject)
     ) {
       highlight = true;
       cb = () => setSource(undefined);
-    } else if (button.galleryItemSource) {
-      const source = button.galleryItemSource;
+    } else if (button.$internal_galleryItemSource) {
+      const source = button.$internal_galleryItemSource;
       cb = () => setSource(source);
     }
   }
@@ -38,7 +38,7 @@ function GameButtonWrapper({ button }: { button: GameButton }) {
   return <BottomBarButton highlight={highlight} icon={button.icon} label={button.label} onClick={cb} />;
 }
 
-export default function PromptControls() {
+export default function PromptControls({ collapsible }: { collapsible?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const timeState = useTimeState();
@@ -75,35 +75,44 @@ export default function PromptControls() {
     <Stack
       direction="row"
       sx={{
-        position: "absolute",
+        position: collapsible ? "absolute" : "static",
+        overflow: "hidden",
         zIndex: ZINDEX_PROMPT_CONTROLS,
         background: theme.actionBarColor,
-        maxWidth: "390px",
-        width: "97%",
+        maxWidth: collapsible ? "calc(100% - 30px)" : undefined,
+        width: collapsible ? "97%" : "100%",
         minWidth: "100px",
         height: theme.bottomBarHeight,
-        transform: expandedBecauseOfPrompt
-          ? `translateX(${expanded ? "0px" : "calc(100% - 55px)"})`
-          : "translateX(100%)",
-        transition: `transform ease-in-out ${theme.actionBarAnimationDuration * speed}s`,
+        transform: collapsible
+          ? expandedBecauseOfPrompt
+            ? `translateX(${expanded ? "0px" : "calc(100% - 55px)"})`
+            : "translateX(100%)"
+          : "",
+        opacity: !collapsible ? (expandedBecauseOfPrompt ? 1 : 0.4) : 1,
+        transition: `transform ease-in-out ${theme.actionBarAnimationDuration * speed}s, opacity linear ${theme.actionBarAnimationDuration * speed}s`,
         pr: 1,
+        pl: collapsible ? 0 : 1,
         right: 0,
         boxShadow: "-2px -2px 10px 0px rgba(0,0,0,0.2)",
       }}
     >
-      <BottomBarButton
-        removeLabel
-        icon={expanded ? ChevronRight : ChevronLeft}
-        onClick={() => setExpanded(!expanded)}
-      />
-      <BottomBarBreak />
+      {collapsible && (
+        <>
+          <BottomBarButton
+            removeLabel
+            icon={expanded ? ChevronRight : ChevronLeft}
+            onClick={() => setExpanded(!expanded)}
+          />
+          <BottomBarBreak />
+        </>
+      )}
 
-      {prompt && <BottomBarButton icon={QuestionMark} label="Help" onClick={() => setShowHelp(true)} />}
-      {prompt && (
+      {/* {prompt && <BottomBarButton icon={QuestionMark} label="Help" onClick={() => setShowHelp(true)} />} */}
+      {/* {prompt && (
         <GameDialog onClose={() => setShowHelp(false)} open={showHelp}>
           <Markdown>{prompt.formatHelpText()}</Markdown>
         </GameDialog>
-      )}
+      )} */}
 
       {prompt?.canReset && (
         <BottomBarButton

@@ -3,28 +3,42 @@ import { Chit } from "./Chit";
 import { Vector2 } from "three";
 import { NonEditable } from "../utilities/Annotations";
 import { PlayerChit } from "./PlayerChit";
-import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
 import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 
 export class SparkChit extends Chit {
-  /** @internal */
-  @NonEditable type = "spark";
+  @NonEditable $internal_type = "spark";
 
-  public color: string = "";
-  public get icon(): PlayerChit | ImageSpec | IUpdatingCanvas | undefined {
+  public get endGameLabel() {
+    return "Score";
+  }
+
+  private _color: string = "#ffffff";
+  public get color() {
     if (this._boundPlayer) {
-      return this._boundPlayer;
+      return this._boundPlayer.color ?? "#ffffff";
+    }
+    return this._color;
+  }
+  public set color(newColor: string) {
+    this._color = newColor;
+  }
+
+  public get icon(): IUpdatingCanvas | undefined {
+    if (this._boundPlayer) {
+      return this._boundPlayer.icon;
     }
     return undefined;
   }
 
-  public get headerIcon(): PlayerChit | ImageSpec | IUpdatingCanvas | undefined {
+  public get headerIcon(): IUpdatingCanvas | undefined {
+    if (this._boundPlayer) {
+      return undefined;
+    }
     return this.icon;
   }
 
-  /** @internal */
-  @NonEditable public element: RefObject<HTMLElement> | undefined;
+  @NonEditable public $internal_element: RefObject<HTMLElement> | undefined;
 
   private _value: number = 0;
   public get value() {
@@ -33,28 +47,26 @@ export class SparkChit extends Chit {
   public set value(newValue: number) {
     this._value = newValue;
     if (this._boundPlayer) {
-      this._boundPlayer.matchScoreNumber = newValue;
+      this._boundPlayer.$internal_matchScoreNumber = newValue;
     }
   }
 
   private _boundPlayer?: PlayerChit;
   public bindToPlayer(p: PlayerChit) {
     this._boundPlayer = p;
-    p.matchScoreNumber = this.value;
+    p.$internal_matchScoreNumber = this.value;
   }
 
   public get width() {
     return 40;
   }
 
-  /** @internal */
-  public override screenCoordinates() {
-    const rect = this.element?.current?.getBoundingClientRect();
+  public override $internal_screenCoordinates() {
+    const rect = this.$internal_element?.current?.getBoundingClientRect();
     return new Vector2(rect?.left, rect?.top);
   }
 
-  /** @internal */
-  public canRender() {
+  public $internal_canRender() {
     return false;
   }
 }
@@ -62,11 +74,9 @@ export class SparkChit extends Chit {
 StaticChitTypeRegistry["SparkChit"] = SparkChit;
 
 export abstract class BagSparkChit<T extends Chit> extends SparkChit {
-  /** @internal */
   override get value() {
     return this.orderedChildren.length;
   }
-  /** @internal */
   override set value(newValue: number) {
     // do nothing?
   }
@@ -78,7 +88,6 @@ export abstract class BagSparkChit<T extends Chit> extends SparkChit {
     }
   }
 
-  /** @internal */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   override shouldRenderChild(childChit: Chit): boolean {
     return false;

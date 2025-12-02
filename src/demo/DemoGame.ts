@@ -31,14 +31,17 @@ import {
 import * as CanvasLibrary from "./CanvasLibrary";
 import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
+import { cityscape } from "./assets/network_overload";
+import { Bookshelf, ShelfRow, ShelfSpace } from "./Bookshelft";
 
-const theme = GameTheme.withDefaults("#ffeedd", "#ef8354", "#001122");
+const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
 theme.dialogForegroundColor = "#000000ee";
 theme.chitHighlightColor = "#ffffff";
-theme.chitOutlineDownsample = 1;
-theme.chitOutlineWidth = 3;
-theme.chitOutlineStrength = 1;
+theme.chitOutlineStrength = 0.5;
+
+theme.galleryItemWidth = 50;
+theme.galleryItemHeight = 50;
 
 export class DemoGame implements Game<MyPlayer, Root> {
   name = "Demo Game";
@@ -51,12 +54,15 @@ export class DemoGame implements Game<MyPlayer, Root> {
     Table,
     Bag,
     SideBoards,
+    ShelfRow,
+    ShelfSpace,
     Root,
     Deck,
     MyPlayer,
     PlayerAid,
     CounterChit,
     BagChit,
+    Bookshelf,
     Row,
     Hand,
   };
@@ -65,9 +71,19 @@ export class DemoGame implements Game<MyPlayer, Root> {
 
   theme = theme;
 
-  async run(players: MyPlayer[], setup: Turn<any, MyPlayer, Root>, rootChit: Root) {
-    players[0].color = "#ed00cb";
-    players[1].color = "#00edcb";
+  tokenMap = {
+    thingy2: { image: cityscape },
+    thingy: { label: "Thingy", color: "#ff00ff", image: cityscape },
+    stuff: { label: "Stuff", color: "#00ffff" },
+  };
+
+  async run(setup: Turn<any, MyPlayer, Root>, rootChit: Root) {
+    await rootChit.players.shuffle();
+    const players = rootChit.players.copy();
+    const color = ["#ed00cb", "#00edcb", "#002244"];
+    for (let i = 0; i < players.length; i++) {
+      players[i].color = color[i % color.length];
+    }
 
     const W = 10;
     const H = 10;
@@ -80,6 +96,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     // );
 
     const b = new Bag();
+    rootChit.shelf.setup();
     rootChit.mainBoard.add(b);
 
     const pieces = [...new Array(W * H)].map((d, i) =>
@@ -92,10 +109,16 @@ export class DemoGame implements Game<MyPlayer, Root> {
         c.token2 = new Card2();
         // c.add(new Card2(), "testoutlet");
         c.add(new Card3(), "testoutlet2");
+        setup.flush();
+        setup.log(
+          i % 2 === 0 ? `Created a card, ${c.id} :stuff: that is :thingy:` : `Created a card, ${c.id} :thingy2:`,
+        );
+        players[i % players.length].counter.value += (c.parentOutletIndex ?? 0) % 2 === 0 ? 1 : i % players.length;
         // c.add(new Card(), "testoutlet3");
       }),
     );
     setup.flush();
+    setup.log("Cards set up!");
 
     // for (let i = 0; i < 3000; i++) {
     //   for (let c = 0; c < 6; c++) {
@@ -122,6 +145,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     // setup.flush();
     pieces[1].add(b.draw());
     setup.flush();
+    setup.log("Gave :p2: a card");
     // pieces[2].add(new Card2());
     // setup.flush();
 
@@ -145,8 +169,27 @@ export class DemoGame implements Game<MyPlayer, Root> {
           // c.raised = true;
           c.something = 9999;
           players[0].add(c);
+
+          if (c === pieces[1]) {
+            turn.log(":p1: chose the first card");
+            await turn.pick([
+              Chit.pick(pieces, async (c2: Card) => {
+                c2.something = 8888;
+                players[0].add(c2);
+
+                turn.amendLog((oldLog) => oldLog + " followed by a new card");
+              }).message(
+                "pick a second piece to take, or if you don't want to, then don't.  it's totally up to you, you can do whatever you want.  I don't really care.  I bet you wish i did, but i don't",
+              ),
+              Chit.pick([pieces[0].token2], async (c2: Card2) => {
+                c2.something = 7777;
+                players[0].add(c2);
+              }).message("third thing that causes it to go to another line"),
+            ]);
+          }
         })
-          // .toggleButton(new HandButton())
+          .message("pick a piece to take")
+          .toggleButton(new HandButton())
           .context(pieces[7]),
       );
     });
@@ -162,7 +205,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
           // target.add(c);
         }),
       );
-      await turn.noValidMoves("You did thing", "bad thing");
+      // await turn.noValidMoves("You did thing", "bad thing");
     });
 
     return {
@@ -191,6 +234,10 @@ export class DemoGame implements Game<MyPlayer, Root> {
 
     spec.camera = new CameraSpec();
     spec.camera.targetFov = 45;
+    spec.camera.paddingRight = 0;
+    spec.camera.paddingTop = 0;
+    spec.camera.paddingBottom = 0;
+    spec.camera.paddingLeft = 0;
 
     spec.lightSpec = LightSpec.realistic();
   }

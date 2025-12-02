@@ -7,6 +7,7 @@ import { GameButton } from "./GameButton";
 import { PlayerChit } from "./PlayerChit";
 import { RootChit } from "./RootChit";
 import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
+import { TokenDefinition } from "../components/TokenizedMessage";
 
 export interface IChitLibrary {
   [key: string]: new () => Chit;
@@ -35,7 +36,7 @@ export interface Game<P extends PlayerChit, R extends RootChit<P>> {
 
   // validateConfiguration(): boolean;
 
-  run(players: P[], setup: Turn<GameResult<P>, P, R>, rootChit: R): Promise<GameResult<P>>;
+  run(setup: Turn<GameResult<P>, P, R>, rootChit: R): Promise<GameResult<P>>;
   generateRootChit(): R;
   generatePlayer(playerInfo: PlayerInfo): P;
 
@@ -44,4 +45,6 @@ export interface Game<P extends PlayerChit, R extends RootChit<P>> {
    * @param spec
    */
   renderDefaultRootChit?(spec: ChitRenderSpec): void;
+
+  tokenMap?: { [key: string]: TokenDefinition };
 }

@@ -8,10 +8,6 @@ interface Point3d {
   y: number;
   z: number;
 }
-interface Point2d {
-  x: number;
-  y: number;
-}
 
 export class CameraWrapperPerspective {
   public cameraSpec = new CameraSpec();
@@ -29,6 +25,7 @@ export class CameraWrapperPerspective {
 
   protected offsetTween = new Tween<Point3d>({ x: 0, y: 0, z: 0 });
   protected rotationTween = new Tween<Point3d>({ x: 0, y: 0, z: 0 });
+  protected nearFarTween = new Tween<{ near: number; far: number }>({ near: 0.1, far: 1000 });
 
   private bbox = new Box3();
 
@@ -43,6 +40,7 @@ export class CameraWrapperPerspective {
   zeroTween() {
     this.offsetTween.duration(0);
     this.rotationTween.duration(0);
+    this.nearFarTween.duration(0);
   }
 
   destroy() {}
@@ -90,7 +88,8 @@ export class CameraWrapperPerspective {
     const closestDistance = Math.sqrt(closestDistanceSquared);
     const farthestDistance = Math.sqrt(farthestDistanceSquared);
 
-    // Apply 20% padding as requested
+    // Apply padding - more aggressive for near plane to avoid clipping
+    // Use a larger multiplier for far plane with tall objects
     const near = Math.max(0.001, closestDistance * 0.5);
     const far = farthestDistance * 1.5;
 
@@ -118,6 +117,7 @@ export class CameraWrapperPerspective {
 
     this.offsetTween.stop();
     this.rotationTween.stop();
+    this.nearFarTween.stop();
     this.camera.updateProjectionMatrix();
     this.adjust(this.bbox);
   }
@@ -164,8 +164,13 @@ export class CameraWrapperPerspective {
 
       const halfWidth = this.width / 2;
       const halfHeight = this.height / 2;
-      const maxX = (halfWidth - this.wiggleRoomX / 2) * this.current.z;
-      const maxY = (halfHeight - this.wiggleRoomY / 2) * this.current.z;
+
+      // Use a more generous constraint that allows proper panning when zoomed
+      // The original formula was: (halfWidth - this.wiggleRoomX / 2) * this.current.z
+      // This was too restrictive, so we reduce the wiggleRoom impact
+      const maxX = (halfWidth - this.wiggleRoomX / 4) * this.current.z;
+      const maxY = (halfHeight - this.wiggleRoomY / 4) * this.current.z;
+
       if (this.current.x + halfWidth > maxX) this.current.x = maxX - halfWidth;
       if (this.current.x - halfWidth < -maxX) this.current.x = -maxX + halfWidth;
       if (this.current.y + halfHeight > maxY) this.current.y = maxY - halfHeight;
@@ -187,9 +192,23 @@ export class CameraWrapperPerspective {
       return;
     }
 
+    // Prevent bbox z-height from decreasing too quickly (causes jarring camera adjustments)
+    // Only allow z-height to decrease if it drops by more than 25% (i.e., less than 75% of previous)
+    const previousZHeight = this.bbox.max.z - this.bbox.min.z;
+    const newZHeight = bbox.max.z - bbox.min.z;
+
+    if (previousZHeight > 0 && newZHeight < previousZHeight) {
+      const zHeightRatio = newZHeight / previousZHeight;
+      if (zHeightRatio > 0.25) {
+        bbox = bbox.clone();
+        bbox.max.z = bbox.min.z + previousZHeight;
+      }
+    }
+
     this.bbox = bbox;
     this.offsetTween.stop();
     this.rotationTween.stop();
+    this.nearFarTween.stop();
 
     const fovRadsY = (this.camera.fov * Math.PI) / 180;
     const fovRadsX = fovRadsY * this.camera.aspect;
@@ -200,6 +219,7 @@ export class CameraWrapperPerspective {
     // content sizes (world units)
     const contentWidth = this.bbox.max.x - this.bbox.min.x;
     const contentHeight = this.bbox.max.y - this.bbox.min.y;
+    const contentDepth = this.bbox.max.z - this.bbox.min.z;
     const gameHalfWidth = contentWidth / 2;
     const gameHalfHeight = contentHeight / 2;
     const gameAreaX = this.bbox.min.x + gameHalfWidth;
@@ -241,7 +261,10 @@ export class CameraWrapperPerspective {
         distanceY = gameHalfHeight / yTan;
       }
 
-      distance = Math.max(this.cameraSpec.minCameraDistance, Math.max(distanceX, distanceY));
+      // Add extra distance to account for Z-depth of the bbox
+      // This ensures the camera is far enough back to see tall objects
+      const depthAdjustment = contentDepth * 0.5;
+      distance = Math.max(this.cameraSpec.minCameraDistance, Math.max(distanceX, distanceY) + depthAdjustment);
     }
 
     // If padding occupies an excessive fraction of the viewport, fall back to ignoring per-side padding.
@@ -253,7 +276,9 @@ export class CameraWrapperPerspective {
       // Fallback: ignore per-side pixel padding entirely and compute distance from content size only.
       centerShiftX = 0;
       centerShiftY = 0;
-      distance = Math.max(this.cameraSpec.minCameraDistance, gameHalfWidth / xTan, gameHalfHeight / yTan);
+      const depthAdjustment = contentDepth * 0.5;
+      distance =
+        Math.max(this.cameraSpec.minCameraDistance, gameHalfWidth / xTan, gameHalfHeight / yTan) + depthAdjustment;
 
       const fallbackPaddedHalfWidth = gameHalfWidth;
       const fallbackPaddedHalfHeight = gameHalfHeight;
@@ -405,19 +430,23 @@ export class CameraWrapperPerspective {
       //   /* swallow debug errors */
       // }
 
-      const visibleWorldPerPixelX = (2 * xTan * Math.max(0.0001, distance)) / this.width;
-      const visibleWorldPerPixelY = (2 * yTan * Math.max(0.0001, distance)) / this.height;
+      // Use the center of the bbox in Z for depth calculations
+      // This prevents issues when bbox has large Z extent
+      const bboxCenterZ = (this.bbox.min.z + this.bbox.max.z) / 2;
+      const fixedD = Math.max(0.1, distance - bboxCenterZ);
+      const visibleWorldPerPixelX = (2 * xTan * fixedD) / this.width;
+      const visibleWorldPerPixelY = (2 * yTan * fixedD) / this.height;
 
       const paddedHalfWidthUsed = gameHalfWidth + (Math.max(0, padLeftPx + padRightPx) * visibleWorldPerPixelX) / 2;
       const paddedHalfHeightUsed = gameHalfHeight + (Math.max(0, padTopPx + padBottomPx) * visibleWorldPerPixelY) / 2;
 
       // wiggleRoom should consider padded sizes
-      this.wiggleRoomX = (1 - (Math.atan(paddedHalfWidthUsed / distance) * 2) / fovRadsX) * this.width;
-      this.wiggleRoomY = (1 - (Math.atan(paddedHalfHeightUsed / distance) * 2) / fovRadsY) * this.height;
+      this.wiggleRoomX = (1 - (Math.atan(paddedHalfWidthUsed / fixedD) * 2) / fovRadsX) * this.width;
+      this.wiggleRoomY = (1 - (Math.atan(paddedHalfHeightUsed / fixedD) * 2) / fovRadsY) * this.height;
 
       // visible sizes in world units
-      this.visibleGameWidth = xTan * distance * 2;
-      this.visibleGameHeight = yTan * distance * 2;
+      this.visibleGameWidth = xTan * fixedD * 2;
+      this.visibleGameHeight = yTan * fixedD * 2;
     }
 
     const currentPosition = this.camera.position.clone(),
@@ -447,16 +476,6 @@ export class CameraWrapperPerspective {
     );
 
     const optimalPlanes = this.calculateOptimalNearFar(this.bbox, finalCameraPosition);
-
-    // Only update if planes changed significantly (avoid unnecessary projection matrix updates)
-    const nearChanged = Math.abs(this.camera.near - optimalPlanes.near) / this.camera.near > 0.1;
-    const farChanged = Math.abs(this.camera.far - optimalPlanes.far) / this.camera.far > 0.1;
-
-    if (nearChanged || farChanged || !Number.isFinite(this.camera.near) || !Number.isFinite(this.camera.far)) {
-      this.camera.near = optimalPlanes.near;
-      this.camera.far = optimalPlanes.far;
-      this.camera.updateProjectionMatrix();
-    }
 
     // Safety guard: ensure camera's Z (depth) is positive so camera looks toward scene plane.
     // If rotation causes camZ <= 0 (camera pointing below horizon / behind plane) increase distance slightly until valid.
@@ -510,6 +529,10 @@ export class CameraWrapperPerspective {
 
     if (!this.firstPositionedCamera || Math.abs(Date.now() - this.firstPositionedCamera) < 100) {
       this.firstPositionedCamera ??= Date.now();
+      // On first positioning, set near/far immediately
+      this.camera.near = optimalPlanes.near;
+      this.camera.far = optimalPlanes.far;
+      this.camera.updateProjectionMatrix();
       return;
     }
 
@@ -520,6 +543,11 @@ export class CameraWrapperPerspective {
       rotationDistance = new Vector3()
         .setFromEuler(currentRotation)
         .distanceTo(new Vector3().setFromEuler(newRotation));
+
+    // Store current near/far values
+    const currentNear = this.camera.near;
+    const currentFar = this.camera.far;
+    const nearFarDistance = Math.abs(optimalPlanes.near - currentNear) + Math.abs(optimalPlanes.far - currentFar);
 
     // restore previous camera position/rotation now that we've computed new ones; we'll tween from current -> new
     this.camera.position.set(currentPosition.x, currentPosition.y, currentPosition.z);
@@ -552,9 +580,33 @@ export class CameraWrapperPerspective {
               .onUpdate((obj) => this.camera.rotation.set(obj.x, obj.y, obj.z)),
         );
       }
+
+      // Always tween near/far if they differ, even slightly
+      if (nearFarDistance > 0.001) {
+        this.nearFarTween = this.chit.createTween(
+          { near: currentNear, far: currentFar },
+          (tween) =>
+            tween
+              .to({ near: optimalPlanes.near, far: optimalPlanes.far }, duration)
+              .easing(Easing.Quadratic.InOut)
+              .onUpdate((obj) => {
+                this.camera.near = obj.near;
+                this.camera.far = obj.far;
+                this.camera.updateProjectionMatrix();
+              }),
+        );
+      } else if (nearFarDistance > 0) {
+        // If difference is tiny, just set immediately
+        this.camera.near = optimalPlanes.near;
+        this.camera.far = optimalPlanes.far;
+        this.camera.updateProjectionMatrix();
+      }
     } else {
       this.camera.rotation.set(newRotation.x, newRotation.y, newRotation.z);
       this.camera.position.set(newPosition.x, newPosition.y, newPosition.z);
+      this.camera.near = optimalPlanes.near;
+      this.camera.far = optimalPlanes.far;
+      this.camera.updateProjectionMatrix();
     }
   }
 }

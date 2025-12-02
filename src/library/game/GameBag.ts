@@ -2,12 +2,10 @@ import { NonEditable } from "../utilities/Annotations";
 import { Chit } from "./Chit";
 
 export abstract class GameBag<T extends Chit> extends Chit {
-  /** @internal */
-  @NonEditable type = "bag";
+  @NonEditable $internal_type = "bag";
 
   public abstract chitGenerator(): T;
 
-  /** @internal */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   override shouldRenderChild(childChit: Chit): boolean {
     return false;

@@ -120,9 +120,10 @@ export class SceneWrapper {
     }
 
     // Update materials if needed
-    if (this.materialsDirty && this.outlinePass) {
-      this.updateMaterials();
-    }
+    // TODO: remove this if unnecessary
+    // if (this.materialsDirty && this.outlinePass) {
+    //   this.updateMaterials();
+    // }
 
     for (const [meshId, originalObject] of this.outlinedObjects) {
       const shadowMesh = this.shadowMeshes.get(meshId);
@@ -148,6 +149,7 @@ export class SceneWrapper {
   fullUpdate(): void {
     this._dirty = false;
 
+    this.markMaterialsDirty();
     this.executeRebuild();
 
     // Log memory before flush if significant changes expected
@@ -158,7 +160,7 @@ export class SceneWrapper {
     const currentOutlineIds = new Set<number>();
 
     // Traverse real scene to find meshes with outline userData
-    this.realScene.traverse((object: any) => {
+    this.realScene.traverseVisible((object: any) => {
       if (object.isMesh && object.userData?.outlineColor) {
         const meshId = object.id;
         currentOutlineIds.add(meshId);

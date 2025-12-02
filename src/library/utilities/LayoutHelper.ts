@@ -1,4 +1,3 @@
-import { create } from "domain";
 import { Chit } from "../game/Chit";
 
 export type PanelLayoutResult = {
@@ -11,7 +10,6 @@ export type PanelLayoutResult = {
 };
 
 export type LayoutDirection =
-  | "collapsed"
   | "horizontal"
   | "vertical"
   | "optimize"
@@ -23,16 +21,24 @@ export type LayoutDirection =
 // Input parameters
 //
 export interface PanelNode {
-  panel: Chit | Chit[];
+  chit: Chit;
   minWidth: number;
   minHeight: number;
+  order?: number;
 }
 export interface ContainerNode {
   direction: LayoutDirection;
   splits: LayoutNode[];
   collapseOrder?: number;
+  reversedIfVertical?: boolean;
+  reversedIfHorizontal?: boolean;
 }
-export type LayoutNode = PanelNode | ContainerNode;
+export interface CollapsedNode {
+  panels: PanelNode[];
+  minWidth: number;
+  minHeight: number;
+}
+export type LayoutNode = PanelNode | ContainerNode | CollapsedNode;
 
 //
 // Interim concrete panel nodes
@@ -50,11 +56,52 @@ interface ConcreteContainerNode {
   splits: ConcreteLayoutNode[];
   collapseOrder?: number;
 }
-type ConcreteLayoutNode = ConcretePanelNode | ConcreteContainerNode;
+interface ConcreteCollapsedNode extends CollapsedNode {
+  width: number;
+  height: number;
+}
+type ConcreteLayoutNode = ConcretePanelNode | ConcreteContainerNode | ConcreteCollapsedNode;
 
 // Type guard helpers
-function isPanelNode(node: LayoutNode | ConcreteLayoutNode): node is PanelNode {
-  return "panel" in node;
+function isPanelNode(node: LayoutNode | ConcreteLayoutNode): node is PanelNode | ConcretePanelNode {
+  return "chit" in node;
+}
+
+function isCollapsedNode(node: LayoutNode | ConcreteLayoutNode): node is CollapsedNode | ConcreteCollapsedNode {
+  return "panels" in node;
+}
+
+function isContainerNode(node: LayoutNode | ConcreteLayoutNode): node is ContainerNode | ConcreteContainerNode {
+  return "splits" in node;
+}
+
+/**
+ * Recursively fixes nodes where minWidth/minHeight exceed available dimensions
+ */
+function fixInvalidNodeDimensions(tree: LayoutNode, availableWidth: number, availableHeight: number): LayoutNode {
+  if (isPanelNode(tree)) {
+    // Fix panel node dimensions if they exceed available space
+    return {
+      ...tree,
+      minWidth: Math.min(tree.minWidth, availableWidth),
+      minHeight: Math.min(tree.minHeight, availableHeight),
+    };
+  }
+
+  if (isCollapsedNode(tree)) {
+    // Fix collapsed node dimensions if they exceed available space
+    return {
+      ...tree,
+      minWidth: Math.min(tree.minWidth, availableWidth),
+      minHeight: Math.min(tree.minHeight, availableHeight),
+    };
+  }
+
+  const container = tree as ContainerNode;
+  return {
+    ...container,
+    splits: container.splits.map((split) => fixInvalidNodeDimensions(split, availableWidth, availableHeight)),
+  };
 }
 
 /**
@@ -65,8 +112,11 @@ export function createLayoutFromTree(
   availableWidth: number,
   availableHeight: number,
 ): PanelLayoutResult[] {
+  // Step 0: Fix invalid nodes in tree
+  const fixedTree = fixInvalidNodeDimensions(tree, availableWidth, availableHeight);
+
   // Step 1: Build valid LayoutNode tree (with collapses applied)
-  const validTree = buildValidTree(tree, availableWidth, availableHeight);
+  const validTree = buildValidTree(fixedTree, availableWidth, availableHeight);
 
   const rebalancedTree = rebalanceTree(validTree);
 
@@ -77,7 +127,7 @@ export function createLayoutFromTree(
 }
 
 function rebalanceTree(tree: ConcreteLayoutNode): ConcreteLayoutNode {
-  if (isPanelNode(tree)) {
+  if (isPanelNode(tree) || isCollapsedNode(tree)) {
     return tree;
   }
   if (tree.direction === "horizontal") {
@@ -111,14 +161,14 @@ function buildValidTree(tree: LayoutNode, width: number, height: number): Concre
   }
 
   // Step 3: Scan ENTIRE tree for the container with smallest collapseOrder
-  const toCollapse = findSmallestCollapseOrder(tree);
+  const toCollapse = findSmallestCollapseOrder(concreteTree);
 
   if (!toCollapse) {
     return concreteTree;
   }
 
   // Step 4: Collapse that container to create NEW tree
-  const newTree = collapseContainer(tree, toCollapse);
+  const newTree = collapseContainer(tree, toCollapse.collapseOrder!);
 
   // Step 5: Recursively build valid tree from the new tree
   return buildValidTree(newTree, width, height);
@@ -129,6 +179,10 @@ function createHorizontalLayout(node: ContainerNode, width: number, height: numb
   const totalUsedWidth = widths.reduce((sum, w) => sum + w, 0);
   const scale = width / totalUsedWidth;
   const splits = node.splits.map((split, i) => createConcreteLayout(split, widths[i] * scale, height));
+
+  if (node.reversedIfHorizontal) {
+    splits.reverse();
+  }
 
   return {
     width,
@@ -145,6 +199,10 @@ function createVerticalLayout(node: ContainerNode, width: number, height: number
   const scale = height / totalUsedHeight;
   const splits = node.splits.map((split, i) => createConcreteLayout(split, width, heights[i] * scale));
 
+  if (node.reversedIfVertical) {
+    splits.reverse();
+  }
+
   return {
     collapseOrder: node.collapseOrder,
     direction: "vertical",
@@ -160,6 +218,14 @@ function createVerticalLayout(node: ContainerNode, width: number, height: number
  */
 function createConcreteLayout(node: LayoutNode, width: number, height: number): ConcreteLayoutNode {
   if (isPanelNode(node)) {
+    return {
+      ...node,
+      width,
+      height,
+    };
+  }
+
+  if (isCollapsedNode(node)) {
     return {
       ...node,
       width,
@@ -255,6 +321,9 @@ function checkConcreteViolations(node: ConcreteLayoutNode): boolean {
   if (isPanelNode(node)) {
     return node.minWidth > node.width || node.minHeight > node.height;
   }
+  if (isCollapsedNode(node)) {
+    return node.minWidth > node.width || node.minHeight > node.height;
+  }
   for (let i = 0; i < node.splits.length; i++) {
     if (checkConcreteViolations(node.splits[i])) {
       return true;
@@ -266,12 +335,16 @@ function checkConcreteViolations(node: ConcreteLayoutNode): boolean {
 /**
  * Scans entire tree for the container with smallest collapseOrder
  */
-function findSmallestCollapseOrder(node: LayoutNode): ContainerNode | null {
-  if (isPanelNode(node)) {
+function findSmallestCollapseOrder(node: ConcreteLayoutNode): ContainerNode | null {
+  if (isPanelNode(node) || isCollapsedNode(node)) {
+    return null;
+  }
+  // no point in collapsing anything that thinks it is all good
+  if (!checkConcreteViolations(node) && node.collapseOrder !== undefined) {
     return null;
   }
 
-  const container = node as ContainerNode;
+  const container = node as ConcreteContainerNode;
   let smallest: ContainerNode | null = container.collapseOrder !== undefined ? container : null;
 
   for (const split of container.splits) {
@@ -301,15 +374,28 @@ function flattenTreeToResults(
 ): PanelLayoutResult[] {
   // Handle leaf node (panel or panel array)
   if (isPanelNode(node)) {
-    const panelArray = Array.isArray(node.panel) ? node.panel : [node.panel];
     return [
       {
         x,
         y,
         w,
         h,
-        id: panelArray.length > 0 ? panelArray[0].id : undefined,
-        chit: node.panel,
+        id: node.chit.id ?? "no_id",
+        chit: node.chit,
+      },
+    ];
+  }
+
+  // Handle collapsed node (array of panels as chits)
+  if (isCollapsedNode(node)) {
+    return [
+      {
+        x,
+        y,
+        w,
+        h,
+        id: node.panels[0].chit.id ?? "no_id",
+        chit: node.panels.map((p) => p.chit),
       },
     ];
   }
@@ -395,27 +481,34 @@ function findBestGridConfig(splits: LayoutNode[], width: number, height: number)
 }
 
 /**
- * Collapse a container - replaces it with a PanelNode (tabs) and removes collapseOrder
+ * Collapse a container - replaces it with a CollapsedNode (tabs) and removes collapseOrder
  */
-function collapseContainer(tree: LayoutNode, targetContainer: ContainerNode): LayoutNode {
-  if (tree === targetContainer) {
+function collapseContainer(tree: LayoutNode, targetCollapseOrder: number): LayoutNode {
+  if (isContainerNode(tree) && tree.collapseOrder === targetCollapseOrder) {
     // This is the container to collapse
     const panels: PanelNode[] = [];
-    collectPanels(targetContainer, panels);
+    collectPanels(tree, panels);
 
-    const maxWidth = Math.max(...panels.map((s) => s.minWidth));
-    const maxHeight = Math.max(...panels.map((s) => s.minHeight));
+    // Sort panels by collapseOrder (stable sort)
+    // Panels without collapseOrder go to the end
+    const sortedPanels = panels.flat().sort((a, b) => {
+      const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
+      const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
+      return orderA - orderB;
+    });
 
-    // Return PanelNode with array of panels (tabs) - NO collapseOrder
+    const maxWidth = Math.max(...sortedPanels.map((s) => s.minWidth));
+    const maxHeight = Math.max(...sortedPanels.map((s) => s.minHeight));
+
+    // Return CollapsedNode with array of single chits (each panel becomes a single chit)
     return {
-      direction: "collapsed",
-      panel: panels.map((p) => p.panel).flat(),
+      panels: sortedPanels,
       minWidth: maxWidth,
       minHeight: maxHeight,
     };
   }
 
-  if (isPanelNode(tree)) {
+  if (isPanelNode(tree) || isCollapsedNode(tree)) {
     return tree;
   }
 
@@ -423,15 +516,17 @@ function collapseContainer(tree: LayoutNode, targetContainer: ContainerNode): La
   const container = tree as ContainerNode;
   return {
     ...container,
-    splits: container.splits.map((split) => collapseContainer(split, targetContainer)),
+    splits: container.splits.map((split) => collapseContainer(split, targetCollapseOrder)),
   };
 }
 
 function collectPanels(node: LayoutNode, panels: PanelNode[]): void {
   if (isPanelNode(node)) {
     panels.push(node);
+  } else if (isCollapsedNode(node)) {
+    panels.push(...node.panels);
   } else {
-    for (const split of node.splits) {
+    for (const split of (node as ContainerNode).splits) {
       collectPanels(split, panels);
     }
   }
@@ -442,6 +537,10 @@ function collectPanels(node: LayoutNode, panels: PanelNode[]): void {
  */
 function getMinWidth(node: LayoutNode | ConcreteLayoutNode): number {
   if (isPanelNode(node)) {
+    return node.minWidth;
+  }
+
+  if (isCollapsedNode(node)) {
     return node.minWidth;
   }
 
@@ -463,6 +562,10 @@ function getMinWidth(node: LayoutNode | ConcreteLayoutNode): number {
 
 function getMinHeight(node: LayoutNode | ConcreteLayoutNode): number {
   if (isPanelNode(node)) {
+    return node.minHeight;
+  }
+
+  if (isCollapsedNode(node)) {
     return node.minHeight;
   }
 

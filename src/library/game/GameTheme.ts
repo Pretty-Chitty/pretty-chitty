@@ -35,8 +35,7 @@ export class GameTheme {
   public endGameTextColor = "rgba(255,255,255,1)";
 
   public chitHighlightColor = "#66d5c1";
-  public chitOutlineWidth = 0.1;
-  public chitOutlineDownsample = 4;
+  public chitOutlineWidth = 3;
   public chitOutlineStrength = 0.75;
 
   public panelSelectionCutoutBackground = "#ffffff";
@@ -65,6 +64,13 @@ export class GameTheme {
   public gallerySummaryBackgroundOpacity = 0.7;
   public galleryBlur = 5;
 
+  public actionLogBackgroundColor = "rgba(255,255,255,0.05)";
+  public actionLogDialogBackgroundColor = "#000000";
+  public actionLogDialogHighlightBackgroundColor = "rgba(255,255,255,0.3)";
+  public actionLogTextColor = "#ffffff";
+  public actionBarWidth = 600;
+  public actionBarLinesToShow = 2;
+
   static withDefaults(primaryColor: string, highlight: string, textColor: string = "#ffffff") {
     const result = new GameTheme();
     result.chitHighlightColor = highlight;
@@ -86,6 +92,17 @@ export class GameTheme {
     result.barTopLineColor = Color(textColor).alpha(0.1).hexa();
     result.endGameTextColor = Color(textColor).alpha(1).hexa();
 
+    result.barDisabledTextColor = Color(result.barColor).isLight()
+      ? Color(result.barColor).darken(0.75).hexa()
+      : Color(result.barColor).lighten(0.75).hexa();
+
+    result.actionLogTextColor = result.barActiveTextColor;
+    result.actionLogDialogBackgroundColor = result.backgroundColor;
+
     return result;
+  }
+
+  layoutSize(width: number): "large" | "medium" | "mobile" {
+    return width >= this.actionBarWidth * 2 ? "large" : width >= this.actionBarWidth * 1.3 ? "medium" : "mobile";
   }
 }

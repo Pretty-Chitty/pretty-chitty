@@ -1,3 +1,4 @@
+import { SparkChit } from "../SparkChit";
 import { EventChannel } from "../../utilities/EventChannel";
 import { Chit } from "../Chit";
 import { ClientTimeState } from "../ClientTimeState";
@@ -5,6 +6,7 @@ import { ClockDetails, samePasses } from "../ClockDetails";
 import { Connection } from "../Connection";
 import { ConnectionObject } from "../ConnectionObject";
 import { Game } from "../Game";
+import { RootChit } from "../RootChit";
 import { ServerTime } from "../serverTransport/ServerTime";
 import { ClientPrompts } from "./ClientPrompts";
 
@@ -42,13 +44,32 @@ export class ClientTime extends ConnectionObject {
         localStorage["animationSpeedMultiplier"] = targetSpeed;
       }),
     );
+
+    this.clientTimeState.skipReplay.value = parseFloat(localStorage["skipReplay"] ?? "0") === 1;
+    this.register(
+      this.clientTimeState.skipReplay.on((skipReplay) => {
+        localStorage["skipReplay"] = skipReplay ? "1" : "0";
+      }),
+    );
+
+    this.clientTimeState.showLog.value = parseFloat(localStorage["showLog"] ?? "0") === 1;
+    this.register(
+      this.clientTimeState.showLog.on((showLog) => {
+        localStorage["showLog"] = showLog ? "1" : "0";
+      }),
+    );
   }
 
   public currentClock = new EventChannel<ClockDetails>({ clock: 0, pass: -1 });
   private chitLookup: { [id: string]: Chit } = {};
   public maxClock = new EventChannel<ClockDetails>({ clock: 0, pass: -1 });
-  public rootChit = new EventChannel<Chit | undefined>(undefined);
+  public rootChit = new EventChannel<RootChit<any> | undefined>(undefined);
+  public activeLog = new EventChannel<string | undefined>(undefined);
   private startTime = 1;
+
+  public async gameLogs() {
+    return await this.serverTime.gameLog();
+  }
 
   public readonly findChit: (id: string) => Chit = (id: string) => {
     const result = this.chitLookup[id];
@@ -65,10 +86,15 @@ export class ClientTime extends ConnectionObject {
   private serverTime: ServerTime<any, any>;
 
   public async setStartTime(newTime: number) {
-    if (this.clientTimeState.targetClock.value <= newTime) {
+    if (this.clientTimeState.targetClock.value <= newTime || newTime === 0) {
       this.clientTimeState.isLoading.value = true;
-      this.startTime = newTime;
-      this.clientTimeState.targetClock.value = newTime;
+
+      if (!this.clientTimeState.skipReplay.value) {
+        this.startTime = newTime;
+        this.clientTimeState.targetClock.value = newTime;
+      } else {
+        this.clientTimeState.goLive(this.maxClock.value.clock);
+      }
     }
   }
 
@@ -131,11 +157,15 @@ export class ClientTime extends ConnectionObject {
         this.clientTimeState.isLoading.value = false;
       }
 
+      // track the active log message
+      this.activeLog.value = response.log?.message;
+      this.clientPrompt?.fixActiveLog();
+
       // first make sure all chits exist (because they may link to each other)
       Object.entries(serializedChits).forEach(([id, value]) => {
         let chit = this.chitLookup[id];
         if (!chit) {
-          const c = Chit.deflate(value, this.game);
+          const c = Chit.$internal_deflate(value, this.game);
           if (c) {
             chit = this.chitLookup[id] = c;
           }
@@ -145,9 +175,9 @@ export class ClientTime extends ConnectionObject {
       Object.values(this.chitLookup).forEach((chit) => {
         if (chit.id && !serializedChits[chit.id]) {
           if (chit.parentFallback) {
-            chit.beginDeserializing();
+            chit.$internal_beginDeserializing();
             chit.setParent(chit.parentFallback, chit.parentOutlet ?? "graveyard");
-            chit.doneDeserializing();
+            chit.$internal_doneDeserializing();
           } else {
             chit.removeFromParent();
           }
@@ -168,19 +198,19 @@ export class ClientTime extends ConnectionObject {
         .filter(([id, value]) => this.chitLookup[id] && this.lastSerializedState[id] !== value)
         .map(([id]) => this.chitLookup[id]);
 
-      chits.forEach((chit) => chit.beginDeserializing());
+      chits.forEach((chit) => chit.$internal_beginDeserializing());
 
       Object.entries(serializedChits)
         .filter(([id]) => changedIds.has(id))
         .forEach(([id, value]) => {
           const chit = this.chitLookup[id];
-          chit.deserialize(value, this.findChit);
+          chit.$internal_deserialize(value, this.findChit);
           this.lastSerializedState[id] = value;
         });
 
-      chits.forEach((chit) => chit.doneDeserializing());
+      chits.forEach((chit) => chit.$internal_doneDeserializing());
 
-      this.rootChit.value = this.findChit("root");
+      this.rootChit.value = this.findChit("root") as RootChit<any>;
 
       // sometimes deserializing chits does not result in animations (maybe a pure texture change?)
       // in that case, we need to make sure that the clock moves forward
@@ -188,5 +218,39 @@ export class ClientTime extends ConnectionObject {
     } else {
       this.clientTimeState.setAnimationState(animationKey, false);
     }
+  }
+
+  public async chitHistory(chits: Chit[]) {
+    const sparkHistory = await this.serverTime.chitHistory(chits.map((s) => s.id!));
+    const result: { [id: string]: { clock: number; chit: Chit }[] } = {};
+
+    const chitLookup: { [id: string]: Chit } = Object.entries(this.chitLookup).reduce(
+      (acc, [id, chit]) => {
+        const serialized = chit.$internal_serialize();
+        const c = Chit.$internal_deflate(serialized, this.game);
+        if (c) {
+          acc[id] = c;
+        }
+        return acc;
+      },
+      {} as { [id: string]: Chit },
+    );
+    const findChit = (id: string) => chitLookup[id];
+
+    Object.keys(chitLookup).forEach((id: string) => {
+      chitLookup[id].$internal_deserialize(this.chitLookup[id].$internal_serialize(), findChit);
+    });
+
+    Object.entries(sparkHistory).forEach(([id, history]) => {
+      result[id] = [];
+      history.forEach((h: any) => {
+        const c = Chit.$internal_deflate(h.state, this.game);
+        if (c) {
+          c.$internal_deserialize(h.state, findChit);
+          result[id].push({ clock: h.clock, chit: c });
+        }
+      });
+    });
+    return result;
   }
 }

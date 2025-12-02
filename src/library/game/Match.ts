@@ -36,16 +36,16 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
       this.state = new TurnState();
       this.state.deserialize(savedState);
       if (this.errorState.value) {
-        this.turn.value?.destroy();
+        this.turn.value?.$internal_destroy();
         this.turn.value = undefined;
         this.start();
       } else if (this.turn.value) {
         this.turn.value
-          .processNewSavedState(this.state)
+          .$internal_processNewSavedState(this.state)
           .then(() => {
             console.log("Processed new saved state");
           })
-          .catch((e) => {
+          .catch((e: any) => {
             console.error("Error processing new saved state", e);
           });
       }
@@ -76,17 +76,17 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         this.errorState.value = undefined;
         const rootChit = this.game.generateRootChit();
         rootChit.id = "root";
-        rootChit.game = this.game;
+        rootChit.$internal_game = this.game;
 
-        const players = this.players.map((p) => {
+        this.players.forEach((p) => {
           const player = this.game.generatePlayer(p);
-          player.promptStatus.latestPrompt.on(() => this.notify(), false);
+          player.promptStatus.$internal_latestPrompt.on(() => this.notify(), false);
           rootChit.players.add(player);
           return player;
         });
 
         let counter = 1;
-        rootChit.walk((c: Chit) => {
+        rootChit.$internal_walk((c: Chit) => {
           if (!c.id) {
             c.id = `r-ac-${counter++}`;
           }
@@ -96,13 +96,13 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
           "root",
           this,
           this.state,
-          (turn) => this.game.run(players, turn, rootChit),
+          (turn) => this.game.run(turn, rootChit),
           [rootChit],
         );
-        rootChit._setupTurn = this.turn.value;
-        this.turn.value.fixPass();
+        rootChit.$internal__setupTurn = this.turn.value;
+        this.turn.value.$internal_fixPass();
         this.notify();
-        this.result.value = await this.turn.value.execute();
+        this.result.value = await this.turn.value.$internal_execute();
         break;
       } catch (e) {
         if (e instanceof RerunError) {

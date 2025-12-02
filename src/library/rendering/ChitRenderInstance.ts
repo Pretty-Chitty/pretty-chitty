@@ -25,6 +25,7 @@ import { outlineGeometry } from "../utilities/OutlineGeometry";
 import { fixBbox } from "../utilities/BboxUtils";
 import { ChitGalleryItemInstance } from "./ChitGalleryItemInstance";
 import Color from "color";
+import nextTick from "next-tick";
 
 const LINE_COLOR = new MeshBasicMaterial({ color: 0xff0000, wireframe: true, wireframeLinewidth: 2 });
 const CLICK_LINE_COLOR = new MeshBasicMaterial({ color: 0xffff00, wireframe: true, wireframeLinewidth: 2 });
@@ -47,7 +48,7 @@ class DestroyedError extends Error {}
 
 export class ChitRenderInstance {
   private static ID_COUNTER = 0;
-  protected id: string;
+  public id: string;
 
   // rendering info
   protected renderSpec: ChitRenderSpec | null = null;
@@ -88,15 +89,15 @@ export class ChitRenderInstance {
     this.group.visible = false;
 
     let currentPosition: Vector2 | undefined;
-    if (chit.renderInstance) {
-      currentPosition = chit.screenCoordinates();
+    if (chit.$internal_renderInstance) {
+      currentPosition = chit.$internal_screenCoordinates();
     }
 
     this.log("Render instance on owning chit is attached");
-    chit.renderInstance = this;
+    chit.$internal_renderInstance = this;
 
     // handle refreshes.
-    const cb1 = chit.onChange("deserialized parent", () => {
+    const cb1 = chit.$internal_onChange("deserialized parent", () => {
       try {
         this.refresh();
         if (this.renderSpec?.worthSlidingToPanelToShowChange) {
@@ -111,7 +112,7 @@ export class ChitRenderInstance {
       }
     });
 
-    const cb2 = chit.onChange("onClick", () => {
+    const cb2 = chit.$internal_onChange("onClick", () => {
       this.refresh();
     });
     this.unsubscribeToOnChange = () => {
@@ -122,7 +123,7 @@ export class ChitRenderInstance {
     this.handleHierarchy();
 
     // start it from where it should be - be it a spark chit or a bag or an old parent chit
-    const positionEntranceChit = chit.lastParent ?? chit.parentFallback ?? currentPosition;
+    const positionEntranceChit = chit.$internal_lastParent ?? chit.parentFallback ?? currentPosition;
     if (this.rootRenderInstance) {
       const oldParent = this.group.parent;
       let intersection = this.attemptToFindPlaneZ0(this.rootRenderInstance, positionEntranceChit);
@@ -153,9 +154,9 @@ export class ChitRenderInstance {
 
   public init() {
     this.log("init");
-    this.chit.children.forEach((child) => {
-      if (child.canRender()) {
-        if (!child.renderInstance) {
+    this.chit.$internal_children.forEach((child) => {
+      if (child.$internal_canRender()) {
+        if (!child.$internal_renderInstance) {
           this.log(`Found child to init: ${child.id}`);
           const c = new ChitRenderInstance(child);
           c.init();
@@ -163,7 +164,7 @@ export class ChitRenderInstance {
           // move the new render instance immediately to where it belongs
           this.zeroTween();
         } else {
-          child.renderInstance.refresh();
+          child.$internal_renderInstance.refresh();
         }
       }
     });
@@ -198,7 +199,7 @@ export class ChitRenderInstance {
       return;
     }
 
-    if (!chit.canRender()) {
+    if (!chit.$internal_canRender()) {
       return;
     }
 
@@ -224,7 +225,7 @@ export class ChitRenderInstance {
   }
 
   public get absorbsClickEventsForChildren() {
-    return this.renderSpec?.isShowingChildrenAsGallery ?? false;
+    return this.renderSpec?.$internal_isShowingChildrenAsGallery ?? false;
   }
 
   public get tweenGroup(): TweenGroup | undefined {
@@ -364,7 +365,7 @@ export class ChitRenderInstance {
   }
 
   protected updateGroupPosition(group: Group, position: OwnerOriginPosition | string) {
-    const z = this.sizeZ + (this.renderSpec?.childrenOffsetZ ?? 0);
+    const z = this.sizeZ / 2 + (this.renderSpec?.childrenOffsetZ ?? 0);
     switch (position) {
       case OwnerOriginPosition.TopLeft: {
         group.position.set(-this.sizeX / 2, this.sizeY / 2, z);
@@ -414,6 +415,8 @@ export class ChitRenderInstance {
   public createGalleryItem(item: ChitGalleryItemInstance) {
     item.maximumWidth = this.renderSpec?.galleryMaximumWidth;
     item.maximumHeight = this.renderSpec?.galleryMaximumHeight;
+    item.preferredHeight = this.renderSpec?.galleryPreferredHeight;
+    item.preferredWidth = this.renderSpec?.galleryPreferredWidth;
     item.summary = this.renderSpec?.summary;
     item.originalSummary = item.summary;
     item.summaryIconMap = this.renderSpec?.summaryIconMap;
@@ -456,18 +459,18 @@ export class ChitRenderInstance {
         child.destroy();
       }
     });
-    if (this.chit.renderInstance === this) {
-      this.chit.renderInstance = undefined;
+    if (this.chit.$internal_renderInstance === this) {
+      this.chit.$internal_renderInstance = undefined;
     }
   }
 
   protected shouldMoveToNewViewer() {
-    if (this.chit.renderInstance !== this) {
+    if (this.chit.$internal_renderInstance !== this) {
       return true;
     }
 
     const rootRenderInstance = this.rootRenderInstance;
-    const targetParentRenderInstance = this.effectiveParent?.renderInstance;
+    const targetParentRenderInstance = this.effectiveParent?.$internal_renderInstance;
     if (
       rootRenderInstance &&
       targetParentRenderInstance?.rootRenderInstance &&
@@ -510,7 +513,7 @@ export class ChitRenderInstance {
     this.innateOrnamentZs = this.renderSpec.ornaments.map((o) => o.position?.z ?? 0);
 
     // no need to animate anything invisible...
-    if (!visibilityBefore && !this.group.visible && !this.chit.lastParent) {
+    if (!visibilityBefore && !this.group.visible && !this.chit.$internal_lastParent) {
       renderSpec.offsetSpeed = 0;
       renderSpec.rotationSpeed = 0;
     }
@@ -536,7 +539,7 @@ export class ChitRenderInstance {
   public outlineContext?: ChitRenderInstance;
 
   public hasExplicitOnClick() {
-    return this.chit.onClick && !this.renderSpec?.isShowingChildrenAsGallery;
+    return this.chit.$internal_onClick && !this.renderSpec?.$internal_isShowingChildrenAsGallery;
   }
 
   public fixOutline() {
@@ -575,12 +578,12 @@ export class ChitRenderInstance {
       const id = outlineContext.renderSpec.object.id % 60000;
       const color = Color(c);
       const threeColor = new ThreeColor(color.red() / 256, color.green() / 256, color.blue() / 256);
-      this.renderSpec.object.traverse((o) => {
+      this.renderSpec.object.traverseVisible((o) => {
         o.userData.outlineId = id;
         o.userData.outlineColor = threeColor;
       });
     } else {
-      this.renderSpec.object.traverse((o) => {
+      this.renderSpec.object.traverseVisible((o) => {
         delete o.userData.outlineId;
         delete o.userData.outlineColor;
       });
@@ -602,12 +605,12 @@ export class ChitRenderInstance {
     rootRenderInstance: RootChitRenderInstance,
     chit?: Chit | Vector2,
   ): Vector3 | undefined {
-    if (chit instanceof Chit && rootRenderInstance === chit?.renderInstance?.rootRenderInstance) {
-      return chit.renderInstance.group.getWorldPosition(new Vector3());
+    if (chit instanceof Chit && rootRenderInstance === chit?.$internal_renderInstance?.rootRenderInstance) {
+      return chit.$internal_renderInstance!.group.getWorldPosition(new Vector3());
     }
 
     const screenCoordsOfNewLocation =
-      chit instanceof Vector2 ? chit : chit ? chit.screenCoordinates() : new Vector2(0, 0);
+      chit instanceof Vector2 ? chit : chit ? chit.$internal_screenCoordinates() : new Vector2(0, 0);
     if (rootRenderInstance && rootRenderInstance.rootGroup && screenCoordsOfNewLocation) {
       // find the current screen coordinates of its new home and map it to "camera space"
       const cameraSpace = rootRenderInstance.convertScreenSpaceToCameraSpace(
@@ -645,17 +648,17 @@ export class ChitRenderInstance {
   }
 
   protected detach() {
-    if (this.chit.renderInstance === this) {
+    if (this.chit.$internal_renderInstance === this) {
       this.log("detaching");
-      this.chit.renderInstance = undefined;
+      this.chit.$internal_renderInstance = undefined;
       // this.childrenRenderInstances.forEach((child) => child.detach());
     }
 
-    if (!this.chit.renderInstance && this.effectiveParent?.renderInstance) {
-      this.effectiveParent.renderInstance.childAdded(this.chit);
+    if (!this.chit.$internal_renderInstance && this.effectiveParent?.$internal_renderInstance) {
+      this.effectiveParent.$internal_renderInstance.childAdded(this.chit);
 
       // TODO: this is okay since adding a child has side effects
-      (this.chit.renderInstance as unknown as ChitRenderInstance).zeroTween();
+      (this.chit.$internal_renderInstance as unknown as ChitRenderInstance).zeroTween();
     }
   }
 
@@ -715,21 +718,28 @@ export class ChitRenderInstance {
 
   protected createRenderSpec() {
     const renderSpec = new ChitRenderSpec(this.chit);
-    renderSpec.renderedForPlayerId = this.rootRenderInstance.playerId;
-    renderSpec.highlight.clickColor = this.chit.game?.theme.chitHighlightColor ?? renderSpec.highlight.clickColor;
+    renderSpec.renderedForPlayerId = this.rootRenderInstance.$internal_playerId;
+    renderSpec.highlight.clickColor = this.chit.$internal_game?.theme.chitHighlightColor ?? renderSpec.highlight.clickColor;
     return renderSpec;
   }
 
+  private _boundingBoxDirty = false;
   protected notifyBoundingBoxChanged() {
     this.parentRenderInstance?.notifyBoundingBoxChanged();
     if (this.isUsingSyntheticBbox) {
-      this.updateBoundingBox();
+      if (!this._boundingBoxDirty) {
+        this._boundingBoxDirty = true;
+        nextTick(() => {
+          this.updateBoundingBox();
+          this._boundingBoxDirty = false;
+        });
+      }
     }
   }
 
   private positionKey(clickBox3: Box3) {
     return [
-      !!this.chit.onClick,
+      !!this.chit.$internal_onClick,
       this.parentRenderInstance?.id,
       this.sizeX,
       this.sizeY,
@@ -766,7 +776,7 @@ export class ChitRenderInstance {
 
     // goofy circumstances where the thing being clicked doesn't have anything to actually highlight - we
     // have to highlight the children (do we care about grandchildren?)
-    if (box3.isEmpty() && this.chit.onClick) {
+    if (box3.isEmpty() && this.chit.$internal_onClick) {
       this.isUsingSyntheticBbox = true;
       this.childrenRenderInstances.forEach((child) => {
         const clone = child.bbox.clone();
@@ -804,22 +814,27 @@ export class ChitRenderInstance {
       [...this.bboxAnchorPoints.entries()].forEach(([key, value]) => this.updateGroupPosition(value, key));
 
       this.fixObjectPosition();
-      this.bbox.position.z = this.centerZ + this.sizeZ / 2;
+      this.bbox.position.z = this.centerZ;
       this.bbox.position.x = this.centerX;
       this.bbox.position.y = this.centerY;
 
-      this.clickbox.position.z = (clickBox3.max.z - clickBox3.min.z) / 2 + clickBox3.min.z + this.sizeZ / 2;
+      this.clickbox.position.z = (clickBox3.max.z - clickBox3.min.z) / 2 + clickBox3.min.z;
       this.clickbox.position.x = (clickBox3.max.x - clickBox3.min.x) / 2 + clickBox3.min.x;
       this.clickbox.position.y = (clickBox3.max.y - clickBox3.min.y) / 2 + clickBox3.min.y;
 
-      const targetOffset = { x: this.renderSpec.offsetX, y: this.renderSpec.offsetY, z: this.renderSpec.offsetZ };
+      const targetOffset = {
+        x: this.renderSpec.offsetX,
+        y: this.renderSpec.offsetY,
+        z: this.renderSpec.offsetZ + this.sizeZ / 2,
+      };
       this.handleOffsetForSplay(targetOffset);
 
       this.bboxGroup.position.set(targetOffset.x, targetOffset.y, targetOffset.z);
+      this.bboxGroup.rotation.order = "ZYX";
       this.bboxGroup.rotation.set(this.renderSpec.rotateX, this.renderSpec.rotateY, this.renderSpec.rotateZ);
 
       Object.entries(this.renderSpec.outletPositions).forEach(([key, position]) => {
-        this.setOutletPosition(key, new Vector3(position.x, position.y, position.z + this.sizeZ));
+        this.setOutletPosition(key, new Vector3(position.x, position.y, position.z + this.sizeZ / 2));
       });
 
       if (keyChanged) {
@@ -830,7 +845,7 @@ export class ChitRenderInstance {
 
   private fixObjectPosition() {
     if (this.renderSpec?.object) {
-      this.renderSpec.object.position.z = this.sizeZ / 2 + this.innateObjectZ;
+      this.renderSpec.object.position.z = this.innateObjectZ;
     }
 
     // this.renderSpec?.ornaments.forEach(
@@ -849,7 +864,7 @@ export class ChitRenderInstance {
     this.childrenRenderInstances.push(child);
     if (this._isMovingToNewViewer) {
       this.log("While adding child to myself, I am already moving to a new viewer");
-      child.chit.renderInstance = undefined;
+      child.chit.$internal_renderInstance = undefined;
       child.detach();
     } else {
       child.fixOutline();
@@ -867,7 +882,7 @@ export class ChitRenderInstance {
     if (!this.chit.parent && !this.isDestroying && !this.chit.parentFallback) {
       this.log("about to destroy, will move off screen");
       this.isDestroying = true;
-      this.chit.renderInstance = undefined;
+      this.chit.$internal_renderInstance = undefined;
       this.rootGroup?.attach(this.group);
       const { position } = this.group;
       if (!this.group.visible) {
@@ -895,6 +910,7 @@ export class ChitRenderInstance {
           const distance = Math.sqrt(Math.pow(target.x - position.x, 2) + Math.pow(target.y - position.y, 2));
 
           duration =
+            this.animationSpeedMultiplier *
             (this.renderSpec ? this.renderSpec.offsetSpeed : 500) *
             Math.min(this.renderSpec ? this.renderSpec.maxDistanceForSpeed : 10, distance);
         }
@@ -918,7 +934,7 @@ export class ChitRenderInstance {
   }
 
   protected handleHierarchy() {
-    const targetParentRenderInstance = this.effectiveParent?.renderInstance;
+    const targetParentRenderInstance = this.effectiveParent?.$internal_renderInstance;
     if (this.parentRenderInstance !== targetParentRenderInstance) {
       this.parentRenderInstance?.removeChild(this);
       targetParentRenderInstance?.addChild(this);
@@ -976,7 +992,11 @@ export class ChitRenderInstance {
     }
 
     const { position, rotation } = this.group;
-    const targetOffset = { x: this.renderSpec.offsetX, y: this.renderSpec.offsetY, z: this.renderSpec.offsetZ };
+    const targetOffset = {
+      x: this.renderSpec.offsetX,
+      y: this.renderSpec.offsetY,
+      z: this.renderSpec.offsetZ + this.sizeZ / 2,
+    };
     const targetRotation = { x: this.renderSpec.rotateX, y: this.renderSpec.rotateY, z: this.renderSpec.rotateZ };
 
     this.handleOffsetForSplay(targetOffset);
@@ -1013,17 +1033,32 @@ export class ChitRenderInstance {
     }
 
     // rotation has to change
-    if (rotation.x !== targetRotation.x || rotation.y !== targetRotation.y || rotation.z !== targetRotation.z) {
+    // Use quaternions to properly compare rotations, as Euler angles can represent the same rotation differently
+    // Note: quaternions have double-cover property where q and -q represent the same rotation
+    const currentQuat = new Quaternion().setFromEuler(rotation);
+    const targetQuat = new Quaternion().setFromEuler(
+      new Euler(targetRotation.x, targetRotation.y, targetRotation.z, "ZYX"),
+    );
+    let rotationAngleDifference = currentQuat.angleTo(targetQuat);
+
+    // Account for quaternion double-cover: if angle is close to π, check if they're actually the same rotation
+    // by also checking the dot product (which should be close to -1 if they're opposite quaternions)
+    if (Math.abs(rotationAngleDifference - Math.PI) < 0.001) {
+      const dot = currentQuat.dot(targetQuat);
+      if (dot < -0.999) {
+        // They're opposite quaternions representing the same rotation
+        rotationAngleDifference = 0;
+      }
+    }
+
+    if (rotationAngleDifference > 0.00001) {
       rotationEasing = this.rotationTween.isPlaying() ? Easing.Quadratic.Out : Easing.Quadratic.InOut;
 
-      const radiansDistance = new Quaternion()
-        .setFromEuler(rotation)
-        .angleTo(new Quaternion().setFromEuler(new Euler(targetRotation.x, targetRotation.y, targetRotation.z)));
-      const rotations = Math.min(radiansDistance / (2 * Math.PI), 2 * Math.PI);
+      const rotations = Math.min(rotationAngleDifference / (2 * Math.PI), 2 * Math.PI);
 
       const nonZRadiansDistance = new Quaternion()
-        .setFromEuler(new Euler(rotation.x, rotation.y, 0))
-        .angleTo(new Quaternion().setFromEuler(new Euler(targetRotation.x, targetRotation.y, 0)));
+        .setFromEuler(new Euler(rotation.x, rotation.y, 0, "ZYX"))
+        .angleTo(new Quaternion().setFromEuler(new Euler(targetRotation.x, targetRotation.y, 0, "ZYX")));
       nonZRotations = Math.min(nonZRadiansDistance / (2 * Math.PI), 2 * Math.PI);
 
       duration = Math.max(duration, this.renderSpec.rotationSpeed * rotations);

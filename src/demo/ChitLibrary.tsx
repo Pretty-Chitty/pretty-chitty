@@ -13,7 +13,6 @@ import {
 } from "three";
 import {
   BagSparkChit,
-  PanelChit,
   GameDeck,
   RootChit,
   PlayerChit,
@@ -26,6 +25,7 @@ import {
   OrderedOutlet,
   StaticImage,
   extrudeSVGToGeometry,
+  CameraSpec,
 } from "../library";
 import type { LayoutNode } from "../library";
 
@@ -39,6 +39,8 @@ import { GameBag } from "../library/game/GameBag";
 import { tunnel, walk } from "./assets/icons";
 
 import city_profile from "./city_profile.svg";
+import { IconCanvas } from "../library/utilities/CanvasStack/IconCanvas";
+import { Bookshelf } from "./Bookshelft";
 
 export * from "../library/utilities/BaseTable";
 
@@ -98,6 +100,7 @@ export class Bag extends GameBag<Card2> {
 
 export class Deck extends GameDeck<Card> {
   tapped = false;
+  flipped = false;
 
   constructor() {
     super();
@@ -123,6 +126,8 @@ export class Deck extends GameDeck<Card> {
     spec.object = new Mesh(boxGeometry, [side, side, side, side, face, side]);
     spec.offsetX = -2;
     spec.rotateZ = this.tapped ? Math.PI / 2 : 0;
+    spec.rotateY = this.flipped ? Math.PI / 2 : 0;
+    spec.rotateX = this.tapped && this.flipped ? Math.PI : 0;
     spec.object.castShadow = true;
 
     spec.showChildrenAsGallery();
@@ -246,6 +251,9 @@ export class Card extends Chit {
 
     spec.galleryMaximumWidth = 300;
 
+    spec.galleryPreferredWidth = 300;
+    spec.galleryPreferredHeight = 800;
+
     // make sure it reports it out?
     spec.setOutletPositionFromCanvas(ts);
   }
@@ -270,7 +278,7 @@ export class Card2 extends Chit {
     const card2side = new MeshPhongMaterial({
       color: 0x999999,
     });
-    const card2boxGeometry = new BoxGeometry(0.25, 0.25, 2.25);
+    const card2boxGeometry = new BoxGeometry(0.25, 0.25, 6.25);
     const side = card2side;
 
     const mesh = new Mesh(card2boxGeometry, [
@@ -353,54 +361,21 @@ export class Card3 extends Chit {
 
 export class CounterChit extends SparkChit {
   public get headerIcon() {
-    return cityscape2;
+    return new IconCanvas(cityscape2).get();
   }
 }
 export class BagChit extends BagSparkChit<Card2> {
+  override get endGameLabel(): string {
+    return "Bag";
+  }
   public get icon() {
-    return cityscape;
+    return new IconCanvas(cityscape).get();
   }
 }
 
-export class SideBoards extends PanelChit {
+export class SideBoards extends Chit {
   @ChildOutlet public sideBoard1 = new Table();
   @ChildOutlet public sideBoard2 = new Table();
-
-  override getLayout(width: number, height: number, _playerId: string): LayoutNode {
-    if (height > width) {
-      return {
-        direction: "vertical" as const,
-        splits: [
-          {
-            panel: this.sideBoard1,
-            minWidth: 100,
-            minHeight: 200,
-          },
-          {
-            panel: this.sideBoard2,
-            minWidth: 100,
-            minHeight: 100,
-          },
-        ],
-      };
-    } else {
-      return {
-        direction: "horizontal" as const,
-        splits: [
-          {
-            panel: this.sideBoard1,
-            minWidth: 100,
-            minHeight: 100,
-          },
-          {
-            panel: this.sideBoard2,
-            minWidth: 100,
-            minHeight: 100,
-          },
-        ],
-      };
-    }
-  }
 }
 
 export class MyPlayer extends PlayerChit {
@@ -415,11 +390,15 @@ export class MyPlayer extends PlayerChit {
 
   override render(spec: ChitRenderSpec): void {
     spec.worthSlidingToPanelToShowChange = false;
+
+    spec.camera = new CameraSpec();
+    // spec.camera.horizontalRadiansRotation = 0.1;
   }
 }
 
 export class Root extends RootChit<MyPlayer> {
   @ChildOutlet public mainBoard = new Table();
+  @ChildOutlet public shelf = new Bookshelf();
   @ChildOutlet public playerAid = new PlayerAid();
 
   override getDropdowns(): DropdownChit[] {
@@ -432,29 +411,40 @@ export class Root extends RootChit<MyPlayer> {
       collapseOrder: 3, // Collapse last if players collapsing doesn't help
       splits: [
         {
-          panel: this.mainBoard,
-          minWidth: 300,
-          minHeight: 300,
+          direction: "optimizePreferHorizontal",
+          collapseOrder: 5, // Collapse first
+          splits: [
+            {
+              chit: this.mainBoard,
+              minWidth: 300,
+              minHeight: 250,
+            },
+            {
+              chit: this.shelf,
+              minWidth: 300,
+              minHeight: 250,
+            },
+          ],
         },
         {
           direction: "optimizePreferVertical",
           collapseOrder: 2, // Collapse second
           splits: [
             {
-              direction: "optimizeGrid",
+              direction: "optimizePreferHorizontal",
               collapseOrder: 1, // Collapse first
               splits: this.players
                 .filter((p) => p.id !== _playerId)
                 .map((player) => ({
-                  panel: player,
+                  chit: player,
                   minWidth: 250,
-                  minHeight: 250,
+                  minHeight: 200,
                 })),
             },
             {
-              panel: this.players.find((p) => p.id === _playerId)!,
+              chit: this.players.find((p) => p.id === _playerId)!,
               minWidth: 250,
-              minHeight: 250,
+              minHeight: 200,
             },
           ],
         },

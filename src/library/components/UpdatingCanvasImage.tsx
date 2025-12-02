@@ -9,7 +9,11 @@ export function UpdatingCanvasImage({ image, style }: { image: IUpdatingCanvas; 
     if (image) {
       const update = () => {
         if (canvasRef.current && image.canvas) {
-          canvasRef.current.getContext("2d")?.drawImage(image.canvas, 0, 0);
+          const context = canvasRef.current.getContext("2d");
+          if (context) {
+            context.clearRect(0, 0, image.width, image.height);
+            context.drawImage(image.canvas, 0, 0);
+          }
         }
       };
       update();

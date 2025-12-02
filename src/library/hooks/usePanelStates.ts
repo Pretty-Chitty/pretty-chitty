@@ -24,7 +24,7 @@ export function usePanelStates(rootChitInstances: (undefined | RootChitRenderIns
     const cbs = rootChitInstances.map((panel) => panel?.onPanelStatusChange(updateStates));
     return () => cbs.forEach((cb) => cb && cb());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, rootChitInstances);
+  }, [rootChitInstances.map((r) => r?.id).join("-")]);
 
   return states;
 }
