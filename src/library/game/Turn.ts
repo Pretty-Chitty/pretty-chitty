@@ -133,8 +133,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    *
    * @returns A number from 0-1
    */
-  async rng() {
-    await this.$internal_possiblyConfirm("confirm draw or roll");
+  async rng(message = "confirm draw or roll") {
+    await this.$internal_possiblyConfirm(message);
     const result = this.$internal_state.getOrCreateRng(this.decisionIndex);
     this.decisionIndex++;
     return result;
@@ -146,8 +146,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    * @param count
    * @returns A parameterless function that will return the next random number in the list.  If you try to select too many random numbers, that method will throw.
    */
-  async takeRng(count: number): Promise<() => number> {
-    await this.$internal_possiblyConfirm("confirm draw or roll");
+  async takeRng(count: number, message = "confirm draw or roll"): Promise<() => number> {
+    await this.$internal_possiblyConfirm(message);
     const results: number[] = [];
     for (let i = 0; i < count; i++) {
       results.push(this.$internal_state.getOrCreateRng(this.decisionIndex));

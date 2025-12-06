@@ -160,7 +160,12 @@ export default function Viewer({
           ) {
             if (!hardPaused) {
               // Clear canvas and render
-              rendererWrapper.render(chitRenderInstance.$internal_sceneWrapper, chitRenderInstance.camera, context, theme);
+              rendererWrapper.render(
+                chitRenderInstance.$internal_sceneWrapper,
+                chitRenderInstance.camera,
+                context,
+                theme,
+              );
 
               // Clear snapshot after first render at new size
               const canvasEl = canvas as any;
@@ -270,6 +275,18 @@ export default function Viewer({
             if (Math.abs(ev.velocityX) > neededVelocity && ev.distance > 20 && Math.abs(ev.velocityY) < 0.2) {
               const direction = ev.velocityX > 0 ? "left" : "right";
               panCallback(direction);
+              cancelled = true;
+              return;
+            }
+          }
+          if (zoomCallback) {
+            const isMouse = ev.pointerType === "mouse";
+            const neededVelocity = chitRenderInstance.cameraZoom <= 1.1 ? 0.3 : isMouse ? 7.5 : 2.5;
+            if (Math.abs(ev.velocityY) > neededVelocity && ev.distance > 20 && Math.abs(ev.velocityX) < 0.2) {
+              const prev = chitRenderInstance.cameraZoom;
+              chitRenderInstance.handleZoom(0, 0, chitRenderInstance.cameraZoom <= 1 ? 0.0001 : -20, !!zoomCallback);
+              zoomCallback(chitRenderInstance.cameraZoom, prev);
+              setTimeout(() => chitRenderInstance.handleZoom(0, 0, 0, false), 100);
               cancelled = true;
               return;
             }

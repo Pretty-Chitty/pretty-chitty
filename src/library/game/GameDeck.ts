@@ -17,7 +17,7 @@ export class GameDeck<T extends Chit> extends Chit {
     return false;
   }
 
-  async draw(): Promise<T | undefined> {
+  async draw(message?: string): Promise<T | undefined> {
     while (this.isEmpty(this.stages[0])) {
       this.stages.shift();
     }
@@ -26,7 +26,7 @@ export class GameDeck<T extends Chit> extends Chit {
     if (stage) {
       switch (stage.type) {
         case "draw": {
-          const index = Math.floor(stage.chits.length * (await this.currentTurn.rng()));
+          const index = Math.floor(stage.chits.length * (await this.currentTurn.rng(message)));
           const selected = stage.chits[index];
           stage.chits.splice(index, 1);
           selected.setParent();
@@ -34,7 +34,7 @@ export class GameDeck<T extends Chit> extends Chit {
         }
         case "discard": {
           stage.type = "draw";
-          return this.draw();
+          return this.draw(message);
         }
       }
     }
