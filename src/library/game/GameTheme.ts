@@ -71,6 +71,9 @@ export class GameTheme {
   public actionBarWidth = 600;
   public actionBarLinesToShow = 2;
 
+  public boxArt = "";
+  public screenshot = "";
+
   static withDefaults(primaryColor: string, highlight: string, textColor: string = "#ffffff") {
     const result = new GameTheme();
     result.chitHighlightColor = highlight;
