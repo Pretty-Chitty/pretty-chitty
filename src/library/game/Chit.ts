@@ -439,7 +439,7 @@ export class Chit extends ObjectWithProps {
     this.$internal__parentFallback = inflateValue(j.$internal__parentFallback);
 
     if (this._version === 1 && this.$internal__parentFallback) {
-      this.$internal_setParent(this.$internal__parentFallback, j._parentOutlet);
+      this.$internal_setParent(this.$internal__parentFallback, j._parentOutlet ?? "graveyard");
     }
 
     this.$internal_setParent(inflateValue(j._parent), j._parentOutlet, j._parentOutletIndex);
