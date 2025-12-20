@@ -189,12 +189,12 @@ export class MarkdownCanvasOperation extends CanvasOperation {
 
     Object.keys(this.iconMap).forEach((icon) => {
       const spec = this.iconMap[icon];
-      if ((spec as any as PlayerChit)?.$internal_type === "player") {
+      if ((spec as any as PlayerChit)?.type === "player") {
         const p = spec as any as PlayerChit;
         if (p.imageUrl) {
           const image = getImage(p.imageUrl);
           if (image) {
-            iconMap[icon] = { image: image.$internal_image, x: 0, y: 0, width: image.$internal_image.width, height: image.$internal_image.height };
+            iconMap[icon] = { image: image.image, x: 0, y: 0, width: image.image.width, height: image.image.height };
           }
         }
       } else {
@@ -202,7 +202,7 @@ export class MarkdownCanvasOperation extends CanvasOperation {
         const image = getImage(s.primary.file);
         if (image) {
           iconMap[icon] = {
-            image: image.$internal_image,
+            image: image.image,
             x: s.primary.bounds.x,
             y: s.primary.bounds.y,
             width: s.primary.bounds.width,
@@ -212,7 +212,7 @@ export class MarkdownCanvasOperation extends CanvasOperation {
           const micro = getImage(s.micro.file);
           if (micro) {
             iconMap[icon] = {
-              image: micro.$internal_image,
+              image: micro.image,
               x: s.micro.bounds.x,
               y: s.micro.bounds.y,
               width: s.micro.bounds.width,
@@ -504,12 +504,12 @@ export class ImageCanvasOperation extends CanvasOperation {
   ) {
     const image = getImage(this.imageSpec.primary.file);
     if (image) {
-      // context.drawImage(image.$internal_image, bounds.x, bounds.y);
-      this.draw(context, bounds, image.$internal_image, this.imageSpec.primary.bounds);
+      // context.drawImage(image.image, bounds.x, bounds.y);
+      this.draw(context, bounds, image.image, this.imageSpec.primary.bounds);
     } else {
       const micro = getImage(this.imageSpec.micro.file);
       if (micro) {
-        this.draw(context, bounds, micro.$internal_image, this.imageSpec.micro.bounds);
+        this.draw(context, bounds, micro.image, this.imageSpec.micro.bounds);
       } else {
         this.draw(context, bounds, Colors.default(this.imageSpec.color).hex(), this.imageSpec.primary.bounds);
       }
@@ -563,7 +563,7 @@ export class PlayerCanvasOperation extends CanvasOperation {
     if (this.player.imageUrl) {
       const image = getImage(this.player.imageUrl);
       if (image) {
-        this.drawFill(context, bounds, image.$internal_image);
+        this.drawFill(context, bounds, image.image);
       }
     }
   }

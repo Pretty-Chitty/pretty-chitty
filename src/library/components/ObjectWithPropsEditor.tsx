@@ -4,10 +4,10 @@ import { ObjectWithProps } from "../utilities/ObjectWithProps";
 
 function createEffectProps(obj: ObjectWithProps, entry: string, value: any) {
   return () => {
-    if (obj.$internal_props.indexOf(entry) >= 0) {
+    if (obj.props.indexOf(entry) >= 0) {
       (obj as any)[entry] = value;
-      obj.$internal_notifyChange(entry);
-      obj.$internal_notifyChange("deserialized");
+      obj.notifyChange(entry);
+      obj.notifyChange("deserialized");
     }
   };
 }
@@ -105,7 +105,7 @@ function PropEditor({ entry, obj }: { entry: string; obj: ObjectWithProps }) {
   const [value, setValue] = useState((obj as any)[entry]);
   useEffect(
     () =>
-      obj.$internal_onChange(null, () => {
+      obj.onChange(null, () => {
         setValue((obj as any)[entry]);
       }),
     [obj, setValue, entry],
@@ -143,10 +143,10 @@ export default function ObjectWithPropsEditor({ obj }: { obj: ObjectWithProps })
   }
 
   const [targetType, setTargetType] = useState("");
-  const [objProps, setObjProps] = useState<string[]>(obj.$internal_props);
+  const [objProps, setObjProps] = useState<string[]>(obj.props);
 
   useEffect(() => {
-    setObjProps(obj.$internal_props);
+    setObjProps(obj.props);
     const proto = Object.getPrototypeOf(obj);
     const constructor = proto.constructor;
     const keySpace = constructor.name;

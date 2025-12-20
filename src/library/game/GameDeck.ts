@@ -7,7 +7,7 @@ export type Stage<T> = {
 };
 
 export class GameDeck<T extends Chit> extends Chit {
-  @NonEditable $internal_type = "deck";
+  @NonEditable type = "deck";
 
   public chitGenerator?: () => T;
   public stages: Stage<T>[] = [];

@@ -7,7 +7,8 @@ import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
 import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 
 export class SparkChit extends Chit {
-  @NonEditable $internal_type = "spark";
+  /** @internal */
+  @NonEditable type = "spark";
 
   public get endGameLabel() {
     return "Score";
@@ -38,7 +39,8 @@ export class SparkChit extends Chit {
     return this.icon;
   }
 
-  @NonEditable public $internal_element: RefObject<HTMLElement> | undefined;
+  /** @internal */
+  @NonEditable public element: RefObject<HTMLElement> | undefined;
 
   private _value: number = 0;
   public get value() {
@@ -47,26 +49,26 @@ export class SparkChit extends Chit {
   public set value(newValue: number) {
     this._value = newValue;
     if (this._boundPlayer) {
-      this._boundPlayer.$internal_matchScoreNumber = newValue;
+      this._boundPlayer.matchScoreNumber = newValue;
     }
   }
 
   private _boundPlayer?: PlayerChit;
   public bindToPlayer(p: PlayerChit) {
     this._boundPlayer = p;
-    p.$internal_matchScoreNumber = this.value;
+    p.matchScoreNumber = this.value;
   }
 
   public get width() {
     return 40;
   }
 
-  public override $internal_screenCoordinates() {
-    const rect = this.$internal_element?.current?.getBoundingClientRect();
+  public override screenCoordinates() {
+    const rect = this.element?.current?.getBoundingClientRect();
     return new Vector2(rect?.left, rect?.top);
   }
 
-  public $internal_canRender() {
+  public canRender() {
     return false;
   }
 }

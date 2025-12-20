@@ -85,7 +85,8 @@ export class Splay {
     };
   }
 
-  $internal_splayEndPosition(
+  /** @internal */
+  splayEndPosition(
     itemWidth: number,
     itemHeight: number,
     position: "top" | "left" | "right" | "bottom" = "bottom",

@@ -89,15 +89,15 @@ export class ChitRenderInstance {
     this.group.visible = false;
 
     let currentPosition: Vector2 | undefined;
-    if (chit.$internal_renderInstance) {
-      currentPosition = chit.$internal_screenCoordinates();
+    if (chit.renderInstance) {
+      currentPosition = chit.screenCoordinates();
     }
 
     this.log("Render instance on owning chit is attached");
-    chit.$internal_renderInstance = this;
+    chit.renderInstance = this;
 
     // handle refreshes.
-    const cb1 = chit.$internal_onChange("deserialized parent", () => {
+    const cb1 = chit.onChange("deserialized parent", () => {
       try {
         this.refresh();
         if (this.renderSpec?.worthSlidingToPanelToShowChange) {
@@ -112,7 +112,7 @@ export class ChitRenderInstance {
       }
     });
 
-    const cb2 = chit.$internal_onChange("onClick", () => {
+    const cb2 = chit.onChange("onClick", () => {
       this.refresh();
     });
     this.unsubscribeToOnChange = () => {
@@ -123,7 +123,7 @@ export class ChitRenderInstance {
     this.handleHierarchy();
 
     // start it from where it should be - be it a spark chit or a bag or an old parent chit
-    const positionEntranceChit = chit.$internal_lastParent ?? chit.parentFallback ?? currentPosition;
+    const positionEntranceChit = chit.lastParent ?? chit.parentFallback ?? currentPosition;
     if (this.rootRenderInstance) {
       const oldParent = this.group.parent;
       let intersection = this.attemptToFindPlaneZ0(this.rootRenderInstance, positionEntranceChit);
@@ -154,9 +154,9 @@ export class ChitRenderInstance {
 
   public init() {
     this.log("init");
-    this.chit.$internal_children.forEach((child) => {
-      if (child.$internal_canRender()) {
-        if (!child.$internal_renderInstance) {
+    this.chit.children.forEach((child) => {
+      if (child.canRender()) {
+        if (!child.renderInstance) {
           this.log(`Found child to init: ${child.id}`);
           const c = new ChitRenderInstance(child);
           c.init();
@@ -164,7 +164,7 @@ export class ChitRenderInstance {
           // move the new render instance immediately to where it belongs
           this.zeroTween();
         } else {
-          child.$internal_renderInstance.refresh();
+          child.renderInstance.refresh();
         }
       }
     });
@@ -199,7 +199,7 @@ export class ChitRenderInstance {
       return;
     }
 
-    if (!chit.$internal_canRender()) {
+    if (!chit.canRender()) {
       return;
     }
 
@@ -225,7 +225,7 @@ export class ChitRenderInstance {
   }
 
   public get absorbsClickEventsForChildren() {
-    return this.renderSpec?.$internal_isShowingChildrenAsGallery ?? false;
+    return this.renderSpec?.isShowingChildrenAsGallery ?? false;
   }
 
   public get tweenGroup(): TweenGroup | undefined {
@@ -459,18 +459,18 @@ export class ChitRenderInstance {
         child.destroy();
       }
     });
-    if (this.chit.$internal_renderInstance === this) {
-      this.chit.$internal_renderInstance = undefined;
+    if (this.chit.renderInstance === this) {
+      this.chit.renderInstance = undefined;
     }
   }
 
   protected shouldMoveToNewViewer() {
-    if (this.chit.$internal_renderInstance !== this) {
+    if (this.chit.renderInstance !== this) {
       return true;
     }
 
     const rootRenderInstance = this.rootRenderInstance;
-    const targetParentRenderInstance = this.effectiveParent?.$internal_renderInstance;
+    const targetParentRenderInstance = this.effectiveParent?.renderInstance;
     if (
       rootRenderInstance &&
       targetParentRenderInstance?.rootRenderInstance &&
@@ -513,7 +513,7 @@ export class ChitRenderInstance {
     this.innateOrnamentZs = this.renderSpec.ornaments.map((o) => o.position?.z ?? 0);
 
     // no need to animate anything invisible...
-    if (!visibilityBefore && !this.group.visible && !this.chit.$internal_lastParent) {
+    if (!visibilityBefore && !this.group.visible && !this.chit.lastParent) {
       renderSpec.offsetSpeed = 0;
       renderSpec.rotationSpeed = 0;
     }
@@ -539,7 +539,7 @@ export class ChitRenderInstance {
   public outlineContext?: ChitRenderInstance;
 
   public hasExplicitOnClick() {
-    return this.chit.$internal_onClick && !this.renderSpec?.$internal_isShowingChildrenAsGallery;
+    return this.chit.onClick && !this.renderSpec?.isShowingChildrenAsGallery;
   }
 
   public fixOutline() {
@@ -605,12 +605,12 @@ export class ChitRenderInstance {
     rootRenderInstance: RootChitRenderInstance,
     chit?: Chit | Vector2,
   ): Vector3 | undefined {
-    if (chit instanceof Chit && rootRenderInstance === chit?.$internal_renderInstance?.rootRenderInstance) {
-      return chit.$internal_renderInstance!.group.getWorldPosition(new Vector3());
+    if (chit instanceof Chit && rootRenderInstance === chit?.renderInstance?.rootRenderInstance) {
+      return chit.renderInstance!.group.getWorldPosition(new Vector3());
     }
 
     const screenCoordsOfNewLocation =
-      chit instanceof Vector2 ? chit : chit ? chit.$internal_screenCoordinates() : new Vector2(0, 0);
+      chit instanceof Vector2 ? chit : chit ? chit.screenCoordinates() : new Vector2(0, 0);
     if (rootRenderInstance && rootRenderInstance.rootGroup && screenCoordsOfNewLocation) {
       // find the current screen coordinates of its new home and map it to "camera space"
       const cameraSpace = rootRenderInstance.convertScreenSpaceToCameraSpace(
@@ -648,17 +648,17 @@ export class ChitRenderInstance {
   }
 
   protected detach() {
-    if (this.chit.$internal_renderInstance === this) {
+    if (this.chit.renderInstance === this) {
       this.log("detaching");
-      this.chit.$internal_renderInstance = undefined;
+      this.chit.renderInstance = undefined;
       // this.childrenRenderInstances.forEach((child) => child.detach());
     }
 
-    if (!this.chit.$internal_renderInstance && this.effectiveParent?.$internal_renderInstance) {
-      this.effectiveParent.$internal_renderInstance.childAdded(this.chit);
+    if (!this.chit.renderInstance && this.effectiveParent?.renderInstance) {
+      this.effectiveParent.renderInstance.childAdded(this.chit);
 
       // TODO: this is okay since adding a child has side effects
-      (this.chit.$internal_renderInstance as unknown as ChitRenderInstance).zeroTween();
+      (this.chit.renderInstance as unknown as ChitRenderInstance).zeroTween();
     }
   }
 
@@ -718,8 +718,8 @@ export class ChitRenderInstance {
 
   protected createRenderSpec() {
     const renderSpec = new ChitRenderSpec(this.chit);
-    renderSpec.renderedForPlayerId = this.rootRenderInstance.$internal_playerId;
-    renderSpec.highlight.clickColor = this.chit.$internal_game?.theme.chitHighlightColor ?? renderSpec.highlight.clickColor;
+    renderSpec.renderedForPlayerId = this.rootRenderInstance.playerId;
+    renderSpec.highlight.clickColor = this.chit.game?.theme.chitHighlightColor ?? renderSpec.highlight.clickColor;
     return renderSpec;
   }
 
@@ -739,7 +739,7 @@ export class ChitRenderInstance {
 
   private positionKey(clickBox3: Box3) {
     return [
-      !!this.chit.$internal_onClick,
+      !!this.chit.onClick,
       this.parentRenderInstance?.id,
       this.sizeX,
       this.sizeY,
@@ -776,7 +776,7 @@ export class ChitRenderInstance {
 
     // goofy circumstances where the thing being clicked doesn't have anything to actually highlight - we
     // have to highlight the children (do we care about grandchildren?)
-    if (box3.isEmpty() && this.chit.$internal_onClick) {
+    if (box3.isEmpty() && this.chit.onClick) {
       this.isUsingSyntheticBbox = true;
       this.childrenRenderInstances.forEach((child) => {
         const clone = child.bbox.clone();
@@ -864,7 +864,7 @@ export class ChitRenderInstance {
     this.childrenRenderInstances.push(child);
     if (this._isMovingToNewViewer) {
       this.log("While adding child to myself, I am already moving to a new viewer");
-      child.chit.$internal_renderInstance = undefined;
+      child.chit.renderInstance = undefined;
       child.detach();
     } else {
       child.fixOutline();
@@ -882,7 +882,7 @@ export class ChitRenderInstance {
     if (!this.chit.parent && !this.isDestroying && !this.chit.parentFallback) {
       this.log("about to destroy, will move off screen");
       this.isDestroying = true;
-      this.chit.$internal_renderInstance = undefined;
+      this.chit.renderInstance = undefined;
       this.rootGroup?.attach(this.group);
       const { position } = this.group;
       if (!this.group.visible) {
@@ -934,7 +934,7 @@ export class ChitRenderInstance {
   }
 
   protected handleHierarchy() {
-    const targetParentRenderInstance = this.effectiveParent?.$internal_renderInstance;
+    const targetParentRenderInstance = this.effectiveParent?.renderInstance;
     if (this.parentRenderInstance !== targetParentRenderInstance) {
       this.parentRenderInstance?.removeChild(this);
       targetParentRenderInstance?.addChild(this);

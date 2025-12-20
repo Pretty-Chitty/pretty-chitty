@@ -2,7 +2,7 @@ import { NonEditable } from "../utilities/Annotations";
 import { Chit } from "./Chit";
 
 export abstract class GameBag<T extends Chit> extends Chit {
-  @NonEditable $internal_type = "bag";
+  @NonEditable type = "bag";
 
   public abstract chitGenerator(): T;
 

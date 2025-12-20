@@ -29,21 +29,21 @@ export class ChitGalleryItemInstance implements GalleryItem {
     this.id = chit.id ?? "no id";
 
     this.onClick = () => {
-      if (chit.$internal_onClick) {
-        chit.$internal_onClick();
+      if (chit.onClick) {
+        chit.onClick();
       }
     };
 
     // handle refreshes.
-    this.unsubscribe = chit.$internal_onChange("deserialized parent onClick", () => {
-      if (chit.$internal_renderInstance) {
-        chit.$internal_renderInstance.createGalleryItem(this);
+    this.unsubscribe = chit.onChange("deserialized parent onClick", () => {
+      if (chit.renderInstance) {
+        chit.renderInstance.createGalleryItem(this);
       }
       if (this.sceneWrapper) {
         this.sceneWrapper.markDirty();
       }
     });
-    chit.$internal_renderInstance?.createGalleryItem(this);
+    chit.renderInstance?.createGalleryItem(this);
   }
 
   private cloneWithUserData(object: Object3D): any {
@@ -77,7 +77,7 @@ export class ChitGalleryItemInstance implements GalleryItem {
 
   createMesh(sceneWrapper: SceneWrapper) {
     this.sceneWrapper = sceneWrapper;
-    const renderInstance = this.chit.$internal_renderInstance;
+    const renderInstance = this.chit.renderInstance;
     const g = new Group();
     if (renderInstance) {
       const mesh = this.cloneWithUserData(renderInstance.group) ?? new Group();

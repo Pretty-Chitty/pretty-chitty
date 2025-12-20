@@ -26,8 +26,8 @@ test("basic serialization and deserialization", () => {
   c1.n2 = 12;
 
   const c2 = new ChitSubClass();
-  const serialized = c1.$internal_serialize();
-  c2.$internal_deserialize(serialized, () => c1);
+  const serialized = c1.serialize();
+  c2.deserialize(serialized, () => c1);
   expect(c2.s1).toBe("s1b");
   expect(c2.n1).toBe(15);
   expect(c2.o1.a).toBe(8);
@@ -45,17 +45,17 @@ test("chit references", () => {
   const lu: { [id: string]: Chit } = { c, c1: c.c1, c2: c.c2 };
   const originalC1 = c.c1;
   const originalC2 = c.c2;
-  const serialized = c.$internal_serialize();
+  const serialized = c.serialize();
 
   const cCopy = new ChitWithOutlet();
-  cCopy.$internal_deserialize(serialized, (id: string) => lu[id]);
+  cCopy.deserialize(serialized, (id: string) => lu[id]);
   expect(cCopy.c1).toBe(originalC1);
   expect(cCopy.c2).toBe(originalC2);
 
   lu["c"] = cCopy;
-  const c1Serialized = cCopy.c1.$internal_serialize();
+  const c1Serialized = cCopy.c1.serialize();
   const sub = new ChitSubClass();
-  sub.$internal_deserialize(c1Serialized, (id: string) => lu[id]);
+  sub.deserialize(c1Serialized, (id: string) => lu[id]);
   expect(sub.parent).toBe(cCopy);
   expect(sub.n1).toBe(99);
   expect(sub.s1).toBe("some s");

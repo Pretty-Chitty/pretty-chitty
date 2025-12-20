@@ -28,7 +28,8 @@ export type PanelTab = {
 
 let CHIT_CREATED_ORDER = 0;
 export class Chit extends ObjectWithProps {
-  @NonEditable public $internal_type: string = "chit";
+  /** @internal */
+  @NonEditable public type: string = "chit";
 
   @NonEditable public id?: string;
 
@@ -58,7 +59,7 @@ export class Chit extends ObjectWithProps {
     if (!outlet) {
       this.orderedChildren.add(chit);
     } else {
-      chit.$internal_setParent(this, outlet);
+      chit.setParent(this, outlet);
     }
     return chit;
   }
@@ -67,16 +68,11 @@ export class Chit extends ObjectWithProps {
     if (chit.parent !== this) {
       throw new Error("Cannot remove child that isnt mine");
     }
-    chit.$internal_setParent();
+    chit.setParent();
   }
 
   public removeFromParent() {
-    this.$internal_setParent();
-  }
-
-  // Alias for backward compatibility
-  public setParent(newValue?: Chit, parentOutlet?: string, parentOutletIndex?: number) {
-    this.$internal_setParent(newValue, parentOutlet, parentOutletIndex);
+    this.setParent();
   }
 
   @NonEditable private _parentOutletIndex?: number;
@@ -95,17 +91,19 @@ export class Chit extends ObjectWithProps {
   }
 
   // if a chit comes from a "bag" or something, this will be the "parent" that it should effectively go to or come from
-  @NonEditable private $internal__parentFallback?: Chit;
+  /** @internal */
+  @NonEditable private _parentFallback?: Chit;
   public get parentFallback(): Chit | undefined {
-    return this.$internal__parentFallback;
+    return this._parentFallback;
   }
   public set parentFallback(newValue: Chit | undefined) {
-    this.$internal__parentFallback = newValue;
+    this._parentFallback = newValue;
   }
 
   @NonEditable private _lastParent?: Chit;
 
-  public get $internal_lastParent(): Chit | undefined {
+  /** @internal */
+  public get lastParent(): Chit | undefined {
     return this._lastParent;
   }
 
@@ -123,10 +121,11 @@ export class Chit extends ObjectWithProps {
   }
 
   toString() {
-    return `${this.$internal_chitTypeName()} ${this.id}`;
+    return `${this.chitTypeName()} ${this.id}`;
   }
 
-  $internal_chitTypeName() {
+  /** @internal */
+  chitTypeName() {
     const result = Object.getPrototypeOf(this).constructor.name;
     if (this.parentFallback) {
       return `${result}-${this.parentFallback.id}-`;
@@ -143,48 +142,55 @@ export class Chit extends ObjectWithProps {
   //
   //
 
-  @NonEditable public $internal_renderInstance?: ChitRenderInstance;
+  /** @internal */
+  @NonEditable public renderInstance?: ChitRenderInstance;
   @NonEditable private _version = 0;
   @NonEditable private _createdOrder = ++CHIT_CREATED_ORDER;
 
-  public get $internal_version() {
+  /** @internal */
+  public get version() {
     return this._version;
   }
 
-  public get $internal_createdOrder() {
+  /** @internal */
+  public get createdOrder() {
     return this._createdOrder;
   }
 
   @NonEditable private _game?: Game<any, any>;
 
-  public get $internal_game(): Game<any, any> | undefined {
+  /** @internal */
+  public get game(): Game<any, any> | undefined {
     if (!this._game) {
-      this._game = this.parent?.$internal_game;
+      this._game = this.parent?.game;
     }
     return this._game;
   }
 
-  public set $internal_game(newGame: Game<any, any>) {
+  /** @internal */
+  public set game(newGame: Game<any, any>) {
     this._game = newGame;
   }
 
   @NonEditable
   private _onClick?: ChitClick;
 
-  public get $internal_onClick(): undefined | ChitClick {
+  /** @internal */
+  public get onClick(): undefined | ChitClick {
     return this._onClick;
   }
 
-  public set $internal_onClick(newValue: undefined | ChitClick) {
+  /** @internal */
+  public set onClick(newValue: undefined | ChitClick) {
     this._onClick = newValue;
-    this.$internal_notifyChange("onClick");
+    this.notifyChange("onClick");
   }
 
   /**
    * Returns true if the chit is currently clickable
    */
   public get isClickable(): boolean {
-    return !!this.$internal_onClick;
+    return !!this.onClick;
   }
 
   @NonEditable private _lockedBy?: Turn<any, any, any>;
@@ -268,31 +274,36 @@ export class Chit extends ObjectWithProps {
     });
   }
 
-  public get $internal_lockedBy() {
+  /** @internal */
+  public get lockedBy() {
     return this._lockedBy;
   }
 
-  public $internal_lock(turn: Turn<any, any, any>): void {
+  /** @internal */
+  public lock(turn: Turn<any, any, any>): void {
     if (this._lockedBy && this._lockedBy !== turn) {
       throw new Error("Chit is already locked");
     }
     this._lockedBy = turn;
   }
 
-  public $internal_confirmLock(turn: Turn<any, any, any>): void {
+  /** @internal */
+  public confirmLock(turn: Turn<any, any, any>): void {
     if (this._lockedBy && this._lockedBy !== turn) {
       throw new Error("Chit is already locked");
     }
   }
 
-  public $internal_unlock(turn: Turn<any, any, any>): void {
+  /** @internal */
+  public unlock(turn: Turn<any, any, any>): void {
     if (this._lockedBy && this._lockedBy !== turn) {
       throw new Error("Chit is locked by someone else?");
     }
     this._lockedBy = undefined;
   }
 
-  public $internal_removeChild(child: Chit, parentOutlet?: string) {
+  /** @internal */
+  public removeChild(child: Chit, parentOutlet?: string) {
     if (parentOutlet) {
       const existingParentOutletValue = (this as unknown as any)[parentOutlet];
       if (existingParentOutletValue === this) {
@@ -300,14 +311,15 @@ export class Chit extends ObjectWithProps {
       } else if (existingParentOutletValue instanceof OrderedOutlet) {
         existingParentOutletValue.remove(this);
       } else {
-        (this as any).$internal_children = (this as any).$internal_children.filter((c: Chit) => c !== child);
+        (this as any).children = (this as any).children.filter((c: Chit) => c !== child);
       }
     } else {
-      (this as any).$internal_children = (this as any).$internal_children.filter((c: Chit) => c !== child);
+      (this as any).children = (this as any).children.filter((c: Chit) => c !== child);
     }
   }
 
-  public $internal_setParent(newValue?: Chit, parentOutlet?: string, parentOutletIndex?: number) {
+  /** @internal */
+  public setParent(newValue?: Chit, parentOutlet?: string, parentOutletIndex?: number) {
     if (this._parent === newValue && this._parentOutlet === parentOutlet) {
       this._parentOutletIndex = parentOutletIndex;
       return;
@@ -329,7 +341,7 @@ export class Chit extends ObjectWithProps {
       this._parentOutlet = undefined;
       this._parentOutletIndex = undefined;
 
-      oldParent.$internal_children = oldParent.$internal_children.filter((c: Chit) => c !== this);
+      oldParent.children = oldParent.children.filter((c: Chit) => c !== this);
 
       const existingParentOutletValue = oldParent[oldOutlet];
       if (existingParentOutletValue === this) {
@@ -343,64 +355,72 @@ export class Chit extends ObjectWithProps {
       this._parent = newValue;
       this._parentOutlet = parentOutlet;
       this._parentOutletIndex = parentOutletIndex;
-      newValue.$internal_children.push(this);
+      newValue.children.push(this);
 
-      if (newValue.$internal_renderInstance) {
-        newValue.$internal_renderInstance.childAdded(this, this.$internal_renderInstance);
+      if (newValue.renderInstance) {
+        newValue.renderInstance.childAdded(this, this.renderInstance);
       } else {
-        this.$internal_renderInstance = undefined;
+        this.renderInstance = undefined;
       }
     }
 
-    this.$internal_notifyChange("parent");
+    this.notifyChange("parent");
   }
 
-  @NonEditable public $internal_children: Chit[] = [];
+  /** @internal */
+  @NonEditable public children: Chit[] = [];
 
-  public $internal_walk(fn: (c: Chit) => boolean | void) {
+  /** @internal */
+  public walk(fn: (c: Chit) => boolean | void) {
     if (fn(this) === false) {
       return;
     }
-    this.$internal_children.forEach((child) => child.$internal_walk(fn));
+    this.children.forEach((child) => child.walk(fn));
   }
 
   private get serializationProps() {
     return [
-      ...this.$internal_props,
+      ...this.props,
       "id",
       "_parent",
       "_parentOutlet",
       "_parentOutletIndex",
-      "$internal__parentFallback",
+      "_parentFallback",
     ];
   }
 
-  public $internal_screenCoordinates(): Vector2 | undefined {
-    return this.$internal_renderInstance?.screenCoordinates() ?? this.parent?.$internal_screenCoordinates();
+  /** @internal */
+  public screenCoordinates(): Vector2 | undefined {
+    return this.renderInstance?.screenCoordinates() ?? this.parent?.screenCoordinates();
   }
 
-  public $internal_canRender() {
+  /** @internal */
+  public canRender() {
     return true;
   }
 
-  @NonEditable public $internal_isDeserializing = false;
+  /** @internal */
+  @NonEditable public isDeserializing = false;
 
-  public $internal_doneDeserializing() {
-    if (this.$internal_isDeserializing) {
-      this.$internal_isDeserializing = false;
-      this.$internal_notifyChange("deserialized");
+  /** @internal */
+  public doneDeserializing() {
+    if (this.isDeserializing) {
+      this.isDeserializing = false;
+      this.notifyChange("deserialized");
     }
   }
 
-  public $internal_beginDeserializing() {
-    this.$internal_isDeserializing = true;
+  /** @internal */
+  public beginDeserializing() {
+    this.isDeserializing = true;
   }
 
-  public $internal_deserialize(serialized: string, findChit: (id: string) => Chit) {
+  /** @internal */
+  public deserialize(serialized: string, findChit: (id: string) => Chit) {
     this._version++;
     const j = JSON.parse(serialized);
     if (j.____deleted) {
-      this.$internal_setParent();
+      this.setParent();
       return;
     }
 
@@ -425,24 +445,24 @@ export class Chit extends ObjectWithProps {
       }
     };
 
-    this.$internal_props.forEach((key) => {
+    this.props.forEach((key) => {
       const value = j[key];
 
       if (value?.___orderedOutlet) {
-        (this as any)[key].$internal_deserialize(value.___orderedOutlet.map(inflateValue));
+        (this as any)[key].deserialize(value.___orderedOutlet.map(inflateValue));
       } else {
         (this as any)[key] = inflateValue(value);
       }
     });
 
     this.id = j.id;
-    this.$internal__parentFallback = inflateValue(j.$internal__parentFallback);
+    this._parentFallback = inflateValue(j._parentFallback);
 
-    if (this._version === 1 && this.$internal__parentFallback) {
-      this.$internal_setParent(this.$internal__parentFallback, j._parentOutlet ?? "graveyard");
+    if (this._version === 1 && this._parentFallback) {
+      this.setParent(this._parentFallback, j._parentOutlet ?? "graveyard");
     }
 
-    this.$internal_setParent(inflateValue(j._parent), j._parentOutlet, j._parentOutletIndex);
+    this.setParent(inflateValue(j._parent), j._parentOutlet, j._parentOutletIndex);
   }
 
   /**
@@ -454,7 +474,8 @@ export class Chit extends ObjectWithProps {
     return undefined;
   }
 
-  public $internal_serialize(playerIds?: string[]): string {
+  /** @internal */
+  public serialize(playerIds?: string[]): string {
     return JSON.stringify(
       this.serializationProps.reduce(
         (acc, key) => {
@@ -476,7 +497,8 @@ export class Chit extends ObjectWithProps {
   //
   //
 
-  public static $internal_fixVisibility(serialized: string, playerId: string) {
+  /** @internal */
+  public static fixVisibility(serialized: string, playerId: string) {
     const data = JSON.parse(serialized);
     if (data.__hiddenProps) {
       const hiddenPropRules = data.__hiddenProps as HiddenPropertySerializationRule[];
@@ -510,7 +532,8 @@ export class Chit extends ObjectWithProps {
   /*
    * Creates a new chit from the serialized spec.
    */
-  public static $internal_deflate(serialized: string, game: Game<any, any>) {
+  /** @internal */
+  public static deflate(serialized: string, game: Game<any, any>) {
     const { __chitType, ____deleted } = JSON.parse(serialized);
     if (____deleted) {
       return undefined;
@@ -520,14 +543,15 @@ export class Chit extends ObjectWithProps {
       throw new Error(`Chit Type ${__chitType} not found`);
     }
     const result = new ChitType();
-    result.$internal_game = game;
+    result.game = game;
     return result;
   }
 
-  public static $internal_walk(chits: Chit[], fn: (c: Chit) => boolean | void) {
+  /** @internal */
+  public static walk(chits: Chit[], fn: (c: Chit) => boolean | void) {
     const seenIds = new Set();
     chits.forEach((chit) =>
-      chit.$internal_walk((chit) => {
+      chit.walk((chit) => {
         if (chit.id) {
           if (seenIds.has(chit.id)) {
             return false;
@@ -544,13 +568,14 @@ export class Chit extends ObjectWithProps {
     cb: (chit: T) => void | Promise<void>,
   ) {
     const result = new ChitPick<T>();
-    result.$internal_chits =
+    result.chits =
       chit instanceof OrderedOutlet ? chit.copy() : Array.isArray(chit) ? (chit.filter((c) => c) as T[]) : [chit];
-    result.$internal_cb = cb;
+    result.cb = cb;
     return result;
   }
 
-  public static $internal_deletedIfSerialized(): string {
+  /** @internal */
+  public static deletedIfSerialized(): string {
     return JSON.stringify({
       ____deleted: true,
     });

@@ -4,12 +4,14 @@ import TopBarDropdown from "../components/TopBarDropdown";
 import { NonEditable } from "../utilities/Annotations";
 
 export abstract class DropdownChit extends Chit {
-  @NonEditable $internal_type = "dropdown";
+  /** @internal */
+  @NonEditable type = "dropdown";
 
   abstract renderLabel(playerId: string): string | ReactNode;
   abstract renderBody(playerId: string): string | ReactNode | ReactNode[];
 
-  $internal_render() {
+  /** @internal */
+  render() {
     return <TopBarDropdown label={this.renderLabel("")}>{this.renderBody("")}</TopBarDropdown>;
   }
 }

@@ -67,7 +67,7 @@ export function MultiPanel({
   const chitsLength = chits.length;
 
   const rootRenders = chits.map((c) =>
-    c.$internal_renderInstance instanceof RootChitRenderInstance ? c.$internal_renderInstance : undefined,
+    c.renderInstance instanceof RootChitRenderInstance ? c.renderInstance : undefined,
   );
   const panelStates = usePanelStates(rootRenders);
 
@@ -226,7 +226,7 @@ export function MultiPanel({
     timeMultiplier,
   ]);
 
-  const focusedRoot = focusedPanel?.$internal_renderInstance as RootChitRenderInstance;
+  const focusedRoot = focusedPanel?.renderInstance as RootChitRenderInstance;
 
   return (
     <Stack

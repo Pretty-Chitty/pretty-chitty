@@ -12,7 +12,6 @@
     "notExported": false
   },
   "exclude": ["**/*.test.ts", "**/*.test.tsx"],
-  "plugin": ["./typedoc-plugin.cjs"],
   "sort": ["source-order"],
   "visibilityFilters": {
     "protected": false,

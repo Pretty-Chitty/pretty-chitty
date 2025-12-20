@@ -1,15 +1,17 @@
 import { Chit } from "./Chit";
 
 export class OrderedOutlet<C extends Chit> {
-  public $internal_parent?: Chit;
+  /** @internal */
+  public parent?: Chit;
 
-  public $internal_outletName: string;
+  /** @internal */
+  public outletName: string;
 
   private chits: C[] = [];
 
   constructor(outletName?: string, parent?: Chit) {
-    this.$internal_outletName = outletName ?? "no_name_set";
-    this.$internal_parent = parent;
+    this.outletName = outletName ?? "no_name_set";
+    this.parent = parent;
   }
 
   public toJSON() {
@@ -18,7 +20,8 @@ export class OrderedOutlet<C extends Chit> {
     };
   }
 
-  public $internal_deserialize(chits: C[]) {
+  /** @internal */
+  public deserialize(chits: C[]) {
     this.chits = chits;
   }
 
@@ -27,17 +30,17 @@ export class OrderedOutlet<C extends Chit> {
   }
 
   public add(c: C) {
-    if (this.$internal_parent?.$internal_isDeserializing) {
+    if (this.parent?.isDeserializing) {
       return;
     }
 
     this.chits.push(c);
-    this.$internal_fixSort();
-    this.$internal_fixOrder();
+    this.fixSort();
+    this.fixOrder();
   }
 
   public addAll(c: OrderedOutlet<C> | C[]) {
-    if (this.$internal_parent?.$internal_isDeserializing) {
+    if (this.parent?.isDeserializing) {
       return;
     }
 
@@ -46,14 +49,14 @@ export class OrderedOutlet<C extends Chit> {
     } else {
       c.forEach((c) => this.chits.push(c));
     }
-    this.$internal_fixSort();
-    this.$internal_fixOrder();
+    this.fixSort();
+    this.fixOrder();
   }
 
   public async shuffle() {
-    if (this.$internal_parent) {
-      const from = await this.$internal_parent.currentTurn.takeRng(this.length);
-      const to = await this.$internal_parent.currentTurn.takeRng(this.length);
+    if (this.parent) {
+      const from = await this.parent.currentTurn.takeRng(this.length);
+      const to = await this.parent.currentTurn.takeRng(this.length);
       for (let i = 0; i < this.chits.length; i++) {
         const j = Math.floor(from() * this.chits.length);
         const k = Math.floor(to() * this.chits.length);
@@ -121,7 +124,7 @@ export class OrderedOutlet<C extends Chit> {
   }
 
   public remove(c: C | C[]) {
-    if (this.$internal_parent?.$internal_isDeserializing) {
+    if (this.parent?.isDeserializing) {
       return;
     }
 
@@ -149,7 +152,7 @@ export class OrderedOutlet<C extends Chit> {
       removedChits.forEach((c) => c.setParent());
 
       // TODO: depending on order of deserialization this might be misbehaving
-      this.$internal_fixOrder();
+      this.fixOrder();
     }
   }
 
@@ -165,13 +168,13 @@ export class OrderedOutlet<C extends Chit> {
     return result;
   }
 
-  private $internal_fixOrder() {
+  private fixOrder() {
     this.chits.forEach((c, i) => {
-      c.setParent(this.$internal_parent, this.$internal_outletName, i);
+      c.setParent(this.parent, this.outletName, i);
     });
   }
 
-  private $internal_fixSort() {
+  private fixSort() {
     // do nothing by default?
   }
 }

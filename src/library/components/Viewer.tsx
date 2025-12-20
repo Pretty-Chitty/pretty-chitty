@@ -87,13 +87,13 @@ export default function Viewer({
         chitRenderInstance.destroy();
       }
 
-      if (chit.$internal_renderInstance) {
-        chit.$internal_renderInstance.invalidateRootRenderInstance();
-        chit.$internal_renderInstance.destroy();
+      if (chit.renderInstance) {
+        chit.renderInstance.invalidateRootRenderInstance();
+        chit.renderInstance.destroy();
       }
 
       const newInstance = new R(chit);
-      newInstance.$internal_playerId = playerId;
+      newInstance.playerId = playerId;
       newInstance.convertCameraSpaceToScreenSpace = (x: number, y: number) => {
         const el = actualRef.current as unknown as HTMLElement;
         if (!el) {
@@ -161,7 +161,7 @@ export default function Viewer({
             if (!hardPaused) {
               // Clear canvas and render
               rendererWrapper.render(
-                chitRenderInstance.$internal_sceneWrapper,
+                chitRenderInstance.sceneWrapper,
                 chitRenderInstance.camera,
                 context,
                 theme,

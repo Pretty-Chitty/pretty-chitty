@@ -9,12 +9,12 @@ export function useChits<C extends Chit>(ids: string[]) {
   const idString = ids.join("___");
 
   useEffect(() => {
-    const resultVersions = result.map((r) => r.$internal_version);
+    const resultVersions = result.map((r) => r.version);
     return time.currentClock.on(() => {
       const chits = ids.map((id) => time.findChitUnsafe(id) as C).filter((c) => c);
       if (
         result.length !== chits.length ||
-        chits.find((el, i) => el !== result[i] || el.$internal_version !== resultVersions[i])
+        chits.find((el, i) => el !== result[i] || el.version !== resultVersions[i])
       ) {
         setResult(chits);
       }

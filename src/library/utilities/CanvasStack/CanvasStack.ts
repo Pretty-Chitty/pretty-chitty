@@ -50,15 +50,16 @@ export class CanvasStack implements IUpdatingCanvas {
     };
   }
 
-  $internal_loadUrl(url: string): ImageResult | undefined {
+  /** @internal */
+  loadUrl(url: string): ImageResult | undefined {
     const result = CanvasStack.imageCache.getImage(url);
-    if (!result.$internal_isLoaded.value) {
+    if (!result.isLoaded.value) {
       if (!this.loadedUrls.has(url)) {
         this.loadedUrls.add(url);
-        const unsub = result.$internal_isLoaded.on(() => {
-          if (result.$internal_isLoaded.value) {
+        const unsub = result.isLoaded.on(() => {
+          if (result.isLoaded.value) {
             unsub();
-            this.$internal_render();
+            this.render();
             if (this._texture) {
               this._texture.needsUpdate = true;
               CanvasStack.disposer.notifyChange(this._texture.uuid);
@@ -71,7 +72,8 @@ export class CanvasStack implements IUpdatingCanvas {
     return result;
   }
 
-  $internal_render(): void {
+  /** @internal */
+  render(): void {
     if (!this.context) {
       return;
     }
@@ -81,7 +83,7 @@ export class CanvasStack implements IUpdatingCanvas {
     this.operation.render(
       this.context,
       { x: 0, y: 0, w: this.width, h: this.height },
-      this.$internal_loadUrl.bind(this),
+      this.loadUrl.bind(this),
       (id: string, coords: Coord) => {
         this._outlets[id] = coords;
       },
@@ -120,7 +122,7 @@ export class CanvasStack implements IUpdatingCanvas {
     }
     this.context = context;
 
-    this.$internal_render();
+    this.render();
   }
 
   get outlets() {

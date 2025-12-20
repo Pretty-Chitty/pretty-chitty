@@ -36,12 +36,12 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
       this.state = new TurnState();
       this.state.deserialize(savedState);
       if (this.errorState.value) {
-        this.turn.value?.$internal_destroy();
+        this.turn.value?.destroy();
         this.turn.value = undefined;
         this.start();
       } else if (this.turn.value) {
         this.turn.value
-          .$internal_processNewSavedState(this.state)
+          .processNewSavedState(this.state)
           .then(() => {
             console.log("Processed new saved state");
           })
@@ -76,17 +76,17 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         this.errorState.value = undefined;
         const rootChit = this.game.generateRootChit();
         rootChit.id = "root";
-        rootChit.$internal_game = this.game;
+        rootChit.game = this.game;
 
         this.players.forEach((p) => {
           const player = this.game.generatePlayer(p);
-          player.promptStatus.$internal_latestPrompt.on(() => this.notify(), false);
+          player.promptStatus.latestPrompt.on(() => this.notify(), false);
           rootChit.players.add(player);
           return player;
         });
 
         let counter = 1;
-        rootChit.$internal_walk((c: Chit) => {
+        rootChit.walk((c: Chit) => {
           if (!c.id) {
             c.id = `r-ac-${counter++}`;
           }
@@ -99,10 +99,10 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
           (turn) => this.game.run(turn, rootChit),
           [rootChit],
         );
-        rootChit.$internal__setupTurn = this.turn.value;
-        this.turn.value.$internal_fixPass();
+        rootChit._setupTurn = this.turn.value;
+        this.turn.value.fixPass();
         this.notify();
-        this.result.value = await this.turn.value.$internal_execute();
+        this.result.value = await this.turn.value.execute();
         break;
       } catch (e) {
         if (e instanceof RerunError) {

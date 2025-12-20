@@ -75,7 +75,7 @@ function Editor({
     try {
       timeState.animationSpeedMultiplier.value = 1;
       timeState.isLoading.value = false;
-      setTimeout(() => rootInstance?.$internal_renderInstance?.tweenGroup?.update(Number.MAX_SAFE_INTEGER), 10);
+      setTimeout(() => rootInstance?.renderInstance?.tweenGroup?.update(Number.MAX_SAFE_INTEGER), 10);
 
       const instanceRenderResult = new ChitRenderSpec(instance);
       instance.render(instanceRenderResult);
@@ -104,8 +104,8 @@ function Editor({
           rootInstance.add(parentInstance ?? instance);
           rootInstance.target = instance;
           rootInstance.parentTarget = parentInstance;
-          rootInstance.$internal_notifyChange("target");
-          rootInstance.$internal_notifyChange("parentTarget");
+          rootInstance.notifyChange("target");
+          rootInstance.notifyChange("parentTarget");
         }
       } else {
         setRootInstance(parentInstance ?? instance);

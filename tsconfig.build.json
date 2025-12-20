@@ -1,29 +1,33 @@
 {
   "compilerOptions": {
-    "target": "ES2016",
+    "target": "ES2020",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "module": "esnext",
-    "moduleResolution": "node",
+    "module": "ES2020",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "isolatedModules": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "noEmit": false,
+    "useDefineForClassFields": false,
     "jsx": "react-jsx",
-    "inlineSourceMap": true,
-    "inlineSources": true,
-    "typeRoots": ["./node_modules/@types", "./types"],
     "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "outDir": "./dist",
-    "stripInternal": true
+    "rootDir": "./src/library",
+    "stripInternal": true,
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "plugins": [
+      {
+        "transform": "./ts-transformer-loose-fields.js"
+      }
+    ]
   },
-  "include": ["./src/library/index.ts", "./globals.d.ts", "./src/library/utilities/CanvasStack/ReactCanvas.tsx"],
-  "files": ["./src/library/utilities/CanvasStack/ReactCanvas.tsx", "./src/library/index.ts"]
+  "include": ["./src/library/**/*", "./globals.d.ts"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
 }

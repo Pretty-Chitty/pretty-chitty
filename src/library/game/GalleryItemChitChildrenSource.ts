@@ -6,7 +6,7 @@ export class GalleryItemChitChildrenSource implements GalleryItemSource {
   private unSub: () => void;
 
   constructor(public backingObject: Chit) {
-    this.unSub = backingObject.$internal_onChange("deserialized", () => {
+    this.unSub = backingObject.onChange("deserialized", () => {
       this.cbs.forEach((cb) => cb());
     });
   }
@@ -16,8 +16,8 @@ export class GalleryItemChitChildrenSource implements GalleryItemSource {
   }
 
   get items(): GalleryItem[] {
-    const children = this.backingObject.$internal_children.concat();
-    children.sort((a, b) => a.$internal_createdOrder - b.$internal_createdOrder);
+    const children = this.backingObject.children.concat();
+    children.sort((a, b) => a.createdOrder - b.createdOrder);
     return chitsToGalleryItems(children);
   }
 

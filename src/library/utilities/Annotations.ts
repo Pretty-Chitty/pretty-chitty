@@ -30,7 +30,11 @@ function addOutletDefinition(outletKey: string, cls: any, key: string, prop: any
     });
   }
   cls[outletKey][key] = prop;
-  return {};
+  return {
+    writable: true,
+    configurable: true,
+    enumerable: true,
+  };
 }
 function addOutletPosition(cls: any, key: string, vector: Vector3) {
   const OUTLET_POSITION = "__outletPosition";
@@ -124,17 +128,18 @@ export function FixChildOutlets(instance: Chit) {
 
     if (obj?.__orderedOutlets) {
       Object.entries(obj.__orderedOutlets).forEach(([key, prop]: [key: any, prop: any]) => {
-        if (!(instance as any)[key]) {
-          const v = prop?.initializer?.apply(instance, []);
-          if (v) {
-            v.$internal_outletName = key;
-            v.$internal_parent = instance;
-          }
-          Object.defineProperty(instance, key, {
-            enumerable: true,
-            value: v,
-          });
+        const existingValue = (instance as any)[key];
+        const v = existingValue || prop?.initializer?.apply(instance, []);
+        if (v) {
+          v.outletName = key;
+          v.parent = instance;
         }
+        Object.defineProperty(instance, key, {
+          enumerable: true,
+          writable: true,
+          configurable: true,
+          value: v,
+        });
       });
     }
   }

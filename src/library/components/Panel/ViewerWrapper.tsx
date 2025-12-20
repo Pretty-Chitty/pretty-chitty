@@ -86,13 +86,13 @@ export function ViewerWrapper({
 
   useEffect(() => {
     if (focusedPanel !== chit) {
-      (chit.$internal_renderInstance as RootChitRenderInstance)?.cameraWrapper?.handleZoom(0, 0, -20, false);
+      (chit.renderInstance as RootChitRenderInstance)?.cameraWrapper?.handleZoom(0, 0, -20, false);
     } else {
-      (chit.$internal_renderInstance as RootChitRenderInstance)?.cameraWrapper?.handleZoom(0, 0, 0.00001, false);
+      (chit.renderInstance as RootChitRenderInstance)?.cameraWrapper?.handleZoom(0, 0, 0.00001, false);
     }
   }, [focusedPanel, chit]);
 
-  const rootRenderInstance = chit.$internal_renderInstance as RootChitRenderInstance;
+  const rootRenderInstance = chit.renderInstance as RootChitRenderInstance;
 
   return (
     <Box

@@ -5,9 +5,12 @@ import { Prompt } from "./Prompt";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
 
 export class PlayerPromptStatus extends Chit {
-  public $internal_latestPromptMessage?: string;
-  @NonEditable public $internal_latestPrompt = new EventChannel<Prompt | undefined>(undefined, 50);
-  @NonEditable public $internal_latestPromptResponseTime = 0;
+  /** @internal */
+  public latestPromptMessage?: string;
+  /** @internal */
+  @NonEditable public latestPrompt = new EventChannel<Prompt | undefined>(undefined, 50);
+  /** @internal */
+  @NonEditable public latestPromptResponseTime = 0;
 
   public canRender(): boolean {
     return false;
