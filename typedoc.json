@@ -13,6 +13,23 @@
   },
   "exclude": ["**/*.test.ts", "**/*.test.tsx"],
   "sort": ["source-order"],
+  "defaultCategory": "Supporting Types",
+  "groupOrder": [
+    "Core Game Elements",
+    "Game Containers",
+    "Player & Turn Management",
+    "Rendering",
+    "Canvas & Image Utilities",
+    "UI Components",
+    "Layout Utilities",
+    "3D Utilities",
+    "*"
+  ],
+  "navigation": {
+    "includeCategories": false,
+    "includeGroups": true,
+    "includeFolders": false
+  },
   "visibilityFilters": {
     "protected": false,
     "private": false,
