@@ -48,6 +48,26 @@ function addOutletPosition(cls: any, key: string, vector: Vector3) {
   cls[OUTLET_POSITION][key] = vector;
 }
 
+/**
+ * OrderedOutlets are ways to maintain a list of ordered chits on another (parent) chit.  Adding
+ * or removing chits from the outlet will automatically update the parent/child relationships.
+ *
+ * This should only be used in conjunction with the `@Ordered` annotation.
+ *
+ * Preferred syntax:
+ * ```
+ * class MyChit extends Chit {
+ *
+ *   @Ordered(new Vector3(1,2,-3))
+ *   public tokens = new OrderedOutlet<Token>();
+ *
+ * }
+ * ```
+ *
+ * The optional parameter here is a Vector3 that indicates the position offset for the outlet.
+ *
+ * @group Chit Annotations
+ */
 export function Ordered(...args: any): any {
   if (args.length === 1) {
     const v3 = args[0] as Vector3;
@@ -62,13 +82,35 @@ export function Ordered(...args: any): any {
   return addOutletDefinition("__orderedOutlets", cls, key, prop);
 }
 
-//
-// Defines an "outlet" on a chit.  This can have an initializer
-// which will automatically set that chit's parent to this object.
-// This will create a property that will automatically assign ownership
-// of the chit to the parent if it's assigned (and remove it from any outlet
-// that it was previously assigned to)
-//
+/**
+ * Defines an "outlet" on a chit.  This can have an initializer
+ * which will automatically set that chit's parent to this object.
+ * This will create a property that will automatically assign ownership
+ * of the chit to the parent if it's assigned (and remove it from any outlet
+ * that it was previously assigned to).
+ *
+ * Sample syntax:
+ * ```
+ * class MyChit extends Chit {
+ *
+ *   @ChildOutlet(new Vector3(1,2,-3))
+ *   public token1?: Token;
+ *
+ *   @ChildOutlet
+ *   public token2 = new Token().set(t => t.color = "red");
+ *
+ *   public token3?: Token;
+ * }
+ * ```
+ *
+ * Note that token3 is not a ChildOutlet, so assigning it will not update parent/child
+ * relationships.  It can still be referenced and used, but it will not affect any parent
+ * or child linkages.
+ *
+ * The optional parameter here is a Vector3 that indicates the position offset for the outlet.
+ *
+ * @group Chit Annotations
+ */
 export function ChildOutlet(...args: any): any {
   if (args.length === 1) {
     const v3 = args[0] as Vector3;

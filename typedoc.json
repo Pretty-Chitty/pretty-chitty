@@ -13,16 +13,15 @@
   },
   "exclude": ["**/*.test.ts", "**/*.test.tsx"],
   "sort": ["source-order"],
-  "defaultCategory": "Supporting Types",
   "groupOrder": [
     "Core Game Elements",
-    "Game Containers",
-    "Player & Turn Management",
-    "Rendering",
-    "Canvas & Image Utilities",
-    "UI Components",
-    "Layout Utilities",
-    "3D Utilities",
+    "Chits",
+    "Chit Annotations",
+    "Buttons",
+    "2D Rendering",
+    "3D Rendering",
+    "Utilities",
+    "Supporting Types",
     "*"
   ],
   "navigation": {

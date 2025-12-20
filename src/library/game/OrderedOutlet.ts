@@ -1,5 +1,23 @@
 import { Chit } from "./Chit";
 
+/**
+ * OrderedOutlets are ways to maintain a list of ordered chits on another (parent) chit.  Adding
+ * or removing chits from the outlet will automatically update the parent/child relationships.
+ *
+ * This should only be used in conjunction with the `@Ordered` annotation.
+ *
+ * Preferred syntax:
+ * ```
+ * class MyChit extends Chit {
+ *
+ *   @Ordered(new Vector3(1,2,-3))
+ *   public tokens = new OrderedOutlet<Token>();
+ *
+ * }
+ * ```
+ *
+ * @group Chit Annotations
+ */
 export class OrderedOutlet<C extends Chit> {
   /** @internal */
   public parent?: Chit;

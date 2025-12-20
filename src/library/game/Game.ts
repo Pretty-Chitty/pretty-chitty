@@ -25,6 +25,17 @@ export type GameResult<P extends PlayerChit> = {
   winners: P[];
 };
 
+/**
+ * Core entry point for a pretty-chitty game.  This needs to ultimately provide:
+ * - A way to generate players
+ * - A way to generate the root chit
+ * - An async `run` method to actually execute the game logic
+ * - A library of chits, buttons and canvases
+ *
+ * See documentation on {@link Turn} for more details on how to structure your game logic.
+ *
+ * @group Core Game Elements
+ */
 export interface Game<P extends PlayerChit, R extends RootChit<P>> {
   get theme(): GameTheme;
   get name(): string;

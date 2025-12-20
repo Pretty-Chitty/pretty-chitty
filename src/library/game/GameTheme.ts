@@ -1,5 +1,15 @@
 import Color from "color";
 
+/**
+ * Controls color scheme and layout options for all things in a pretty-chitty game.  Much of
+ * this can be overridden per chit, but some cannot.  For example, the background color of the game
+ * is controlled here while the default chitHighlightColor is set here, but can be overridden per chit.
+ *
+ * Highly recommend using `GameTheme.withDefaults(primaryColor, highlightColor, textColor)` to
+ * generate a base theme and then override what you need from there.
+ *
+ * @group Core Game Elements
+ */
 export class GameTheme {
   public backgroundColor = "#0f0119";
 
@@ -62,7 +72,6 @@ export class GameTheme {
 
   public gallerySummaryBackgroundColor = "#000000";
   public gallerySummaryBackgroundOpacity = 0.7;
-  public galleryBlur = 5;
 
   public actionLogBackgroundColor = "rgba(255,255,255,0.05)";
   public actionLogDialogBackgroundColor = "#000000";
@@ -71,7 +80,9 @@ export class GameTheme {
   public actionBarWidth = 600;
   public actionBarLinesToShow = 2;
 
+  /** Reference to .png or .jpg file to show as box art in advertising the game */
   public boxArt = "";
+  /** Reference to .png or .jpg file to show as a screenshot in advertising the game */
   public screenshot = "";
 
   static withDefaults(primaryColor: string, highlight: string, textColor: string = "#ffffff") {
