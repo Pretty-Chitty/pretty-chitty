@@ -1,14 +1,16 @@
 /** @group Core Game Elements */
 export type { Game } from "./game/Game";
+
+// NOTE: must be before Turn! or circular dependency!
+/** @group Chits */
+export { Chit } from "./game/Chit";
+
 /** @group Core Game Elements */
 export { Turn } from "./game/Turn";
 /** @group Core Game Elements */
 export { Pick, ButtonPick, ChitPick } from "./game/Pick";
 /** @group Core Game Elements */
 export { GameTheme } from "./game/GameTheme";
-
-/** @group Chits */
-export { Chit } from "./game/Chit";
 /** @group Chits */
 export { PlayerChit } from "./game/PlayerChit";
 /** @group Chits */
@@ -18,11 +20,11 @@ export { SparkChit, BagSparkChit } from "./game/SparkChit";
 /** @group Chits */
 export { DropdownChit } from "./game/DropdownChit";
 /** @group Chits */
-export { GameDeck } from "./game/GameDeck";
+export { GameDeckChit } from "./game/GameDeckChit";
 /** @group Chits */
-export { GameBag } from "./game/GameBag";
+export { GameBagChit } from "./game/GameBagChit";
 /** @group Chits */
-export { Dice } from "./utilities/Dice";
+export { DiceChit } from "./utilities/Dice";
 
 /** @group Chit Annotations */
 export { OrderedOutlet } from "./game/OrderedOutlet";
@@ -69,7 +71,7 @@ export type { HiddenPropertySerializationRule, PanelTab } from "./game/Chit";
 /** @group Supporting Types */
 export type { GameResult } from "./game/Game";
 /** @group Supporting Types */
-export type { Stage } from "./game/GameDeck";
+export type { Stage } from "./game/GameDeckChit";
 /** @group Supporting Types */
 export { PlayerInfo } from "./game/PlayerInfo";
 /** @group Supporting Types */
@@ -108,8 +110,6 @@ export type { StaticImageOptions } from "./utilities/StaticImage";
 export type { SplayCounterOptions } from "./rendering/SplayCounter";
 /** @group Supporting Types */
 export type { ExtrudeFromSVGOptions } from "./utilities/SvgExtruder";
-/** @group Supporting Types */
-export { createLayoutFromTree } from "./utilities/LayoutHelper";
 /** @group Supporting Types */
 export type { LayoutNode, PanelNode, ContainerNode, CollapsedNode, LayoutDirection } from "./utilities/LayoutHelper";
 /** @group Supporting Types */

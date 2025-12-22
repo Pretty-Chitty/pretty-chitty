@@ -2,7 +2,7 @@ import { ChildOutlet, NonEditable } from "../utilities/Annotations";
 import { PlayerCanvas } from "../utilities/CanvasStack/PlayerCanvas";
 import { Chit } from "./Chit";
 import { PlayerInfo } from "./PlayerInfo";
-import { PlayerPromptStatus } from "./PlayerPromptStatus";
+import { PlayerPromptStatusChit } from "./PlayerPromptStatusChit";
 
 export class PlayerChit extends Chit {
   /** @internal */
@@ -16,7 +16,7 @@ export class PlayerChit extends Chit {
   /** @internal */
   @NonEditable public matchScoreNumber?: number;
 
-  @ChildOutlet promptStatus = new PlayerPromptStatus();
+  @ChildOutlet promptStatus = new PlayerPromptStatusChit();
 
   public get panelTab() {
     return {

@@ -318,7 +318,6 @@ export class Chit extends ObjectWithProps {
     }
   }
 
-  /** @internal */
   public setParent(newValue?: Chit, parentOutlet?: string, parentOutletIndex?: number) {
     if (this._parent === newValue && this._parentOutlet === parentOutlet) {
       this._parentOutletIndex = parentOutletIndex;
@@ -379,14 +378,7 @@ export class Chit extends ObjectWithProps {
   }
 
   private get serializationProps() {
-    return [
-      ...this.props,
-      "id",
-      "_parent",
-      "_parentOutlet",
-      "_parentOutletIndex",
-      "_parentFallback",
-    ];
+    return [...this.props, "id", "_parent", "_parentOutlet", "_parentOutletIndex", "_parentFallback"];
   }
 
   /** @internal */

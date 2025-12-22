@@ -6,7 +6,14 @@ export type Stage<T> = {
   chits: T[];
 };
 
-export class GameDeck<T extends Chit> extends Chit {
+/**
+ * A GameDeck contains a fixed number of chits.  The deck is broken into "stages", and all draws happen from the top stage.
+ * Discards are added to a bottom stage.  If a stage is empty, the stage is removed and all other stages move up in line.
+ * If you need to draw a card from the discard stage, it becomes a primary stage and a new discard stage is created.
+ *
+ * @group Chits
+ */
+export class GameDeckChit<T extends Chit> extends Chit {
   @NonEditable type = "deck";
 
   public chitGenerator?: () => T;

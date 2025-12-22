@@ -1,7 +1,13 @@
 import { NonEditable } from "../utilities/Annotations";
 import { Chit } from "./Chit";
 
-export abstract class GameBag<T extends Chit> extends Chit {
+/**
+ * A GameBag is an infinite supply of a game component available to the game.  It's important that it allows
+ * players taking concurrent turns to all oeprate against this same bag without creating a mismatch conflict.
+ *
+ * @group Chits
+ */
+export abstract class GameBagChit<T extends Chit> extends Chit {
   @NonEditable type = "bag";
 
   public abstract chitGenerator(): T;

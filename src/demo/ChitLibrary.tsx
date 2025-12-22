@@ -13,7 +13,7 @@ import {
 } from "three";
 import {
   BagSparkChit,
-  GameDeck,
+  GameDeckChit,
   RootChit,
   PlayerChit,
   DropdownChit,
@@ -35,7 +35,7 @@ import { PlayerAid } from "./PlayerAid";
 import { cityscape, cityscape2 } from "./assets/network_overload";
 import { Ordered } from "../library/utilities/Annotations";
 import { CardMesh } from "../library/utilities/CardMesh";
-import { GameBag } from "../library/game/GameBag";
+import { GameBagChit } from "../library/game/GameBagChit";
 import { tunnel, walk } from "./assets/icons";
 
 import city_profile from "./city_profile.svg";
@@ -48,7 +48,7 @@ export class Table extends Chit {}
 
 export class Row extends Chit {}
 
-export class Bag extends GameBag<Card2> {
+export class Bag extends GameBagChit<Card2> {
   tapped = false;
 
   public chitGenerator(): Card2 {
@@ -98,7 +98,7 @@ export class Bag extends GameBag<Card2> {
   }
 }
 
-export class Deck extends GameDeck<Card> {
+export class Deck extends GameDeckChit<Card> {
   tapped = false;
   flipped = false;
 

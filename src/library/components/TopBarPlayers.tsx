@@ -5,7 +5,7 @@ import PlayerImage from "./PlayerImage";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { useChit, useChits } from "../hooks/useChits";
 import { PlayerChit } from "../game/PlayerChit";
-import { PlayerPromptStatus } from "../game/PlayerPromptStatus";
+import { PlayerPromptStatusChit } from "../game/PlayerPromptStatusChit";
 import { SparkChit } from "../game/SparkChit";
 import { UpdatingCanvasImage } from "./UpdatingCanvasImage";
 import { StaticImage } from "../utilities/StaticImage";
@@ -121,7 +121,7 @@ export default function TopBarPlayers() {
   const root = useChit<RootChit<PlayerChit>>("root");
   const playerChits = useChits<PlayerChit>(root?.players.map((p) => p.id ?? "") ?? []);
 
-  useChits<PlayerPromptStatus>(playerChits.map((p) => p.promptStatus.id ?? "")); // necessary for side effects so this recomputes when the status or prompt changes
+  useChits<PlayerPromptStatusChit>(playerChits.map((p) => p.promptStatus.id ?? "")); // necessary for side effects so this recomputes when the status or prompt changes
 
   return (
     <TopBarDropdown

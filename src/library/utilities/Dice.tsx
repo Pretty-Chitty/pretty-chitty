@@ -110,7 +110,7 @@ export class DiceFace extends ParameterizedCanvas {
   }
 }
 
-export class Dice extends Chit {
+export class DiceChit extends Chit {
   size = 1;
   value: number = 1;
   pipPadding = 3;

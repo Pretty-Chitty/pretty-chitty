@@ -4,7 +4,7 @@ import { Chit } from "./Chit";
 import { Prompt } from "./Prompt";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
 
-export class PlayerPromptStatus extends Chit {
+export class PlayerPromptStatusChit extends Chit {
   /** @internal */
   public latestPromptMessage?: string;
   /** @internal */
@@ -17,4 +17,4 @@ export class PlayerPromptStatus extends Chit {
   }
 }
 
-StaticChitTypeRegistry["PlayerPromptStatus"] = PlayerPromptStatus;
+StaticChitTypeRegistry["PlayerPromptStatusChit"] = PlayerPromptStatusChit;

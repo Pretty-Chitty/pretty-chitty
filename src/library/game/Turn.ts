@@ -32,6 +32,40 @@ type ChitHistoryResponse = {
 type ValidPick = undefined | false | Pick | Pick[] | ButtonPick | ButtonPick[] | GameButton | GameButton[];
 export type Picks = ValidPick | ValidPick[];
 
+/**
+ *
+ * A `Turn` is the heart of pretty-chitty.  It represents multiple actions or sequences of events from a
+ * single player (or possibly not player).
+ *
+ * The core of a `Turn` is the async `fn` provided.  This `fn` will run all of this logic for that turn,
+ * prompt the user for actions, take random number draws and possibly create one or more sub-turns.
+ *
+ * The general pattern will look something like this:
+ *
+ * ```
+ * setup.createTurn([rootChit, playerChit], playerChit, async (turn) => {
+ *
+ *   // take a random number
+ *   const randomDraw = await turn.rng();
+ *
+ *   // ask the turn's player to make a decision.
+ *   await turn.pick([Chit.pick([chit1,chit2], async chosenChit => {
+ *     // do something with chosen chit
+ *   })]);
+ * });
+ * ```
+ *
+ * There are a couple of VERY important details here:
+ *
+ * 1) Your turn implemention should persist no state itself.
+ * 2) Your turn is going to "lock" one or more chits.  Those chits will only be editable by this turn (until the turn is done or a sub-turn briefly locks those same chits)
+ * 3) If a user needs to "undo" something, it will automatically reset all of the locked chits to their original locked state and re-evaluate the turn from its beginning to easily handle a single "step back".
+ * 4) As a result, all random numbers need to go through this turn's rng() so they are persisted correctly.
+ * 5) All state should be either ephemeral or stored on the chits themselves.  Remember that your turn's function may re-evaluate at any point!
+ * 6) It will automatically handle prompting a user for confirmation before drawing a random number OR before changing the active player.
+ *
+ * @group Core Game Elements
+ */
 export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private pass = 0;
   private clockSteps: ClockStep[] = [];
@@ -1073,9 +1107,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       pass: this.pass,
     };
     const visibleActiveTurns =
-      this.lastClockStep instanceof SubTurnsClockStep
-        ? this.lastClockStep.visibleTurns(playerId)
-        : [];
+      this.lastClockStep instanceof SubTurnsClockStep ? this.lastClockStep.visibleTurns(playerId) : [];
     if (visibleActiveTurns.length > 0) {
       result.subTurns = {};
 
