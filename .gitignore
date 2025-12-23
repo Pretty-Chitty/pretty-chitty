@@ -2,9 +2,8 @@
 node_modules
 dist
 coverage
-docs
 build
-yarn 
+yarn
 .DS_Store
 *.tgz
 .ftpsettings.json

@@ -1,7 +1,8 @@
 {
   "name": "@pretty-chitty/core",
   "version": "1.1.1",
-  "license": "MIT",
+  "license": "Proprietary",
+  "licenseFilename": "LICENSE.md",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -107,6 +108,8 @@
     "start": "webpack serve",
     "build": "rm -rf dist && yarn tsc --project tsconfig.build.json && yarn docs && yarn pack",
     "build:no-sourcemaps": "rm -rf dist && yarn tsc --project tsconfig.build.json --sourceMap false --declarationMap false && yarn pack",
+    "build:demo": "NODE_ENV=production webpack --config webpack.demo.config.js",
+    "build:all": "yarn build && yarn build:demo",
     "test": "vitest",
     "compile:check": "tsc",
     "lint": "eslint .",
