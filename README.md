@@ -136,7 +136,7 @@ function App() {
 
 ## Documentation
 
-Full API documentation is available at: **[https://YOUR-USERNAME.github.io/pretty-chitty/](https://YOUR-USERNAME.github.io/pretty-chitty/)**
+Full API documentation is available at: **[https://pretty-chitty.github.io/pretty-chitty/](https://pretty-chitty.github.io/pretty-chitty/)**
 
 Or view locally after building:
 
