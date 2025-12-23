@@ -1,5 +1,4 @@
 import { Chit } from "./Chit";
-import { PlayerInfo } from "./PlayerInfo";
 import { Turn } from "./Turn";
 import { ParameterizedCanvas } from "../utilities/ParameterizedCanvas";
 import { GameTheme } from "./GameTheme";
@@ -9,8 +8,10 @@ import { RootChit } from "./RootChit";
 import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
 import { TokenDefinition } from "../components/TokenizedMessage";
 
-export interface IChitLibrary {
+export interface IChitLibrary<P extends PlayerChit, R extends RootChit<P>> {
   [key: string]: new () => Chit;
+  Player: new () => P;
+  Root: new () => R;
 }
 
 export interface ICanvasLibrary {
@@ -39,23 +40,16 @@ export type GameResult<P extends PlayerChit> = {
 export interface Game<P extends PlayerChit, R extends RootChit<P>> {
   get theme(): GameTheme;
   get name(): string;
-  get chitLibrary(): IChitLibrary;
+  get chitLibrary(): IChitLibrary<P, R>;
   get canvasLibrary(): ICanvasLibrary;
   get buttonLibrary(): IButtonLibrary;
-
-  readonly showGrid?: boolean;
-
-  // validateConfiguration(): boolean;
+  tokenMap?: { [key: string]: TokenDefinition };
 
   run(setup: Turn<GameResult<P>, P, R>, rootChit: R): Promise<GameResult<P>>;
-  generateRootChit(): R;
-  generatePlayer(playerInfo: PlayerInfo): P;
 
   /**
    * Useful if you want consistent lighting and ornaments for all of your panels
    * @param spec
    */
   renderDefaultRootChit?(spec: ChitRenderSpec): void;
-
-  tokenMap?: { [key: string]: TokenDefinition };
 }

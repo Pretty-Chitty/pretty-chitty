@@ -378,7 +378,7 @@ export class SideBoards extends Chit {
   @ChildOutlet public sideBoard2 = new Table();
 }
 
-export class MyPlayer extends PlayerChit {
+export class Player extends PlayerChit {
   // @ChildOutlet public token = new Card2();
   @ChildOutlet public counter = new CounterChit().set((c) => c.bindToPlayer(this));
   @ChildOutlet public counter2 = new BagChit().set((c) => (c.color = "#ca5275"));
@@ -396,7 +396,7 @@ export class MyPlayer extends PlayerChit {
   }
 }
 
-export class Root extends RootChit<MyPlayer> {
+export class Root extends RootChit<Player> {
   @ChildOutlet public mainBoard = new Table();
   @ChildOutlet public shelf = new Bookshelf();
   @ChildOutlet public playerAid = new PlayerAid();

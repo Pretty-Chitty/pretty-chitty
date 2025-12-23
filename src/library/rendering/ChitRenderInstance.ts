@@ -834,7 +834,7 @@ export class ChitRenderInstance {
       this.bboxGroup.rotation.set(this.renderSpec.rotateX, this.renderSpec.rotateY, this.renderSpec.rotateZ);
 
       Object.entries(this.renderSpec.outletPositions).forEach(([key, position]) => {
-        this.setOutletPosition(key, new Vector3(position.x, position.y, position.z + this.sizeZ / 2));
+        this.setOutletPosition(key, new Vector3(position.x, position.y, position.z));
       });
 
       if (keyChanged) {

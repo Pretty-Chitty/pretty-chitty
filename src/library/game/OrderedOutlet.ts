@@ -51,6 +51,7 @@ export class OrderedOutlet<C extends Chit> {
     if (this.parent?.isDeserializing) {
       return;
     }
+    c.setParent();
 
     this.chits.push(c);
     this.fixSort();
@@ -63,8 +64,10 @@ export class OrderedOutlet<C extends Chit> {
     }
 
     if (c instanceof OrderedOutlet) {
+      c.chits.forEach((c) => c.setParent());
       c.chits.forEach((c) => this.chits.push(c));
     } else {
+      c.forEach((c) => c.setParent());
       c.forEach((c) => this.chits.push(c));
     }
     this.fixSort();
@@ -83,11 +86,8 @@ export class OrderedOutlet<C extends Chit> {
         this.chits[k] = temp;
       }
     }
+    this.fixOrder();
   }
-
-  // public on(cb: (c: C[]) => void) {
-  //   return () => {};
-  // }
 
   public copy(): C[] {
     return this.chits.concat();

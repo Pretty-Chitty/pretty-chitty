@@ -3,7 +3,6 @@ import { Box, Stack } from "@mui/material";
 import { useGameTheme } from "../hooks/useGameTheme";
 import TimeControlBar from "./TimeControlBar";
 import PromptControls from "./PromptControls";
-import GridZoomButton from "./GridZoomButton";
 import useSize from "@react-hook/size";
 
 function BaseBottomBar({ children }: { children: ReactNode | ReactNode[] }) {

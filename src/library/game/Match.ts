@@ -74,12 +74,14 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
       try {
         this.result.value = undefined;
         this.errorState.value = undefined;
-        const rootChit = this.game.generateRootChit();
+        const rootChit = new this.game.chitLibrary.Root();
         rootChit.id = "root";
         rootChit.game = this.game;
 
         this.players.forEach((p) => {
-          const player = this.game.generatePlayer(p);
+          const Player = this.game.chitLibrary.Player;
+          const player = new Player();
+          player.setPlayerInfo(p);
           player.promptStatus.latestPrompt.on(() => this.notify(), false);
           rootChit.players.add(player);
           return player;
@@ -96,12 +98,16 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
           "root",
           this,
           this.state,
-          (turn) => this.game.run(turn, rootChit),
+          async (turn) => {
+            await rootChit.players.shuffle();
+            return this.game.run(turn, rootChit);
+          },
           [rootChit],
         );
         rootChit._setupTurn = this.turn.value;
         this.turn.value.fixPass();
         this.notify();
+
         this.result.value = await this.turn.value.execute();
         break;
       } catch (e) {

@@ -33,14 +33,11 @@ export class PlayerChit extends Chit {
     return `:${this.playerId}:`;
   }
 
-  public constructor(playerInfo?: PlayerInfo) {
-    super();
-
-    if (playerInfo) {
-      this.playerId = playerInfo.id;
-      this.name = playerInfo.name;
-      this.id = playerInfo.id;
-      this.imageUrl = playerInfo.imageUrl;
-    }
+  /** @internal */
+  setPlayerInfo(playerInfo: PlayerInfo) {
+    this.playerId = playerInfo.id;
+    this.name = playerInfo.name;
+    this.id = playerInfo.id;
+    this.imageUrl = playerInfo.imageUrl;
   }
 }

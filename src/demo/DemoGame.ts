@@ -22,7 +22,7 @@ import {
   Deck,
   Hand,
   Bag,
-  MyPlayer,
+  Player,
   Root,
   Row,
   SideBoards,
@@ -43,10 +43,9 @@ theme.chitOutlineStrength = 0.5;
 theme.galleryItemWidth = 50;
 theme.galleryItemHeight = 50;
 
-export class DemoGame implements Game<MyPlayer, Root> {
+export class DemoGame implements Game<Player, Root> {
   name = "Demo Game";
 
-  showGrid = true;
   chitLibrary = {
     Card3,
     Card,
@@ -58,7 +57,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     ShelfSpace,
     Root,
     Deck,
-    MyPlayer,
+    Player,
     PlayerAid,
     CounterChit,
     BagChit,
@@ -77,7 +76,7 @@ export class DemoGame implements Game<MyPlayer, Root> {
     stuff: { label: "Stuff", color: "#00ffff" },
   };
 
-  async run(setup: Turn<any, MyPlayer, Root>, rootChit: Root) {
+  async run(setup: Turn<any, Player, Root>, rootChit: Root) {
     await rootChit.players.shuffle();
     const players = rootChit.players.copy();
     const color = ["#ed00cb", "#00edcb", "#002244"];
@@ -211,14 +210,6 @@ export class DemoGame implements Game<MyPlayer, Root> {
     return {
       winners: [players[0]],
     };
-  }
-
-  generateRootChit() {
-    return new Root();
-  }
-
-  generatePlayer(playerInfo: PlayerInfo) {
-    return new MyPlayer(playerInfo);
   }
 
   renderDefaultRootChit(spec: ChitRenderSpec): void {
