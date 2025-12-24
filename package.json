@@ -125,7 +125,7 @@
     "prepare": "ts-patch install -s",
     "dev": "webpack serve",
     "start": "webpack serve",
-    "build": "rm -rf dist && yarn tsc --project tsconfig.build.json && yarn docs && yarn pack",
+    "build": "rm -rf dist && yarn tsc --project tsconfig.build.json && yarn pack",
     "build:no-sourcemaps": "rm -rf dist && yarn tsc --project tsconfig.build.json --sourceMap false --declarationMap false && yarn pack",
     "build:demo": "NODE_ENV=production webpack --config webpack.demo.config.js",
     "build:all": "yarn build && yarn build:demo",
