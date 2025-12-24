@@ -1,24 +1,48 @@
 # Pretty Chitty
 
-A TypeScript framework for building digital board games with 3D rendered game pieces and rich interactive UI.
+Pretty Chitty is a pretty & chitty board game platform. It's a typescript framework that makes it quick and easy to build high quality async or realtime 3d strategy games.
 
 ## Overview
 
 Pretty Chitty provides a comprehensive game engine that combines:
 
 - **3D Rendering**: ThreeJS-based 3D visualization of game pieces (chits) with customizable lighting, cameras, and animations
-- **2D Canvas System**: React-based canvas rendering for chit faces, supporting text, images, icons, and custom layouts
-- **Game State Management**: Turn-based game logic with player interaction, picking mechanisms, and state serialization
-- **UI Components**: Built-in React components for match viewing, game design, and player interactions
+- **2D Canvas System**: React-based canvas rendering for textures
+- **Game State Management**: Turn-based game logic with player interaction and state management
+- **UI Components**: UI Playground with hot reloading makes UI changes a breeze
 - **Real-time Multiplayer**: Client-server architecture with connection management and state synchronization
+
+## Live Demos
+
+Check out these example games built with Pretty Chitty:
+
+- **[Demo Game 1](https://link-to-demo-1)** - Description
+- **[Demo Game 2](https://link-to-demo-2)** - Description
+
+Source code for demos:
+
+- [Demo 1 Repository](https://github.com/...)
+- [Demo 2 Repository](https://github.com/...)
+
+## Documentation
+
+Full API documentation is available at: **[https://pretty-chitty.github.io/pretty-chitty/](https://pretty-chitty.github.io/pretty-chitty/)**
+
+Or view locally after building:
+
+```bash
+yarn docs
+open docs/index.html
+```
 
 ## Core Concepts
 
 ### Chits
 
-Chits are the fundamental game pieces in Pretty Chitty. Everything is a chit - cards, dice, tokens, players, even the game board itself.
+Chits are the fundamental game pieces in Pretty Chitty. Everything is a chit - cards, dice, tokens, players, even the game board itself. A `Chit` is a normal typescript class and can have any basic serializable properties on it (including references to other chits). The game state is effectively a tree, where every `Chit` (except the "root" chit) has a `parent`, a `parentOutlet` (i.e. how is this chit related to its parent), and possibly a `parentOutletIndex` (i.e. this is the third token in a stack on a card).
 
 Key chit types:
+
 - **`Chit`**: Base class for all game pieces
 - **`RootChit`**: The game board/table that contains all other chits
 - **`PlayerChit`**: Represents individual players with their own state
@@ -34,6 +58,7 @@ Chits can have named outlets (using the `@ChildOutlet` decorator) where other ch
 ### Turn System
 
 Games are structured around the `Turn` class, which provides:
+
 - Asynchronous game flow control
 - Player picking (choosing chits or buttons)
 - State management and history
@@ -42,6 +67,7 @@ Games are structured around the `Turn` class, which provides:
 ### Rendering
 
 **3D Rendering** via `ChitRenderSpec`:
+
 - Custom geometries and materials
 - Camera positioning with `CameraSpec`
 - Lighting with `LightSpec`
@@ -49,6 +75,7 @@ Games are structured around the `Turn` class, which provides:
 - Splay configurations for card fans
 
 **2D Rendering** via `ReactCanvas`:
+
 - Declarative JSX-like syntax for canvas layouts
 - Text, images, colors, and shapes
 - Responsive layout system
@@ -56,22 +83,19 @@ Games are structured around the `Turn` class, which provides:
 
 ## Installation
 
-```bash
-npm install @pretty-chitty/core
-```
+While this is an npm package, it is _highly_ recommended that you use the `@pretty-chitty/cli` package to install and run Pretty Chitty games. This cli utility will:
 
-Or with yarn:
-
-```bash
-yarn add @pretty-chitty/core
-```
+- Initialize new games from a boilerplate
+- Run a hot-reloading playground for local development
+- Create and optimize spritemaps for fast loads
+- Build and upload to CDNs
 
 ## Basic Usage
 
 ### Define Your Game
 
 ```typescript
-import { Game, PlayerChit, RootChit, Turn, GameResult, GameTheme } from '@pretty-chitty/core';
+import { Game, PlayerChit, RootChit, Turn, GameResult, GameTheme } from "@pretty-chitty/core";
 
 class MyPlayerChit extends PlayerChit {
   // Player-specific state
@@ -82,8 +106,12 @@ class MyRootChit extends RootChit<MyPlayerChit> {
 }
 
 class MyGame implements Game<MyPlayerChit, MyRootChit> {
-  get theme() { return new GameTheme(); }
-  get name() { return "My Game"; }
+  get theme() {
+    return new GameTheme();
+  }
+  get name() {
+    return "My Game";
+  }
 
   get chitLibrary() {
     return {
@@ -93,8 +121,12 @@ class MyGame implements Game<MyPlayerChit, MyRootChit> {
     };
   }
 
-  get canvasLibrary() { return {}; }
-  get buttonLibrary() { return {}; }
+  get canvasLibrary() {
+    return {};
+  }
+  get buttonLibrary() {
+    return {};
+  }
 
   async run(setup: Turn<GameResult<MyPlayerChit>, MyPlayerChit, MyRootChit>, root: MyRootChit) {
     // Game logic goes here
@@ -133,28 +165,6 @@ function App() {
   return <MatchViewer game={new MyGame()} />;
 }
 ```
-
-## Documentation
-
-Full API documentation is available at: **[https://pretty-chitty.github.io/pretty-chitty/](https://pretty-chitty.github.io/pretty-chitty/)**
-
-Or view locally after building:
-
-```bash
-yarn docs
-open docs/index.html
-```
-
-## Live Demos
-
-Check out these example games built with Pretty Chitty:
-
-- **[Demo Game 1](https://link-to-demo-1)** - Description
-- **[Demo Game 2](https://link-to-demo-2)** - Description
-
-Source code for demos:
-- [Demo 1 Repository](https://github.com/...)
-- [Demo 2 Repository](https://github.com/...)
 
 ## Development
 
@@ -198,11 +208,13 @@ yarn compile:check
 This project is licensed under the Pretty Chitty Source-Available License v1.0.
 
 **Allowed Uses:**
+
 - Personal, educational, or hobby projects
 - Free digital games
 - Supporting physical board game sales
 
 **Not Allowed Without Permission:**
+
 - Commercial redistribution
 - Selling or monetizing the software
 - Publishing modified versions publicly
