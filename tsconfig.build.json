@@ -24,7 +24,7 @@
     "typeRoots": ["./node_modules/@types", "./types"],
     "plugins": [
       {
-        "transform": "./ts-transformer-loose-fields.js"
+        "transform": "./utils/ts-transformer-loose-fields.js"
       }
     ]
   },

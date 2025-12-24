@@ -22,7 +22,7 @@ export class OutputPass extends Pass {
   public material: RawShaderMaterial;
 
   private _fsQuad: FullScreenQuad;
-  private _outputColorSpace: string | null;
+  private _outputColorSpace: ColorSpace | null;
   private _toneMapping: unknown;
 
   constructor() {

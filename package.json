@@ -1,8 +1,25 @@
 {
   "name": "@pretty-chitty/core",
   "version": "1.1.1",
-  "license": "Proprietary",
-  "licenseFilename": "LICENSE.md",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "description": "A TypeScript framework for building high-quality async or realtime 3D strategy board games",
+  "author": "Pretty Chitty, LLC",
+  "homepage": "https://pretty-chitty.github.io/pretty-chitty/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pretty-chitty/pretty-chitty.git"
+  },
+  "keywords": [
+    "game-engine",
+    "board-game",
+    "3d",
+    "threejs",
+    "game-development",
+    "strategy-game",
+    "multiplayer",
+    "typescript",
+    "react"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,8 +34,9 @@
   },
   "files": [
     "dist",
-    "src",
-    "README.md"
+    "src/library",
+    "README.md",
+    "LICENSE.md"
   ],
   "devDependencies": {
     "@babel/core": "^7.23.3",

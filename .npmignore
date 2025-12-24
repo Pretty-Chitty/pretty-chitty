@@ -1,0 +1,52 @@
+# Development files
+src/demo
+src/index.html
+src/index.tsx
+src/root.tsx
+src/notes.md
+src/components
+
+# Build configuration
+webpack.config.js
+webpack.demo.config.js
+tsconfig.json
+tsconfig.build.json
+.eslintrc.json
+.eslintignore
+.prettierrc
+.prettierignore
+
+# Testing
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+coverage
+.vitest
+
+# Development
+node_modules
+.DS_Store
+.env
+.vscode
+.idea
+
+# Documentation source (keep built docs)
+docs
+
+# Build tools
+utils
+
+# Git
+.git
+.gitignore
+.github
+
+# Lock files
+yarn.lock
+package-lock.json
+
+# Misc
+*.tgz
+.ftpsettings.json
+test-compilation.js
