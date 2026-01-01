@@ -71,6 +71,8 @@ export interface GalleryItemSource {
    */
   registerUpdateHandler(cb: UpdateCallback): UpdateCallback;
   close(): void;
+
+  inlineGallerySize?: number;
 }
 
 type BuiltItem = {
@@ -131,6 +133,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
 
   private effectiveItemHeight = 0;
   private baseCameraZ = 500 / SCALE_FACTOR;
+  private zFactor = 3;
 
   private items: BuiltItem[] = [];
   private leavingItems: BuiltItem[] = [];
@@ -174,12 +177,33 @@ class GalleryController implements TextureReferenceCounterRootGroup {
     this.changed = true;
   }
 
-  public setSize(w: number, h: number, itemWidth: number, itemHeight: number, itemSpacing: number) {
+  public setSize(w: number, h: number, itemWidth: number, itemHeight: number, itemSpacing: number, zFactor: number) {
     this.changed = true;
     this.w = w / SCALE_FACTOR;
     this.h = h / SCALE_FACTOR;
-    this.itemHeight = Math.min(itemHeight, h - itemSpacing) / SCALE_FACTOR;
-    this.itemWidth = Math.min(itemWidth, w - itemSpacing) / SCALE_FACTOR;
+    this.zFactor = zFactor;
+
+    // Calculate the aspect ratio
+    const aspectRatio = itemWidth / itemHeight;
+
+    // Apply constraints while maintaining aspect ratio
+    const constrainedHeight = Math.min(itemHeight, h - itemSpacing);
+    const constrainedWidth = Math.min(itemWidth, w - itemSpacing);
+
+    // If height is constrained, reduce width proportionally
+    if (constrainedHeight < itemHeight) {
+      this.itemHeight = constrainedHeight / SCALE_FACTOR;
+      this.itemWidth = (constrainedHeight * aspectRatio) / SCALE_FACTOR;
+    } else if (constrainedWidth < itemWidth) {
+      // If width is constrained, reduce height proportionally
+      this.itemWidth = constrainedWidth / SCALE_FACTOR;
+      this.itemHeight = constrainedWidth / aspectRatio / SCALE_FACTOR;
+    } else {
+      // No constraints applied
+      this.itemHeight = itemHeight / SCALE_FACTOR;
+      this.itemWidth = itemWidth / SCALE_FACTOR;
+    }
+
     this.itemSpacing = itemSpacing / SCALE_FACTOR;
     this.itemsPerPage = Math.floor((w - itemSpacing * 2) / (this.itemWidth * SCALE_FACTOR + itemSpacing));
     this.frontStageWidth =
@@ -308,7 +332,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
         target = min;
       }
 
-      const duration = 0.0001 + Math.min(750, Math.abs(target - this.offsetX));
+      const duration = 0.0001 + Math.min(750, 20 * Math.abs(target - this.offsetX));
 
       this.tween = new Tween({ x: this.offsetX })
         .onUpdate(({ x }) => {
@@ -328,15 +352,18 @@ class GalleryController implements TextureReferenceCounterRootGroup {
     const index = item.index;
     const initialOffset = -(this.frontStageWidth / 2 - this.itemWidth / 2);
     const group = item.group;
-    group.position.x = initialOffset + index * (this.itemWidth + this.itemSpacing) + this.offsetX;
+    const targetX = initialOffset + index * (this.itemWidth + this.itemSpacing) + this.offsetX;
 
-    group.position.y = (1 - item.enteredAmount) * -this.h; // 5 is height of display?
+    // Interpolate X position from center (0) to target position as item enters
+    group.position.x = targetX * item.enteredAmount;
 
-    const zFactor = 3;
+    group.position.y = (1 - item.enteredAmount) * -(this.h / 2);
+
+    const zFactor = this.zFactor;
     const largestX = initialOffset + (this.itemsPerPage - 1) * (this.itemWidth + this.itemSpacing);
     if (group.position.x > largestX) {
       const overshot = group.position.x - largestX;
-      group.position.x = largestX + Math.pow(overshot, 0.94);
+      group.position.x = largestX + Math.pow(overshot, 1 - zFactor / 50);
       group.position.z = -overshot * zFactor;
       group.rotation.x = -overshot / (3000 / SCALE_FACTOR) - this.offsetAngle;
       if (item.meshToShowOrHideIfCentered) {
@@ -345,7 +372,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
       }
     } else if (group.position.x < initialOffset) {
       const overshot = Math.abs(initialOffset - group.position.x);
-      group.position.x = initialOffset - Math.pow(overshot, 0.94);
+      group.position.x = initialOffset - Math.pow(overshot, 1 - zFactor / 50);
       group.position.z = -overshot * zFactor;
       group.rotation.x = -overshot / (3000 / SCALE_FACTOR) - this.offsetAngle;
       if (item.meshToShowOrHideIfCentered) {
@@ -585,6 +612,7 @@ export function GalleryViewer({
   h = 0,
   galleryItemHeight = h * 0.7,
   showSummary = true,
+  zFactor = 3,
 }: {
   items: GalleryItem[];
   w: number;
@@ -598,6 +626,7 @@ export function GalleryViewer({
   galleryItemHeight?: number;
   onClose?: () => void;
   showSummary?: boolean;
+  zFactor?: number;
 }) {
   const calcedItemWidth = Math.min(...items.map((item) => item.preferredWidth ?? galleryItemWidth));
   const calcedItemHeight = Math.min(...items.map((item) => item.preferredHeight ?? galleryItemHeight));
@@ -619,8 +648,8 @@ export function GalleryViewer({
       return;
     }
 
-    galleryController.setSize(w, h, calcedItemWidth, calcedItemHeight, itemSpacing);
-  }, [calcedItemWidth, itemSpacing, calcedItemHeight, w, h, galleryController]);
+    galleryController.setSize(w, h, calcedItemWidth, calcedItemHeight, itemSpacing, zFactor);
+  }, [calcedItemWidth, itemSpacing, calcedItemHeight, w, h, galleryController, zFactor]);
 
   useEffect(() => {
     galleryController.setItems(items);

@@ -408,21 +408,21 @@ export class Root extends RootChit<Player> {
   override getLayout(_width: number, _height: number, _playerId: string): LayoutNode {
     return {
       direction: "optimize",
-      collapseOrder: 3, // Collapse last if players collapsing doesn't help
+      collapseOrder: 4, // Collapse last if players collapsing doesn't help
       splits: [
         {
           direction: "optimizePreferHorizontal",
-          collapseOrder: 5, // Collapse first
+          collapseOrder: 3, // Collapse first
           splits: [
             {
               chit: this.mainBoard,
-              minWidth: 300,
-              minHeight: 250,
+              minWidth: 250,
+              minHeight: 150,
             },
             {
               chit: this.shelf,
-              minWidth: 300,
-              minHeight: 250,
+              minWidth: 250,
+              minHeight: 150,
             },
           ],
         },

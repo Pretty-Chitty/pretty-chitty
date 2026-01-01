@@ -11,13 +11,14 @@ import { useEventChannelState } from "../hooks/useEventChannelState";
 import { MatchEndDisplay } from "./MatchEndDisplay";
 import { PanelScaleProvider } from "../hooks/usePanelScale";
 import { ModalProvider } from "../hooks/useModalState";
-import { GalleryDisplay } from "./GalleryDisplay";
+import { FullScreenGalleryDisplay } from "./FullScreenGalleryDisplay";
 import { ActionLogDisplay } from "./ActionLogDisplay";
 import { ActionLogHistoryDisplay } from "./ActionLogHistoryDisplay";
 import { PanelContents } from "./Panel/PanelContents";
 import useSize from "@react-hook/size";
 import { SettingsDisplay } from "./SettingsDisplay";
 import { ActionLogSidebar } from "./ActionLogSidebar";
+import { InlineGalleryDisplay } from "./InlineGalleryDisplay";
 
 const theme = createTheme({
   typography: {
@@ -75,13 +76,14 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
         >
           <Box flex={1} style={{ display: "flex", position: "relative" }}>
             <MatchEndDisplay />
-            <GalleryDisplay />
+            <FullScreenGalleryDisplay />
             <SettingsDisplay />
             <ActionLogHistoryDisplay />
 
             {!errorMessage && rootChit && <PanelContents rootChit={rootChit} scaleWidth={width} scaleHeight={height} />}
             {errorMessage}
           </Box>
+          <InlineGalleryDisplay />
           <ActionLogDisplay toggleSidebarLog={largeEnoughToShowLogSidebar} />
         </Stack>
         <BottomBar />

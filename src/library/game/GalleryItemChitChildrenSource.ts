@@ -5,6 +5,8 @@ import { Chit } from "./Chit";
 export class GalleryItemChitChildrenSource implements GalleryItemSource {
   private unSub: () => void;
 
+  public inlineGallerySize?: number | undefined = undefined;
+
   constructor(public backingObject: Chit) {
     this.unSub = backingObject.onChange("deserialized", () => {
       this.cbs.forEach((cb) => cb());

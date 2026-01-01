@@ -16,6 +16,7 @@ export default function BottomBarButton({
   highlight = false,
   disabled = false,
   removeLabel = false,
+  invisible = false,
   onClick,
   onLongClick,
   whileHolding,
@@ -24,6 +25,7 @@ export default function BottomBarButton({
   label?: string;
   disabled?: boolean;
   removeLabel?: boolean;
+  invisible?: boolean;
   highlight?: boolean;
   onClick?: () => void;
   onLongClick?: () => void;
@@ -142,6 +144,7 @@ export default function BottomBarButton({
         top: isPressed ? 1 : 0,
         left: isPressed ? 1 : 0,
         userSelect: "none",
+        opacity: invisible ? 0 : 1,
         cursor: !disabled ? "pointer" : undefined,
         p: 1,
         height: "100%",

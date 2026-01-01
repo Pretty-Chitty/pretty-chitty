@@ -119,7 +119,7 @@ export class CameraWrapperPerspective {
     this.rotationTween.stop();
     this.nearFarTween.stop();
     this.camera.updateProjectionMatrix();
-    this.adjust(this.bbox);
+    this.adjust(this.bbox, true);
   }
 
   public get zoom() {
@@ -583,17 +583,15 @@ export class CameraWrapperPerspective {
 
       // Always tween near/far if they differ, even slightly
       if (nearFarDistance > 0.001) {
-        this.nearFarTween = this.chit.createTween(
-          { near: currentNear, far: currentFar },
-          (tween) =>
-            tween
-              .to({ near: optimalPlanes.near, far: optimalPlanes.far }, duration)
-              .easing(Easing.Quadratic.InOut)
-              .onUpdate((obj) => {
-                this.camera.near = obj.near;
-                this.camera.far = obj.far;
-                this.camera.updateProjectionMatrix();
-              }),
+        this.nearFarTween = this.chit.createTween({ near: currentNear, far: currentFar }, (tween) =>
+          tween
+            .to({ near: optimalPlanes.near, far: optimalPlanes.far }, duration)
+            .easing(Easing.Quadratic.InOut)
+            .onUpdate((obj) => {
+              this.camera.near = obj.near;
+              this.camera.far = obj.far;
+              this.camera.updateProjectionMatrix();
+            }),
         );
       } else if (nearFarDistance > 0) {
         // If difference is tiny, just set immediately

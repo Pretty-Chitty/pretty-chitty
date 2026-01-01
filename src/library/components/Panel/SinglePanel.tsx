@@ -34,6 +34,8 @@ export function SinglePanel({
 
   const effectivePaused = !enabled ? true : paused;
 
+  const transition = panelTransition(theme, animationSpeedMultiplier);
+
   // Register position for ViewerWrapper (only when NOT in full-screen focus mode)
   useEffect(() => {
     // If focusedPanel is set, don't register - the full-screen MultiPanel in PanelContents handles it
@@ -52,8 +54,23 @@ export function SinglePanel({
       refContainer: null,
       front: true,
       visible: true,
+      transition,
     });
-  }, [chit, x, y, w, h, effectivePaused, enabled, focusedPanel, registerPosition, theme.spacing]);
+  }, [
+    chit,
+    x,
+    y,
+    w,
+    h,
+    transition,
+    theme,
+    animationSpeedMultiplier,
+    effectivePaused,
+    enabled,
+    focusedPanel,
+    registerPosition,
+    theme.spacing,
+  ]);
 
   return (
     <Box
@@ -65,7 +82,7 @@ export function SinglePanel({
         top: `${y}px`,
         position: "absolute",
         p: `${theme.spacing / 4}px`,
-        transition: panelTransition(theme, animationSpeedMultiplier),
+        transition,
         zIndex: enabled ? "auto" : -1,
       }}
     >

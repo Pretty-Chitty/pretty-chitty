@@ -28,13 +28,14 @@ export class GameTheme {
   public actionBarContextColor = "#3a1957";
   public actionBarContextAnimationDuration = 0.3;
   public actionBarContextShadow = "rgba(0,0,0,0.2)";
+  public actionBarToggleSelectedColor = "rgba(255,255,255,0.6)";
 
   public barTextColor = "rgba(255,255,255,0.6)";
   public barTextHighlightColor = "rgba(255,255,255,0.6)";
   public barBreak = "rgba(255,255,255,0.3)";
   public barActiveTextColor = "rgba(255,255,255,0.9)";
   public barHighlightTextColor = "#66d5c1";
-  public barDisabledTextColor = "rgba(255,255,255,0.2)";
+  public barDisabledTextColor = "rgba(255,255,255,0.3)";
   public panelSlotColor = "#858b99";
   public panelSlotSelectedColor = "#66d5c1";
   public fullResetColor = "#66d5c1";
@@ -79,6 +80,9 @@ export class GameTheme {
   public actionLogTextColor = "#ffffff";
   public actionBarWidth = 600;
   public actionBarLinesToShow = 2;
+  public inlineGalleryBackgroundColor = "rgba(255,255,255,0.1)";
+  public inlineGalleryButtonBackgroundColor = "#000000";
+  public inlineGalleryButtonForegroundColor = "rgba(255,255,255,0.5)";
 
   /** Reference to .png or .jpg file to show as box art in advertising the game */
   public boxArt = "";
@@ -96,6 +100,9 @@ export class GameTheme {
     result.barHighlightTextColor = highlight;
     result.barTopDropdownColor = Color(primaryColor).mix(Color(highlight), 0.1).alpha(0.9).hexa();
     result.barTextHighlightColor = highlight;
+    result.actionBarToggleSelectedColor = primaryColor;
+
+    result.inlineGalleryButtonBackgroundColor = primaryColor;
 
     result.endGameBackgroundColor = result.barTopDropdownColor;
 
@@ -105,10 +112,6 @@ export class GameTheme {
     result.barActiveTextColor = Color(textColor).alpha(0.9).hexa();
     result.barTopLineColor = Color(textColor).alpha(0.1).hexa();
     result.endGameTextColor = Color(textColor).alpha(1).hexa();
-
-    result.barDisabledTextColor = Color(result.barColor).isLight()
-      ? Color(result.barColor).darken(0.75).hexa()
-      : Color(result.barColor).lighten(0.75).hexa();
 
     result.actionLogTextColor = result.barActiveTextColor;
     result.actionLogDialogBackgroundColor = result.backgroundColor;
