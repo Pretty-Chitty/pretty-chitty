@@ -6,7 +6,7 @@ import { GalleryItem, GalleryViewer } from "./GalleryViewer";
 import useSize from "@react-hook/size";
 import { useAnimationSpeedMultiplier } from "../hooks/useTimeController";
 import { useGameTheme } from "../hooks/useGameTheme";
-import { KeyboardDoubleArrowUp, OpenInFull } from "@mui/icons-material";
+import { KeyboardDoubleArrowUp } from "@mui/icons-material";
 import useLocalStorageState from "use-local-storage-state";
 
 const DELAY = 300;
@@ -23,6 +23,8 @@ export function InlineGalleryDisplay() {
   const [galleryFullScreen, setGalleryFullScreen] = useLocalStorageState<boolean>("galleryFullScreen", {
     defaultValue: false,
   });
+
+  const [displaySize, setDisplaySize] = useState(0);
 
   useEffect(() => {
     if (!inlineGallerySize) {
@@ -41,6 +43,19 @@ export function InlineGalleryDisplay() {
     }
   }, [source, setItems, inlineGallerySize]);
 
+  useEffect(() => {
+    if (galleryFullScreen) {
+      setDisplaySize(0);
+    } else if (inlineGallerySize && items && items.length > 0) {
+      setDisplaySize(inlineGallerySize);
+    } else {
+      const to = setTimeout(() => {
+        setDisplaySize(0);
+      }, 250);
+      return () => clearTimeout(to);
+    }
+  }, [displaySize, galleryFullScreen, inlineGallerySize, items, setDisplaySize]);
+
   const hasItems = items && items?.length > 0;
 
   return (
@@ -48,7 +63,7 @@ export function InlineGalleryDisplay() {
       sx={{
         position: "relative",
         background: theme.inlineGalleryBackgroundColor,
-        height: `${galleryFullScreen ? 0 : inlineGallerySize}px`,
+        height: `${displaySize}px`,
       }}
       ref={ref}
     >
@@ -80,7 +95,7 @@ export function InlineGalleryDisplay() {
             galleryItemWidth={theme.galleryItemWidth}
             galleryItemHeight={theme.galleryItemHeight}
             itemSpacing={theme.galleryItemSpacing}
-            showSummary={false}
+            showSummary={"partial"}
             w={width}
             h={height}
           />

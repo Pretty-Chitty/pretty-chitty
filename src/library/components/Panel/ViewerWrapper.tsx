@@ -116,7 +116,6 @@ export function ViewerWrapper({
       </Stack>
 
       <Viewer
-        refContainer={refContainer}
         paused={override ? false : paused}
         hardPaused={override ? false : !front}
         chit={chit}

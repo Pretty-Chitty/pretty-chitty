@@ -20,8 +20,10 @@ export class ChitGalleryItemInstance implements GalleryItem {
 
   originalSummary?: string;
   summary?: string;
+  shortSummary?: string;
   summaryIconMap?: IconMap;
   summaryRenderingOptions?: RichTextRenderOptionsParameters;
+  shortSummaryRenderingOptions?: RichTextRenderOptionsParameters;
 
   private sceneWrapper: SceneWrapper | undefined;
 

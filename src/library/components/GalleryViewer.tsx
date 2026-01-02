@@ -51,8 +51,10 @@ export interface GalleryItem {
   preferredHeight?: number;
 
   summary?: string;
+  shortSummary?: string;
   summaryIconMap?: IconMap;
   summaryRenderingOptions?: RichTextRenderOptionsParameters;
+  shortSummaryRenderingOptions?: RichTextRenderOptionsParameters;
 
   /**
    * This takes a callback that gets updated any time the gallery item needs to be refreshed (new texture or mesh or whatnot).
@@ -123,7 +125,7 @@ class GalleryController implements TextureReferenceCounterRootGroup {
   private itemHeight = 100 / SCALE_FACTOR;
 
   public tweenDuration = 250;
-  public showSummary = true;
+  public showSummary: "full" | "partial" | "none" = "full";
   private changed = false;
   private itemSpacing = 100 / SCALE_FACTOR;
   private itemsPerPage = 1;
@@ -417,25 +419,37 @@ class GalleryController implements TextureReferenceCounterRootGroup {
   }
 
   updateHelpText(item: BuiltItem) {
-    const summary = item.item.summary;
-    if (!summary || !this.showSummary) {
+    const summary =
+      this.showSummary === "full"
+        ? (item.item.summary ?? item.item.shortSummary)
+        : this.showSummary === "partial"
+          ? item.item.shortSummary
+          : undefined;
+    if (!summary) {
       item.summaryHeight = 0;
       return;
     }
 
     const height = (this.h - this.itemHeight) / 2 - this.theme.spacing * 2;
+    const renderingOptions =
+      this.showSummary === "full"
+        ? (item.item.summaryRenderingOptions ?? item.item.shortSummaryRenderingOptions)
+        : (item.item.shortSummaryRenderingOptions ?? item.item.summaryRenderingOptions);
 
     const specs: RichTextRenderOptionsParameters = {
       align: "center",
       color: this.theme.dialogForegroundColor,
-      ...(item.item.summaryRenderingOptions ?? {}),
+      ...(renderingOptions ?? {}),
     };
     if (!specs.fontSize) {
       specs.fontSize = this.theme.dialogFontSize;
     }
     specs.fontSize *= window.devicePixelRatio;
 
-    const pad = this.theme.spacing * window.devicePixelRatio;
+    const pad =
+      this.showSummary === "full"
+        ? this.theme.spacing * window.devicePixelRatio
+        : this.theme.spacing * 0.5 * window.devicePixelRatio;
     const markdown = new MarkdownCanvasOperation(summary, item.item.summaryIconMap ?? {}, specs);
     const ops = new LayeredCanvasOperation([
       new ColorCanvasOperation(this.theme.gallerySummaryBackgroundColor, this.theme.gallerySummaryBackgroundOpacity),
@@ -611,7 +625,7 @@ export function GalleryViewer({
   w = 0,
   h = 0,
   galleryItemHeight = h * 0.7,
-  showSummary = true,
+  showSummary = "full",
   zFactor = 3,
 }: {
   items: GalleryItem[];
@@ -625,7 +639,7 @@ export function GalleryViewer({
   galleryItemWidth?: number;
   galleryItemHeight?: number;
   onClose?: () => void;
-  showSummary?: boolean;
+  showSummary?: "full" | "partial" | "none";
   zFactor?: number;
 }) {
   const calcedItemWidth = Math.min(...items.map((item) => item.preferredWidth ?? galleryItemWidth));

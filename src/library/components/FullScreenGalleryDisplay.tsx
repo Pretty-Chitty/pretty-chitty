@@ -74,6 +74,7 @@ export function FullScreenGalleryDisplay() {
           galleryItemWidth={theme.galleryItemWidth}
           galleryItemHeight={theme.galleryItemHeight}
           itemSpacing={theme.galleryItemSpacing}
+          showSummary="full"
           w={width}
           h={height}
         />
