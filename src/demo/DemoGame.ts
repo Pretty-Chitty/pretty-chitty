@@ -164,7 +164,7 @@ export class DemoGame implements Game<Player, Root> {
       // turn.flush();
 
       await turn.pick(
-        Chit.pick(pieces.slice(0, 20), async (c: Card) => {
+        Chit.pick(pieces.slice(0, 6), async (c: Card) => {
           // const target = players[0];
           // target.add(c);
           // c.raised = true;

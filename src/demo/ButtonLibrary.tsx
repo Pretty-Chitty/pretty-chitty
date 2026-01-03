@@ -11,5 +11,6 @@ export class PassButton extends GameButton {
 }
 
 export class HandButton extends ToggleGalleryButton {
+  override toggleSmallSize = 160;
   public label = "Hand";
 }
