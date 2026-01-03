@@ -2,7 +2,6 @@ import { Box3, Group, Vector3 } from "three";
 import { Easing, Tween } from "@tweenjs/tween.js";
 import { BuiltItem, GalleryItem } from "./types";
 import { SceneWrapper } from "../../rendering/outline";
-import { TextureReferenaceCounter } from "../../rendering/TextureReferenceCounter";
 import { SCALE_FACTOR, DEFAULT_TWEEN_DURATION } from "./constants";
 
 export class ItemManager {
@@ -27,8 +26,12 @@ export class ItemManager {
   }
 
   setDimensions(itemWidth: number, itemHeight: number) {
-    this.itemWidth = itemWidth;
-    this.itemHeight = itemHeight;
+    if (this.itemHeight !== itemHeight || this.itemWidth !== itemWidth) {
+      this.itemWidth = itemWidth;
+      this.itemHeight = itemHeight;
+      this.items.forEach((item) => this.scaleItem(item, item.item.maximumWidth, item.item.maximumHeight));
+      this.leavingItems.forEach((item) => this.scaleItem(item, item.item.maximumWidth, item.item.maximumHeight));
+    }
   }
 
   scaleItem(item: BuiltItem, maximumWidth?: number, maximumHeight?: number) {
@@ -63,7 +66,6 @@ export class ItemManager {
     index: number,
     onUpdate: (builtItem: BuiltItem) => void,
     onPosition: (builtItem: BuiltItem) => void,
-    onUpdateHelpText: (builtItem: BuiltItem) => void,
   ): BuiltItem {
     const builtItem: BuiltItem = {
       item,
@@ -88,7 +90,6 @@ export class ItemManager {
     this.sceneWrapper.scene.add(builtItem.group);
 
     onPosition(builtItem);
-    onUpdateHelpText(builtItem);
     this.animateItemEntry(builtItem, onPosition);
 
     return builtItem;

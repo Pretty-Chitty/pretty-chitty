@@ -211,7 +211,7 @@ export class Card extends Chit {
       someicon: walk,
       tunnel: tunnel,
     };
-    spec.shortSummary = "some card";
+    spec.shortSummary = "dec ".repeat(Math.floor((this.parentOutletIndex ?? 0) / 2 + 1));
     spec.summaryRenderingOptions = { align: "left" };
 
     // spec.galleryMaximumHeight = 2000;
@@ -253,7 +253,7 @@ export class Card extends Chit {
     spec.galleryMaximumWidth = 300;
 
     spec.galleryPreferredWidth = 300;
-    spec.galleryPreferredHeight = 800;
+    spec.galleryPreferredHeight = 400;
 
     // make sure it reports it out?
     spec.setOutletPositionFromCanvas(ts);

@@ -107,11 +107,7 @@ export class SummaryRenderer {
     stack1.render();
 
     // Second pass: render with actual measured height for final material
-    const stack2 = new CanvasStack(
-      itemWidth * SCALE_FACTOR * window.devicePixelRatio,
-      markdown.height + this.theme.spacing * window.devicePixelRatio,
-      ops,
-    );
+    const stack2 = new CanvasStack(itemWidth * SCALE_FACTOR * window.devicePixelRatio, markdown.height + pad * 2, ops);
     stack2.render();
 
     const material = stack2.material;

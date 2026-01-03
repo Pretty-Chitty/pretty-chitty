@@ -38,7 +38,7 @@ const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
 theme.dialogForegroundColor = "#000000ee";
 theme.chitHighlightColor = "#ffffff";
-theme.gallerySummaryBackgroundColor = "#000000";
+theme.gallerySummaryBackgroundColor = "#ff0000";
 theme.dialogForegroundColor = "#ffffff";
 theme.chitOutlineStrength = 0.5;
 
@@ -110,10 +110,10 @@ export class DemoGame implements Game<Player, Root> {
         c.token2 = new Card2();
         // c.add(new Card2(), "testoutlet");
         c.add(new Card3(), "testoutlet2");
-        setup.flush();
-        setup.log(
-          i % 2 === 0 ? `Created a card, ${c.id} :stuff: that is :thingy:` : `Created a card, ${c.id} :thingy2:`,
-        );
+        // setup.flush();
+        // setup.log(
+        //   i % 2 === 0 ? `Created a card, ${c.id} :stuff: that is :thingy:` : `Created a card, ${c.id} :thingy2:`,
+        // );
         players[i % players.length].counter.value += (c.parentOutletIndex ?? 0) % 2 === 0 ? 1 : i % players.length;
         // c.add(new Card(), "testoutlet3");
       }),

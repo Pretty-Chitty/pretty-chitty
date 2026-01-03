@@ -31,7 +31,11 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
   ) {
     this.cameraManager = new CameraManager(sceneWrapper.scene, offsetAngle, fov);
     this.layoutManager = new LayoutManager();
-    this.itemManager = new ItemManager(sceneWrapper, this.layoutManager.getItemWidth(), this.layoutManager.getItemHeight());
+    this.itemManager = new ItemManager(
+      sceneWrapper,
+      this.layoutManager.getItemWidth(),
+      this.layoutManager.getItemHeight(),
+    );
     this.summaryRenderer = new SummaryRenderer(theme);
     this.animationController = new AnimationController();
   }
@@ -64,21 +68,35 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
     this.changed = true;
   }
 
+  calcedItemHeight() {
+    return Math.min(
+      this.layoutManager.getH() - this.maxSummaryHeight - this.layoutManager.getItemSpacing() * 2,
+      this.layoutManager.getItemHeight(),
+    );
+  }
+
   setSize(config: GallerySizeConfig) {
     this.zFactor = config.zFactor;
     // Step 1: Calculate basic layout without summary
     this.layoutManager.setSize(config.w, config.h, config.itemWidth, config.itemHeight, config.itemSpacing);
-    this.itemManager.setDimensions(this.layoutManager.getItemWidth(), this.layoutManager.getItemHeight());
+    this.itemManager.setDimensions(this.layoutManager.getItemWidth(), this.calcedItemHeight());
 
     this.cameraManager.setAspect(config.w, config.h);
     this.cameraManager.updateCameraZDistance(config.w);
     this.cameraManager.setupFogAndClipping(config.w);
+    this.cameraManager.updateCameraPosition(this.maxSummaryHeight);
 
     this.changed = true;
 
     const itemsToSet = config.items ?? this.itemManager.getItems().map((item) => item.item);
     this.setItems(itemsToSet);
     this.pan(0, true);
+  }
+
+  setMaxSummaryHeight(height: number) {
+    this.maxSummaryHeight = height;
+    this.itemManager.setDimensions(this.layoutManager.getItemWidth(), this.calcedItemHeight());
+    this.cameraManager.updateCameraPosition(this.maxSummaryHeight);
   }
 
   getItemAtPosition(x: number, y: number): GalleryItem | null {
@@ -94,7 +112,8 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
 
     if (
       index - item.index >
-      1 - this.layoutManager.getItemSpacing() / (this.layoutManager.getItemWidth() + this.layoutManager.getItemSpacing())
+      1 -
+        this.layoutManager.getItemSpacing() / (this.layoutManager.getItemWidth() + this.layoutManager.getItemSpacing())
     ) {
       return null;
     }
@@ -206,7 +225,6 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
           i + itemIndexOffset,
           (builtItem) => this.handleItemUpdate(builtItem),
           (builtItem) => this.positionItem(builtItem),
-          (builtItem) => this.updateHelpText(builtItem),
         );
       } else {
         this.itemManager.updateExistingItem(item.id, (builtItem) => this.positionItem(builtItem));
@@ -267,7 +285,7 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
     // Check if item width changed (requires summary regeneration)
     const currentItemWidth = this.layoutManager.getItemWidth();
     // Only check for changes if lastItemWidth was already set (not on first call)
-    const itemWidthChanged = this.lastItemWidth > 0 && Math.abs(currentItemWidth - this.lastItemWidth) > 0.001;
+    const itemWidthChanged = Math.abs(currentItemWidth - this.lastItemWidth) > 0.001;
     if (itemWidthChanged && items.length > 0) {
       // Regenerate all summaries with new width
       items.forEach((item) => this.updateHelpText(item));
@@ -277,21 +295,12 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
 
     const tallestSummaryHeight = items.length > 0 ? Math.max(...items.map((item) => item.summaryHeight)) : 0;
     const summaryHeightChanged = Math.abs(tallestSummaryHeight - this.maxSummaryHeight) > 0.001;
-    this.maxSummaryHeight = tallestSummaryHeight;
 
     if (summaryHeightChanged) {
-      // maxSummaryHeight is stored in scaled units, convert to unscaled for layoutManager
-      const { heightChanged, widthChanged } = this.layoutManager.recalculateItemDimensions(this.maxSummaryHeight * SCALE_FACTOR);
-      if (heightChanged || widthChanged) {
-        this.itemManager.setDimensions(this.layoutManager.getItemWidth(), this.layoutManager.getItemHeight());
-        items.forEach((item) => {
-          this.itemManager.scaleItem(item, item.item.maximumWidth, item.item.maximumHeight);
-          this.positionItem(item);
-        });
-      }
+      this.setMaxSummaryHeight(tallestSummaryHeight);
+      this.updateEffectiveItemHeightAndCamera();
     }
 
-    this.cameraManager.updateCameraPosition(this.maxSummaryHeight);
     this.changed = true;
   }
 }
