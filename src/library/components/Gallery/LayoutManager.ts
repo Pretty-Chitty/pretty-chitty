@@ -1,3 +1,5 @@
+import { SummaryMode } from "./types";
+
 export class LayoutManager {
   // Dimensions (all scaled)
   private w = 100;
@@ -18,6 +20,10 @@ export class LayoutManager {
   private itemPreferredWidth?: number;
   private itemPreferredHeight?: number;
 
+  // summary info
+  private summaryMode: SummaryMode = "full";
+  private summaryMaxHeight = 0;
+
   public dirty = false;
 
   setDimensions(w: number, h: number) {
@@ -29,12 +35,37 @@ export class LayoutManager {
     }
   }
 
+  setSummaryMaxHeight(newHeight: number) {
+    if (this.summaryMaxHeight !== newHeight) {
+      this.summaryMaxHeight = newHeight;
+      this.dirty = true;
+      this.recalculateEffectiveItemDimensions();
+      return true;
+    }
+    return false;
+  }
+
+  getSummaryMaxHeight() {
+    return this.summaryMaxHeight;
+  }
+
+  getSummaryMode() {
+    return this.summaryMode;
+  }
+
+  setSummaryMode(mode: SummaryMode) {
+    if (this.summaryMode !== mode) {
+      this.summaryMode = mode;
+      this.dirty = true;
+    }
+  }
+
   getDimensions() {
     return { w: this.w, h: this.h };
   }
 
   getItemDimensions() {
-    return { w: this.itemWidth, h: this.itemHeight };
+    return { w: this.itemWidth, h: this.itemHeight, summaryMaxHeight: this.summaryMaxHeight };
   }
 
   getStageDimensions() {
@@ -101,6 +132,10 @@ export class LayoutManager {
     if (itemWidth > maxItemWidth) {
       itemWidth = maxItemWidth;
       itemHeight = maxItemWidth / aspectRatio;
+    }
+
+    if (this.summaryMaxHeight > 0) {
+      itemHeight = Math.min(this.h - this.summaryMaxHeight - this.itemSpacing * 2, itemHeight);
     }
 
     const itemsPerPage = Math.max(
