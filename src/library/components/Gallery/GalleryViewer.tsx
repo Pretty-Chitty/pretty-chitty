@@ -55,22 +55,18 @@ export function GalleryViewer({
   showSummary = "full",
   zFactor = DEFAULT_Z_FACTOR,
 }: GalleryViewerProps) {
-  const calcedItemWidth = items.length > 0
-    ? Math.min(...items.map((item) => item.preferredWidth ?? galleryItemWidth))
-    : galleryItemWidth;
-  const calcedItemHeight = items.length > 0
-    ? Math.min(...items.map((item) => item.preferredHeight ?? galleryItemHeight))
-    : galleryItemHeight;
+  const calcedItemWidth =
+    items.length > 0 ? Math.min(...items.map((item) => item.preferredWidth ?? galleryItemWidth)) : galleryItemWidth;
+  const calcedItemHeight =
+    items.length > 0 ? Math.min(...items.map((item) => item.preferredHeight ?? galleryItemHeight)) : galleryItemHeight;
 
   const [id] = useState(`GalleryViewer${ID_COUNTER++}`);
   const refContainer = useRef<HTMLCanvasElement>(null);
   const rendererWrapper = useWebGlRenderer();
   const theme = useGameTheme();
-  const [galleryController] = useState(
-    () => new GalleryController(new SceneWrapper(new Scene()), theme, angle, fov),
-  );
+  const [galleryController] = useState(() => new GalleryController(new SceneWrapper(new Scene()), theme, angle, fov));
 
-  galleryController.tweenDuration = tweenDuration;
+  galleryController.setTweenDuration(tweenDuration);
   galleryController.showSummary = showSummary;
 
   // Single effect to handle both size and items changes
@@ -88,9 +84,13 @@ export function GalleryViewer({
       itemHeight: calcedItemHeight,
       itemSpacing,
       zFactor,
-      items,
     });
-  }, [items, calcedItemWidth, itemSpacing, calcedItemHeight, w, h, galleryController, zFactor]);
+  }, [calcedItemWidth, itemSpacing, calcedItemHeight, w, h, galleryController, zFactor]);
+
+  useEffect(() => {
+    galleryController.setItems(items);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [galleryController, items.map((i) => i.id).join("--")]);
 
   useEffect(() => {
     const canvas = refContainer.current;
@@ -136,7 +136,7 @@ export function GalleryViewer({
 
     hammer.on("tap", (ev) => {
       const pos = fixPosition(ev);
-
+      // TODO: fix this
       if (galleryController.isAnimating()) {
         galleryController.pan(0, true);
       } else {

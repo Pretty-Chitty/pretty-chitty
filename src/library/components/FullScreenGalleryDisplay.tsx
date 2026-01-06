@@ -8,7 +8,7 @@ import { useAnimationSpeedMultiplier } from "../hooks/useTimeController";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { GameModalBackdrop } from "./GameModalBackdrop";
 import useLocalStorageState from "use-local-storage-state";
-import { CloseFullscreen, KeyboardDoubleArrowDown, OpenInFull } from "@mui/icons-material";
+import { BrandingWatermark, CloseFullscreen, KeyboardDoubleArrowDown, OpenInFull } from "@mui/icons-material";
 
 const DELAY = 300;
 
@@ -62,13 +62,14 @@ export function FullScreenGalleryDisplay() {
               setGalleryFullScreen(false);
             }}
           >
-            <KeyboardDoubleArrowDown sx={{ color: theme.inlineGalleryButtonForegroundColor }} />
+            <BrandingWatermark sx={{ color: theme.inlineGalleryButtonForegroundColor }} />
           </IconButton>
         )}
         <GalleryViewer
           onClose={() => {
             setSource(undefined);
           }}
+          fov={10}
           items={items ?? []}
           tweenDuration={DELAY * animationSpeedMultiplier * 0.8}
           galleryItemWidth={theme.galleryItemWidth}

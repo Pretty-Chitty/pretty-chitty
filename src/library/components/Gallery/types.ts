@@ -44,23 +44,6 @@ export interface GalleryItemSource {
   inlineGallerySize?: number;
 }
 
-export type BuiltItem = {
-  index: number;
-  enteredAmount: number;
-  targetIndex: number;
-  item: GalleryItem;
-  group: Object3D;
-  mesh: Object3D;
-  summaryMesh?: Object3D;
-  center: Vector3;
-  height: number;
-  depth: number;
-  summaryHeight: number;
-  tween?: Tween<{ x: number }>;
-  enteredTween?: Tween<{ x: number }>;
-  unsubscribe: UpdateCallback;
-};
-
 export interface GallerySizeConfig {
   w: number;
   h: number;
@@ -68,7 +51,6 @@ export interface GallerySizeConfig {
   itemHeight: number;
   itemSpacing: number;
   zFactor: number;
-  items?: GalleryItem[];
 }
 
 export type SummaryMode = "full" | "partial" | "none";

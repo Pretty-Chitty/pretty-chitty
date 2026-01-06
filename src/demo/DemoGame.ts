@@ -44,6 +44,7 @@ theme.chitOutlineStrength = 0.5;
 
 theme.galleryItemWidth = 50;
 theme.galleryItemHeight = 50;
+theme.galleryItemSpacing = 10;
 
 export class DemoGame implements Game<Player, Root> {
   name = "Demo Game";
@@ -168,7 +169,7 @@ export class DemoGame implements Game<Player, Root> {
           // const target = players[0];
           // target.add(c);
           // c.raised = true;
-          c.something = 9999;
+          // c.something = 9999;
           players[0].add(c);
 
           if (c === pieces[1]) {

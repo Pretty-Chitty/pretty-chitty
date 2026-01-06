@@ -1,18 +1,17 @@
 import { DirectionalLight, Fog, PerspectiveCamera, Vector3, AmbientLight, Scene } from "three";
-import { SCALE_FACTOR } from "./constants";
 
 export class CameraManager {
   public camera: PerspectiveCamera;
   private light: DirectionalLight;
-  private baseCameraZ = 500 / SCALE_FACTOR;
+  private baseCameraZ = 500;
 
   constructor(
     private scene: Scene,
     public offsetAngle: number,
     fov: number,
   ) {
-    this.camera = new PerspectiveCamera(fov, 1, 0.1, 10000 / SCALE_FACTOR);
-    this.camera.position.z = 500 / SCALE_FACTOR;
+    this.camera = new PerspectiveCamera(fov, 1, 0.1, 10000);
+    this.camera.position.z = 500;
 
     this.light = new DirectionalLight(0xffffff, 1);
     this.light.position.copy(this.camera.position);
@@ -37,14 +36,14 @@ export class CameraManager {
     const aspect = this.camera.aspect;
     const vFov = (this.camera.fov * Math.PI) / 180;
     const hFov = 2 * Math.atan(aspect * Math.tan(vFov / 2));
-    this.baseCameraZ = w / SCALE_FACTOR / (2 * Math.tan(hFov / 2));
+    this.baseCameraZ = w / (2 * Math.tan(hFov / 2));
     this.camera.position.x = 0;
   }
 
   setupFogAndClipping(w: number) {
-    this.scene.fog = new Fog(0x000000, this.baseCameraZ, this.baseCameraZ + (w / SCALE_FACTOR) * 2);
+    this.scene.fog = new Fog(0x000000, this.baseCameraZ, this.baseCameraZ + w * 2);
     this.camera.near = this.baseCameraZ * 0.5;
-    this.camera.far = this.baseCameraZ + (w / SCALE_FACTOR) * 3;
+    this.camera.far = this.baseCameraZ + w * 9;
     this.camera.updateProjectionMatrix();
   }
 

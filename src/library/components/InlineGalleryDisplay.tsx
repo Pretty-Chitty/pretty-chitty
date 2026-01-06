@@ -6,7 +6,7 @@ import { GalleryItem, GalleryViewer } from "./GalleryViewer";
 import useSize from "@react-hook/size";
 import { useAnimationSpeedMultiplier } from "../hooks/useTimeController";
 import { useGameTheme } from "../hooks/useGameTheme";
-import { KeyboardDoubleArrowUp } from "@mui/icons-material";
+import { ScreenshotMonitor } from "@mui/icons-material";
 import useLocalStorageState from "use-local-storage-state";
 
 const DELAY = 300;
@@ -18,7 +18,7 @@ export function InlineGalleryDisplay() {
   const [width, height] = useSize(ref);
   const modalState = useModalState();
   const [items, setItems] = useState<GalleryItem[] | undefined>(undefined);
-  const [source, setSource] = useEventChannelState(modalState.gallerySource);
+  const [source] = useEventChannelState(modalState.gallerySource);
   const inlineGallerySize = source?.inlineGallerySize;
   const [galleryFullScreen, setGalleryFullScreen] = useLocalStorageState<boolean>("galleryFullScreen", {
     defaultValue: false,
@@ -51,12 +51,12 @@ export function InlineGalleryDisplay() {
     } else {
       const to = setTimeout(() => {
         setDisplaySize(0);
-      }, 250);
+      }, 125);
       return () => clearTimeout(to);
     }
   }, [displaySize, galleryFullScreen, inlineGallerySize, items, setDisplaySize]);
 
-  const hasItems = items && items?.length > 0;
+  // const hasItems = items && items?.length > 0;
 
   return (
     <Box
@@ -64,16 +64,17 @@ export function InlineGalleryDisplay() {
         position: "relative",
         background: theme.inlineGalleryBackgroundColor,
         height: `${displaySize}px`,
+        overflow: "hidden",
       }}
       ref={ref}
     >
-      {hasItems && inlineGallerySize && !galleryFullScreen && (
+      {!galleryFullScreen && (
         <>
           <IconButton
             sx={{
               backgroundColor: theme.inlineGalleryButtonBackgroundColor,
               position: "absolute",
-              top: 4,
+              bottom: 4,
               right: 4,
               zIndex: 2,
             }}
@@ -82,14 +83,15 @@ export function InlineGalleryDisplay() {
               setGalleryFullScreen(true);
             }}
           >
-            <KeyboardDoubleArrowUp sx={{ color: theme.inlineGalleryButtonForegroundColor }} />
+            <ScreenshotMonitor sx={{ color: theme.inlineGalleryButtonForegroundColor }} />
           </IconButton>
 
           <GalleryViewer
             zFactor={0}
             onClose={() => {
-              setSource(undefined);
+              // setSource(undefined);
             }}
+            fov={5}
             items={items ?? []}
             tweenDuration={DELAY * animationSpeedMultiplier * 0.8}
             galleryItemWidth={theme.galleryItemWidth}

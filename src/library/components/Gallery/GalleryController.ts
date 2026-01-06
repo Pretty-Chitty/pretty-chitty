@@ -1,25 +1,24 @@
 import { Box3, Object3D, Raycaster, Vector3 } from "three";
 import { GameTheme } from "../../game/GameTheme";
 import { SceneWrapper } from "../../rendering/outline";
-import { TextureReferenaceCounter, TextureReferenceCounterRootGroup } from "../../rendering/TextureReferenceCounter";
-import { BuiltItem, GalleryItem, GallerySizeConfig, SummaryMode } from "./types";
+import { TextureReferenceCounterRootGroup } from "../../rendering/TextureReferenceCounter";
+import { GalleryItem, GallerySizeConfig, SummaryMode } from "./types";
 import { CameraManager } from "./CameraManager";
-import { ItemManager } from "./ItemManager";
 import { LayoutManager } from "./LayoutManager";
-import { SummaryRenderer } from "./SummaryRenderer";
 import { AnimationController } from "./AnimationController";
-import { SCALE_FACTOR } from "./constants";
+import { BuiltItem } from "./BuiltItem";
 
 export class GalleryController implements TextureReferenceCounterRootGroup {
   private cameraManager: CameraManager;
-  private itemManager: ItemManager;
+
+  private items: BuiltItem[] = [];
+  private leavingItems: BuiltItem[] = [];
+
   private layoutManager: LayoutManager;
-  private summaryRenderer: SummaryRenderer;
   private animationController: AnimationController;
 
   private effectiveItemHeight = 0;
   private maxSummaryHeight = 0;
-  private changed = false;
   private zFactor = 3;
   private lastItemWidth = 0;
 
@@ -31,276 +30,224 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
   ) {
     this.cameraManager = new CameraManager(sceneWrapper.scene, offsetAngle, fov);
     this.layoutManager = new LayoutManager();
-    this.itemManager = new ItemManager(
-      sceneWrapper,
-      this.layoutManager.getItemWidth(),
-      this.layoutManager.getItemHeight(),
-    );
-    this.summaryRenderer = new SummaryRenderer(theme);
     this.animationController = new AnimationController();
+  }
+
+  dirty = false;
+  markHasChange(): void {
+    this.dirty = true;
   }
 
   get camera() {
     return this.cameraManager.camera;
   }
 
-  get tweenDuration() {
-    return this.itemManager.tweenDuration;
-  }
-
-  set tweenDuration(value: number) {
-    this.itemManager.tweenDuration = value;
-  }
-
   get showSummary(): SummaryMode {
-    return this.summaryRenderer.showSummary;
+    // return this.summaryRenderer.showSummary;
+    return "full";
   }
 
   set showSummary(value: SummaryMode) {
-    this.summaryRenderer.showSummary = value;
+    // this.summaryRenderer.showSummary = value;
+  }
+
+  setTweenDuration(duration: number) {
+    this.animationController.setTweenDuration(duration);
   }
 
   getRootGroup(): Object3D {
     return this.sceneWrapper.scene;
   }
 
-  markHasChange(): void {
-    this.changed = true;
-  }
+  /**
+   * Recalculates all dependent layout properties in the correct order:
+   * 1. Rebuild summaries if width changed or summaries don't exist
+   * 2. Recalculate maxSummaryHeight from rebuilt summaries
+   * 3. Recalculate effective item height (bounded by available space after summaries)
+   * 4. Rescale all items if dimensions changed
+   * 5. Update camera and effective item height
+   */
+  // private recalculateLayout(widthChanged: boolean) {
+  //   const items = this.itemManager.getItems();
+  //   if (items.length === 0) {
+  //     return;
+  //   }
 
-  calcedItemHeight() {
-    return Math.min(
-      this.layoutManager.getH() - this.maxSummaryHeight - this.layoutManager.getItemSpacing() * 2,
-      this.layoutManager.getItemHeight(),
-    );
-  }
+  //   const currentItemWidth = this.layoutManager.getItemWidth();
+  //   const currentItemHeight = this.layoutManager.getItemHeight();
+
+  //   // Step 1: Rebuild summaries if width changed or if any item lacks a summary
+  //   const needsSummaryRebuild = widthChanged || items.some((item) => item.summaryHeight === 0 && item.item.summary);
+  //   if (needsSummaryRebuild) {
+  //     items.forEach((item) => {
+  //       this.summaryRenderer.updateHelpText(
+  //         item,
+  //         currentItemWidth,
+  //         currentItemHeight,
+  //         this.layoutManager.getH(),
+  //         this.effectiveItemHeight,
+  //       );
+  //     });
+  //   }
+
+  //   // Step 2: Calculate max summary height
+  //   const tallestSummaryHeight = items.length > 0 ? Math.max(...items.map((item) => item.summaryHeight)) : 0;
+
+  //   // Step 3: Calculate effective item height (bounded by available space)
+  //   const availableHeight = this.layoutManager.getH() - tallestSummaryHeight - this.layoutManager.getItemSpacing() * 2;
+  //   const newEffectiveItemHeight = Math.min(availableHeight, currentItemHeight);
+
+  //   // Step 4: Rescale all items to fit new dimensions
+  //   // Use item's maximumWidth if specified, otherwise use the layout's width
+  //   // Values are already in scaled/scene units from LayoutManager
+  //   items.forEach((item) => {
+  //     const maxWidth = item.item.maximumWidth !== undefined ? item.item.maximumWidth : currentItemWidth;
+
+  //     this.itemManager.scaleItem(item, maxWidth, newEffectiveItemHeight);
+  //   });
+
+  //   // Step 5: Update effective item height from actual scaled items
+  //   const tallestMeshHeight = items.length > 0 ? Math.max(...items.map((item) => item.height)) : 0;
+  //   this.effectiveItemHeight = Math.min(tallestMeshHeight, currentItemHeight);
+
+  //   // Step 6: Reposition summaries with final effective height
+  //   items.forEach((item) => this.summaryRenderer.repositionSummary(item, this.effectiveItemHeight));
+
+  //   // Step 7: Update camera position and max summary height
+  //   if (Math.abs(tallestSummaryHeight - this.maxSummaryHeight) > 0.001) {
+  //     this.maxSummaryHeight = tallestSummaryHeight;
+  //     this.cameraManager.updateCameraPosition(this.maxSummaryHeight);
+  //   }
+
+  //   this.changed = true;
+  // }
 
   setSize(config: GallerySizeConfig) {
     this.zFactor = config.zFactor;
-    // Step 1: Calculate basic layout without summary
-    this.layoutManager.setSize(config.w, config.h, config.itemWidth, config.itemHeight, config.itemSpacing);
-    this.itemManager.setDimensions(this.layoutManager.getItemWidth(), this.calcedItemHeight());
+    this.items.forEach((item) => item.setZFactor(this.zFactor));
+
+    this.layoutManager.setDimensions(config.w, config.h);
+    this.layoutManager.setBaseItemDimensions(config.itemWidth, config.itemHeight, config.itemSpacing);
 
     this.cameraManager.setAspect(config.w, config.h);
     this.cameraManager.updateCameraZDistance(config.w);
     this.cameraManager.setupFogAndClipping(config.w);
-    this.cameraManager.updateCameraPosition(this.maxSummaryHeight);
+    this.cameraManager.updateCameraPosition(0);
 
-    this.changed = true;
-
-    const itemsToSet = config.items ?? this.itemManager.getItems().map((item) => item.item);
-    this.setItems(itemsToSet);
     this.pan(0, true);
   }
 
-  setMaxSummaryHeight(height: number) {
-    this.maxSummaryHeight = height;
-    this.itemManager.setDimensions(this.layoutManager.getItemWidth(), this.calcedItemHeight());
-    this.cameraManager.updateCameraPosition(this.maxSummaryHeight);
+  isAnimating() {
+    return this.animationController.isAnimating();
   }
 
   getItemAtPosition(x: number, y: number): GalleryItem | null {
-    const paddingX = (this.layoutManager.getW() - this.layoutManager.getFrontStageWidth()) / 2;
-    const index =
-      (-this.animationController.getOffsetX() + x / SCALE_FACTOR - paddingX) /
-      (this.layoutManager.getItemWidth() + this.layoutManager.getItemSpacing());
+    const { w } = this.layoutManager.getDimensions();
+    const { w: itemWidth } = this.layoutManager.getItemDimensions();
+    const { frontStageWidth, itemSpacing } = this.layoutManager.getStageDimensions();
+    const paddingX = (w - frontStageWidth) / 2;
+    const index = (-this.animationController.getOffsetX() + x - paddingX) / (itemWidth + itemSpacing);
 
-    const item = this.itemManager.getItems().find((item) => index > item.index && Math.abs(index - item.index) < 1);
+    const item = this.items.find((item) => index > item.getIndex() && Math.abs(index - item.getIndex()) < 1);
     if (!item) {
       return null;
     }
 
-    if (
-      index - item.index >
-      1 -
-        this.layoutManager.getItemSpacing() / (this.layoutManager.getItemWidth() + this.layoutManager.getItemSpacing())
-    ) {
+    if (index - item.getIndex() > 1 - itemSpacing / (itemWidth + itemSpacing)) {
       return null;
     }
 
-    if (!this.raycastHitsItem(x, y, item)) {
+    if (!item.raycastHitsItem(this.cameraManager.camera, x, y, item)) {
       return null;
     }
 
-    return item.item;
-  }
-
-  private raycastHitsItem(x: number, y: number, item: BuiltItem): boolean {
-    const ndc = new Vector3(
-      (x / SCALE_FACTOR / this.layoutManager.getW()) * 2 - 1,
-      -(y / SCALE_FACTOR / this.layoutManager.getH()) * 2 + 1,
-      0.5,
-    );
-    ndc.unproject(this.camera);
-    const raycaster = new Raycaster(this.camera.position, ndc.sub(this.camera.position).normalize());
-
-    const combinedBox = new Box3().setFromObject(item.mesh);
-    if (item.summaryMesh) {
-      const summaryBox = new Box3().setFromObject(item.summaryMesh);
-      combinedBox.union(summaryBox);
-    }
-
-    const hit = raycaster.ray.intersectBox(combinedBox, new Vector3());
-    return !!hit;
+    return item.getGalleryItem();
   }
 
   render(): boolean {
-    let changed = this.changed;
+    let changed = this.dirty;
+
+    const layoutManagerDirty = this.layoutManager.dirty;
+    this.layoutManager.dirty = false;
+    if (layoutManagerDirty) {
+      this.items.forEach((item) => item.layoutDirty());
+    }
 
     changed = this.animationController.update() || changed;
 
-    this.itemManager.getItems().forEach((item) => {
-      if (item.tween || item.enteredTween) {
-        item.tween?.update();
-        item.enteredTween?.update();
-        changed = true;
-      }
+    this.items.forEach((item) => {
+      changed = item.update() || changed;
     });
 
-    this.itemManager.getLeavingItems().forEach((item) => {
-      if (item.enteredTween) {
-        item.enteredTween.update();
-        changed = true;
-      }
+    this.leavingItems.forEach((item) => {
+      changed = true;
+      item.update();
     });
 
-    this.changed = false;
+    // this.itemManager.getLeavingItems().forEach((item) => {
+    //   if (item.enteredTween) {
+    //     item.enteredTween.update();
+    //     changed = true;
+    //   }
+    // });
+
+    this.dirty = false;
     return changed;
   }
 
-  isAnimating(): boolean {
-    return this.animationController.isAnimating();
-  }
-
-  stop() {
-    this.animationController.stop();
-  }
-
   pan(deltaX: number, animate = false) {
-    this.changed = true;
-    this.animationController.pan(
-      deltaX,
-      animate,
-      this.itemManager.getItems(),
-      this.layoutManager.getItemsPerPage(),
-      this.layoutManager.getItemWidth(),
-      this.layoutManager.getItemSpacing(),
-      this.layoutManager.getW(),
-      (item) => this.positionItem(item),
-    );
-  }
-
-  private positionItem(item: BuiltItem) {
-    this.animationController.positionItem(
-      item,
-      this.layoutManager.getFrontStageWidth(),
-      this.layoutManager.getItemWidth(),
-      this.layoutManager.getItemSpacing(),
-      this.layoutManager.getItemsPerPage(),
-      this.layoutManager.getH(),
-      this.zFactor,
-      this.cameraManager.offsetAngle,
-    );
+    const { w } = this.layoutManager.getDimensions();
+    const { itemsPerPage, itemSpacing } = this.layoutManager.getStageDimensions();
+    const { w: itemWidth } = this.layoutManager.getItemDimensions();
+    this.animationController.pan(deltaX, animate, this.items, itemsPerPage, itemWidth, itemSpacing, w);
   }
 
   setItems(items: GalleryItem[]) {
-    if (!items || items.length === 0) {
-      this.itemManager.clear();
-      this.updateEffectiveItemHeightAndCamera();
-      return;
+    const prevItemCount = this.items.length;
+    if (items.length > 0) {
+      this.layoutManager.setItemDimensions(items);
+      this.layoutManager.setItemCount(items.length);
     }
 
-    this.changed = true;
+    const itemLookup = this.items.reduce(
+      (acc, item) => {
+        acc[item.id] = item;
+        return acc;
+      },
+      {} as { [id: string]: BuiltItem },
+    );
+    const seenIds = new Set<string>(this.items.map((item) => item.id));
 
-    const itemIndexOffset = this.layoutManager.calculateItemIndexOffset(items.length);
-    const seenIds = new Set<string>(this.itemManager.getItems().map((item) => item.item.id));
-
+    const newItems: BuiltItem[] = [];
     items.forEach((item, i) => {
       seenIds.delete(item.id);
 
-      const existingItem = this.itemManager.getItem(item.id);
+      const existingItem = itemLookup[item.id];
       if (!existingItem) {
-        this.itemManager.addNewItem(
-          item,
-          i + itemIndexOffset,
-          (builtItem) => this.handleItemUpdate(builtItem),
-          (builtItem) => this.positionItem(builtItem),
-        );
-      } else {
-        this.itemManager.updateExistingItem(item.id, (builtItem) => this.positionItem(builtItem));
+        const newItem = new BuiltItem(this.layoutManager, this.animationController, item, this.sceneWrapper, i);
+        newItem.setZFactor(this.zFactor);
+        this.items.push(newItem);
+        newItems.push(newItem);
       }
     });
 
-    this.itemManager.removeItems(seenIds, (item) => this.positionItem(item));
-    this.itemManager.updateItemIndices(items, itemIndexOffset, (item) => this.positionItem(item));
+    const itemsToDelete = this.items.filter((item) => seenIds.has(item.id));
+    itemsToDelete.forEach((item) => {
+      item.remove();
+      this.leavingItems.push(item);
+    });
 
-    const currentItemCount = this.itemManager.getItems().length;
-    if (currentItemCount !== items.length && !this.animationController.isAnimating()) {
+    this.items = this.items.filter((item) => !seenIds.has(item.id));
+    this.items.forEach((item, i) => {
+      item.setIndex(i);
+    });
+
+    // TODO: this is wrong-ish
+    this.cameraManager.updateCameraPosition(0);
+
+    const currentItemCount = this.items.length;
+    if (currentItemCount !== prevItemCount && !this.animationController.isAnimating()) {
       this.pan(0, true);
     }
-
-    this.updateEffectiveItemHeightAndCamera();
-    this.sceneWrapper.markDirty();
-    TextureReferenaceCounter.update();
-  }
-
-  private handleItemUpdate(builtItem: BuiltItem) {
-    builtItem.group.removeFromParent();
-    builtItem.mesh.removeFromParent();
-    this.changed = true;
-
-    builtItem.group = new (builtItem.group.constructor as any)();
-    this.sceneWrapper.scene.add(builtItem.group);
-
-    this.itemManager.scaleItem(builtItem, builtItem.item.maximumWidth, builtItem.item.maximumHeight);
-    this.positionItem(builtItem);
-    this.updateHelpText(builtItem);
-    this.updateEffectiveItemHeightAndCamera();
-
-    TextureReferenaceCounter.update();
-  }
-
-  private updateHelpText(item: BuiltItem) {
-    this.summaryRenderer.updateHelpText(
-      item,
-      this.layoutManager.getItemWidth(),
-      this.layoutManager.getItemHeight(),
-      this.layoutManager.getH(),
-      this.effectiveItemHeight,
-    );
-  }
-
-  private updateEffectiveItemHeightAndCamera() {
-    const items = this.itemManager.getItems();
-    const tallestMeshHeight = items.length > 0 ? Math.max(...items.map((item) => item.height)) : 0;
-    const newEffectiveItemHeight = Math.min(tallestMeshHeight, this.layoutManager.getItemHeight());
-
-    const heightChanged = Math.abs(newEffectiveItemHeight - this.effectiveItemHeight) > 0.001;
-    this.effectiveItemHeight = newEffectiveItemHeight;
-
-    if (heightChanged) {
-      items.forEach((item) => this.summaryRenderer.repositionSummary(item, this.effectiveItemHeight));
-    }
-
-    // Check if item width changed (requires summary regeneration)
-    const currentItemWidth = this.layoutManager.getItemWidth();
-    // Only check for changes if lastItemWidth was already set (not on first call)
-    const itemWidthChanged = Math.abs(currentItemWidth - this.lastItemWidth) > 0.001;
-    if (itemWidthChanged && items.length > 0) {
-      // Regenerate all summaries with new width
-      items.forEach((item) => this.updateHelpText(item));
-    }
-    // Always update lastItemWidth to track for next time
-    this.lastItemWidth = currentItemWidth;
-
-    const tallestSummaryHeight = items.length > 0 ? Math.max(...items.map((item) => item.summaryHeight)) : 0;
-    const summaryHeightChanged = Math.abs(tallestSummaryHeight - this.maxSummaryHeight) > 0.001;
-
-    if (summaryHeightChanged) {
-      this.setMaxSummaryHeight(tallestSummaryHeight);
-      this.updateEffectiveItemHeightAndCamera();
-    }
-
-    this.changed = true;
   }
 }

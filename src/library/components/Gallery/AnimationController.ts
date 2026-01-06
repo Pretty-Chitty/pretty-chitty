@@ -1,10 +1,22 @@
 import { Easing, Tween } from "@tweenjs/tween.js";
-import { BuiltItem } from "./types";
-import { SCALE_FACTOR, MAX_SNAP_DURATION, SNAP_DURATION_MULTIPLIER, ROTATION_DIVISOR } from "./constants";
+import { BuiltItem } from "./BuiltItem";
+import { MAX_SNAP_DURATION, SNAP_DURATION_MULTIPLIER } from "./constants";
 
 export class AnimationController {
+  public dirty = false;
   private tween: Tween<{ x: number }> | undefined;
   private offsetX = 0;
+  private tweenDuration = 250;
+
+  private min = 0;
+  private max = 0;
+
+  // TODO: this should be centering the items
+  // setItemCount(w:number,h:number count: number, itemsPerPage: number, itemWidth: number, itemSpacing: number) {
+  //   this.max = w/2;
+  //   this.min = -(count - Math.min(count, itemsPerPage)) * (itemWidth + itemSpacing) - w/2;
+
+  // }
 
   getOffsetX(): number {
     return this.offsetX;
@@ -12,6 +24,20 @@ export class AnimationController {
 
   isAnimating(): boolean {
     return this.tween !== undefined;
+  }
+
+  get exitTweenDuration() {
+    return this.tweenDuration;
+  }
+  get enterTweenDuration() {
+    return this.tweenDuration;
+  }
+  get changeIndexTweenDuration() {
+    return this.tweenDuration;
+  }
+
+  setTweenDuration(duration: number) {
+    this.tweenDuration = duration;
   }
 
   stop() {
@@ -27,31 +53,26 @@ export class AnimationController {
     itemWidth: number,
     itemSpacing: number,
     w: number,
-    onPositionItem: (item: BuiltItem) => void,
   ) {
     const max = 0;
     const min = -(items.length - Math.min(items.length, itemsPerPage)) * (itemWidth + itemSpacing);
 
     this.stop();
+    this.dirty = true;
 
     if (!animate) {
-      this.applyPanOffset(deltaX / SCALE_FACTOR, max, min, w, items, onPositionItem);
+      this.applyPanOffset(deltaX, max, min, w, items);
     } else {
-      this.animatePanToNearest(deltaX / SCALE_FACTOR, max, min, itemWidth, itemSpacing, items, onPositionItem);
+      this.animatePanToNearest(deltaX, max, min, itemWidth, itemSpacing, items);
     }
   }
 
-  private applyPanOffset(
-    delta: number,
-    max: number,
-    min: number,
-    w: number,
-    items: BuiltItem[],
-    onPositionItem: (item: BuiltItem) => void,
-  ) {
+  private applyPanOffset(delta: number, max: number, min: number, w: number, items: BuiltItem[]) {
     this.offsetX += delta;
     this.offsetX = Math.max(min - w / 2, Math.min(max + w / 2, this.offsetX));
-    items.forEach((item) => onPositionItem(item));
+    items.forEach((item) => {
+      item.baseOffsetX = this.offsetX;
+    });
   }
 
   private animatePanToNearest(
@@ -61,7 +82,6 @@ export class AnimationController {
     itemWidth: number,
     itemSpacing: number,
     items: BuiltItem[],
-    onPositionItem: (item: BuiltItem) => void,
   ) {
     let target = this.offsetX + delta;
     const itemIndex = Math.round(target / (itemWidth + itemSpacing));
@@ -72,8 +92,11 @@ export class AnimationController {
 
     this.tween = new Tween({ x: this.offsetX })
       .onUpdate(({ x }) => {
+        this.dirty = true;
         this.offsetX = x;
-        items.forEach((item) => onPositionItem(item));
+        items.forEach((item) => {
+          item.baseOffsetX = x;
+        });
       })
       .easing(Easing.Quadratic.Out)
       .to({ x: target }, duration)
@@ -83,73 +106,14 @@ export class AnimationController {
       .start();
   }
 
-  positionItem(
-    item: BuiltItem,
-    frontStageWidth: number,
-    itemWidth: number,
-    itemSpacing: number,
-    itemsPerPage: number,
-    h: number,
-    zFactor: number,
-    offsetAngle: number,
-  ) {
-    const initialOffset = -(frontStageWidth / 2 - itemWidth / 2);
-    const targetX = initialOffset + item.index * (itemWidth + itemSpacing) + this.offsetX;
-
-    item.group.position.x = targetX * item.enteredAmount;
-    item.group.position.y = (1 - item.enteredAmount) * -(h / 2);
-
-    const largestX = initialOffset + (itemsPerPage - 1) * (itemWidth + itemSpacing);
-
-    if (item.group.position.x > largestX) {
-      this.applyOvershootEffect(item, item.group.position.x - largestX, largestX, initialOffset, zFactor, offsetAngle);
-    } else if (item.group.position.x < initialOffset) {
-      this.applyOvershootEffect(item, -(initialOffset - item.group.position.x), largestX, initialOffset, zFactor, offsetAngle);
-    } else {
-      this.resetItemPosition(item, offsetAngle);
-    }
-
-    item.group.position.add(item.center);
-  }
-
-  private applyOvershootEffect(
-    item: BuiltItem,
-    overshoot: number,
-    largestX: number,
-    initialOffset: number,
-    zFactor: number,
-    offsetAngle: number,
-  ) {
-    const absOvershoot = Math.abs(overshoot);
-    const sign = Math.sign(overshoot);
-
-    item.group.position.x =
-      (overshoot > 0 ? largestX : initialOffset) + sign * Math.pow(absOvershoot, 1 - zFactor / 50);
-    item.group.position.z = -absOvershoot * zFactor;
-    item.group.rotation.x = -absOvershoot / (ROTATION_DIVISOR / SCALE_FACTOR) - offsetAngle;
-
-    if (item.summaryMesh) {
-      item.summaryMesh.position.x = sign * absOvershoot * zFactor;
-      item.summaryMesh.position.z = -absOvershoot * zFactor;
-    }
-  }
-
-  private resetItemPosition(item: BuiltItem, offsetAngle: number) {
-    if (item.summaryMesh) {
-      item.summaryMesh.position.x = 0;
-      item.summaryMesh.position.z = 0;
-    }
-    item.group.position.z = 0;
-    item.group.rotation.x = -offsetAngle;
-  }
-
   update(): boolean {
-    let changed = false;
+    let changed = this.dirty;
 
     if (this.tween) {
       this.tween.update();
       changed = true;
     }
+    this.dirty = false;
 
     return changed;
   }

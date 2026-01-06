@@ -62,7 +62,7 @@ export function ContextGalleryDisplay({ size }: { size: number }) {
           tweenDuration={0}
           galleryItemWidth={size - theme.spacing * 2}
           galleryItemHeight={size - theme.spacing * 2}
-          itemSpacing={0}
+          itemSpacing={2}
           w={size}
           h={size}
         />

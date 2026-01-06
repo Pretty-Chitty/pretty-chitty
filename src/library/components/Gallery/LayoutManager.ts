@@ -1,135 +1,126 @@
-import { SCALE_FACTOR } from "./constants";
-import { calculateLayout } from "./calculateLayout";
-
 export class LayoutManager {
   // Dimensions (all scaled)
-  private w = 100 / SCALE_FACTOR;
-  private h = 100 / SCALE_FACTOR;
-  private itemWidth = 100 / SCALE_FACTOR;
-  private itemHeight = 100 / SCALE_FACTOR;
-  private itemSpacing = 100 / SCALE_FACTOR;
+  private w = 100;
+  private h = 100;
+
+  private baseItemWidth = 100;
+  private baseItemHeight = 100;
+  private itemSpacing = 100;
 
   // Layout calculated values
+  private itemWidth = 100;
+  private itemHeight = 100;
   private itemsPerPage = 1;
   private frontStageWidth = 1;
+  private itemCount = 1;
 
-  // Original requested dimensions (unscaled)
-  private requestedItemWidth = 0;
-  private requestedItemHeight = 0;
+  // Original requested dimensions
+  private itemPreferredWidth?: number;
+  private itemPreferredHeight?: number;
 
-  // Unscaled window dimensions for recalculation
-  private unscaledW = 100;
-  private unscaledH = 100;
-  private unscaledItemSpacing = 100;
+  public dirty = false;
 
-  getW(): number {
-    return this.w;
+  setDimensions(w: number, h: number) {
+    if (this.w !== w || this.h !== h) {
+      this.w = w;
+      this.h = h;
+      this.dirty = true;
+      this.recalculateEffectiveItemDimensions();
+    }
   }
 
-  getH(): number {
-    return this.h;
+  getDimensions() {
+    return { w: this.w, h: this.h };
   }
 
-  getItemWidth(): number {
-    return this.itemWidth;
+  getItemDimensions() {
+    return { w: this.itemWidth, h: this.itemHeight };
   }
 
-  getItemHeight(): number {
-    return this.itemHeight;
+  getStageDimensions() {
+    return { frontStageWidth: this.frontStageWidth, itemsPerPage: this.itemsPerPage, itemSpacing: this.itemSpacing };
   }
 
-  getItemSpacing(): number {
-    return this.itemSpacing;
+  setBaseItemDimensions(itemW: number, itemH: number, itemSpacing: number) {
+    if (this.baseItemWidth !== itemW || this.baseItemHeight !== itemH || this.itemSpacing !== itemSpacing) {
+      this.baseItemWidth = itemW;
+      this.baseItemHeight = itemH;
+      this.itemSpacing = itemSpacing;
+      this.dirty = true;
+      this.recalculateEffectiveItemDimensions();
+    }
   }
 
-  getItemsPerPage(): number {
-    return this.itemsPerPage;
+  setItemCount(count: number) {
+    if (this.itemCount !== count) {
+      this.itemCount = count;
+      this.recalculateEffectiveItemDimensions();
+      this.dirty = true;
+    }
   }
 
-  getFrontStageWidth(): number {
-    return this.frontStageWidth;
-  }
+  setItemDimensions(items: { preferredWidth?: number; preferredHeight?: number }[]) {
+    let newPreferredWidth: number | undefined = 0,
+      newPreferredHeight: number | undefined = 0;
+    for (const item of items) {
+      if (item.preferredWidth !== undefined && newPreferredWidth !== undefined) {
+        newPreferredWidth = Math.max(newPreferredWidth, item.preferredWidth);
+      } else {
+        newPreferredWidth = undefined;
+      }
 
-  getRequestedItemWidth(): number {
-    return this.requestedItemWidth;
-  }
-
-  getRequestedItemHeight(): number {
-    return this.requestedItemHeight;
-  }
-
-  setSize(w: number, h: number, itemWidth: number, itemHeight: number, itemSpacing: number) {
-    console.log("[LayoutManager.setSize] Input:", { w, h, itemWidth, itemHeight, itemSpacing });
-
-    // Store unscaled values for recalculation
-    this.unscaledW = w;
-    this.unscaledH = h;
-    this.unscaledItemSpacing = itemSpacing;
-    this.requestedItemWidth = itemWidth;
-    this.requestedItemHeight = itemHeight;
-    this.w = w / SCALE_FACTOR;
-    this.h = h / SCALE_FACTOR;
-    this.itemSpacing = itemSpacing / SCALE_FACTOR;
-
-    // Use pure function to calculate layout (step 1: basic layout without summary)
-    const layout = calculateLayout({
-      w,
-      h,
-      preferredItemWidth: itemWidth,
-      preferredItemHeight: itemHeight,
-      itemSpacing,
-    });
-
-    this.itemWidth = layout.itemWidth;
-    this.itemHeight = layout.itemHeight;
-    this.itemsPerPage = layout.itemsPerPage;
-    this.frontStageWidth = layout.frontStageWidth;
-
-    console.log("[LayoutManager.setSize] Final:", { itemWidth: this.itemWidth, itemHeight: this.itemHeight });
-  }
-
-  recalculateItemDimensions(maxSummaryHeight: number): { heightChanged: boolean; widthChanged: boolean } {
-    console.log("[LayoutManager.recalculateItemDimensions] Input:", {
-      maxSummaryHeight,
-      requestedItemWidth: this.requestedItemWidth,
-      requestedItemHeight: this.requestedItemHeight,
-    });
-
-    if (this.requestedItemWidth <= 0 || this.requestedItemHeight <= 0) {
-      return { heightChanged: false, widthChanged: false };
+      if (item.preferredHeight !== undefined && newPreferredHeight !== undefined) {
+        newPreferredHeight = Math.max(newPreferredHeight, item.preferredHeight);
+      } else {
+        newPreferredHeight = undefined;
+      }
     }
 
-    const oldHeight = this.itemHeight;
-    const oldWidth = this.itemWidth;
+    if (this.itemPreferredWidth !== newPreferredWidth || this.itemPreferredHeight !== newPreferredHeight) {
+      this.itemPreferredWidth = newPreferredWidth;
+      this.itemPreferredHeight = newPreferredHeight;
+      this.dirty = true;
+      this.recalculateEffectiveItemDimensions();
+    }
+  }
 
-    // Use the same pure function as setSize
-    const layout = calculateLayout({
-      w: this.unscaledW,
-      h: this.unscaledH,
-      preferredItemWidth: this.requestedItemWidth,
-      preferredItemHeight: this.requestedItemHeight,
-      itemSpacing: this.unscaledItemSpacing,
-    });
+  recalculateEffectiveItemDimensions() {
+    // recalcs itemWidth,itemHeight,itemsPerPage and frontStageWidth
 
-    this.itemWidth = layout.itemWidth;
-    this.itemHeight = layout.itemHeight;
-    this.itemsPerPage = layout.itemsPerPage;
-    this.frontStageWidth = layout.frontStageWidth;
+    let itemWidth = this.itemPreferredWidth ?? this.baseItemWidth;
+    let itemHeight = this.itemPreferredHeight ?? this.baseItemHeight;
+    const aspectRatio = itemWidth / itemHeight;
 
-    const result = {
-      heightChanged: Math.abs(oldHeight - this.itemHeight) > 0.001,
-      widthChanged: Math.abs(oldWidth - this.itemWidth) > 0.001,
-    };
+    const maxItemHeight = Math.max(40, this.h - this.itemSpacing * 2);
+    const maxItemWidth = Math.max(40, this.w - this.itemSpacing * 2);
 
-    console.log("[LayoutManager.recalculateItemDimensions] Result:", {
-      ...result,
-      oldWidth,
-      oldHeight,
-      newWidth: this.itemWidth,
-      newHeight: this.itemHeight,
-    });
+    if (itemHeight > maxItemHeight) {
+      itemHeight = maxItemHeight;
+      itemWidth = maxItemHeight * aspectRatio;
+    }
+    if (itemWidth > maxItemWidth) {
+      itemWidth = maxItemWidth;
+      itemHeight = maxItemWidth / aspectRatio;
+    }
 
-    return result;
+    const itemsPerPage = Math.max(
+      1,
+      Math.min(this.itemCount, Math.floor((this.w - this.itemSpacing * 2) / (itemWidth + this.itemSpacing))),
+    );
+    const frontStageWidth = itemsPerPage * (itemWidth + this.itemSpacing) - this.itemSpacing;
+
+    if (
+      this.itemHeight !== itemHeight ||
+      this.itemWidth !== itemWidth ||
+      this.itemsPerPage !== itemsPerPage ||
+      this.frontStageWidth !== frontStageWidth
+    ) {
+      this.itemHeight = itemHeight;
+      this.itemWidth = itemWidth;
+      this.itemsPerPage = itemsPerPage;
+      this.frontStageWidth = frontStageWidth;
+      this.dirty = true;
+    }
   }
 
   calculateItemIndexOffset(itemCount: number): number {
