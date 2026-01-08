@@ -29,7 +29,7 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
     fov: number,
   ) {
     this.cameraManager = new CameraManager(sceneWrapper.scene, offsetAngle, fov);
-    this.layoutManager = new LayoutManager();
+    this.layoutManager = new LayoutManager(theme);
     this.animationController = new AnimationController();
   }
 
@@ -103,19 +103,17 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
   render(): boolean {
     let changed = this.dirty;
 
-    const layoutManagerDirty = this.layoutManager.dirty;
-    this.layoutManager.dirty = false;
-    if (layoutManagerDirty) {
+    while (this.layoutManager.dirty) {
+      changed = true;
       this.items.forEach((item) => item.layoutDirty());
+      this.layoutManager.dirty = false;
 
       const newMaxHeight =
         this.items.length === 0
           ? this.layoutManager.getSummaryMaxHeight()
           : Math.max(...this.items.map((item) => item.getSummaryHeight()));
 
-      if (this.layoutManager.setSummaryMaxHeight(newMaxHeight)) {
-        this.items.forEach((item) => item.layoutDirty());
-      }
+      this.layoutManager.setSummaryMaxHeight(newMaxHeight);
     }
 
     changed = this.animationController.update() || changed;

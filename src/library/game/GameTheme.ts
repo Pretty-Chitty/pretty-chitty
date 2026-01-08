@@ -70,6 +70,8 @@ export class GameTheme {
   public galleryItemWidth = 150;
   public galleryItemHeight: number | undefined;
   public galleryItemSpacing = 20;
+  public galleryItemMinimumWidth = 75;
+  public galleryItemMinimumHeight = 50;
 
   public gallerySummaryBackgroundColor = "#000000";
   public gallerySummaryBackgroundOpacity = 0.7;

@@ -1,3 +1,4 @@
+import { GameTheme } from "../../game/GameTheme";
 import { SummaryMode } from "./types";
 
 export class LayoutManager {
@@ -26,6 +27,8 @@ export class LayoutManager {
 
   public dirty = false;
 
+  constructor(private theme: GameTheme) {}
+
   setDimensions(w: number, h: number) {
     if (this.w !== w || this.h !== h) {
       this.w = w;
@@ -40,9 +43,7 @@ export class LayoutManager {
       this.summaryMaxHeight = newHeight;
       this.dirty = true;
       this.recalculateEffectiveItemDimensions();
-      return true;
     }
-    return false;
   }
 
   getSummaryMaxHeight() {
@@ -122,8 +123,11 @@ export class LayoutManager {
     let itemHeight = this.itemPreferredHeight ?? this.baseItemHeight;
     const aspectRatio = itemWidth / itemHeight;
 
-    const maxItemHeight = Math.max(40, this.h - this.itemSpacing * 2);
-    const maxItemWidth = Math.max(40, this.w - this.itemSpacing * 2);
+    const maxItemHeight = Math.max(
+      this.theme.galleryItemMinimumHeight,
+      this.h - this.itemSpacing * 2 - this.summaryMaxHeight,
+    );
+    const maxItemWidth = Math.max(this.theme.galleryItemMinimumWidth, this.w - this.itemSpacing * 2);
 
     if (itemHeight > maxItemHeight) {
       itemHeight = maxItemHeight;
@@ -134,9 +138,7 @@ export class LayoutManager {
       itemHeight = maxItemWidth / aspectRatio;
     }
 
-    if (this.summaryMaxHeight > 0) {
-      itemHeight = Math.min(this.h - this.summaryMaxHeight - this.itemSpacing * 2, itemHeight);
-    }
+    itemWidth = Math.max(this.theme.galleryItemMinimumWidth, itemWidth);
 
     const itemsPerPage = Math.max(
       1,
