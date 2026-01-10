@@ -8,16 +8,6 @@ export class AnimationController {
   private offsetX = 0;
   private tweenDuration = 250;
 
-  private min = 0;
-  private max = 0;
-
-  // TODO: this should be centering the items
-  // setItemCount(w:number,h:number count: number, itemsPerPage: number, itemWidth: number, itemSpacing: number) {
-  //   this.max = w/2;
-  //   this.min = -(count - Math.min(count, itemsPerPage)) * (itemWidth + itemSpacing) - w/2;
-
-  // }
-
   getOffsetX(): number {
     return this.offsetX;
   }
