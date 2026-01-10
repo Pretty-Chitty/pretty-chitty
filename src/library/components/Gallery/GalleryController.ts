@@ -1,4 +1,4 @@
-import { Box3, Object3D, Raycaster, Vector3 } from "three";
+import { Object3D } from "three";
 import { GameTheme } from "../../game/GameTheme";
 import { SceneWrapper } from "../../rendering/outline";
 import { TextureReferenceCounterRootGroup } from "../../rendering/TextureReferenceCounter";
@@ -17,10 +17,7 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
   private layoutManager: LayoutManager;
   private animationController: AnimationController;
 
-  private effectiveItemHeight = 0;
-  private maxSummaryHeight = 0;
   private zFactor = 3;
-  private lastItemWidth = 0;
 
   constructor(
     public sceneWrapper: SceneWrapper,

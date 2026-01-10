@@ -1,5 +1,4 @@
-import { Object3D, Vector3 } from "three";
-import { Tween } from "@tweenjs/tween.js";
+import { Object3D } from "three";
 import { IconMap } from "../../utilities/CanvasStack/CanvasOperations";
 import { RichTextRenderOptionsParameters } from "../../utilities/CanvasStack/RichTextRenderer";
 import { SceneWrapper } from "../../rendering/outline";

@@ -56,21 +56,7 @@ export function SinglePanel({
       visible: true,
       transition,
     });
-  }, [
-    chit,
-    x,
-    y,
-    w,
-    h,
-    transition,
-    theme,
-    animationSpeedMultiplier,
-    effectivePaused,
-    enabled,
-    focusedPanel,
-    registerPosition,
-    theme.spacing,
-  ]);
+  }, [chit, x, y, w, h, transition, effectivePaused, enabled, focusedPanel, registerPosition, theme.spacing]);
 
   return (
     <Box
