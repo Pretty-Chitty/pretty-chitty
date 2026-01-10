@@ -7,9 +7,10 @@ import useSize from "@react-hook/size";
 import { useAnimationSpeedMultiplier } from "../hooks/useTimeController";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { ScreenshotMonitor } from "@mui/icons-material";
-import useLocalStorageState from "use-local-storage-state";
+import { useButtonGalleriesOptions } from "../hooks/useButtonGalleriesOptions";
 
 const DELAY = 300;
+const DEFAULT_INLINE_GALLERY_SIZE = 125;
 
 export function InlineGalleryDisplay() {
   const theme = useGameTheme();
@@ -18,45 +19,37 @@ export function InlineGalleryDisplay() {
   const [width, height] = useSize(ref);
   const modalState = useModalState();
   const [items, setItems] = useState<GalleryItem[] | undefined>(undefined);
-  const [source] = useEventChannelState(modalState.gallerySource);
-  const inlineGallerySize = source?.inlineGallerySize;
-  const [galleryFullScreen, setGalleryFullScreen] = useLocalStorageState<boolean>("galleryFullScreen", {
-    defaultValue: false,
-  });
-
+  const [_source, setSource] = useEventChannelState(modalState.gallerySource);
+  const [inlineSource, setInlineSource] = useEventChannelState(modalState.inlineGallerySource);
+  const inlineGallerySize = inlineSource?.inlineGallerySize ?? DEFAULT_INLINE_GALLERY_SIZE;
   const [displaySize, setDisplaySize] = useState(0);
+  const [_galleryDisplayMode, setGalleryDisplayMode] = useButtonGalleriesOptions();
 
   useEffect(() => {
-    if (!inlineGallerySize) {
-      setItems(undefined);
-    } else if (source) {
-      setItems(source.items);
-      const unSub = source.registerUpdateHandler(() => {
-        setItems(source.items);
+    if (inlineSource) {
+      setItems(inlineSource.items);
+      const unSub = inlineSource.registerUpdateHandler(() => {
+        setItems(inlineSource.items);
       });
       return () => {
-        source.close();
+        inlineSource.close();
         unSub();
       };
     } else {
       setItems(undefined);
     }
-  }, [source, setItems, inlineGallerySize]);
+  }, [inlineSource, setItems, inlineGallerySize]);
 
   useEffect(() => {
-    if (galleryFullScreen) {
-      setDisplaySize(0);
-    } else if (inlineGallerySize && items && items.length > 0) {
+    if (items && items.length > 0) {
       setDisplaySize(inlineGallerySize);
     } else {
       const to = setTimeout(() => {
         setDisplaySize(0);
-      }, 125);
+      }, 250);
       return () => clearTimeout(to);
     }
-  }, [displaySize, galleryFullScreen, inlineGallerySize, items, setDisplaySize]);
-
-  // const hasItems = items && items?.length > 0;
+  }, [inlineGallerySize, items, setDisplaySize]);
 
   return (
     <Box
@@ -68,7 +61,7 @@ export function InlineGalleryDisplay() {
       }}
       ref={ref}
     >
-      {!galleryFullScreen && (
+      {
         <>
           <IconButton
             sx={{
@@ -80,7 +73,9 @@ export function InlineGalleryDisplay() {
             }}
             size="small"
             onClick={() => {
-              setGalleryFullScreen(true);
+              setSource(inlineSource);
+              setInlineSource(undefined);
+              setGalleryDisplayMode("modal");
             }}
           >
             <ScreenshotMonitor sx={{ color: theme.inlineGalleryButtonForegroundColor }} />
@@ -88,9 +83,7 @@ export function InlineGalleryDisplay() {
 
           <GalleryViewer
             zFactor={0}
-            onClose={() => {
-              // setSource(undefined);
-            }}
+            onClose={() => {}}
             fov={5}
             items={items ?? []}
             tweenDuration={DELAY * animationSpeedMultiplier * 0.8}
@@ -102,7 +95,7 @@ export function InlineGalleryDisplay() {
             h={height}
           />
         </>
-      )}
+      }
     </Box>
   );
 }

@@ -7,8 +7,8 @@ import useSize from "@react-hook/size";
 import { useAnimationSpeedMultiplier } from "../hooks/useTimeController";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { GameModalBackdrop } from "./GameModalBackdrop";
-import useLocalStorageState from "use-local-storage-state";
-import { BrandingWatermark, CloseFullscreen, KeyboardDoubleArrowDown, OpenInFull } from "@mui/icons-material";
+import { BrandingWatermark } from "@mui/icons-material";
+import { useButtonGalleriesOptions } from "../hooks/useButtonGalleriesOptions";
 
 const DELAY = 300;
 
@@ -20,17 +20,13 @@ export function FullScreenGalleryDisplay() {
   const modalState = useModalState();
   const [items, setItems] = useState<GalleryItem[] | undefined>(undefined);
   const [source, setSource] = useEventChannelState(modalState.gallerySource);
-  const [galleryFullScreen, setGalleryFullScreen] = useLocalStorageState<boolean>("galleryFullScreen", {
-    defaultValue: false,
-  });
-  const inlineGallerySize = source?.inlineGallerySize;
+  const [_inlineSource, setInlineSource] = useEventChannelState(modalState.inlineGallerySource);
+  const [_galleryDisplayMode, setGalleryDisplayMode] = useButtonGalleriesOptions();
 
-  const hasItems = !(inlineGallerySize && !galleryFullScreen) && items && items?.length > 0;
+  const hasItems = items && items?.length > 0;
 
   useEffect(() => {
-    if (inlineGallerySize && !galleryFullScreen) {
-      setItems(undefined);
-    } else if (source) {
+    if (source) {
       setItems(source.items);
       const unSub = source.registerUpdateHandler(() => {
         setItems(source.items);
@@ -42,13 +38,13 @@ export function FullScreenGalleryDisplay() {
     } else {
       setItems(undefined);
     }
-  }, [source, setItems, inlineGallerySize, galleryFullScreen]);
+  }, [source, setItems]);
 
   return (
     // This has to be outside of the modal backdrop so we can get the size correctly
     <Box ref={ref} sx={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
       <GameModalBackdrop visible={!!hasItems}>
-        {inlineGallerySize && (
+        {source?.inlineGallerySize && (
           <IconButton
             sx={{
               backgroundColor: theme.inlineGalleryButtonBackgroundColor,
@@ -59,7 +55,9 @@ export function FullScreenGalleryDisplay() {
             }}
             size="small"
             onClick={() => {
-              setGalleryFullScreen(false);
+              setInlineSource(source);
+              setSource(undefined);
+              setGalleryDisplayMode("inline");
             }}
           >
             <BrandingWatermark sx={{ color: theme.inlineGalleryButtonForegroundColor }} />

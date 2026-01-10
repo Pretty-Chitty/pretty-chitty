@@ -22,10 +22,13 @@ import { GameButton, ToggleGalleryButton } from "../game/GameButton";
 import { useModalState } from "../hooks/useModalState";
 import { ContextGalleryDisplay } from "./ContextGalleryDisplay";
 import { NoValidMovesPrompt } from "../game/Prompt";
+import { useButtonGalleriesOptions } from "../hooks/useButtonGalleriesOptions";
 
 function GameButtonWrapper({ button }: { button: GameButton }) {
   const modalState = useModalState();
   const [source, setSource] = useEventChannelState(modalState.gallerySource);
+  const [inlineSource, setInlineSource] = useEventChannelState(modalState.inlineGallerySource);
+  const [galleryDisplayMode] = useButtonGalleriesOptions();
 
   const gameTheme = useGameTheme();
 
@@ -75,6 +78,12 @@ function GameButtonWrapper({ button }: { button: GameButton }) {
     let cb = button.cb;
 
     if (
+      (button.galleryItemSource === inlineSource && inlineSource) ||
+      (inlineSource?.backingObject && button.galleryItemSource?.backingObject === inlineSource.backingObject)
+    ) {
+      highlight = true;
+      cb = () => setInlineSource(undefined);
+    } else if (
       (button.galleryItemSource === source && source) ||
       (source?.backingObject && button.galleryItemSource?.backingObject === source.backingObject)
     ) {
@@ -82,7 +91,7 @@ function GameButtonWrapper({ button }: { button: GameButton }) {
       cb = () => setSource(undefined);
     } else if (button.galleryItemSource) {
       const source = button.galleryItemSource;
-      cb = () => setSource(source);
+      cb = () => (galleryDisplayMode === "inline" ? setInlineSource(source) : setSource(source));
     }
 
     return (

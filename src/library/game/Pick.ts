@@ -206,7 +206,11 @@ export class ChitPick<T extends Chit> extends Pick {
     this.processFocus();
     this.button?.computeItemSource(this);
     if (this.button?.autoShow && this.button?.galleryItemSource) {
-      this.closeGallery = this.chits[0]?.renderInstance?.rootRenderInstance.showGallery(this.button.galleryItemSource);
+      const inline = localStorage.galleryFullScreen !== `"modal"`; // hacky but maybe okay
+      this.closeGallery = this.chits[0]?.renderInstance?.rootRenderInstance.showGallery(
+        this.button.galleryItemSource,
+        inline,
+      );
     }
   }
 

@@ -80,10 +80,16 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
             <SettingsDisplay />
             <ActionLogHistoryDisplay />
 
-            {!errorMessage && rootChit && <PanelContents rootChit={rootChit} scaleWidth={width} scaleHeight={height} />}
+            <Stack direction={"column"} flex={1}>
+              {!errorMessage && rootChit && (
+                <PanelContents rootChit={rootChit} scaleWidth={width} scaleHeight={height} />
+              )}
+
+              <InlineGalleryDisplay />
+            </Stack>
             {errorMessage}
           </Box>
-          <InlineGalleryDisplay />
+
           <ActionLogDisplay toggleSidebarLog={largeEnoughToShowLogSidebar} />
         </Stack>
         <BottomBar />
