@@ -93,7 +93,7 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
       return null;
     }
 
-    if (!item.raycastHitsItem(this.cameraManager.camera, x, y, item)) {
+    if (!item.raycastHitsItem(this.cameraManager.camera, x, y)) {
       return null;
     }
 

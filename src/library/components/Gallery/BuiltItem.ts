@@ -6,7 +6,7 @@ import { UpdateCallback } from "./types";
 import { LayoutManager } from "./LayoutManager";
 import { AnimationController } from "./AnimationController";
 import { ROTATION_DIVISOR } from "./constants";
-import { TextureReferenaceCounter } from "../../rendering/TextureReferenceCounter";
+import { TextureReferenceCounter } from "../../rendering/TextureReferenceCounter";
 import { RichTextRenderOptionsParameters } from "../../utilities/CanvasStack/RichTextRenderer";
 import { GameTheme } from "../../game/GameTheme";
 import {
@@ -76,17 +76,17 @@ export class BuiltItem {
     return this.summaryHeight;
   }
 
-  public raycastHitsItem(camera: Camera, x: number, y: number, item: BuiltItem): boolean {
+  public raycastHitsItem(camera: Camera, x: number, y: number): boolean {
     const { w, h } = this.layoutManager.getDimensions();
     const ndc = new Vector3((x / w) * 2 - 1, -(y / h) * 2 + 1, 0.5);
     ndc.unproject(camera);
     const raycaster = new Raycaster(camera.position, ndc.sub(camera.position).normalize());
 
-    const combinedBox = new Box3().setFromObject(item.mesh);
-    // if (item.summaryMesh) {
-    //   const summaryBox = new Box3().setFromObject(item.summaryMesh);
-    //   combinedBox.union(summaryBox);
-    // }
+    const combinedBox = new Box3().setFromObject(this.mesh);
+    if (this.summaryMesh) {
+      const summaryBox = new Box3().setFromObject(this.summaryMesh);
+      combinedBox.union(summaryBox);
+    }
 
     const hit = raycaster.ray.intersectBox(combinedBox, new Vector3());
     return !!hit;
@@ -128,7 +128,7 @@ export class BuiltItem {
 
     this.checkRecreateSummaryMesh();
 
-    TextureReferenaceCounter.update;
+    TextureReferenceCounter.update();
     this.sceneWrapper.markDirty();
   }
 

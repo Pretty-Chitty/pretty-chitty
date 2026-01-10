@@ -7,7 +7,7 @@ import { useWebGlRenderer } from "../../hooks/useWebGlRenderer";
 import { useGameTheme } from "../../hooks/useGameTheme";
 import { SceneWrapper } from "../../rendering/outline";
 import { requestSharedAnimationFrame } from "../../utilities/RequestSharedAnimationFrame";
-import { TextureReferenaceCounter } from "../../rendering/TextureReferenceCounter";
+import { TextureReferenceCounter } from "../../rendering/TextureReferenceCounter";
 import { GalleryController } from "./GalleryController";
 import { GalleryItem, SummaryMode } from "./types";
 import {
@@ -187,9 +187,9 @@ export function GalleryViewer({
   }, [galleryController, onClose]);
 
   useEffect(() => {
-    TextureReferenaceCounter.registerInstance(galleryController);
+    TextureReferenceCounter.registerInstance(galleryController);
     return () => {
-      TextureReferenaceCounter.unregisterInstance(galleryController);
+      TextureReferenceCounter.unregisterInstance(galleryController);
       galleryController.sceneWrapper.dispose();
     };
   }, [galleryController]);
