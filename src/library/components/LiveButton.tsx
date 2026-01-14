@@ -19,7 +19,8 @@ export default function LiveButton({ hideIfLive = true }: { hideIfLive?: boolean
     <BottomBarButton
       disabled={targetClock >= maxClock.clock && live}
       icon={SkipNext}
-      label={"Live"}
+      label={live && targetClock < maxClock.clock ? "Skip" : "Live"}
+      invisible={live && targetClock >= maxClock.clock}
       onClick={() => timeState.goLive(maxClock.clock)}
     />
   );

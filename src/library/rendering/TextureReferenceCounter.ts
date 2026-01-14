@@ -6,19 +6,19 @@ export type TextureReferenceCounterRootGroup = {
   markHasChange(): void;
 };
 
-export class TextureReferenaceCounter {
+export class TextureReferenceCounter {
   private static instances: TextureReferenceCounterRootGroup[] = [];
 
   static registerInstance(instance: TextureReferenceCounterRootGroup) {
-    if (!TextureReferenaceCounter.instances.includes(instance)) {
-      TextureReferenaceCounter.instances.push(instance);
+    if (!TextureReferenceCounter.instances.includes(instance)) {
+      TextureReferenceCounter.instances.push(instance);
     }
   }
 
   static unregisterInstance(instance: TextureReferenceCounterRootGroup) {
-    const index = TextureReferenaceCounter.instances.indexOf(instance);
+    const index = TextureReferenceCounter.instances.indexOf(instance);
     if (index !== -1) {
-      TextureReferenaceCounter.instances.splice(index, 1);
+      TextureReferenceCounter.instances.splice(index, 1);
     }
   }
 
@@ -50,7 +50,7 @@ export class TextureReferenaceCounter {
     };
 
     // Scan all active root render instances
-    TextureReferenaceCounter.instances.forEach((instance) => {
+    TextureReferenceCounter.instances.forEach((instance) => {
       instance.getRootGroup().traverseVisible((obj) => {
         if (obj instanceof Mesh) {
           if (obj.geometry instanceof BufferGeometry) {
@@ -68,17 +68,17 @@ export class TextureReferenaceCounter {
     // Mark all textures as used globally
     CanvasStack.disposer.markUsed(allIdsUsed, () => {
       // Mark all instances as dirty when textures change
-      TextureReferenaceCounter.instances.forEach((instance) => {
+      TextureReferenceCounter.instances.forEach((instance) => {
         instance.markHasChange();
       });
     });
     CanvasStack.materialDisposer.markUsedMap(allMaterialsUsed, () => {
-      TextureReferenaceCounter.instances.forEach((instance) => {
+      TextureReferenceCounter.instances.forEach((instance) => {
         instance.markHasChange();
       });
     });
     CanvasStack.geoDisposer.markUsedMap(allGeosUsed, () => {
-      TextureReferenaceCounter.instances.forEach((instance) => {
+      TextureReferenceCounter.instances.forEach((instance) => {
         instance.markHasChange();
       });
     });

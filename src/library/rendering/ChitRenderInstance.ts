@@ -55,6 +55,7 @@ export class ChitRenderInstance {
 
   // threejs info
   public group = new Group(); // group storing the visible meshes.  Will tween
+  protected targetAnchorPoints = new Map<OwnerOriginPosition | string, Vector3>();
   protected anchorPoints = new Map<OwnerOriginPosition | string, Group>();
 
   protected sizeX = 0;
@@ -337,13 +338,23 @@ export class ChitRenderInstance {
     return coordinates;
   }
 
+  public targetAnchorPoint(ownerPosition: OwnerOriginPosition | string): Vector3 {
+    let result = this.targetAnchorPoints.get(ownerPosition);
+    if (!result) {
+      result = new Vector3();
+      this.updateAnchorPosition(result, ownerPosition);
+      this.targetAnchorPoints.set(ownerPosition, result);
+    }
+    return result;
+  }
+
   public anchor(ownerPosition: OwnerOriginPosition | string): Group {
     let result = this.anchorPoints.get(ownerPosition);
     if (!result) {
       result = new Group();
-      this.updateGroupPosition(result, ownerPosition);
       this.group.add(result);
       this.anchorPoints.set(ownerPosition, result);
+      this.updateGroupPosition(ownerPosition, result);
     }
     return result;
   }
@@ -352,60 +363,66 @@ export class ChitRenderInstance {
     let result = this.bboxAnchorPoints.get(ownerPosition);
     if (!result) {
       result = new Group();
-      this.updateGroupPosition(result, ownerPosition);
       this.bboxGroup.add(result);
       this.bboxAnchorPoints.set(ownerPosition, result);
+      this.updateGroupPosition(ownerPosition, result);
     }
     return result;
   }
 
-  protected setOutletPosition(positionKey: string, position: Vector3) {
-    this.anchor(positionKey).position.set(position.x, position.y, position.z);
-    this.bboxAnchor(positionKey).position.set(position.x, position.y, position.z);
+  protected updateGroupPosition(key: OwnerOriginPosition | string, group: Group) {
+    const vector = this.targetAnchorPoint(key);
+    group.position.set(vector.x, vector.y, vector.z + this.sizeZ / 2 + (this.renderSpec?.childrenOffsetZ ?? 0));
   }
 
-  protected updateGroupPosition(group: Group, position: OwnerOriginPosition | string) {
-    const z = this.sizeZ / 2 + (this.renderSpec?.childrenOffsetZ ?? 0);
+  protected setOutletPosition(positionKey: string, position: Vector3) {
+    this.targetAnchorPoint(positionKey).copy(position);
+    this.updateGroupPosition(positionKey, this.anchor(positionKey));
+    this.updateGroupPosition(positionKey, this.bboxAnchor(positionKey));
+  }
+
+  protected updateAnchorPosition(vector: Vector3, position: OwnerOriginPosition | string) {
+    const z = 0;
     switch (position) {
       case OwnerOriginPosition.TopLeft: {
-        group.position.set(-this.sizeX / 2, this.sizeY / 2, z);
+        vector.set(-this.sizeX / 2, this.sizeY / 2, z);
         break;
       }
       case OwnerOriginPosition.TopCenter: {
-        group.position.set(0, this.sizeY / 2, z);
+        vector.set(0, this.sizeY / 2, z);
         break;
       }
       case OwnerOriginPosition.TopRight: {
-        group.position.set(this.sizeX / 2, this.sizeY / 2, z);
+        vector.set(this.sizeX / 2, this.sizeY / 2, z);
         break;
       }
       case OwnerOriginPosition.MiddleLeft: {
-        group.position.set(-this.sizeX / 2, 0, z);
+        vector.set(-this.sizeX / 2, 0, z);
         break;
       }
       case OwnerOriginPosition.MiddleCenter: {
-        group.position.set(0, 0, z);
+        vector.set(0, 0, z);
         break;
       }
       case OwnerOriginPosition.MiddleRight: {
-        group.position.set(this.sizeX / 2, 0, z);
+        vector.set(this.sizeX / 2, 0, z);
         break;
       }
       case OwnerOriginPosition.BottomLeft: {
-        group.position.set(-this.sizeX / 2, -this.sizeY / 2, z);
+        vector.set(-this.sizeX / 2, -this.sizeY / 2, z);
         break;
       }
       case OwnerOriginPosition.BottomCenter: {
-        group.position.set(0, -this.sizeY / 2, z);
+        vector.set(0, -this.sizeY / 2, z);
         break;
       }
       case OwnerOriginPosition.BottomRight: {
-        group.position.set(this.sizeX / 2, -this.sizeY / 2, z);
+        vector.set(this.sizeX / 2, -this.sizeY / 2, z);
         break;
       }
       // named strings --- they will reset the position correctly later (or not if they aren't set and then this will be correct)
       default: {
-        group.position.set(0, 0, z);
+        vector.set(0, 0, z);
         break;
       }
     }
@@ -418,9 +435,11 @@ export class ChitRenderInstance {
     item.preferredHeight = this.renderSpec?.galleryPreferredHeight;
     item.preferredWidth = this.renderSpec?.galleryPreferredWidth;
     item.summary = this.renderSpec?.summary;
+    item.shortSummary = this.renderSpec?.shortSummary;
     item.originalSummary = item.summary;
     item.summaryIconMap = this.renderSpec?.summaryIconMap;
     item.summaryRenderingOptions = this.renderSpec?.summaryRenderingOptions;
+    item.shortSummaryRenderingOptions = this.renderSpec?.shortSummaryRenderingOptions;
 
     if (this._galleryItem === item) {
       return;
@@ -799,6 +818,10 @@ export class ChitRenderInstance {
     this.centerY = this.sizeY / 2 + box3.min.y;
     this.centerZ = this.sizeZ / 2 + box3.min.z;
 
+    Object.entries(this.renderSpec.outletPositions).forEach(([key, position]) => {
+      this.targetAnchorPoint(key).copy(new Vector3(position.x, position.y, position.z));
+    });
+
     const newKey = this.positionKey(clickBox3);
     const keyChanged = newKey !== this._lastUpdateBoudingBoxKey;
     if (keyChanged) {
@@ -809,9 +832,6 @@ export class ChitRenderInstance {
         clickBox3.max.y - clickBox3.min.y,
         clickBox3.max.z - clickBox3.min.z,
       );
-
-      [...this.anchorPoints.entries()].forEach(([key, value]) => this.updateGroupPosition(value, key));
-      [...this.bboxAnchorPoints.entries()].forEach(([key, value]) => this.updateGroupPosition(value, key));
 
       this.fixObjectPosition();
       this.bbox.position.z = this.centerZ;
@@ -833,9 +853,8 @@ export class ChitRenderInstance {
       this.bboxGroup.rotation.order = "ZYX";
       this.bboxGroup.rotation.set(this.renderSpec.rotateX, this.renderSpec.rotateY, this.renderSpec.rotateZ);
 
-      Object.entries(this.renderSpec.outletPositions).forEach(([key, position]) => {
-        this.setOutletPosition(key, new Vector3(position.x, position.y, position.z));
-      });
+      [...this.anchorPoints.entries()].forEach(([key, value]) => this.updateGroupPosition(key, value));
+      [...this.bboxAnchorPoints.entries()].forEach(([key, value]) => this.updateGroupPosition(key, value));
 
       if (keyChanged) {
         this.notifyBoundingBoxChanged();

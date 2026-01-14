@@ -56,13 +56,13 @@ export function ContextGalleryDisplay({ size }: { size: number }) {
         <GalleryViewer
           fov={2}
           angle={0}
-          showSummary={false}
+          showSummary={"none"}
           paused={items.length > 0 ? false : true}
           items={items ?? []}
           tweenDuration={0}
           galleryItemWidth={size - theme.spacing * 2}
           galleryItemHeight={size - theme.spacing * 2}
-          itemSpacing={0}
+          itemSpacing={2}
           w={size}
           h={size}
         />

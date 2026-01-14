@@ -52,6 +52,8 @@ export class GameButton {
 export class ToggleGalleryButton extends GameButton {
   autoShow = true;
 
+  toggleSmallSize?: number = 125;
+
   /** @internal */
   parentChit?: Chit;
 
@@ -86,6 +88,7 @@ export class ToggleGalleryButton extends GameButton {
     } else {
       this.galleryItemSource = new GalleryItemRawSource(chitsToGalleryItems(chitPick.chits));
     }
+    this.galleryItemSource.inlineGallerySize = this.toggleSmallSize;
   }
 }
 

@@ -211,6 +211,7 @@ export class Card extends Chit {
       someicon: walk,
       tunnel: tunnel,
     };
+    spec.shortSummary = "dec ".repeat(Math.floor((this.parentOutletIndex ?? 0) / 2 + 1));
     spec.summaryRenderingOptions = { align: "left" };
 
     // spec.galleryMaximumHeight = 2000;
@@ -252,7 +253,7 @@ export class Card extends Chit {
     spec.galleryMaximumWidth = 300;
 
     spec.galleryPreferredWidth = 300;
-    spec.galleryPreferredHeight = 800;
+    spec.galleryPreferredHeight = 400;
 
     // make sure it reports it out?
     spec.setOutletPositionFromCanvas(ts);
@@ -408,21 +409,21 @@ export class Root extends RootChit<Player> {
   override getLayout(_width: number, _height: number, _playerId: string): LayoutNode {
     return {
       direction: "optimize",
-      collapseOrder: 3, // Collapse last if players collapsing doesn't help
+      collapseOrder: 4, // Collapse last if players collapsing doesn't help
       splits: [
         {
           direction: "optimizePreferHorizontal",
-          collapseOrder: 5, // Collapse first
+          collapseOrder: 3, // Collapse first
           splits: [
             {
               chit: this.mainBoard,
-              minWidth: 300,
-              minHeight: 250,
+              minWidth: 250,
+              minHeight: 150,
             },
             {
               chit: this.shelf,
-              minWidth: 300,
-              minHeight: 250,
+              minWidth: 250,
+              minHeight: 150,
             },
           ],
         },

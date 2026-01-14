@@ -1,29 +1,87 @@
 import React, { useEffect, useState } from "react";
-import { ChevronRight, ChevronLeft, Replay, QuestionMark } from "@mui/icons-material";
-import { Box, Stack } from "@mui/material";
+import { ChevronRight, ChevronLeft, Replay } from "@mui/icons-material";
+import { Box, Stack, Switch, SwitchProps } from "@mui/material";
 import BottomBarButton from "./BottomBarButton";
 import { useGameTheme } from "../hooks/useGameTheme";
 import BottomBarBreak from "./BottomBarBreak";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { useAnimationSpeedMultiplier, useClientPrompts, useTimeState } from "../hooks/useTimeController";
 import { usePlayerId } from "../hooks/usePlayer";
-import GameDialog from "./GameDialog";
-import Markdown from "react-markdown";
 import { ZINDEX_PROMPT_CONTROLS } from "../utilities/zIndex";
 import { GameButton, ToggleGalleryButton } from "../game/GameButton";
 import { useModalState } from "../hooks/useModalState";
 import { ContextGalleryDisplay } from "./ContextGalleryDisplay";
 import { NoValidMovesPrompt } from "../game/Prompt";
+import { useButtonGalleriesOptions } from "../hooks/useButtonGalleriesOptions";
+
+function AntSwitch(props: SwitchProps) {
+  const gameTheme = useGameTheme();
+
+  return (
+    <Switch
+      {...props}
+      sx={{
+        width: 28,
+        height: 10,
+        padding: 0,
+        display: "flex",
+        "&:active": {
+          "& .MuiSwitch-thumb": {
+            width: 15,
+          },
+          "& .MuiSwitch-switchBase.Mui-checked": {
+            transform: "translateX(15px)",
+          },
+        },
+        "& .MuiSwitch-switchBase": {
+          padding: 2,
+          "&.Mui-checked": {
+            transform: "translateX(18px)",
+            color: "#fff",
+            "& + .MuiSwitch-track": {
+              opacity: 1,
+              backgroundColor: gameTheme.actionBarToggleSelectedColor,
+            },
+          },
+        },
+        "& .MuiSwitch-thumb": {
+          boxShadow: "0 2px 4px 0 rgb(0 35 11 / 20%)",
+          width: 6,
+          height: 6,
+          borderRadius: 6,
+          transition: (theme) =>
+            theme.transitions.create(["width"], {
+              duration: 400,
+            }),
+        },
+        "& .MuiSwitch-track": {
+          borderRadius: 12 / 2,
+          opacity: 1,
+          backgroundColor: "rgba(0,0,0,.25)",
+          boxSizing: "border-box",
+        },
+      }}
+    />
+  );
+}
 
 function GameButtonWrapper({ button }: { button: GameButton }) {
   const modalState = useModalState();
   const [source, setSource] = useEventChannelState(modalState.gallerySource);
-
-  let highlight = false;
-  let cb = button.cb;
+  const [inlineSource, setInlineSource] = useEventChannelState(modalState.inlineGallerySource);
+  const [galleryDisplayMode] = useButtonGalleriesOptions();
 
   if (button instanceof ToggleGalleryButton) {
+    let highlight = false;
+    let cb = button.cb;
+
     if (
+      (button.galleryItemSource === inlineSource && inlineSource) ||
+      (inlineSource?.backingObject && button.galleryItemSource?.backingObject === inlineSource.backingObject)
+    ) {
+      highlight = true;
+      cb = () => setInlineSource(undefined);
+    } else if (
       (button.galleryItemSource === source && source) ||
       (source?.backingObject && button.galleryItemSource?.backingObject === source.backingObject)
     ) {
@@ -31,11 +89,23 @@ function GameButtonWrapper({ button }: { button: GameButton }) {
       cb = () => setSource(undefined);
     } else if (button.galleryItemSource) {
       const source = button.galleryItemSource;
-      cb = () => setSource(source);
+      cb = () => (galleryDisplayMode === "inline" ? setInlineSource(source) : setSource(source));
     }
+
+    return (
+      <Box sx={{ position: "relative" }}>
+        <BottomBarButton icon={button.icon} label={button.label} onClick={cb} />
+
+        <Stack direction={"row"} sx={{ fontSize: 5, zIndex: -1, position: "absolute", bottom: 4, left: 0, right: 0 }}>
+          <Box flex={1} />
+          <AntSwitch size="small" checked={highlight} />
+          <Box flex={1} />
+        </Stack>
+      </Box>
+    );
   }
 
-  return <BottomBarButton highlight={highlight} icon={button.icon} label={button.label} onClick={cb} />;
+  return <BottomBarButton icon={button.icon} label={button.label} onClick={button.cb} />;
 }
 
 export default function PromptControls({ collapsible }: { collapsible?: boolean }) {

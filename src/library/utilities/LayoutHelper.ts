@@ -161,7 +161,10 @@ function buildValidTree(tree: LayoutNode, width: number, height: number): Concre
   }
 
   // Step 3: Scan ENTIRE tree for the container with smallest collapseOrder
-  const toCollapse = findSmallestCollapseOrder(concreteTree);
+  let toCollapse = findSmallestCollapseOrder(concreteTree);
+  if (!toCollapse) {
+    toCollapse = findSmallestCollapseOrderIgnoringConstraints(concreteTree);
+  }
 
   if (!toCollapse) {
     return concreteTree;
@@ -345,10 +348,33 @@ function findSmallestCollapseOrder(node: ConcreteLayoutNode): ContainerNode | nu
   }
 
   const container = node as ConcreteContainerNode;
-  let smallest: ContainerNode | null = container.collapseOrder !== undefined ? container : null;
+  let smallest: ContainerNode | null = null;
 
   for (const split of container.splits) {
     const childSmallest = findSmallestCollapseOrder(split);
+    if (childSmallest) {
+      const childOrder = childSmallest.collapseOrder ?? Number.MAX_SAFE_INTEGER;
+      const currentOrder = smallest?.collapseOrder ?? Number.MAX_SAFE_INTEGER;
+
+      if (childOrder < currentOrder) {
+        smallest = childSmallest;
+      }
+    }
+  }
+
+  return smallest;
+}
+
+function findSmallestCollapseOrderIgnoringConstraints(node: ConcreteLayoutNode): ContainerNode | null {
+  if (isPanelNode(node) || isCollapsedNode(node)) {
+    return null;
+  }
+
+  const container = node as ConcreteContainerNode;
+  let smallest: ContainerNode | null = node.collapseOrder !== undefined ? container : null;
+
+  for (const split of container.splits) {
+    const childSmallest = findSmallestCollapseOrderIgnoringConstraints(split);
     if (childSmallest) {
       const childOrder = childSmallest.collapseOrder ?? Number.MAX_SAFE_INTEGER;
       const currentOrder = smallest?.collapseOrder ?? Number.MAX_SAFE_INTEGER;

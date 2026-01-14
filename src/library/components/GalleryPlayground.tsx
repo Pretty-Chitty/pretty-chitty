@@ -30,7 +30,7 @@ export default function GalleryPlayground({ game }: { game: Game<any, any> }) {
   useEffect(() => {
     setTimeout(() => {
       const index = Math.floor(Math.random() * items.length);
-      if (Math.random() > 0.5) {
+      if (Math.random() > 0.75) {
         const item = new MyItem(Math.random() * 0xffffff, Math.random().toString());
 
         setItems(items.slice(0, index).concat([item]).concat(items.slice(index)));

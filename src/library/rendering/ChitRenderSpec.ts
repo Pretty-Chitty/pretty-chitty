@@ -58,8 +58,10 @@ export class ChitRenderSpec {
   public splay = new Splay();
 
   public summary: string | undefined;
+  public shortSummary: string | undefined;
   public summaryIconMap: IconMap | undefined;
   public summaryRenderingOptions: RichTextRenderOptionsParameters | undefined;
+  public shortSummaryRenderingOptions: RichTextRenderOptionsParameters | undefined;
 
   /**
    * The active player that is playing this match

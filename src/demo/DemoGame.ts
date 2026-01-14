@@ -38,10 +38,13 @@ const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
 theme.dialogForegroundColor = "#000000ee";
 theme.chitHighlightColor = "#ffffff";
+theme.gallerySummaryBackgroundColor = "#ff0000";
+theme.dialogForegroundColor = "#ffffff";
 theme.chitOutlineStrength = 0.5;
 
 theme.galleryItemWidth = 50;
 theme.galleryItemHeight = 50;
+theme.galleryItemSpacing = 10;
 
 export class DemoGame implements Game<Player, Root> {
   name = "Demo Game";
@@ -108,10 +111,10 @@ export class DemoGame implements Game<Player, Root> {
         c.token2 = new Card2();
         // c.add(new Card2(), "testoutlet");
         c.add(new Card3(), "testoutlet2");
-        setup.flush();
-        setup.log(
-          i % 2 === 0 ? `Created a card, ${c.id} :stuff: that is :thingy:` : `Created a card, ${c.id} :thingy2:`,
-        );
+        // setup.flush();
+        // setup.log(
+        //   i % 2 === 0 ? `Created a card, ${c.id} :stuff: that is :thingy:` : `Created a card, ${c.id} :thingy2:`,
+        // );
         players[i % players.length].counter.value += (c.parentOutletIndex ?? 0) % 2 === 0 ? 1 : i % players.length;
         // c.add(new Card(), "testoutlet3");
       }),
@@ -162,11 +165,11 @@ export class DemoGame implements Game<Player, Root> {
       // turn.flush();
 
       await turn.pick(
-        Chit.pick([pieces[3], pieces[1]], async (c: Card) => {
+        Chit.pick(pieces.slice(0, 6), async (c: Card) => {
           // const target = players[0];
           // target.add(c);
           // c.raised = true;
-          c.something = 9999;
+          // c.something = 9999;
           players[0].add(c);
 
           if (c === pieces[1]) {

@@ -3,6 +3,7 @@ import { EventChannel } from "../utilities/EventChannel";
 
 export class ModalState {
   public gallerySource = new EventChannel<undefined | GalleryItemSource>(undefined);
+  public inlineGallerySource = new EventChannel<undefined | GalleryItemSource>(undefined);
   public actionLogVisible = new EventChannel<boolean>(false);
   public settingsVisible = new EventChannel<boolean>(false);
 
