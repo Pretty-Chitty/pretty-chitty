@@ -4,7 +4,6 @@ import { Chit } from "../../game/Chit";
 import { useGameTheme } from "../../hooks/useGameTheme";
 import { panelTransition } from "./util";
 import { useAnimationSpeedMultiplier } from "../../hooks/useTimeController";
-import { ZINDEX_PINCH_OUT_FOCUSED } from "../../utilities/zIndex";
 import { usePanelPositioning } from "../../hooks/usePanelPositioning";
 
 export function SinglePanel({
@@ -51,7 +50,6 @@ export function SinglePanel({
       w: w - theme.spacing / 2,
       h: h - theme.spacing / 2,
       paused: effectivePaused,
-      refContainer: null,
       front: true,
       visible: true,
       transition,

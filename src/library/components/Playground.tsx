@@ -15,6 +15,7 @@ import { PlayerInfo } from "../game/PlayerInfo";
 import { LocalMatchStorage } from "../game/MatchStorage";
 import { GridOn, PhoneIphone, Tab as TabIcon } from "@material-ui/icons";
 import { PlayerProvider } from "../hooks/usePlayer";
+import { LoadingStateProvider, LoadingStates } from "../hooks/useLoadingStates";
 
 type Layout = "tile" | "tab" | "phone";
 
@@ -245,41 +246,52 @@ function Editor({
 }
 
 export default function Playground({ game }: { game: Game<any, any> }) {
+  const [loadingStates] = useState<LoadingStates>(new LoadingStates());
   const [layout, setLayout] = useLocalStorageState<Layout>("matchViewerLayout", {
     defaultValue: "tile",
   });
   const [buttons, setButtons] = useState<ReactNode | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState<string>("");
+
+  useEffect(() => {
+    return loadingStates.onChange((total, loaded) => {
+      setLoadingProgress(`${loaded} / ${total}`);
+    });
+  }, [loadingStates]);
 
   const items = ["2", "3", "4", "5", "1", "6", "7", "8", "9", "10"];
 
   return (
-    <SelectableItemAndStage
-      keySpace="playground"
-      items={items}
-      topOptions={
-        <Stack direction="row">
-          {buttons}
+    <LoadingStateProvider loadingStates={loadingStates}>
+      <SelectableItemAndStage
+        keySpace="playground"
+        items={items}
+        topOptions={
+          <Stack direction="row">
+            {buttons}
+            {loadingProgress}
 
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            sx={{ m: 2 }}
-            value={layout}
-            onChange={(e, newValue) => setLayout(newValue)}
-          >
-            <ToggleButton value="tile">
-              <GridOn />
-            </ToggleButton>
-            <ToggleButton value="tab">
-              <TabIcon />
-            </ToggleButton>
-            <ToggleButton value="phone">
-              <PhoneIphone />
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Stack>
-      }
-      render={(item) => <Editor setButtons={setButtons} layout={layout} matchInformation={item} game={game} />}
-    />
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              sx={{ m: 2 }}
+              value={layout}
+              onChange={(e, newValue) => setLayout(newValue)}
+            >
+              <ToggleButton value="tile">
+                <GridOn />
+              </ToggleButton>
+              <ToggleButton value="tab">
+                <TabIcon />
+              </ToggleButton>
+              <ToggleButton value="phone">
+                <PhoneIphone />
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
+        }
+        render={(item) => <Editor setButtons={setButtons} layout={layout} matchInformation={item} game={game} />}
+      />
+    </LoadingStateProvider>
   );
 }

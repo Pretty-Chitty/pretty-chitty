@@ -13,6 +13,7 @@ import { useGameTheme } from "../hooks/useGameTheme";
 import { requestSharedAnimationFrame } from "../utilities/RequestSharedAnimationFrame";
 import PersistentCanvas from "./PersistentCanvas";
 import { useGestureContext, ViewerGestureHandlers } from "./Panel/PanelContents";
+import { useLoadingState } from "../hooks/useLoadingStates";
 
 let ID_COUNTER = 1;
 
@@ -41,6 +42,7 @@ export default function Viewer({
   refContainer?: React.RefObject<HTMLElement> | null;
   enableGestures?: boolean;
 }) {
+  const loadingState = useLoadingState();
   const playerId = usePlayerId();
   const [id] = useState(`Viewer${ID_COUNTER++}`);
   const timeState = useTimeState();
@@ -49,6 +51,10 @@ export default function Viewer({
   const myRefContainer = useRef(null);
   const rendererWrapper = useWebGlRenderer();
   const theme = useGameTheme();
+
+  useEffect(() => {
+    loadingState.setLoading(id, true);
+  }, [id, loadingState]);
 
   const modalState = useModalState();
   const [chitRenderInstance, setChitRenderInstance] = useState<RootChitRenderInstance | null>(null);
@@ -134,6 +140,8 @@ export default function Viewer({
       return;
     }
 
+    loadingState.setLoading(id, true);
+
     const context = canvas.getContext("2d");
     if (!context) {
       return;
@@ -160,18 +168,17 @@ export default function Viewer({
           ) {
             if (!hardPaused) {
               // Clear canvas and render
-              rendererWrapper.render(
-                chitRenderInstance.sceneWrapper,
-                chitRenderInstance.camera,
-                context,
-                theme,
-              );
+              rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme);
+
+              loadingState.setLoading(id, false);
 
               // Clear snapshot after first render at new size
               const canvasEl = canvas as any;
               if (canvasEl.clearSnapshot) {
                 canvasEl.clearSnapshot();
               }
+            } else {
+              loadingState.setLoading(id, false);
             }
 
             chitRenderInstance.resetDirty();
@@ -180,6 +187,7 @@ export default function Viewer({
             }
           } else {
             timeState.setAnimationState(id, false);
+            loadingState.setLoading(id, false);
           }
         } catch (e) {
           console.error(e);
@@ -192,7 +200,18 @@ export default function Viewer({
       timeState.setAnimationState(id, false);
       cancelled = true;
     };
-  }, [id, timeState, hardPaused, rendererWrapper, chitRenderInstance, paused, actualRef, myRefContainer, theme]);
+  }, [
+    id,
+    timeState,
+    hardPaused,
+    rendererWrapper,
+    chitRenderInstance,
+    paused,
+    actualRef,
+    myRefContainer,
+    theme,
+    loadingState,
+  ]);
 
   useEffect(() => {
     if (chitRenderInstance) {

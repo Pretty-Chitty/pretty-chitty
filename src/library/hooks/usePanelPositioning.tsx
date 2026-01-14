@@ -7,7 +7,6 @@ export interface ViewerPosition {
   w: number;
   h: number;
   paused: boolean;
-  refContainer: React.RefObject<HTMLElement> | null;
   front: boolean;
   panCallback?: (direction: "left" | "right") => void;
   visible: boolean; // For MultiPanel sliding animations

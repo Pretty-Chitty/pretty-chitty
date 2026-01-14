@@ -9,6 +9,7 @@ import { MatchViewer } from "./MatchViewer";
 import { Match } from "../game/Match";
 import { Connection } from "../game/Connection";
 import { LocalConnectionTransport } from "../game/ConnectionTransport";
+import { LoadingStateProvider, LoadingStates, LoadingStatesCallback } from "../hooks/useLoadingStates";
 
 export function ClientTrustMatchViewer({
   playerId,
@@ -16,15 +17,24 @@ export function ClientTrustMatchViewer({
   game,
   matchStorage,
   onBack,
+  onLoadProgress,
 }: {
   playerId: string;
   players: IPlayerInfo[];
   game: Game<any, any>;
   matchStorage: IMatchStorage;
   onBack?: () => void;
+  onLoadProgress?: LoadingStatesCallback;
 }) {
+  const [loadingStates] = useState<LoadingStates>(new LoadingStates());
   const [match, setMatch] = useState<Match<any, any> | undefined>();
   const [localConnection, setLocalConnection] = useState<Connection | undefined>();
+
+  useEffect(() => {
+    if (onLoadProgress) {
+      return loadingStates.onChange(onLoadProgress);
+    }
+  }, [loadingStates, onLoadProgress]);
 
   useEffect(() => {
     if (game && players && matchStorage) {
@@ -72,12 +82,14 @@ export function ClientTrustMatchViewer({
   }
 
   return (
-    <GameProvider game={game}>
-      <ConnectionProvider connection={localConnection}>
-        <PlayerProvider playerId={playerId}>
-          <MatchViewer onBack={onBack} />
-        </PlayerProvider>
-      </ConnectionProvider>
-    </GameProvider>
+    <LoadingStateProvider loadingStates={loadingStates}>
+      <GameProvider game={game}>
+        <ConnectionProvider connection={localConnection}>
+          <PlayerProvider playerId={playerId}>
+            <MatchViewer onBack={onBack} />
+          </PlayerProvider>
+        </ConnectionProvider>
+      </GameProvider>
+    </LoadingStateProvider>
   );
 }

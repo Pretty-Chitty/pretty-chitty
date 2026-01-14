@@ -19,6 +19,7 @@ import useSize from "@react-hook/size";
 import { SettingsDisplay } from "./SettingsDisplay";
 import { ActionLogSidebar } from "./ActionLogSidebar";
 import { InlineGalleryDisplay } from "./InlineGalleryDisplay";
+import { useLoadingState } from "../hooks/useLoadingStates";
 
 const theme = createTheme({
   typography: {
@@ -37,6 +38,11 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
   const [width, height] = useSize(ref);
   const [outerWidth] = useSize(outerRef);
   const [showLog] = useEventChannelState(timeController.clientTimeState.showLog);
+  const loadingStates = useLoadingState();
+
+  if (errorMessage) {
+    loadingStates.markError();
+  }
 
   useEffect(
     () =>

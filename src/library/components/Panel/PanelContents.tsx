@@ -76,12 +76,7 @@ export function PanelContents({
 
   // Panel positioning system
   const positionsRef = useRef<Map<string, ViewerPosition>>(
-    new Map([
-      [
-        "root",
-        { chitId: "root", x: -40, y: 0, w: 30, h: 30, front: true, visible: true, paused: true, refContainer: null },
-      ],
-    ]),
+    new Map([["root", { chitId: "root", x: -40, y: 0, w: 30, h: 30, front: true, visible: true, paused: true }]]),
   );
   const [, forceUpdate] = useState({});
 
@@ -345,7 +340,6 @@ export function PanelContents({
                   x={position.x}
                   y={position.y}
                   paused={position.paused}
-                  refContainer={position.refContainer}
                   panCallback={position.panCallback}
                   transition={position.transition}
                 />
