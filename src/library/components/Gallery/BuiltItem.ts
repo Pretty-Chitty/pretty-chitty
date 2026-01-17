@@ -313,6 +313,7 @@ export class BuiltItem {
       align: "center",
       color: this.theme.dialogForegroundColor,
       fontSize: this.theme.dialogFontSize * window.devicePixelRatio,
+      fontFamily: this.theme.fontFamily,
       ...baseOptions,
     };
   }

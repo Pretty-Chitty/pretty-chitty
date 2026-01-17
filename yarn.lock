@@ -1276,10 +1276,10 @@
   resolved "https://registry.npmjs.org/@eslint/js/-/js-8.57.1.tgz"
   integrity sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==
 
-"@fontsource/raleway@^5.0.16":
-  version "5.2.6"
-  resolved "https://registry.npmjs.org/@fontsource/raleway/-/raleway-5.2.6.tgz"
-  integrity sha512-ztY/2G0Axrjt3ObLWGEXDtZKad38Hpbn/Vk3TdBextTPiuN2i8pVQLRpjWmS9iX31O2JH3o5b80PsVvuiRGjJA==
+"@fontsource/quicksand@^5.2.10":
+  version "5.2.10"
+  resolved "https://registry.yarnpkg.com/@fontsource/quicksand/-/quicksand-5.2.10.tgz#e85fe2993d70db02069cced60c246673e802c363"
+  integrity sha512-rck0ccT6vJF9RnbSW2ON1grq5qFZvjVOGvYIUixATXF8mNh4KglD+8Sn8QpRgKQBSBJF5yOR3SBYBWPg/Y8YbQ==
 
 "@gerrit0/mini-shiki@^3.17.0":
   version "3.20.0"

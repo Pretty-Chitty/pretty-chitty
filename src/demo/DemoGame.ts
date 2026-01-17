@@ -45,6 +45,7 @@ theme.chitOutlineStrength = 0.5;
 theme.galleryItemWidth = 50;
 theme.galleryItemHeight = 50;
 theme.galleryItemSpacing = 10;
+// theme.fontFamily = "monospace";
 
 export class DemoGame implements Game<Player, Root> {
   name = "Demo Game";

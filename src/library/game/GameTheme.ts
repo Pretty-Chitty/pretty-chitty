@@ -1,5 +1,7 @@
 import Color from "color";
 
+export const DEFAULT_FONT_FAMILY = "Quicksand, sans-serif";
+
 /**
  * Controls color scheme and layout options for all things in a pretty-chitty game.  Much of
  * this can be overridden per chit, but some cannot.  For example, the background color of the game
@@ -11,6 +13,8 @@ import Color from "color";
  * @group Core Game Elements
  */
 export class GameTheme {
+  public fontFamily = DEFAULT_FONT_FAMILY;
+
   public backgroundColor = "#0f0119";
 
   public spacing = 8;
