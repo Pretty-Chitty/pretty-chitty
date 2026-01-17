@@ -18,7 +18,6 @@ export function ViewerWrapper({
   paused,
   front,
   panCallback,
-  refContainer,
   focusedPanel,
   setFocusedPanel,
   transition,
@@ -31,7 +30,6 @@ export function ViewerWrapper({
   paused: boolean;
   front: boolean;
   panCallback?: (direction: "left" | "right") => void;
-  refContainer: React.RefObject<HTMLElement> | null;
   focusedPanel?: Chit | undefined;
   setFocusedPanel: (chit: Chit | undefined) => void;
   transition?: string | null;
@@ -91,8 +89,6 @@ export function ViewerWrapper({
       (chit.renderInstance as RootChitRenderInstance)?.cameraWrapper?.handleZoom(0, 0, 0.00001, false);
     }
   }, [focusedPanel, chit]);
-
-  const rootRenderInstance = chit.renderInstance as RootChitRenderInstance;
 
   return (
     <Box

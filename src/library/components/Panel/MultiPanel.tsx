@@ -199,7 +199,6 @@ export function MultiPanel({
         w: w - theme.spacing / 2,
         h: h - TAB_HEIGHT - theme.spacing / 2,
         paused: isPaused,
-        refContainer,
         panCallback,
         visible: true,
         front: index === effectiveSelectedIndex,
