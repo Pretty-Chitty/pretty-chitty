@@ -2,6 +2,7 @@ import * as Colors from "color";
 import { RenderBounds } from "./CanvasStack";
 import { ImageResult } from "./ImageCache";
 import { PlayerChit } from "../../game/PlayerChit";
+import { GameTheme } from "../../game/GameTheme";
 import imageColorOverlayer from "./ImageColorOverlayer";
 import { RichTextRenderOptionsParameters, RichTextRenderer } from "./RichTextRenderer";
 
@@ -164,7 +165,15 @@ export class PadCanvasOperation extends CanvasOperation {
 export type Alignment = "center" | "left" | "right";
 
 export interface TextOptions {
-  contextOptions?: any;
+  contextOptions?: {
+    fillStyle?: string;
+    strokeStyle?: string;
+    shadowBlur?: number;
+    shadowColor?: string;
+  };
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: number | "normal" | "bold";
   align?: Alignment;
   offsetX?: number;
   offsetY?: number;
@@ -243,6 +252,13 @@ export class TextCanvasOperation extends CanvasOperation {
     super();
   }
 
+  private makeFont(): string {
+    const fontSize = this.options.fontSize ?? 16;
+    const fontFamily = this.options.fontFamily ?? GameTheme.defaultFontFamily;
+    const fontWeight = this.options.fontWeight ?? 400;
+    return `${fontWeight} ${fontSize}px ${fontFamily}`;
+  }
+
   override render(
     context: CanvasRenderingContext2D,
     bounds: RenderBounds,
@@ -251,6 +267,8 @@ export class TextCanvasOperation extends CanvasOperation {
   ) {
     const startX = bounds.x,
       startY = bounds.y;
+
+    context.font = this.makeFont();
 
     if (this.options.contextOptions) {
       Object.keys(this.options.contextOptions).forEach(

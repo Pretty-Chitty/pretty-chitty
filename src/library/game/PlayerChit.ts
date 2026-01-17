@@ -10,7 +10,7 @@ export class PlayerChit extends Chit {
 
   public playerId: string = "no id";
   public name: string = "no name";
-  public imageUrl?: string;
+  public imageUrl?: string = undefined;
   public color: string = "#000000";
 
   /** @internal */

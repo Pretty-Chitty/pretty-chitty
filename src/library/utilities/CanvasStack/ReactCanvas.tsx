@@ -206,7 +206,9 @@ export function Text({
   align = "center",
   fill,
   stroke,
-  font,
+  fontSize,
+  fontFamily,
+  fontWeight,
   offsetX,
   offsetY,
   shadowBlur,
@@ -218,7 +220,9 @@ export function Text({
   align?: "center" | "left" | "right";
   fill?: string;
   stroke?: string;
-  font?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: number | "normal" | "bold";
   shadowBlur?: number;
   shadowColor?: string;
   offsetX?: number;
@@ -235,7 +239,10 @@ export function Text({
           after: after ? unwrapCanvasNode(after) : undefined,
           offsetX,
           offsetY,
-          contextOptions: { fillStyle: fill, strokeStyle: stroke, font, shadowBlur, shadowColor },
+          fontSize,
+          fontFamily,
+          fontWeight,
+          contextOptions: { fillStyle: fill, strokeStyle: stroke, shadowBlur, shadowColor },
         })
       }
     />

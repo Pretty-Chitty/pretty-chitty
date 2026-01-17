@@ -13,7 +13,16 @@ export const DEFAULT_FONT_FAMILY = "Quicksand, sans-serif";
  * @group Core Game Elements
  */
 export class GameTheme {
-  public fontFamily = DEFAULT_FONT_FAMILY;
+  public static defaultFontFamily = DEFAULT_FONT_FAMILY;
+
+  private _fontFamily = DEFAULT_FONT_FAMILY;
+  public get fontFamily() {
+    return this._fontFamily;
+  }
+  public set fontFamily(value: string) {
+    this._fontFamily = value;
+    GameTheme.defaultFontFamily = value;
+  }
 
   public backgroundColor = "#0f0119";
 

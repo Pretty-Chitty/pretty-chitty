@@ -5,7 +5,7 @@ import { ParameterizedCanvas } from "../library/utilities/ParameterizedCanvas";
 
 function Thingy({ num }: { num: number }) {
   return (
-    <Text fill="#fff" font="12px sans-serif">
+    <Text fill="#fff" fontSize={12}>
       #{num}
     </Text>
   );
@@ -24,7 +24,7 @@ export class TestStack2 extends ParameterizedCanvas {
         <Vertical>
           <>
             <Color hex="#FFA" />
-            <Text fill="#336" font="10px sans-serif">
+            <Text fill="#336" fontSize={10}>
               {this.title}: {this.subTitle ?? ""}
             </Text>
           </>
@@ -33,7 +33,7 @@ export class TestStack2 extends ParameterizedCanvas {
           <Text
             align="right"
             fill="#fff"
-            font="12px sans-serif"
+            fontSize={12}
             before={
               <>
                 <Color hex="#999" />

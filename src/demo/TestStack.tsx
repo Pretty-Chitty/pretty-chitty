@@ -16,7 +16,7 @@ import { metropolis, serverroom } from "./assets/network_overload";
 
 function Thingy({ num }: { num: number }) {
   return (
-    <Text fill="#fff" font="12px sans-serif">
+    <Text fill="#fff" fontSize={12}>
       #{num}
     </Text>
   );
@@ -45,11 +45,11 @@ export class TestStack extends ParameterizedCanvas {
                 <Image fill image={img} />
                 <Vertical>
                   <></>
-                  <Text size={50} fill="#fff" font="50px sans-serif">
+                  <Text size={50} fill="#fff" fontSize={50}>
                     {this.title}
                   </Text>
                   {this.subTitle && (
-                    <Text size={25} fill="#aaa" font="20px sans-serif">
+                    <Text size={25} fill="#aaa" fontSize={20}>
                       {this.subTitle} {this.subTitle2}
                     </Text>
                   )}
@@ -64,7 +64,7 @@ export class TestStack extends ParameterizedCanvas {
                 <Text
                   align="center"
                   fill="#000"
-                  font="12px sans-serif"
+                  fontSize={12}
                   before={
                     <>
                       <Pad right={10}>

@@ -4,9 +4,6 @@ import { Box, CssBaseline, Stack, ThemeProvider, createTheme } from "@mui/materi
 import { TimeControllerProvider, useClientStatus, useTimeController } from "../hooks/useTimeController";
 import BottomBar from "./BottomBar";
 import { GameThemeProvider, useGameTheme } from "../hooks/useGameTheme";
-
-import "@fontsource/quicksand/400.css";
-import "@fontsource/quicksand/700.css";
 import TopBar from "./TopBar";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { MatchEndDisplay } from "./MatchEndDisplay";
