@@ -260,7 +260,7 @@ export function PanelContents({
             }}
           >
             {layout.map((cell) => {
-              if (Array.isArray(cell.chit)) {
+              if (Array.isArray(cell.chit) && cell.chit.length > 1) {
                 return (
                   <MultiPanel
                     enabled={focusedPanel === undefined}
@@ -282,7 +282,7 @@ export function PanelContents({
                     focusedPanel={focusedPanel}
                     setFocusedPanel={setFocusedPanel}
                     key={cell.id}
-                    chit={cell.chit}
+                    chit={Array.isArray(cell.chit) ? cell.chit[0] : cell.chit}
                     w={cell.w}
                     h={cell.h}
                     x={cell.x}
