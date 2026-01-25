@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useGame } from "../hooks/useGame";
 import { Box, CssBaseline, Stack, ThemeProvider, createTheme } from "@mui/material";
 import { TimeControllerProvider, useClientStatus, useTimeController } from "../hooks/useTimeController";
 import BottomBar from "./BottomBar";
 import { GameThemeProvider, useGameTheme } from "../hooks/useGameTheme";
 
-import "@fontsource/raleway/400.css";
+import "@fontsource/quicksand/400.css";
+import "@fontsource/quicksand/700.css";
 import TopBar from "./TopBar";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { MatchEndDisplay } from "./MatchEndDisplay";
@@ -20,12 +21,16 @@ import { SettingsDisplay } from "./SettingsDisplay";
 import { ActionLogSidebar } from "./ActionLogSidebar";
 import { InlineGalleryDisplay } from "./InlineGalleryDisplay";
 import { useLoadingState } from "../hooks/useLoadingStates";
+import { GameTheme } from "../game/GameTheme";
+import { ModalState } from "../game/ModalState";
 
-const theme = createTheme({
-  typography: {
-    fontFamily: ["Raleway", "sans-serif"].join(","),
-  },
-});
+function createMuiTheme(gameTheme: GameTheme) {
+  return createTheme({
+    typography: {
+      fontFamily: gameTheme.fontFamily,
+    },
+  });
+}
 
 function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
   const timeController = useTimeController();
@@ -108,13 +113,15 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
 
 export function MatchViewer({ onBack }: { onBack?: () => void }) {
   const game = useGame();
+  const [modalState] = useState<ModalState>(new ModalState());
+  const muiTheme = useMemo(() => createMuiTheme(game.theme), [game.theme]);
   return (
     <TimeControllerProvider>
-      <CssBaseline />
       <PanelScaleProvider>
-        <ModalProvider>
+        <ModalProvider modalState={modalState}>
           <GameThemeProvider theme={game.theme}>
-            <ThemeProvider theme={theme}>
+            <ThemeProvider theme={muiTheme}>
+              <CssBaseline />
               <InnerMatchViewer onBack={onBack} />
             </ThemeProvider>
           </GameThemeProvider>

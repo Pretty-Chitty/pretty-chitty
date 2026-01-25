@@ -8,6 +8,6 @@ export function useModalState(): ModalState {
   return result;
 }
 
-export function ModalProvider({ children }: { children: ReactNode }) {
-  return <ModalContext.Provider value={new ModalState()}>{children}</ModalContext.Provider>;
+export function ModalProvider({ children, modalState }: { modalState: ModalState; children: ReactNode }) {
+  return <ModalContext.Provider value={modalState}>{children}</ModalContext.Provider>;
 }

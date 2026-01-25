@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ChevronRight, ChevronLeft, Replay } from "@mui/icons-material";
-import { Box, Stack, Switch, SwitchProps } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 import BottomBarButton from "./BottomBarButton";
 import { useGameTheme } from "../hooks/useGameTheme";
 import BottomBarBreak from "./BottomBarBreak";
@@ -14,54 +14,37 @@ import { ContextGalleryDisplay } from "./ContextGalleryDisplay";
 import { NoValidMovesPrompt } from "../game/Prompt";
 import { useButtonGalleriesOptions } from "../hooks/useButtonGalleriesOptions";
 
-function AntSwitch(props: SwitchProps) {
+function SimpleToggle({ checked }: { checked: boolean }) {
   const gameTheme = useGameTheme();
+  const trackWidth = 28;
+  const trackHeight = 10;
+  const thumbSize = 6;
 
   return (
-    <Switch
-      {...props}
+    <Box
       sx={{
-        width: 28,
-        height: 10,
-        padding: 0,
-        display: "flex",
-        "&:active": {
-          "& .MuiSwitch-thumb": {
-            width: 15,
-          },
-          "& .MuiSwitch-switchBase.Mui-checked": {
-            transform: "translateX(15px)",
-          },
-        },
-        "& .MuiSwitch-switchBase": {
-          padding: 2,
-          "&.Mui-checked": {
-            transform: "translateX(18px)",
-            color: "#fff",
-            "& + .MuiSwitch-track": {
-              opacity: 1,
-              backgroundColor: gameTheme.actionBarToggleSelectedColor,
-            },
-          },
-        },
-        "& .MuiSwitch-thumb": {
-          boxShadow: "0 2px 4px 0 rgb(0 35 11 / 20%)",
-          width: 6,
-          height: 6,
-          borderRadius: 6,
-          transition: (theme) =>
-            theme.transitions.create(["width"], {
-              duration: 400,
-            }),
-        },
-        "& .MuiSwitch-track": {
-          borderRadius: 12 / 2,
-          opacity: 1,
-          backgroundColor: "rgba(0,0,0,.25)",
-          boxSizing: "border-box",
-        },
+        width: trackWidth,
+        height: trackHeight,
+        borderRadius: trackHeight / 2,
+        backgroundColor: checked ? gameTheme.actionBarToggleSelectedColor : "rgba(0,0,0,.25)",
+        position: "relative",
+        transition: "background-color 0.2s ease",
       }}
-    />
+    >
+      <Box
+        sx={{
+          width: thumbSize,
+          height: thumbSize,
+          borderRadius: "50%",
+          backgroundColor: gameTheme.barTextColor,
+          boxShadow: "0 2px 4px 0 rgb(0 35 11 / 20%)",
+          position: "absolute",
+          top: (trackHeight - thumbSize) / 2,
+          left: checked ? trackWidth - thumbSize - 2 : 2,
+          transition: "left 0.2s ease",
+        }}
+      />
+    </Box>
   );
 }
 
@@ -98,7 +81,7 @@ function GameButtonWrapper({ button }: { button: GameButton }) {
 
         <Stack direction={"row"} sx={{ fontSize: 5, zIndex: -1, position: "absolute", bottom: 4, left: 0, right: 0 }}>
           <Box flex={1} />
-          <AntSwitch size="small" checked={highlight} />
+          <SimpleToggle checked={highlight} />
           <Box flex={1} />
         </Stack>
       </Box>

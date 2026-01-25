@@ -1,3 +1,5 @@
+import { DEFAULT_FONT_FAMILY } from "../../game/GameTheme";
+
 export type Align = "left" | "center" | "right";
 export type IconBaseline = "text" | "middle" | "bottom";
 export type VerticalAlign = "top" | "middle" | "bottom";
@@ -77,7 +79,7 @@ export class RichTextRenderer {
       y = 0,
       maxWidth,
       height,
-      fontFamily = "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+      fontFamily = DEFAULT_FONT_FAMILY,
       fontSize = 16,
       lineHeight = 1.25,
       align = "left",
