@@ -7,7 +7,6 @@ import { PlayerInfo } from "./PlayerInfo";
 import { MismatchError, RerunError, Turn } from "./Turn";
 import { TurnState } from "./TurnState";
 import { IMatchStorage } from "./MatchStorage";
-import nextTick from "next-tick";
 import { ServerPrompts } from "./serverTransport/ServerPrompts";
 import { EventChannel } from "../utilities/EventChannel";
 import { RootChit } from "./RootChit";
@@ -179,7 +178,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
 
   public onChange(cb: () => void, callNow = true) {
     this.onChangeCallbacks.push(cb);
-    callNow && nextTick(cb);
+    callNow && queueMicrotask(cb);
     return () => {
       this.onChangeCallbacks = this.onChangeCallbacks.filter((c) => c !== cb);
     };

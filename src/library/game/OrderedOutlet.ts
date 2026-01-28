@@ -64,8 +64,9 @@ export class OrderedOutlet<C extends Chit> {
     }
 
     if (c instanceof OrderedOutlet) {
-      c.chits.forEach((c) => c.setParent());
-      c.chits.forEach((c) => this.chits.push(c));
+      const chits = c.chits;
+      chits.forEach((c) => c.setParent());
+      chits.forEach((c) => this.chits.push(c));
     } else {
       c.forEach((c) => c.setParent());
       c.forEach((c) => this.chits.push(c));

@@ -76,10 +76,21 @@ export type { Stage } from "./game/GameDeckChit";
 export { PlayerInfo } from "./game/PlayerInfo";
 /** @group Supporting Types */
 export type { IPlayerInfo } from "./game/PlayerInfo";
+/** @internal */
 /** @group Supporting Types */
 export { MatchViewer } from "./components/MatchViewer";
+/** @internal */
+/** @group Supporting Types */
+export { Match } from "./game/Match";
+/** @internal */
+/** @group Supporting Types */
+export { Connection } from "./game/Connection";
+/** @internal */
 /** @group Supporting Types */
 export { ClientTrustMatchViewer } from "./components/ClientTrustMatchViewer";
+/** @internal */
+/** @group Supporting Types */
+export { ServerTrustMatchViewer } from "./components/ServerTrustMatchViewer";
 /** @group Supporting Types */
 export type { BottomBarButtonIcon } from "./components/BottomBarButton";
 /** @group Supporting Types */

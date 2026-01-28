@@ -1,4 +1,3 @@
-import nextTick from "next-tick";
 import { Chit } from "./Chit";
 import { Match } from "./Match";
 import { NoValidMovesPrompt, PickPrompt, Prompt, SelectPrompt } from "./Prompt";
@@ -416,7 +415,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.activeSubTurns.push(turn);
 
     //make sure flow goes to next tick
-    await new Promise((resolve) => nextTick(() => resolve(true)));
+    await new Promise((resolve) => queueMicrotask(() => resolve(true)));
 
     await this.checkPause();
 
@@ -603,7 +602,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       this.pause();
 
       // defer to next tick on starting
-      await new Promise<void>((resolve) => nextTick(() => resolve()));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
 
       const instructions = this.handleNewSavedState(state);
 
@@ -615,7 +614,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           instruction.turn.rerun(instruction.turn);
         } else if (instruction.type === "prompt") {
           await new Promise<void>((resolve, reject) =>
-            nextTick(() => {
+            queueMicrotask(() => {
               if (instruction.turn.unresolvedPrompt !== instruction.prompt) {
                 reject("waiting on incorrect prompt");
               }
@@ -627,7 +626,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
 
       // always defer to next tick again when resuming
-      await new Promise<void>((resolve) => nextTick(() => resolve()));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
     } finally {
       this.unpause();
       this.isProcessingSavedState = false;
@@ -922,7 +921,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     await this.checkPause(); // state could have gotten funky here?  if we have a resolution already? maybe not so bad?
 
     if (resolution.response !== undefined) {
-      await new Promise((resolve) => nextTick(() => resolve(true))); // defer to next tick to make sure replay works identically
+      await new Promise((resolve) => queueMicrotask(() => resolve(true))); // defer to next tick to make sure replay works identically
       prompt.resolve(resolution.response);
     } else {
       if (this.player.promptStatus.latestPrompt.value) {

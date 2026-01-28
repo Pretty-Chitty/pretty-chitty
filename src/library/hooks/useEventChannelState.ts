@@ -5,7 +5,7 @@ export function useEventChannelState<T>(e: EventChannel<T>): [T, (a: T) => void]
   const [v, setV] = useState<T>(e.value);
 
   useEffect(() => {
-    // calling explicitly here saves a `nextTick` scheduling and fixes the problem where a value
+    // calling explicitly here saves a `queueMicrotask` scheduling and fixes the problem where a value
     // changes between when this is invoked and when useEffect is invoked.
     setV(e.value);
     e.on(setV, false);

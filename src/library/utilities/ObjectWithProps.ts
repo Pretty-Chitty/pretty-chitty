@@ -1,5 +1,4 @@
 import "reflect-metadata";
-import nextTick from "next-tick";
 import { checkAnnotation, NonEditable } from "./Annotations";
 
 const CATCH_ALL = "[[null]]";
@@ -22,7 +21,7 @@ export class ObjectWithProps {
   /** @internal */
   public notifyChange(key: string): void {
     if (this._keysThatChanged.size === 0) {
-      nextTick(() => {
+      queueMicrotask(() => {
         this._keysThatChanged.forEach((key) => this._cbs[key]?.forEach((cb) => cb()));
         this._cbs[CATCH_ALL]?.forEach((cb) => cb());
         this._keysThatChanged.clear();

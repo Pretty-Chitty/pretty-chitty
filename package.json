@@ -9,6 +9,9 @@
     "type": "git",
     "url": "https://github.com/pretty-chitty/pretty-chitty.git"
   },
+  "sideEffects": [
+    "*.css"
+  ],
   "keywords": [
     "game-engine",
     "board-game",
@@ -52,7 +55,6 @@
     "@types/base-64": "^1.0.2",
     "@types/color": "^3.0.6",
     "@types/jest": "^29.5.11",
-    "@types/next-tick": "^1.0.2",
     "@types/node": "^20.11.3",
     "@types/wheel": "^0.0.3",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
@@ -106,7 +108,6 @@
     "color": "^4.2.3",
     "extrude-polyline": "^1.0.6",
     "mui-modal-provider": "^2.4.2",
-    "next-tick": "^1.1.0",
     "quick-lru": "^7.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

@@ -2,16 +2,12 @@ import {
   Box3,
   BoxGeometry,
   Euler,
-  FrontSide,
   Group,
   Mesh,
   MeshBasicMaterial,
-  MeshPhongMaterial,
   Plane,
-  PlaneGeometry,
   Quaternion,
   Raycaster,
-  Shape,
   Vector2,
   Vector3,
   Color as ThreeColor,
@@ -20,12 +16,9 @@ import { Chit } from "../game/Chit";
 import { ChitRenderSpec, OwnerOriginPosition } from "./ChitRenderSpec";
 import { Easing, Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { RootChitRenderInstance } from "./RootChitRenderInstance";
-import { OutlineCanvas } from "../utilities/OutlineCanvas";
-import { outlineGeometry } from "../utilities/OutlineGeometry";
 import { fixBbox } from "../utilities/BboxUtils";
 import { ChitGalleryItemInstance } from "./ChitGalleryItemInstance";
 import Color from "color";
-import nextTick from "next-tick";
 
 const LINE_COLOR = new MeshBasicMaterial({ color: 0xff0000, wireframe: true, wireframeLinewidth: 2 });
 const CLICK_LINE_COLOR = new MeshBasicMaterial({ color: 0xffff00, wireframe: true, wireframeLinewidth: 2 });
@@ -748,7 +741,7 @@ export class ChitRenderInstance {
     if (this.isUsingSyntheticBbox) {
       if (!this._boundingBoxDirty) {
         this._boundingBoxDirty = true;
-        nextTick(() => {
+        queueMicrotask(() => {
           this.updateBoundingBox();
           this._boundingBoxDirty = false;
         });
