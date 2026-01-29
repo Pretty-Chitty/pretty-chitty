@@ -63,6 +63,8 @@ export class ChitRenderSpec {
   public summaryRenderingOptions: RichTextRenderOptionsParameters | undefined;
   public shortSummaryRenderingOptions: RichTextRenderOptionsParameters | undefined;
 
+  public dragZLiftAmount: number = 1;
+
   /**
    * The active player that is playing this match
    */

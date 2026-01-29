@@ -2,11 +2,12 @@ import { Chit } from "./Chit";
 import { GalleryItemChitChildrenSource } from "./GalleryItemChitChildrenSource";
 import { IButtonLibrary } from "./Game";
 import { Confirm, GameButton, ToggleGalleryButton } from "./GameButton";
+import { OrderedOutlet } from "./OrderedOutlet";
 import { PickPrompt } from "./Prompt";
 import { MismatchError, Turn } from "./Turn";
 
 export type FindChit = (id: string) => Chit;
-export type PickType = "ChitPick" | "ButtonPick";
+export type PickType = "ChitPick" | "ButtonPick" | "DragPick";
 export type PickSerialization = {
   type: PickType;
   message?: string;
@@ -86,6 +87,10 @@ export abstract class Pick {
       }
       case "ButtonPick": {
         p = new ButtonPick();
+        break;
+      }
+      case "DragPick": {
+        p = new DragPick();
         break;
       }
     }
@@ -243,6 +248,93 @@ export class ChitPick<T extends Chit> extends Pick {
   toggleButton(button: ToggleGalleryButton): this {
     this.button = button;
     return this;
+  }
+}
+
+export class DragTarget<C extends Chit, S extends Chit> {
+  public chits: C[] = [];
+  public cb: (sourceChit: S, targetChit: C) => void | Promise<void> = () => {};
+
+  static from<C extends Chit, S extends Chit>(
+    chit: C | C[] | OrderedOutlet<C>,
+    cb: (sourceChit: S, targetChit: C) => void | Promise<void>,
+  ) {
+    const result = new DragTarget<C, S>();
+    result.chits =
+      chit instanceof OrderedOutlet ? chit.copy() : Array.isArray(chit) ? (chit.filter((c) => c) as T[]) : [chit];
+    result.cb = cb;
+    return result;
+  }
+}
+
+export class DragPick<C extends Chit> extends Pick {
+  /** @internal */
+  type: PickType = "DragPick";
+
+  public chits: C[] = [];
+
+  public dropTargets: DragTarget<any, C>[] = [];
+
+  /** @internal */
+  serializeDetails() {
+    const result: any = {
+      c: this.chits.map((chit) => chit.id),
+      d: this.dropTargets.map((dropTarget) => dropTarget.chits.map((chit) => chit.id)),
+    };
+    return result;
+  }
+
+  /** @internal */
+  deserializeDetails({ c, d }: { c: string[]; d: string[][] }, findChit: FindChit): void {
+    this.chits = c.map((chitId) => findChit(chitId) as C).filter((d) => d);
+    this.dropTargets = d.map((dropIds: string[]) => {
+      const result = new DragTarget<any, C>();
+      result.chits = dropIds.map((chitId: string) => findChit(chitId)).filter((d) => d);
+      return result;
+    });
+  }
+
+  /** @internal */
+  resolveDetails({ chitId, targetChitId }: { chitId: string; targetChitId: string }): Promise<void> {
+    const selectedChit = this.chits.find((chit) => chit.id === chitId);
+    if (!selectedChit) {
+      throw new MismatchError();
+    }
+
+    for (const dropTarget of this.dropTargets) {
+      const targetChit = dropTarget.chits.find((chit) => chit.id === targetChitId);
+      if (targetChit) {
+        return Promise.resolve(dropTarget.cb(selectedChit, targetChit));
+      }
+    }
+    throw new MismatchError();
+  }
+
+  /** @internal */
+  stageIn(prompt: PickPrompt) {
+    this.chits.forEach((c) => {
+      c.dropTargets = this.dropTargets.flatMap((dt) => dt.chits);
+      c.onDrag = (droppedChit: Chit) => {
+        prompt.resolvePick(this, { chitId: c.id!, targetChitId: droppedChit.id! });
+      };
+    });
+  }
+
+  /** @internal */
+  stageOut() {
+    this.chits.forEach((c) => (c.onDrag = undefined));
+  }
+
+  /** @internal */
+  autoResolve(): Promise<void | undefined> {
+    const selectedChit = this.chits[0];
+    const targetChit = this.dropTargets[0].chits[0];
+    return Promise.resolve(this.dropTargets[0].cb(selectedChit, targetChit));
+  }
+
+  /** @internal */
+  numberOfChoices(): number {
+    return this.chits.length * this.dropTargets.reduce((sum, dt) => sum + dt.chits.length, 0);
   }
 }
 

@@ -249,6 +249,32 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   }
 
   /**
+   * Compress the history in the timeline such that a user with maybe many moves (and changing their minds) won't
+   * clock up the replay timeline.  Basically takes all of the flushes and smushes them together into a single flush.
+   * Importantly, it leaves the (maybe lots) of decisions on the decision stack.  This just compresses flushes into a single
+   * flush step
+   */
+  zip() {
+    let hasChange = false;
+    while (this.clockSteps.length >= 2) {
+      const lastStep = this.clockSteps[this.clockSteps.length - 1];
+      const previousStep = this.clockSteps[this.clockSteps.length - 2];
+      if (!(lastStep instanceof FlushClockStep) || !(previousStep instanceof FlushClockStep)) {
+        break;
+      }
+
+      previousStep.state = { ...previousStep.state, ...lastStep.state };
+      this.clockSteps.pop();
+      hasChange = true;
+    }
+
+    if (hasChange) {
+      this.pass++;
+      this.flush();
+    }
+  }
+
+  /**
    * Scan all of the chits managed by this turn.  If any of them have changed, group them together into a
    * "ClockStep".  If any new chits appear, then add them to our lookup.  If any chits are deleted (orphaned),
    * then we have to identify those as well.

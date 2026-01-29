@@ -257,6 +257,10 @@ export class Card extends Chit {
 
     // make sure it reports it out?
     spec.setOutletPositionFromCanvas(ts);
+
+    if (this.isDropTarget) {
+      spec.highlight.clickColor = "#0000ff";
+    }
   }
 }
 
@@ -279,7 +283,7 @@ export class Card2 extends Chit {
     const card2side = new MeshPhongMaterial({
       color: 0x999999,
     });
-    const card2boxGeometry = new BoxGeometry(0.25, 0.25, 6.25);
+    const card2boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
     const side = card2side;
 
     const mesh = new Mesh(card2boxGeometry, [

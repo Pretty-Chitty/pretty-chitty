@@ -33,6 +33,7 @@ import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
 import { cityscape } from "./assets/network_overload";
 import { Bookshelf, ShelfRow, ShelfSpace } from "./Bookshelft";
+import { ButtonPick, DragTarget } from "../library/game/Pick";
 
 const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
@@ -164,6 +165,22 @@ export class DemoGame implements Game<Player, Root> {
       // turn.flush();
       // pieces[6].removeFromParent();
       // turn.flush();
+
+      let done = false;
+      while (!done) {
+        await turn.pick([
+          new PassButton(() => {
+            done = true;
+          }).pick(),
+          Chit.dragPick(pieces.slice(95, 100), [
+            DragTarget.from(pieces, (from, to) => {
+              to.add(from);
+            }),
+          ]).message("pick a piece to take and put in the bag"),
+        ]);
+      }
+
+      turn.zip();
 
       await turn.pick(
         Chit.pick(pieces.slice(0, 6), async (c: Card) => {

@@ -37,6 +37,11 @@ interface PointZ {
   z: number;
 }
 
+export type DragHandler = {
+  duringDrag: (dx: number, dy: number) => void;
+  finishDrag: () => void;
+};
+
 class DestroyedError extends Error {}
 
 export class ChitRenderInstance {
@@ -551,7 +556,76 @@ export class ChitRenderInstance {
   public outlineContext?: ChitRenderInstance;
 
   public hasExplicitOnClick() {
-    return this.chit.onClick && !this.renderSpec?.isShowingChildrenAsGallery;
+    return (
+      (this.chit.onClick || this.chit.onDrag || this.chit.isDropTarget) && !this.renderSpec?.isShowingChildrenAsGallery
+    );
+  }
+
+  public executeDrag(x: number, y: number) {
+    const root = this.rootRenderInstance;
+    const dragPoint = root.attemptToFindPlaneZ0OfCanvasPoints(x, y) ?? new Vector3(0, 0, 0);
+    const startPosition = this.group.position.clone();
+    if (!this.chit.dropTargets) {
+      throw "Must have drop targets";
+    }
+
+    const startWorldPosition = this.bboxGroup.getWorldPosition(new Vector3());
+    const targets: { chit: Chit; distance: Vector3 }[] = [];
+    this.chit.dropTargets.map((target) => {
+      if (target.renderInstance && target !== this.chit) {
+        const position = target.renderInstance.bboxGroup.getWorldPosition(new Vector3());
+        targets.push({ chit: target, distance: position.sub(startWorldPosition) });
+      }
+    });
+    let dropTarget: Chit | undefined = undefined;
+
+    return {
+      duringDrag: (dx: number, dy: number) => {
+        x += dx;
+        y += dy;
+        const currentPoint = root.attemptToFindPlaneZ0OfCanvasPoints(x, y) ?? new Vector3(0, 0, 0);
+        const worldDx = currentPoint.x - dragPoint.x;
+        const worldDy = currentPoint.y - dragPoint.y;
+        this.group.position.set(
+          startPosition.x + worldDx,
+          startPosition.y + worldDy,
+          startPosition.z + (this.renderSpec?.dragZLiftAmount ?? 0),
+        );
+
+        let closestIndex = 0;
+        let closest = Number.MAX_SAFE_INTEGER;
+        targets.forEach(({ distance }, i) => {
+          const computed = Math.sqrt(
+            (worldDx - distance.x) * (worldDx - distance.x) + (worldDy - distance.y) * (worldDy - distance.y),
+          );
+          if (computed < closest) {
+            closest = computed;
+            closestIndex = i;
+          }
+        });
+
+        if (dropTarget && dropTarget !== targets[closestIndex].chit) {
+          dropTarget.isDropTarget = false;
+          dropTarget.renderInstance?.refresh();
+        }
+
+        dropTarget = targets[closestIndex].chit;
+        dropTarget.isDropTarget = true;
+        dropTarget.renderInstance!.refresh();
+
+        root.markDirty();
+      },
+      finishDrag: () => {
+        if (dropTarget) {
+          dropTarget.isDropTarget = false;
+          dropTarget.renderInstance?.refresh();
+
+          this.chit.onDrag!(dropTarget);
+          dropTarget.add(this.chit);
+        }
+        this.refresh();
+      },
+    };
   }
 
   public fixOutline() {
@@ -623,39 +697,11 @@ export class ChitRenderInstance {
 
     const screenCoordsOfNewLocation =
       chit instanceof Vector2 ? chit : chit ? chit.screenCoordinates() : new Vector2(0, 0);
-    if (rootRenderInstance && rootRenderInstance.rootGroup && screenCoordsOfNewLocation) {
-      // find the current screen coordinates of its new home and map it to "camera space"
-      const cameraSpace = rootRenderInstance.convertScreenSpaceToCameraSpace(
+    if (screenCoordsOfNewLocation) {
+      return rootRenderInstance.attemptToFindPlaneZ0OfScreenPoints(
         screenCoordsOfNewLocation.x,
         screenCoordsOfNewLocation.y,
       );
-
-      if (!cameraSpace) {
-        return;
-      }
-
-      const scale = Math.max(Math.abs(cameraSpace.x), Math.abs(cameraSpace.y));
-      if (!Number.isFinite(scale) || scale === 0) {
-        return undefined;
-      }
-
-      let multiplier = scale > 1 ? 1 : 1 / scale;
-
-      // figure out what camera space means at Z=0
-      for (; multiplier > 0.11; multiplier *= 0.75) {
-        const raycaster = new Raycaster();
-        raycaster.setFromCamera(
-          new Vector2(cameraSpace.x * multiplier, cameraSpace.y * multiplier),
-          rootRenderInstance.camera,
-        );
-        const planeZ = new Plane(new Vector3(0, 0, 1), 0);
-        const intersection = new Vector3();
-        const intersects = raycaster.ray.intersectPlane(planeZ, intersection);
-        if (intersects) {
-          return intersects;
-        }
-      }
-      // return intersection;
     }
   }
 

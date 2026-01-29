@@ -17,8 +17,9 @@ export interface ViewerGestureHandlers {
   onSingleTap?: (x: number, y: number, isMouse: boolean) => void;
   onDoubleTap?: (x: number, y: number) => void;
   onLongTap?: (x: number, y: number, isMouse: boolean) => void;
-  onPanStart?: () => void;
+  onPanStart?: (x: number, y: number, isMouse: boolean) => void;
   onPan?: (dx: number, dy: number, ev: HammerInput) => void;
+  onPanEnd?: () => void;
   onPinchStart?: () => void;
   onPinch?: (scale: number, deltaScale: number, centerX: number, centerY: number) => void;
   onPinchEnd?: () => void;
@@ -172,7 +173,12 @@ export function PanelContents({
       lastDeltaX = 0;
       lastDeltaY = 0;
       panCancelled = false;
-      activeViewer?.handlers.onPanStart?.();
+      const bounds = activeViewer?.getBounds();
+      if (bounds) {
+        const x = ev.center.x - bounds.left;
+        const y = ev.center.y - bounds.top;
+        activeViewer!.handlers.onPanStart?.(x, y, ev.pointerType === "mouse");
+      }
     });
 
     hammer.on("pan", (ev) => {
@@ -190,6 +196,9 @@ export function PanelContents({
     });
 
     hammer.on("panend", () => {
+      if (activeViewer) {
+        activeViewer.handlers.onPanEnd?.();
+      }
       activeViewer = null;
     });
 
