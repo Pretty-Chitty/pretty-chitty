@@ -254,7 +254,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    * Importantly, it leaves the (maybe lots) of decisions on the decision stack.  This just compresses flushes into a single
    * flush step.
    *
-   * This only really makes sense when there are no more undos left.  Undoing beyond a zip will result in odd playback behavior.
+   * This should only be done immediately after every zippable action *or* after undos are no longer possible.
    */
   zip() {
     this.flush();
