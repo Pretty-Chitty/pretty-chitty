@@ -169,14 +169,16 @@ export function PanelContents({
 
     // Pan handlers
     hammer.on("panstart", (ev) => {
-      activeViewer = findViewerAtPoint(ev.center.x, ev.center.y);
+      const startX = ev.center.x - ev.deltaX;
+      const startY = ev.center.y - ev.deltaY;
+      activeViewer = findViewerAtPoint(startX, startY);
       lastDeltaX = 0;
       lastDeltaY = 0;
       panCancelled = false;
       const bounds = activeViewer?.getBounds();
       if (bounds) {
-        const x = ev.center.x - bounds.left;
-        const y = ev.center.y - bounds.top;
+        const x = startX - bounds.left;
+        const y = startY - bounds.top;
         activeViewer!.handlers.onPanStart?.(x, y, ev.pointerType === "mouse");
       }
     });

@@ -252,9 +252,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    * Compress the history in the timeline such that a user with maybe many moves (and changing their minds) won't
    * clock up the replay timeline.  Basically takes all of the flushes and smushes them together into a single flush.
    * Importantly, it leaves the (maybe lots) of decisions on the decision stack.  This just compresses flushes into a single
-   * flush step
+   * flush step.
+   *
+   * This only really makes sense when there are no more undos left.  Undoing beyond a zip will result in odd playback behavior.
    */
   zip() {
+    this.flush();
     let hasChange = false;
     while (this.clockSteps.length >= 2) {
       const lastStep = this.clockSteps[this.clockSteps.length - 1];

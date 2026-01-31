@@ -349,7 +349,7 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
       const circumference = PI2 * r;
 
       for (let steps = 0; steps <= circumference; steps += precision) {
-        const angle = (steps / circumference) * PI2;
+        const angle = (steps / (circumference + 0.0001)) * PI2;
         let vector = new Vector3(
           ((x + r * Math.cos(angle)) / this._width) * 2 - 1,
           -((y + r * Math.sin(angle)) / this._height) * 2 + 1,

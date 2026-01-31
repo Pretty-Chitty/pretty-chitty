@@ -178,9 +178,8 @@ export class DemoGame implements Game<Player, Root> {
             }),
           ]).message("pick a piece to take and put in the bag"),
         ]);
+        turn.zip();
       }
-
-      turn.zip();
 
       await turn.pick(
         Chit.pick(pieces.slice(0, 6), async (c: Card) => {
