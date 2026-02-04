@@ -1,6 +1,6 @@
 import { ChitRenderInstance } from "../rendering/ChitRenderInstance";
 import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
-import { Turn } from "./Turn";
+import type { Turn } from "./Turn";
 import { FixChildOutlets, NonEditable, Ordered } from "../utilities/Annotations";
 import { ObjectWithProps } from "../utilities/ObjectWithProps";
 import { ChitPick, DragPick, DragTarget } from "./Pick";
@@ -14,6 +14,9 @@ import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
 
 export const ORDERED_CHILDREN = "orderedChildren";
+
+const EXTRA_SERIALIZATION_PROPS_ARRAY = ["id", "_parent", "_parentOutlet", "_parentOutletIndex", "_parentFallback"];
+const EXTRA_SERIALIZATION_PROPS_SET = new Set(EXTRA_SERIALIZATION_PROPS_ARRAY);
 
 export type ChitClick = () => void;
 export type ChitDrag = (dropOn: Chit) => void;
@@ -401,7 +404,7 @@ export class Chit extends ObjectWithProps {
   }
 
   private get serializationProps() {
-    return [...this.props, "id", "_parent", "_parentOutlet", "_parentOutletIndex", "_parentFallback"];
+    return [...this.props, ...EXTRA_SERIALIZATION_PROPS_ARRAY];
   }
 
   /** @internal */
@@ -460,9 +463,13 @@ export class Chit extends ObjectWithProps {
       }
     };
 
-    this.props.forEach((key) => {
-      const value = j[key];
+    // expanded props will introduce undefined for things that used to be there but aren't
+    this.expandedPropsFromJson(j).forEach((key) => {
+      if (EXTRA_SERIALIZATION_PROPS_SET.has(key)) {
+        return;
+      }
 
+      const value = (j as any)[key];
       if (value?.___orderedOutlet) {
         (this as any)[key].deserialize(value.___orderedOutlet.map(inflateValue));
       } else {

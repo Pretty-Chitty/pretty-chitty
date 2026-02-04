@@ -4,9 +4,33 @@ import { checkAnnotation, NonEditable } from "./Annotations";
 const CATCH_ALL = "[[null]]";
 export class ObjectWithProps {
   /** @internal */
+  @NonEditable private _propsArray: string[] = [];
+  /** @internal */
+  @NonEditable private _propsSet = new Set<string>();
+
+  /** @internal */
   public get props(): string[] {
-    return Object.keys(this).filter((key) => !checkAnnotation(this, key, NonEditable));
+    const props = Object.keys(this).filter((key) => !checkAnnotation(this, key, NonEditable));
+    props.forEach((key) => {
+      if (!this._propsSet.has(key)) {
+        this._propsSet.add(key);
+        this._propsArray.push(key);
+      }
+    });
+    return this._propsArray;
   }
+
+  /** @internal */
+  public expandedPropsFromJson(json: { [key: string]: unknown }): string[] {
+    for (const key of Object.keys(json)) {
+      if (!this._propsSet!.has(key) && !checkAnnotation(this, key, NonEditable)) {
+        this._propsSet!.add(key);
+        this._propsArray!.push(key);
+      }
+    }
+    return this._propsArray;
+  }
+
   /** @internal */
   @NonEditable private _cbs: { [key: string]: Array<() => void> } = {};
 

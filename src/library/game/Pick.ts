@@ -261,7 +261,7 @@ export class DragTarget<C extends Chit, S extends Chit> {
   ) {
     const result = new DragTarget<C, S>();
     result.chits =
-      chit instanceof OrderedOutlet ? chit.copy() : Array.isArray(chit) ? (chit.filter((c) => c) as T[]) : [chit];
+      chit instanceof OrderedOutlet ? chit.copy() : Array.isArray(chit) ? (chit.filter((c) => c) as C[]) : [chit];
     result.cb = cb;
     return result;
   }
