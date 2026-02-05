@@ -35,6 +35,7 @@ module.exports = {
     devMiddleware: { writeToDisk: true },
     allowedHosts: "all",
     compress: true,
+    historyApiFallback: true,
   },
   module: {
     rules: [

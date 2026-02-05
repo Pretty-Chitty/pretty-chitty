@@ -1,6 +1,6 @@
 import { Chit } from "./Chit";
 import { Match } from "./Match";
-import { NoValidMovesPrompt, PickPrompt, Prompt, SelectPrompt } from "./Prompt";
+import { NoValidMovesPrompt, PickPrompt, Prompt } from "./Prompt";
 import { PromptResponse, RngResponse, TurnState } from "./TurnState";
 import { ButtonPick, Pick } from "./Pick";
 import { Confirm, GameButton } from "./GameButton";
@@ -479,34 +479,6 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     );
 
     return await Promise.all(turns);
-  }
-
-  /**
-   * Basic selection prompt.  All chits will appear as "selected" on the respective client.
-   * Upon clicking one, the prompt will resolve itself.
-   *
-   * @param chits The list of chits that can be selected from
-   * @returns The chit that the player selected
-   */
-  public async select(chits: Chit[]): Promise<Chit> {
-    if (chits.length === 1) {
-      return chits[0];
-    }
-
-    const prompt = new SelectPrompt();
-    prompt.chits = chits;
-
-    this.prepareForPrompt(prompt);
-
-    // make sure all of these chits are locked by us - otherwise someone has made a mistake.
-    chits.forEach((chit) => chit.confirmLock(this));
-
-    await this.waitForPromptResolution(prompt);
-    if (!prompt.selectedChit) {
-      throw new Error("Prompt should have selected chit response");
-    }
-
-    return prompt.selectedChit;
   }
 
   /**
