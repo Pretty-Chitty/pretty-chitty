@@ -22,6 +22,7 @@ export class ObjectWithProps {
 
   /** @internal */
   public expandedPropsFromJson(json: { [key: string]: unknown }): string[] {
+    this.props; // make sure this runs.
     for (const key of Object.keys(json)) {
       if (!this._propsSet!.has(key) && !checkAnnotation(this, key, NonEditable)) {
         this._propsSet!.add(key);
