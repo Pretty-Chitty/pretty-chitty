@@ -5,7 +5,7 @@ import CanvasLibraryViewer from "./CanvasLibraryViewer";
 import { Game } from "../game/Game";
 import ChitLibraryViewer from "./ChitLibraryViewer";
 import Playground from "./Playground";
-import DemoWrapper from "./DemoWrapper";
+import { DemoWrapper } from "./DemoWrapper";
 
 export function GameDesigner({ game }: { game: Game<any, any> }) {
   const [tabIndex, setTabIndex] = useLocalStorageState("selectedMainTab", {

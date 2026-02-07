@@ -33,7 +33,7 @@ import { TestStack } from "./TestStack";
 import { TestStack2 } from "./TestStack2";
 import { PlayerAid } from "./PlayerAid";
 import { cityscape, cityscape2 } from "./assets/network_overload";
-import { Ordered } from "../library/utilities/Annotations";
+import { Ordered, Selectable } from "../library/utilities/Annotations";
 import { CardMesh } from "../library/utilities/CardMesh";
 import { GameBagChit } from "../library/game/GameBagChit";
 import { tunnel, walk } from "./assets/icons";
@@ -402,12 +402,30 @@ export class Player extends PlayerChit {
 }
 
 export class Root extends RootChit<Player> {
+  minPlayers = 2;
+  maxPlayers = 5;
+
   @ChildOutlet public mainBoard = new Table();
   @ChildOutlet public shelf = new Bookshelf();
   @ChildOutlet public playerAid = new PlayerAid();
 
+  @Selectable({
+    label: "Board Size",
+    choices: [
+      { label: "Small", id: "small" },
+      { label: "Medium", id: "medium" },
+      { label: "Large", id: "large" },
+    ],
+  })
+  public size: "small" | "medium" | "large" = "medium";
+
   override getDropdowns(): DropdownChit[] {
     return [this.playerAid];
+  }
+
+  override setupDemoGame(): number {
+    this.size = "small";
+    return 3;
   }
 
   override getLayout(_width: number, _height: number, _playerId: string): LayoutNode {

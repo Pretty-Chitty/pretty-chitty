@@ -8,6 +8,7 @@ import {
   LightSpec,
   CameraSpec,
   StaticImage,
+  GameMetaData,
 } from "../library";
 
 import { Mesh, MeshPhongMaterial, PlaneGeometry } from "three";
@@ -49,7 +50,13 @@ theme.galleryItemSpacing = 10;
 // theme.fontFamily = "monospace";
 
 export class DemoGame implements Game<Player, Root> {
-  name = "Demo Game";
+  metadata = {
+    name: "Demo Game",
+    author: "Pretty Chitty Team",
+    description: "A demo game to showcase Pretty Chitty features",
+    boxArt: "",
+    screenshot: "",
+  } as GameMetaData;
 
   chitLibrary = {
     Card3,
@@ -89,8 +96,8 @@ export class DemoGame implements Game<Player, Root> {
       players[i].color = color[i % color.length];
     }
 
-    const W = 10;
-    const H = 10;
+    const W = rootChit.size === "large" ? 10 : rootChit.size === "medium" ? 7 : 5;
+    const H = W;
 
     // set up the board
     // const rows = [...new Array(H)].map(() =>
@@ -172,7 +179,7 @@ export class DemoGame implements Game<Player, Root> {
           new PassButton(() => {
             done = true;
           }).pick(),
-          Chit.dragPick(pieces.slice(95, 100), [
+          Chit.dragPick(pieces.slice(pieces.length - 5, pieces.length), [
             DragTarget.from(pieces, (from, to) => {
               to.add(from);
             }),

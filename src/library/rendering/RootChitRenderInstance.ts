@@ -181,9 +181,12 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
   }
 
   public resetMarks() {
-    this._hasPendingChanges = false;
-    this._hasChitsEntering = false;
-    this._hasChitsLeaving = false;
+    if (this._hasChitsEntering || this._hasChitsLeaving || this._hasPendingChanges) {
+      this._hasPendingChanges = false;
+      this._hasChitsEntering = false;
+      this._hasChitsLeaving = false;
+      this.notifyPanelStatusChange();
+    }
   }
 
   public markHasPendingChange() {

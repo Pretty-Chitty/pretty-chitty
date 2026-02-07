@@ -24,6 +24,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
     public game: Game<P, R>,
     public players: PlayerInfo[],
     private matchStorage: IMatchStorage,
+    private matchOptions?: any,
   ) {}
 
   async load() {
@@ -73,9 +74,10 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
       try {
         this.result.value = undefined;
         this.errorState.value = undefined;
-        const rootChit = new this.game.chitLibrary.Root();
+        const rootChit = new this.game.chitLibrary.Root() as R;
         rootChit.id = "root";
         rootChit.game = this.game;
+        rootChit.processMatchOptions(this.matchOptions);
 
         this.players.forEach((p) => {
           const Player = this.game.chitLibrary.Player;

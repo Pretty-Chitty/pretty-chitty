@@ -13,6 +13,7 @@ import { EphemeralMatchStorage } from "../game/MatchStorage";
 import { PlayerProvider } from "../hooks/usePlayer";
 import { LoadingStateProvider, LoadingStates } from "../hooks/useLoadingStates";
 import { BadAIClientPrompts } from "../game/badAiTransport/BadAIClientPrompts";
+import { RootChit } from "../game/RootChit";
 
 export interface IChitLibrary {
   [key: string]: new () => Chit;
@@ -66,20 +67,17 @@ function Editor({ game }: { game: Game<any, any> }) {
   const [match, setMatch] = useState<Match<any, any> | null>(null);
 
   useEffect(() => {
-    const FIRST_NAMES = ["Fred", "Steve", "Paul", "Josh", "Sara", "Miles"];
-    const LAST_NAMES = ["Johnson", "Dennis", "Green", "Breckman", "Stevens", "Smith"];
     const storage = new EphemeralMatchStorage("demogame");
+
+    const tempRoot = new game.chitLibrary.Root() as RootChit<any>;
+    const playerCount = tempRoot.setupDemoGame();
+    const configOptions = tempRoot.getCurrentlySelectedMatchOptions();
+
     const players = [];
-    const playerCount = 2; // TODO:
     for (let i = 0; i < playerCount; i++) {
-      players.push(
-        new PlayerInfo(
-          `p${i}`,
-          `${FIRST_NAMES[(i + playerCount) % FIRST_NAMES.length]} ${LAST_NAMES[i % LAST_NAMES.length]}`,
-        ),
-      );
+      players.push(new PlayerInfo(`p${i}`, i === 0 ? "Human" : `Robot ${i}`));
     }
-    const match = new Match(game, players, storage);
+    const match = new Match(game, players, storage, configOptions);
     let cancelled = false;
     match.load().then(() => {
       if (cancelled) {
@@ -105,7 +103,7 @@ function Editor({ game }: { game: Game<any, any> }) {
   );
 }
 
-export default function DemoWrapper({ game }: { game: Game<any, any> }) {
+export function DemoWrapper({ game }: { game: Game<any, any> }) {
   const [loadingStates] = useState<LoadingStates>(new LoadingStates());
   return (
     <LoadingStateProvider loadingStates={loadingStates}>
