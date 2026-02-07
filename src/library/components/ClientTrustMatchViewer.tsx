@@ -18,6 +18,7 @@ export function ClientTrustMatchViewer({
   matchStorage,
   onBack,
   onLoadProgress,
+  options = {},
 }: {
   playerId: string;
   players: IPlayerInfo[];
@@ -25,6 +26,7 @@ export function ClientTrustMatchViewer({
   matchStorage: IMatchStorage;
   onBack?: () => void;
   onLoadProgress?: LoadingStatesCallback;
+  options?: any;
 }) {
   const [loadingStates] = useState<LoadingStates>(new LoadingStates());
   const [match, setMatch] = useState<Match<any, any> | undefined>();
@@ -42,6 +44,7 @@ export function ClientTrustMatchViewer({
         game,
         players.map((p) => new PlayerInfo(p)),
         matchStorage,
+        options,
       );
       let cancelled = false;
       match.load().then(() => {
@@ -58,7 +61,7 @@ export function ClientTrustMatchViewer({
     } else {
       setMatch(undefined);
     }
-  }, [game, matchStorage, players]);
+  }, [game, matchStorage, players, options]);
 
   useEffect(() => {
     if (!match) {
