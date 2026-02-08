@@ -12,6 +12,7 @@ export type GameMetaData = {
   purchaseUrl?: string;
   publisherUrl?: string;
   repositoryUrl?: string;
+  bugReportUrl?: string;
 
   boxArt: string;
   screenshot: string;

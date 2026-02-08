@@ -61,6 +61,8 @@ export { Splay } from "./rendering/Splay";
 /** @group Utilities */
 export { extrudeSVGToGeometry } from "./utilities/SvgExtruder";
 /** @group Utilities */
+export { loadGLB } from "./utilities/GlbLoader";
+/** @group Utilities */
 export { CardMesh } from "./utilities/CardMesh";
 
 //

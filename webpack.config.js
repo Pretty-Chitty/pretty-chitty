@@ -61,7 +61,7 @@ module.exports = {
         exclude: /node_modules/,
       },
       {
-        test: /(\.svg)|(inline\.png)|(inline\.jpg)/,
+        test: /(\.svg)|(inline\.png)|(inline\.jpg)|(\.glb)/,
         type: "asset/inline",
       },
       {

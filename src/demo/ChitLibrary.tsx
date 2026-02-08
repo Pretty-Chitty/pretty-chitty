@@ -26,6 +26,7 @@ import {
   StaticImage,
   extrudeSVGToGeometry,
   CameraSpec,
+  loadGLB,
 } from "../library";
 import type { LayoutNode } from "../library";
 
@@ -39,6 +40,7 @@ import { GameBagChit } from "../library/game/GameBagChit";
 import { tunnel, walk } from "./assets/icons";
 
 import city_profile from "./city_profile.svg";
+import house from "./House.glb";
 import { IconCanvas } from "../library/utilities/CanvasStack/IconCanvas";
 import { Bookshelf } from "./Bookshelft";
 
@@ -322,7 +324,7 @@ export class Card3 extends Chit {
   public thingy = false;
 
   public override render(spec: ChitRenderSpec): void {
-    const boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
+    // const boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
 
     const ts = new TestStack2();
     ts.subTitle = "yo ho ho";
@@ -330,24 +332,29 @@ export class Card3 extends Chit {
 
     spec.showDetailsOnLongPress = true;
 
-    const side = new MeshPhongMaterial({
-      color: 0x999999,
-    });
+    const mesh = loadGLB(house, { scale: 0.5, castShadow: true });
+    // mesh.rotateY(Math.PI);
+    spec.rotateX = Math.PI / 2;
+    spec.rotateZ = Math.PI;
 
-    const mesh = new Mesh(boxGeometry, [
-      side,
-      side,
-      side,
-      side,
-      // new MeshPhongMaterial({
-      //   bumpMap: ts.get().texture,
-      //   bumpScale: 1,
-      //   map: ts.get().texture,
-      // }),
-      StaticImage.material(cityscape),
-      side,
-    ]);
-    mesh.castShadow = true;
+    // const side = new MeshPhongMaterial({
+    //   color: 0x999999,
+    // });
+
+    // const mesh = new Mesh(boxGeometry, [
+    //   side,
+    //   side,
+    //   side,
+    //   side,
+    //   // new MeshPhongMaterial({
+    //   //   bumpMap: ts.get().texture,
+    //   //   bumpScale: 1,
+    //   //   map: ts.get().texture,
+    //   // }),
+    //   StaticImage.material(cityscape),
+    //   side,
+    // ]);
+    // mesh.castShadow = true;
     spec.object = mesh;
 
     spec.ownerOrigin = this.thingy ? OwnerOriginPosition.BottomRight : OwnerOriginPosition.Default;

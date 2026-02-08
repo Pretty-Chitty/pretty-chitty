@@ -187,11 +187,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    */
   async takeRng(count: number, message = "confirm draw or roll"): Promise<() => number> {
     await this.possiblyConfirm(message);
-    const results: number[] = [];
-    for (let i = 0; i < count; i++) {
-      results.push(this.state.getOrCreateRng(this.decisionIndex));
-      this.decisionIndex++;
-    }
+    const results: number[] = this.state.getOrCreateMultipleRng(this.decisionIndex, count);
+    this.decisionIndex++;
 
     let counter = 0;
     return () => {

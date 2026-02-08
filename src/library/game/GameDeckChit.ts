@@ -16,6 +16,12 @@ export type Stage<T> = {
 export class GameDeckChit<T extends Chit> extends Chit {
   @NonEditable type = "deck";
 
+  /**
+   * If true, the contents of chits are shuffled as they are drawn.  This should only be used if
+   * all chits are of the same class type
+   */
+  public protectSecrets = true;
+
   public chitGenerator?: () => T;
   public stages: Stage<T>[] = [];
 
@@ -33,11 +39,30 @@ export class GameDeckChit<T extends Chit> extends Chit {
     if (stage) {
       switch (stage.type) {
         case "draw": {
-          const index = Math.floor(stage.chits.length * (await this.currentTurn.rng(message)));
-          const selected = stage.chits[index];
-          stage.chits.splice(index, 1);
-          selected.setParent();
-          return selected;
+          if (this.protectSecrets) {
+            const rngs = await this.currentTurn.takeRng(2, message);
+            const resultIndex = Math.floor(stage.chits.length * rngs());
+            const swapIndex = Math.floor(stage.chits.length * rngs());
+            const selected = stage.chits[resultIndex];
+            const swap = stage.chits[swapIndex];
+
+            const selectedSerialized = selected.serialize();
+            const swapSerialized = swap.serialize();
+
+            selected.deserialize(swapSerialized, this.currentTurn.findChit);
+            swap.deserialize(selectedSerialized, this.currentTurn.findChit);
+
+            stage.chits.splice(resultIndex, 1);
+            selected.setParent();
+            return selected;
+          } else {
+            const rng = await this.currentTurn.rng();
+            const resultIndex = Math.floor(stage.chits.length * rng);
+            const selected = stage.chits[resultIndex];
+            stage.chits.splice(resultIndex, 1);
+            selected.setParent();
+            return selected;
+          }
         }
         case "discard": {
           stage.type = "draw";
@@ -49,6 +74,10 @@ export class GameDeckChit<T extends Chit> extends Chit {
     if (this.chitGenerator) {
       return this.chitGenerator();
     }
+  }
+
+  public shuffle() {
+    this.stages = [{ type: "draw", chits: this.stages.map((stage) => stage.chits).flat() }];
   }
 
   private isEmpty(stage?: Stage<T>) {

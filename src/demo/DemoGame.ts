@@ -89,7 +89,6 @@ export class DemoGame implements Game<Player, Root> {
   };
 
   async run(setup: Turn<any, Player, Root>, rootChit: Root) {
-    await rootChit.players.shuffle();
     const players = rootChit.players.copy();
     const color = ["#ed00cb", "#00edcb", "#002244"];
     for (let i = 0; i < players.length; i++) {

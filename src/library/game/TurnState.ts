@@ -8,7 +8,7 @@ export type PromptResponse = {
   timestamp: Date;
 };
 
-export type RngResponse = { readonly type: "rng"; value: number };
+export type RngResponse = { readonly type: "rng"; value: number[] };
 
 export type Decision = PromptResponse | RngResponse | TurnState;
 
@@ -66,14 +66,33 @@ export class TurnState {
       if (result.type !== "rng") {
         throw new MismatchError();
       }
-      return (result as RngResponse).value;
+      return (result as RngResponse).value[0];
     } else if (index === this.decisions.length) {
       const rng = Math.random();
       this.decisions.push({
         type: "rng",
-        value: rng,
+        value: [rng],
       });
       return rng;
+    } else {
+      throw new MismatchError();
+    }
+  }
+
+  public getOrCreateMultipleRng(index: number, count: number): number[] {
+    if (index < this.decisions.length) {
+      const result = this.decisions[index];
+      if (result.type !== "rng" || result.value.length !== count) {
+        throw new MismatchError();
+      }
+      return (result as RngResponse).value;
+    } else if (index === this.decisions.length) {
+      const rngs = Array.from({ length: count }, () => Math.random());
+      this.decisions.push({
+        type: "rng",
+        value: rngs,
+      });
+      return rngs;
     } else {
       throw new MismatchError();
     }
