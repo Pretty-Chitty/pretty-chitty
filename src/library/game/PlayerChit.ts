@@ -10,8 +10,20 @@ export class PlayerChit extends Chit {
 
   public playerId: string = "no id";
   public name: string = "no name";
-  public imageUrl?: string = undefined;
   public color: string = "#000000";
+
+  /** @internal */
+  private _imageUrl?: string = undefined;
+  get imageUrl() {
+    if (!this._imageUrl) {
+      const tempPlayerInfo = new PlayerInfo(this.playerId, this.name);
+      return tempPlayerInfo.generateAvatar();
+    }
+    return this._imageUrl;
+  }
+  set imageUrl(value: string | undefined) {
+    this._imageUrl = value;
+  }
 
   /** @internal */
   @NonEditable public matchScoreNumber?: number;
