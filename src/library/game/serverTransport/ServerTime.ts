@@ -36,7 +36,7 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
   }
 
   private stateCounter = 0;
-  private stateLookups: { [chitId: string]: number } = {};
+  private stateLookups: { [chitState: string]: number } = {};
   async serializeDelta(to: number) {
     if (this.match.turn.value) {
       const result = this.match.turn.value.serialize(this.playerId, to);
@@ -46,7 +46,7 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
       Object.entries(result.chits).forEach(([key, value]: [string, string]) => {
         let state = this.stateLookups[value];
         if (state === undefined) {
-          state = this.stateLookups[key] = ++this.stateCounter;
+          state = this.stateLookups[value] = ++this.stateCounter;
           newStates[this.stateCounter] = Chit.fixVisibility(value, this.playerId);
         }
         chitIdToStateCounter[key] = state;

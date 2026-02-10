@@ -46,11 +46,13 @@ export class GameDeckChit<T extends Chit> extends Chit {
             const selected = stage.chits[resultIndex];
             const swap = stage.chits[swapIndex];
 
-            const selectedSerialized = selected.serialize();
-            const swapSerialized = swap.serialize();
+            if (selected.id) {
+              const selectedSerialized = selected.serialize();
+              const swapSerialized = swap.serialize();
 
-            selected.deserialize(swapSerialized, this.currentTurn.findChit);
-            swap.deserialize(selectedSerialized, this.currentTurn.findChit);
+              selected.deserialize(swapSerialized, this.currentTurn.findChit);
+              swap.deserialize(selectedSerialized, this.currentTurn.findChit);
+            }
 
             stage.chits.splice(resultIndex, 1);
             selected.setParent();
