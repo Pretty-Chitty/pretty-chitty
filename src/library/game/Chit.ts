@@ -1,9 +1,9 @@
 import { ChitRenderInstance } from "../rendering/ChitRenderInstance";
 import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
-import { Turn } from "./Turn";
+import type { Turn } from "./Turn";
 import { FixChildOutlets, NonEditable, Ordered } from "../utilities/Annotations";
 import { ObjectWithProps } from "../utilities/ObjectWithProps";
-import { ChitPick } from "./Pick";
+import { ChitPick, DragPick, DragTarget } from "./Pick";
 import { Vector2 } from "three";
 import { OrderedOutlet } from "./OrderedOutlet";
 import { SparkChit } from "./SparkChit";
@@ -14,7 +14,11 @@ import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 
 export const ORDERED_CHILDREN = "orderedChildren";
 
+const EXTRA_SERIALIZATION_PROPS_ARRAY = ["id", "_parent", "_parentOutlet", "_parentOutletIndex", "_parentFallback"];
+const EXTRA_SERIALIZATION_PROPS_SET = new Set(EXTRA_SERIALIZATION_PROPS_ARRAY);
+
 export type ChitClick = () => void;
+export type ChitDrag = (dropOn: Chit) => void;
 
 export type HiddenPropertySerializationRule = {
   fields: "all" | string[];
@@ -186,11 +190,32 @@ export class Chit extends ObjectWithProps {
     this.notifyChange("onClick");
   }
 
+  @NonEditable
+  private _onDrag?: ChitDrag;
+
+  /** @internal */
+  @NonEditable
+  public dropTargets?: Chit[];
+
+  @NonEditable
+  public isDropTarget = false;
+
+  /** @internal */
+  public set onDrag(newValue: undefined | ChitDrag) {
+    this._onDrag = newValue;
+    this.notifyChange("onClick");
+  }
+
+  /** @internal */
+  public get onDrag(): undefined | ChitDrag {
+    return this._onDrag;
+  }
+
   /**
    * Returns true if the chit is currently clickable
    */
   public get isClickable(): boolean {
-    return !!this.onClick;
+    return !!this.onClick || !!this.onDrag;
   }
 
   @NonEditable private _lockedBy?: Turn<any, any, any>;
@@ -378,7 +403,7 @@ export class Chit extends ObjectWithProps {
   }
 
   private get serializationProps() {
-    return [...this.props, "id", "_parent", "_parentOutlet", "_parentOutletIndex", "_parentFallback"];
+    return [...this.props, ...EXTRA_SERIALIZATION_PROPS_ARRAY];
   }
 
   /** @internal */
@@ -437,9 +462,13 @@ export class Chit extends ObjectWithProps {
       }
     };
 
-    this.props.forEach((key) => {
-      const value = j[key];
+    // expanded props will introduce undefined for things that used to be there but aren't
+    this.expandedPropsFromJson(j).forEach((key) => {
+      if (EXTRA_SERIALIZATION_PROPS_SET.has(key)) {
+        return;
+      }
 
+      const value = (j as any)[key];
       if (value?.___orderedOutlet) {
         (this as any)[key].deserialize(value.___orderedOutlet.map(inflateValue));
       } else {
@@ -563,6 +592,17 @@ export class Chit extends ObjectWithProps {
     result.chits =
       chit instanceof OrderedOutlet ? chit.copy() : Array.isArray(chit) ? (chit.filter((c) => c) as T[]) : [chit];
     result.cb = cb;
+    return result;
+  }
+
+  public static dragPick<T extends Chit>(
+    chit: T | (T | undefined | null | false)[] | OrderedOutlet<T>,
+    targets: DragTarget<any, T>[],
+  ) {
+    const result = new DragPick<T>();
+    result.chits =
+      chit instanceof OrderedOutlet ? chit.copy() : Array.isArray(chit) ? (chit.filter((c) => c) as T[]) : [chit];
+    result.dropTargets = targets;
     return result;
   }
 

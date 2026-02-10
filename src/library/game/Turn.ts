@@ -1,7 +1,6 @@
-import nextTick from "next-tick";
 import { Chit } from "./Chit";
 import { Match } from "./Match";
-import { NoValidMovesPrompt, PickPrompt, Prompt, SelectPrompt } from "./Prompt";
+import { NoValidMovesPrompt, PickPrompt, Prompt } from "./Prompt";
 import { PromptResponse, RngResponse, TurnState } from "./TurnState";
 import { ButtonPick, Pick } from "./Pick";
 import { Confirm, GameButton } from "./GameButton";
@@ -188,11 +187,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    */
   async takeRng(count: number, message = "confirm draw or roll"): Promise<() => number> {
     await this.possiblyConfirm(message);
-    const results: number[] = [];
-    for (let i = 0; i < count; i++) {
-      results.push(this.state.getOrCreateRng(this.decisionIndex));
-      this.decisionIndex++;
-    }
+    const results: number[] = this.state.getOrCreateMultipleRng(this.decisionIndex, count);
+    this.decisionIndex++;
 
     let counter = 0;
     return () => {
@@ -247,6 +243,35 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       message = message(step.log!);
     }
     step.log = message;
+  }
+
+  /**
+   * Compress the history in the timeline such that a user with maybe many moves (and changing their minds) won't
+   * clock up the replay timeline.  Basically takes all of the flushes and smushes them together into a single flush.
+   * Importantly, it leaves the (maybe lots) of decisions on the decision stack.  This just compresses flushes into a single
+   * flush step.
+   *
+   * This should only be done immediately after every zippable action *or* after undos are no longer possible.
+   */
+  zip() {
+    this.flush();
+    let hasChange = false;
+    while (this.clockSteps.length >= 2) {
+      const lastStep = this.clockSteps[this.clockSteps.length - 1];
+      const previousStep = this.clockSteps[this.clockSteps.length - 2];
+      if (!(lastStep instanceof FlushClockStep) || !(previousStep instanceof FlushClockStep)) {
+        break;
+      }
+
+      previousStep.state = { ...previousStep.state, ...lastStep.state };
+      this.clockSteps.pop();
+      hasChange = true;
+    }
+
+    if (hasChange) {
+      this.pass++;
+      this.flush();
+    }
   }
 
   /**
@@ -416,7 +441,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.activeSubTurns.push(turn);
 
     //make sure flow goes to next tick
-    await new Promise((resolve) => nextTick(() => resolve(true)));
+    await new Promise((resolve) => queueMicrotask(() => resolve(true)));
 
     await this.checkPause();
 
@@ -451,34 +476,6 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     );
 
     return await Promise.all(turns);
-  }
-
-  /**
-   * Basic selection prompt.  All chits will appear as "selected" on the respective client.
-   * Upon clicking one, the prompt will resolve itself.
-   *
-   * @param chits The list of chits that can be selected from
-   * @returns The chit that the player selected
-   */
-  public async select(chits: Chit[]): Promise<Chit> {
-    if (chits.length === 1) {
-      return chits[0];
-    }
-
-    const prompt = new SelectPrompt();
-    prompt.chits = chits;
-
-    this.prepareForPrompt(prompt);
-
-    // make sure all of these chits are locked by us - otherwise someone has made a mistake.
-    chits.forEach((chit) => chit.confirmLock(this));
-
-    await this.waitForPromptResolution(prompt);
-    if (!prompt.selectedChit) {
-      throw new Error("Prompt should have selected chit response");
-    }
-
-    return prompt.selectedChit;
   }
 
   /**
@@ -603,7 +600,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       this.pause();
 
       // defer to next tick on starting
-      await new Promise<void>((resolve) => nextTick(() => resolve()));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
 
       const instructions = this.handleNewSavedState(state);
 
@@ -615,7 +612,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           instruction.turn.rerun(instruction.turn);
         } else if (instruction.type === "prompt") {
           await new Promise<void>((resolve, reject) =>
-            nextTick(() => {
+            queueMicrotask(() => {
               if (instruction.turn.unresolvedPrompt !== instruction.prompt) {
                 reject("waiting on incorrect prompt");
               }
@@ -627,7 +624,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
 
       // always defer to next tick again when resuming
-      await new Promise<void>((resolve) => nextTick(() => resolve()));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
     } finally {
       this.unpause();
       this.isProcessingSavedState = false;
@@ -922,7 +919,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     await this.checkPause(); // state could have gotten funky here?  if we have a resolution already? maybe not so bad?
 
     if (resolution.response !== undefined) {
-      await new Promise((resolve) => nextTick(() => resolve(true))); // defer to next tick to make sure replay works identically
+      await new Promise((resolve) => queueMicrotask(() => resolve(true))); // defer to next tick to make sure replay works identically
       prompt.resolve(resolution.response);
     } else {
       if (this.player.promptStatus.latestPrompt.value) {

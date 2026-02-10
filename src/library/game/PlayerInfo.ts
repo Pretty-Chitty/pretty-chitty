@@ -8,9 +8,29 @@ export interface IPlayerInfo {
 }
 
 export class PlayerInfo {
-  public imageUrl?: string;
   public id: string;
   public name: string;
+
+  /** @internal */
+  public generateAvatar() {
+    if (!this._imageUrl && window?.URL) {
+      const data = multiavatar(`${this.name} ${this.id}`, true).replace("<svg", '<svg width="231" height="231"');
+      return `data:image/svg+xml;base64,${base64.encode(data)}`;
+    }
+    return undefined;
+  }
+
+  /** @internal */
+  private _imageUrl?: string;
+  get imageUrl() {
+    if (!this._imageUrl && window?.URL) {
+      return this.generateAvatar();
+    }
+    return this._imageUrl;
+  }
+  set imageUrl(value: string | undefined) {
+    this._imageUrl = value;
+  }
 
   constructor(idOrPlayerInfo: string | IPlayerInfo, name?: string) {
     if (typeof idOrPlayerInfo === "string") {
@@ -23,8 +43,7 @@ export class PlayerInfo {
     }
 
     if (!this.imageUrl && window?.URL) {
-      const data = multiavatar(`${this.name} ${this.id}`, true).replace("<svg", '<svg width="231" height="231"');
-      this.imageUrl = `data:image/svg+xml;base64,${base64.encode(data)}`;
+      this.imageUrl = this.generateAvatar();
     }
   }
 }

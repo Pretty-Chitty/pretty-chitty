@@ -1,4 +1,4 @@
-import { DEFAULT_FONT_FAMILY } from "../../game/GameTheme";
+import { GameTheme } from "../../game/GameTheme";
 
 export type Align = "left" | "center" | "right";
 export type IconBaseline = "text" | "middle" | "bottom";
@@ -79,7 +79,7 @@ export class RichTextRenderer {
       y = 0,
       maxWidth,
       height,
-      fontFamily = DEFAULT_FONT_FAMILY,
+      fontFamily = GameTheme.defaultFontFamily,
       fontSize = 16,
       lineHeight = 1.25,
       align = "left",
@@ -112,7 +112,15 @@ export class RichTextRenderer {
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = color;
 
-    const totalHeight = lines.length * metrics.lineHeightPx;
+    // Measure actual font metrics for accurate vertical positioning
+    ctx.font = this.makeFont({}, metrics);
+    const fontMetrics = ctx.measureText("Mg"); // Use chars with ascenders and descenders
+    // Use actual metrics if available, otherwise estimate (ascent ~80% of fontSize)
+    const ascent = fontMetrics.fontBoundingBoxAscent ?? metrics.fontSize * 0.8;
+    const descent = fontMetrics.fontBoundingBoxDescent ?? metrics.fontSize * 0.2;
+    const actualTextHeight = ascent + descent;
+
+    const totalHeight = (lines.length - 1) * metrics.lineHeightPx + actualTextHeight;
     // Compute initial Y based on vertical alignment if a container height was provided.
     let startY = y;
     if (verticalAlign === "middle" && typeof height === "number") {
@@ -127,7 +135,7 @@ export class RichTextRenderer {
       else if (align === "right") offsetX = maxWidth - line.width;
 
       let cursorX = x + offsetX;
-      const baselineY = cursorY + metrics.fontSize;
+      const baselineY = cursorY + ascent;
 
       if (debug) {
         ctx.save();
@@ -186,7 +194,7 @@ export class RichTextRenderer {
     return {
       height: lines.length * metrics.lineHeightPx,
       lines: lines.length,
-      lastBaselineY: startY + (lines.length - 1) * metrics.lineHeightPx + metrics.fontSize,
+      lastBaselineY: startY + (lines.length - 1) * metrics.lineHeightPx + ascent,
     };
   }
 

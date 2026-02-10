@@ -1,7 +1,7 @@
 import { Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { ChitRenderInstance } from "./ChitRenderInstance";
 import { Chit } from "../game/Chit";
-import { Box3, Group, Object3D, Raycaster, Vector2, Vector3 } from "three";
+import { Box3, Group, Object3D, Plane, Raycaster, Vector2, Vector3 } from "three";
 import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
 import { LightWrapper } from "./LightWrapper";
 import { ModalState } from "../game/ModalState";
@@ -181,9 +181,12 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
   }
 
   public resetMarks() {
-    this._hasPendingChanges = false;
-    this._hasChitsEntering = false;
-    this._hasChitsLeaving = false;
+    if (this._hasChitsEntering || this._hasChitsLeaving || this._hasPendingChanges) {
+      this._hasPendingChanges = false;
+      this._hasChitsEntering = false;
+      this._hasChitsLeaving = false;
+      this.notifyPanelStatusChange();
+    }
   }
 
   public markHasPendingChange() {
@@ -349,7 +352,7 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
       const circumference = PI2 * r;
 
       for (let steps = 0; steps <= circumference; steps += precision) {
-        const angle = (steps / circumference) * PI2;
+        const angle = (steps / (circumference + 0.0001)) * PI2;
         let vector = new Vector3(
           ((x + r * Math.cos(angle)) / this._width) * 2 - 1,
           -((y + r * Math.sin(angle)) / this._height) * 2 + 1,
@@ -406,6 +409,14 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     }
   }
 
+  public handleBeginDrag(x: number, y: number, distance: number, precision: number) {
+    const chits = this.findEligibleRenderInstances((c) => !!c.onDrag, x, y, distance, precision);
+    if (chits.length > 0) {
+      const chit = chits[0];
+      return chit;
+    }
+  }
+
   public handleLongClick(x: number, y: number, distance: number, precision: number) {
     const chits = this.findEligibleRenderInstances(
       (c) => !!c.renderInstance?.showDetailsOnLongPress(),
@@ -456,6 +467,62 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
 
   public get cameraZoom() {
     return this.cameraWrapper.zoom;
+  }
+
+  public attemptToFindPlaneZ0OfScreenPoints(screenX: number, screenY: number): Vector3 | undefined {
+    const screenCoordsOfNewLocation = new Vector2(screenX, screenY);
+    if (!this.convertScreenSpaceToCameraSpace) {
+      return undefined;
+    }
+
+    // find the current screen coordinates of its new home and map it to "camera space"
+    const cameraSpace = this.convertScreenSpaceToCameraSpace(screenCoordsOfNewLocation.x, screenCoordsOfNewLocation.y);
+
+    if (!cameraSpace) {
+      return;
+    }
+
+    const scale = this.camera.zoom;
+    if (!Number.isFinite(scale) || scale === 0) {
+      return undefined;
+    }
+
+    let multiplier = scale > 1 ? 1 : 1 / scale;
+
+    // figure out what camera space means at Z=0
+    for (; multiplier > 0.11; multiplier *= 0.75) {
+      const raycaster = new Raycaster();
+      raycaster.setFromCamera(new Vector2(cameraSpace.x * multiplier, cameraSpace.y * multiplier), this.camera);
+      const planeZ = new Plane(new Vector3(0, 0, 1), 0);
+      const intersection = new Vector3();
+      const intersects = raycaster.ray.intersectPlane(planeZ, intersection);
+      if (intersects) {
+        return intersects;
+      }
+    }
+  }
+
+  public attemptToFindPlaneZ0OfCanvasPoints(canvasX: number, canvasY: number): Vector3 | undefined {
+    const cameraSpace = new Vector2((canvasX / this._width) * 2 - 1, (-canvasY / this._height) * 2 + 1);
+
+    const scale = this.camera.zoom;
+    if (!Number.isFinite(scale) || scale === 0) {
+      return undefined;
+    }
+
+    let multiplier = scale > 1 ? 1 : 1 / scale;
+
+    // figure out what camera space means at Z=0
+    for (; multiplier > 0.11; multiplier *= 0.75) {
+      const raycaster = new Raycaster();
+      raycaster.setFromCamera(new Vector2(cameraSpace.x * multiplier, cameraSpace.y * multiplier), this.camera);
+      const planeZ = new Plane(new Vector3(0, 0, 1), 0);
+      const intersection = new Vector3();
+      const intersects = raycaster.ray.intersectPlane(planeZ, intersection);
+      if (intersects) {
+        return intersects;
+      }
+    }
   }
 
   // override this stuff - we are never going to a new viewer

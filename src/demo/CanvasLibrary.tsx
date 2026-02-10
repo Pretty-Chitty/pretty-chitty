@@ -37,10 +37,10 @@ export class TestStack3 extends ParameterizedCanvas {
           {/* <Image image={walk} /> */}
 
           <Vertical>
-            <Text size={10} fill="#336" font="17px sans-serif">
+            <Text size={15} fill="#336" fontSize={17}>
               Test that {this.things.length}
             </Text>
-            <MultiLineText fontFamily="sans-serif" fontSize={17} lineHeight={0.9} icons={{ city: metropolis }}>
+            <MultiLineText fontSize={17} lineHeight={0.9} icons={{ city: metropolis }}>
               {`Test that is **a** ABCDEO that
 
 

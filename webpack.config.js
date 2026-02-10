@@ -35,6 +35,7 @@ module.exports = {
     devMiddleware: { writeToDisk: true },
     allowedHosts: "all",
     compress: true,
+    historyApiFallback: true,
   },
   module: {
     rules: [
@@ -60,7 +61,7 @@ module.exports = {
         exclude: /node_modules/,
       },
       {
-        test: /(\.svg)|(inline\.png)|(inline\.jpg)/,
+        test: /(\.svg)|(inline\.png)|(inline\.jpg)|(\.glb)/,
         type: "asset/inline",
       },
       {

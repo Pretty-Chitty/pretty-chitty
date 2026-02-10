@@ -4,7 +4,7 @@ import { Confirm, GameButton } from "./GameButton";
 import { ButtonPick, ChitPick, Pick } from "./Pick";
 import { MismatchError, Turn } from "./Turn";
 
-type PromptType = "SelectPrompt" | "ConfirmPrompt" | "PickPrompt" | "NoValidMovesPrompt";
+type PromptType = "PickPrompt" | "NoValidMovesPrompt";
 
 export type PromptSerialization = {
   type: PromptType;
@@ -97,10 +97,6 @@ export abstract class Prompt {
   public static deserialize(prompt: PromptSerialization, findChit: FindChit, buttonLibrary: IButtonLibrary): Prompt {
     let p: Prompt | undefined = undefined;
     switch (prompt.type) {
-      case "SelectPrompt": {
-        p = new SelectPrompt();
-        break;
-      }
       case "PickPrompt": {
         p = new PickPrompt();
         break;
@@ -160,37 +156,6 @@ export class NoValidMovesPrompt extends Prompt {
   stageIn(): void {}
 
   stageOut(): void {}
-}
-
-export class SelectPrompt extends Prompt {
-  type: PromptType = "SelectPrompt";
-
-  public chits: Chit[] = [];
-  public selectedChit: Chit | undefined;
-
-  serializeDetails(): any {
-    return this.chits.map((chit) => chit.id);
-  }
-
-  deserializeDetails(chitIds: string[]): void {
-    this.chits = chitIds.map((chitId) => this.findChit(chitId));
-  }
-
-  resolveDetails(chitId: string) {
-    this.resolved = true;
-    this.selectedChit = this.chits.find((chit) => chit.id === chitId);
-    if (!this.selectedChit) {
-      throw new MismatchError();
-    }
-  }
-
-  stageIn() {
-    this.chits.forEach((c) => (c.onClick = () => this.resolve(c.id)));
-  }
-
-  stageOut() {
-    this.chits.forEach((c) => (c.onClick = undefined));
-  }
 }
 
 type PickResolution = { idx: number; value: any };

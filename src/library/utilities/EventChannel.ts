@@ -1,5 +1,3 @@
-import nextTick from "next-tick";
-
 export class EventChannel<T> {
   private cbs: ((t: T) => void)[] = [];
   public on(cb: (t: T) => void, notifyImmediate = true) {
@@ -8,7 +6,7 @@ export class EventChannel<T> {
     // it's important to stash the original value otherwise we might the same value 2x in a row to the channel
     const valueToPush = this._value;
     if (notifyImmediate) {
-      nextTick(() => cb(valueToPush));
+      queueMicrotask(() => cb(valueToPush));
     }
 
     return () => {
@@ -20,7 +18,7 @@ export class EventChannel<T> {
   public trigger(force = false) {
     clearTimeout(this._triggerTimeout);
     if (force || this.latency === 0) {
-      nextTick(() => {
+      queueMicrotask(() => {
         this.cbs.forEach((cb) => cb(this._value));
       });
     } else {

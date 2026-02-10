@@ -3,6 +3,39 @@ import { Chit } from "../game/Chit";
 import { OrderedOutlet } from "../game/OrderedOutlet";
 
 const NON_EDITABLE = "NonEditable";
+const SELECTABLE_KEY = "__selectableProperties";
+
+/**
+ * Represents a single choice option for a Selectable property.
+ */
+export interface SelectableChoice {
+  /** Unique identifier for this choice */
+  id: string;
+  /** Optional user-friendly label for this choice. If not provided, the id will be used. */
+  label?: string;
+}
+
+/**
+ * Configuration for a Selectable property.
+ */
+export interface SelectableConfig {
+  /** User-friendly label for the property */
+  label: string;
+  /** List of possible choices for this property */
+  choices: SelectableChoice[];
+}
+
+/**
+ * Information about a Selectable property including its field name and configuration.
+ */
+export interface SelectablePropertyInfo {
+  /** The name of the property/field */
+  fieldName: string;
+  /** The configuration for this selectable property */
+  config: SelectableConfig;
+  /** The current value of the property */
+  currentValue: any;
+}
 
 function annotationToPropName(key: string, category: string) {
   return `__${key}__${category}`;
@@ -185,4 +218,70 @@ export function FixChildOutlets(instance: Chit) {
       });
     }
   }
+}
+
+/**
+ * Decorator that marks a property as selectable with a user-friendly label and a list of choices.
+ *
+ * @param config - Configuration object containing the label and choices for this property
+ *
+ * @example
+ * ```typescript
+ * class MyChit extends Chit {
+ *   @Selectable({
+ *     label: "Difficulty Level",
+ *     choices: [
+ *       { id: "easy", label: "Easy Mode" },
+ *       { id: "medium", label: "Medium Mode" },
+ *       { id: "hard", label: "Hard Mode" }
+ *     ]
+ *   })
+ *   public difficulty: string = "medium";
+ * }
+ * ```
+ *
+ * @group Chit Annotations
+ */
+export function Selectable(config: SelectableConfig) {
+  return function (cls: any, key: string) {
+    if (!Object.hasOwn(cls, SELECTABLE_KEY)) {
+      const parentSelectables = Object.getPrototypeOf(cls)?.[SELECTABLE_KEY];
+      Object.defineProperty(cls, SELECTABLE_KEY, {
+        enumerable: false,
+        value: parentSelectables ? { ...parentSelectables } : {},
+      });
+    }
+    cls[SELECTABLE_KEY][key] = config;
+  };
+}
+
+/**
+ * Gets all selectable properties from an object instance.
+ *
+ * @param obj - The object to get selectable properties from
+ * @returns An array of SelectablePropertyInfo objects
+ */
+export function getSelectableProperties(obj: any): SelectablePropertyInfo[] {
+  const result: SelectablePropertyInfo[] = [];
+  const seenKeys = new Set<string>();
+
+  let proto = Object.getPrototypeOf(obj);
+  while (proto) {
+    const selectables = proto[SELECTABLE_KEY];
+    if (selectables) {
+      for (const [fieldName, config] of Object.entries(selectables)) {
+        if (!seenKeys.has(fieldName)) {
+          seenKeys.add(fieldName);
+          result.push({
+            fieldName,
+            config: config as SelectableConfig,
+            currentValue: obj[fieldName],
+          });
+        }
+      }
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+
+  return result;
 }

@@ -14,6 +14,7 @@ import { requestSharedAnimationFrame } from "../utilities/RequestSharedAnimation
 import PersistentCanvas from "./PersistentCanvas";
 import { useGestureContext, ViewerGestureHandlers } from "./Panel/PanelContents";
 import { useLoadingState } from "../hooks/useLoadingStates";
+import { DragHandler } from "../rendering/ChitRenderInstance";
 
 let ID_COUNTER = 1;
 
@@ -260,6 +261,7 @@ export default function Viewer({
       let pinchEndedRecently = false;
       let pinchScale = 1;
       let pinchCancelled = false;
+      let dragHandler: DragHandler | undefined;
 
       const handlers: ViewerGestureHandlers = {
         onSingleTap: (x, y, isMouse) => {
@@ -276,15 +278,25 @@ export default function Viewer({
         onLongTap: (x, y, isMouse) => {
           chitRenderInstance.handleLongClick(x, y, isMouse ? 3 : 6, isMouse ? 1.5 : 3);
         },
-        onPanStart: () => {
+        onPanStart: (x, y, isMouse) => {
           if (pinchEndedRecently) {
             cancelled = true;
             return;
           }
           cancelled = false;
+
+          const draggingChit = chitRenderInstance.handleBeginDrag(x, y, isMouse ? 3 : 6, isMouse ? 1.5 : 3);
+          if (draggingChit) {
+            dragHandler = draggingChit.renderInstance!.executeDrag(x, y);
+          }
         },
         onPan: (dx, dy, ev) => {
           if (cancelled) {
+            return;
+          }
+
+          if (dragHandler) {
+            dragHandler.duringDrag(dx, dy);
             return;
           }
 
@@ -298,20 +310,29 @@ export default function Viewer({
               return;
             }
           }
-          if (zoomCallback) {
-            const isMouse = ev.pointerType === "mouse";
-            const neededVelocity = chitRenderInstance.cameraZoom <= 1.1 ? 0.3 : isMouse ? 7.5 : 2.5;
-            if (Math.abs(ev.velocityY) > neededVelocity && ev.distance > 20 && Math.abs(ev.velocityX) < 0.2) {
-              const prev = chitRenderInstance.cameraZoom;
-              chitRenderInstance.handleZoom(0, 0, chitRenderInstance.cameraZoom <= 1 ? 0.0001 : -20, !!zoomCallback);
-              zoomCallback(chitRenderInstance.cameraZoom, prev);
-              setTimeout(() => chitRenderInstance.handleZoom(0, 0, 0, false), 100);
-              cancelled = true;
-              return;
-            }
-          }
+          // if (zoomCallback) {
+          //   const isMouse = ev.pointerType === "mouse";
+          //   const neededVelocity = chitRenderInstance.cameraZoom <= 1.1 ? 0.3 : isMouse ? 7.5 : 2.5;
+          //   if (Math.abs(ev.velocityY) > neededVelocity && ev.distance > 20 && Math.abs(ev.velocityX) < 0.2) {
+          //     const prev = chitRenderInstance.cameraZoom;
+          //     chitRenderInstance.handleZoom(0, 0, chitRenderInstance.cameraZoom <= 1 ? 0.0001 : -20, !!zoomCallback);
+          //     zoomCallback(chitRenderInstance.cameraZoom, prev);
+          //     setTimeout(() => chitRenderInstance.handleZoom(0, 0, 0, false), 100);
+          //     cancelled = true;
+          //     return;
+          //   }
+          // }
 
           chitRenderInstance.handlePan(dx, dy);
+        },
+        onPanEnd: () => {
+          if (cancelled) {
+            return;
+          }
+          if (dragHandler) {
+            dragHandler.finishDrag();
+            dragHandler = undefined;
+          }
         },
         onPinchStart: () => {
           pinchScale = chitRenderInstance.cameraZoom;

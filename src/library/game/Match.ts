@@ -7,7 +7,6 @@ import { PlayerInfo } from "./PlayerInfo";
 import { MismatchError, RerunError, Turn } from "./Turn";
 import { TurnState } from "./TurnState";
 import { IMatchStorage } from "./MatchStorage";
-import nextTick from "next-tick";
 import { ServerPrompts } from "./serverTransport/ServerPrompts";
 import { EventChannel } from "../utilities/EventChannel";
 import { RootChit } from "./RootChit";
@@ -25,6 +24,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
     public game: Game<P, R>,
     public players: PlayerInfo[],
     private matchStorage: IMatchStorage,
+    private matchOptions?: any,
   ) {}
 
   async load() {
@@ -74,9 +74,10 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
       try {
         this.result.value = undefined;
         this.errorState.value = undefined;
-        const rootChit = new this.game.chitLibrary.Root();
+        const rootChit = new this.game.chitLibrary.Root() as R;
         rootChit.id = "root";
         rootChit.game = this.game;
+        rootChit.processMatchOptions(this.matchOptions ?? {});
 
         this.players.forEach((p) => {
           const Player = this.game.chitLibrary.Player;
@@ -179,7 +180,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
 
   public onChange(cb: () => void, callNow = true) {
     this.onChangeCallbacks.push(cb);
-    callNow && nextTick(cb);
+    callNow && queueMicrotask(cb);
     return () => {
       this.onChangeCallbacks = this.onChangeCallbacks.filter((c) => c !== cb);
     };

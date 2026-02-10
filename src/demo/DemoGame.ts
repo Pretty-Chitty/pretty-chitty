@@ -8,6 +8,7 @@ import {
   LightSpec,
   CameraSpec,
   StaticImage,
+  GameMetaData,
 } from "../library";
 
 import { Mesh, MeshPhongMaterial, PlaneGeometry } from "three";
@@ -33,6 +34,7 @@ import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
 import { cityscape } from "./assets/network_overload";
 import { Bookshelf, ShelfRow, ShelfSpace } from "./Bookshelft";
+import { DragTarget } from "../library/game/Pick";
 
 const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
@@ -48,7 +50,12 @@ theme.galleryItemSpacing = 10;
 // theme.fontFamily = "monospace";
 
 export class DemoGame implements Game<Player, Root> {
-  name = "Demo Game";
+  metadata: GameMetaData = {
+    name: "Demo Game",
+    description: "A demo game to showcase Pretty Chitty features",
+    boxArt: "",
+    screenshot: "",
+  };
 
   chitLibrary = {
     Card3,
@@ -81,15 +88,14 @@ export class DemoGame implements Game<Player, Root> {
   };
 
   async run(setup: Turn<any, Player, Root>, rootChit: Root) {
-    await rootChit.players.shuffle();
     const players = rootChit.players.copy();
     const color = ["#ed00cb", "#00edcb", "#002244"];
     for (let i = 0; i < players.length; i++) {
       players[i].color = color[i % color.length];
     }
 
-    const W = 10;
-    const H = 10;
+    const W = rootChit.size === "large" ? 10 : rootChit.size === "medium" ? 7 : 5;
+    const H = W;
 
     // set up the board
     // const rows = [...new Array(H)].map(() =>
@@ -164,6 +170,21 @@ export class DemoGame implements Game<Player, Root> {
       // turn.flush();
       // pieces[6].removeFromParent();
       // turn.flush();
+
+      let done = false;
+      while (!done) {
+        await turn.pick([
+          new PassButton(() => {
+            done = true;
+          }).pick(),
+          Chit.dragPick(pieces.slice(pieces.length - 5, pieces.length), [
+            DragTarget.from(pieces, (from, to) => {
+              to.add(from);
+            }),
+          ]).message("pick a piece to take and put in the bag"),
+        ]);
+        turn.zip();
+      }
 
       await turn.pick(
         Chit.pick(pieces.slice(0, 6), async (c: Card) => {

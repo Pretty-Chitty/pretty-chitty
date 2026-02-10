@@ -1,13 +1,37 @@
 import "reflect-metadata";
-import nextTick from "next-tick";
 import { checkAnnotation, NonEditable } from "./Annotations";
 
 const CATCH_ALL = "[[null]]";
 export class ObjectWithProps {
   /** @internal */
+  @NonEditable private _propsArray: string[] = [];
+  /** @internal */
+  @NonEditable private _propsSet = new Set<string>();
+
+  /** @internal */
   public get props(): string[] {
-    return Object.keys(this).filter((key) => !checkAnnotation(this, key, NonEditable));
+    const props = Object.keys(this).filter((key) => !checkAnnotation(this, key, NonEditable));
+    props.forEach((key) => {
+      if (!this._propsSet.has(key)) {
+        this._propsSet.add(key);
+        this._propsArray.push(key);
+      }
+    });
+    return this._propsArray;
   }
+
+  /** @internal */
+  public expandedPropsFromJson(json: { [key: string]: unknown }): string[] {
+    this.props; // make sure this runs.
+    for (const key of Object.keys(json)) {
+      if (!this._propsSet!.has(key) && !checkAnnotation(this, key, NonEditable)) {
+        this._propsSet!.add(key);
+        this._propsArray!.push(key);
+      }
+    }
+    return this._propsArray;
+  }
+
   /** @internal */
   @NonEditable private _cbs: { [key: string]: Array<() => void> } = {};
 
@@ -22,7 +46,7 @@ export class ObjectWithProps {
   /** @internal */
   public notifyChange(key: string): void {
     if (this._keysThatChanged.size === 0) {
-      nextTick(() => {
+      queueMicrotask(() => {
         this._keysThatChanged.forEach((key) => this._cbs[key]?.forEach((cb) => cb()));
         this._cbs[CATCH_ALL]?.forEach((cb) => cb());
         this._keysThatChanged.clear();

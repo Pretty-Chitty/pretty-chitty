@@ -64,8 +64,9 @@ export class OrderedOutlet<C extends Chit> {
     }
 
     if (c instanceof OrderedOutlet) {
-      c.chits.forEach((c) => c.setParent());
-      c.chits.forEach((c) => this.chits.push(c));
+      const chits = c.chits;
+      chits.forEach((c) => c.setParent());
+      chits.forEach((c) => this.chits.push(c));
     } else {
       c.forEach((c) => c.setParent());
       c.forEach((c) => this.chits.push(c));
@@ -76,11 +77,10 @@ export class OrderedOutlet<C extends Chit> {
 
   public async shuffle() {
     if (this.parent) {
-      const from = await this.parent.currentTurn.takeRng(this.length);
-      const to = await this.parent.currentTurn.takeRng(this.length);
+      const rngs = await this.parent.currentTurn.takeRng(this.length * 2);
       for (let i = 0; i < this.chits.length; i++) {
-        const j = Math.floor(from() * this.chits.length);
-        const k = Math.floor(to() * this.chits.length);
+        const j = Math.floor(rngs() * this.chits.length);
+        const k = Math.floor(rngs() * this.chits.length);
         const temp = this.chits[j];
         this.chits[j] = this.chits[k];
         this.chits[k] = temp;

@@ -1,5 +1,7 @@
 /** @group Core Game Elements */
 export type { Game } from "./game/Game";
+/** @group Core Game Elements */
+export type { GameMetaData } from "./game/GameMetaData";
 
 // NOTE: must be before Turn! or circular dependency!
 /** @group Chits */
@@ -29,7 +31,9 @@ export { DiceChit } from "./utilities/Dice";
 /** @group Chit Annotations */
 export { OrderedOutlet } from "./game/OrderedOutlet";
 /** @group Chit Annotations */
-export { ChildOutlet, NonEditable, Ordered } from "./utilities/Annotations";
+export { ChildOutlet, NonEditable, Ordered, Selectable } from "./utilities/Annotations";
+/** @group Chit Annotations */
+export type { SelectableChoice, SelectableConfig, SelectablePropertyInfo } from "./utilities/Annotations";
 
 /** @group Buttons */
 export { GameButton, DynamicGameButton, ToggleGalleryButton } from "./game/GameButton";
@@ -57,6 +61,8 @@ export { Splay } from "./rendering/Splay";
 /** @group Utilities */
 export { extrudeSVGToGeometry } from "./utilities/SvgExtruder";
 /** @group Utilities */
+export { loadGLB } from "./utilities/GlbLoader";
+/** @group Utilities */
 export { CardMesh } from "./utilities/CardMesh";
 
 //
@@ -76,10 +82,24 @@ export type { Stage } from "./game/GameDeckChit";
 export { PlayerInfo } from "./game/PlayerInfo";
 /** @group Supporting Types */
 export type { IPlayerInfo } from "./game/PlayerInfo";
+/** @internal */
 /** @group Supporting Types */
 export { MatchViewer } from "./components/MatchViewer";
+/** @internal */
+/** @group Supporting Types */
+export { DemoWrapper } from "./components/DemoWrapper";
+/** @internal */
+/** @group Supporting Types */
+export { Match } from "./game/Match";
+/** @internal */
+/** @group Supporting Types */
+export { Connection } from "./game/Connection";
+/** @internal */
 /** @group Supporting Types */
 export { ClientTrustMatchViewer } from "./components/ClientTrustMatchViewer";
+/** @internal */
+/** @group Supporting Types */
+export { ServerTrustMatchViewer } from "./components/ServerTrustMatchViewer";
 /** @group Supporting Types */
 export type { BottomBarButtonIcon } from "./components/BottomBarButton";
 /** @group Supporting Types */

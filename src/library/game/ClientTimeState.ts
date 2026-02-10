@@ -33,10 +33,14 @@ export class ClientTimeState {
   public goLive(clock: number) {
     this.live.value = true;
     this.targetClock.value = clock;
+    this.killAnimations();
+  }
+
+  public killAnimations() {
     clearTimeout(this._animationOverrideTimeout);
     this.animationSpeedOverrideMultiplier.value = 0.075;
     this._animationOverrideTimeout = setTimeout(() => {
       this.animationSpeedOverrideMultiplier.value = undefined;
-    }, 250);
+    }, 400);
   }
 }

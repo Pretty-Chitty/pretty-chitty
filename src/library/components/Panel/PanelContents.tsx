@@ -17,8 +17,9 @@ export interface ViewerGestureHandlers {
   onSingleTap?: (x: number, y: number, isMouse: boolean) => void;
   onDoubleTap?: (x: number, y: number) => void;
   onLongTap?: (x: number, y: number, isMouse: boolean) => void;
-  onPanStart?: () => void;
+  onPanStart?: (x: number, y: number, isMouse: boolean) => void;
   onPan?: (dx: number, dy: number, ev: HammerInput) => void;
+  onPanEnd?: () => void;
   onPinchStart?: () => void;
   onPinch?: (scale: number, deltaScale: number, centerX: number, centerY: number) => void;
   onPinchEnd?: () => void;
@@ -168,11 +169,18 @@ export function PanelContents({
 
     // Pan handlers
     hammer.on("panstart", (ev) => {
-      activeViewer = findViewerAtPoint(ev.center.x, ev.center.y);
+      const startX = ev.center.x - ev.deltaX;
+      const startY = ev.center.y - ev.deltaY;
+      activeViewer = findViewerAtPoint(startX, startY);
       lastDeltaX = 0;
       lastDeltaY = 0;
       panCancelled = false;
-      activeViewer?.handlers.onPanStart?.();
+      const bounds = activeViewer?.getBounds();
+      if (bounds) {
+        const x = startX - bounds.left;
+        const y = startY - bounds.top;
+        activeViewer!.handlers.onPanStart?.(x, y, ev.pointerType === "mouse");
+      }
     });
 
     hammer.on("pan", (ev) => {
@@ -190,6 +198,9 @@ export function PanelContents({
     });
 
     hammer.on("panend", () => {
+      if (activeViewer) {
+        activeViewer.handlers.onPanEnd?.();
+      }
       activeViewer = null;
     });
 
@@ -260,7 +271,7 @@ export function PanelContents({
             }}
           >
             {layout.map((cell) => {
-              if (Array.isArray(cell.chit)) {
+              if (Array.isArray(cell.chit) && cell.chit.length > 1) {
                 return (
                   <MultiPanel
                     enabled={focusedPanel === undefined}
@@ -282,7 +293,7 @@ export function PanelContents({
                     focusedPanel={focusedPanel}
                     setFocusedPanel={setFocusedPanel}
                     key={cell.id}
-                    chit={cell.chit}
+                    chit={Array.isArray(cell.chit) ? cell.chit[0] : cell.chit}
                     w={cell.w}
                     h={cell.h}
                     x={cell.x}

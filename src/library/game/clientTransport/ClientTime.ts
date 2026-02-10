@@ -153,7 +153,7 @@ export class ClientTime extends ConnectionObject {
 
     // make sure nothing changed while we were waiting...
     if (this.clientTimeState.targetClock.value === newTargetClock && currentClock === this.currentClock.value) {
-      if (newTargetClock > this.startTime) {
+      if (newTargetClock >= this.startTime) {
         this.clientTimeState.isLoading.value = false;
       }
 

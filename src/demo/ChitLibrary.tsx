@@ -26,6 +26,7 @@ import {
   StaticImage,
   extrudeSVGToGeometry,
   CameraSpec,
+  loadGLB,
 } from "../library";
 import type { LayoutNode } from "../library";
 
@@ -33,12 +34,13 @@ import { TestStack } from "./TestStack";
 import { TestStack2 } from "./TestStack2";
 import { PlayerAid } from "./PlayerAid";
 import { cityscape, cityscape2 } from "./assets/network_overload";
-import { Ordered } from "../library/utilities/Annotations";
+import { Ordered, Selectable } from "../library/utilities/Annotations";
 import { CardMesh } from "../library/utilities/CardMesh";
 import { GameBagChit } from "../library/game/GameBagChit";
 import { tunnel, walk } from "./assets/icons";
 
 import city_profile from "./city_profile.svg";
+import house from "./House.glb";
 import { IconCanvas } from "../library/utilities/CanvasStack/IconCanvas";
 import { Bookshelf } from "./Bookshelft";
 
@@ -257,6 +259,10 @@ export class Card extends Chit {
 
     // make sure it reports it out?
     spec.setOutletPositionFromCanvas(ts);
+
+    if (this.isDropTarget) {
+      spec.highlight.clickColor = "#0000ff";
+    }
   }
 }
 
@@ -279,7 +285,7 @@ export class Card2 extends Chit {
     const card2side = new MeshPhongMaterial({
       color: 0x999999,
     });
-    const card2boxGeometry = new BoxGeometry(0.25, 0.25, 6.25);
+    const card2boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
     const side = card2side;
 
     const mesh = new Mesh(card2boxGeometry, [
@@ -318,7 +324,7 @@ export class Card3 extends Chit {
   public thingy = false;
 
   public override render(spec: ChitRenderSpec): void {
-    const boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
+    // const boxGeometry = new BoxGeometry(0.25, 0.25, 0.25);
 
     const ts = new TestStack2();
     ts.subTitle = "yo ho ho";
@@ -326,24 +332,29 @@ export class Card3 extends Chit {
 
     spec.showDetailsOnLongPress = true;
 
-    const side = new MeshPhongMaterial({
-      color: 0x999999,
-    });
+    const mesh = loadGLB(house, { scale: 0.5, castShadow: true });
+    // mesh.rotateY(Math.PI);
+    spec.rotateX = Math.PI / 2;
+    spec.rotateZ = Math.PI;
 
-    const mesh = new Mesh(boxGeometry, [
-      side,
-      side,
-      side,
-      side,
-      // new MeshPhongMaterial({
-      //   bumpMap: ts.get().texture,
-      //   bumpScale: 1,
-      //   map: ts.get().texture,
-      // }),
-      StaticImage.material(cityscape),
-      side,
-    ]);
-    mesh.castShadow = true;
+    // const side = new MeshPhongMaterial({
+    //   color: 0x999999,
+    // });
+
+    // const mesh = new Mesh(boxGeometry, [
+    //   side,
+    //   side,
+    //   side,
+    //   side,
+    //   // new MeshPhongMaterial({
+    //   //   bumpMap: ts.get().texture,
+    //   //   bumpScale: 1,
+    //   //   map: ts.get().texture,
+    //   // }),
+    //   StaticImage.material(cityscape),
+    //   side,
+    // ]);
+    // mesh.castShadow = true;
     spec.object = mesh;
 
     spec.ownerOrigin = this.thingy ? OwnerOriginPosition.BottomRight : OwnerOriginPosition.Default;
@@ -398,12 +409,30 @@ export class Player extends PlayerChit {
 }
 
 export class Root extends RootChit<Player> {
+  minPlayers = 2;
+  maxPlayers = 5;
+
   @ChildOutlet public mainBoard = new Table();
   @ChildOutlet public shelf = new Bookshelf();
   @ChildOutlet public playerAid = new PlayerAid();
 
+  @Selectable({
+    label: "Board Size",
+    choices: [
+      { label: "Small", id: "small" },
+      { label: "Medium", id: "medium" },
+      { label: "Large", id: "large" },
+    ],
+  })
+  public size: "small" | "medium" | "large" = "medium";
+
   override getDropdowns(): DropdownChit[] {
     return [this.playerAid];
+  }
+
+  override setupDemoGame(): number {
+    this.size = "small";
+    return 3;
   }
 
   override getLayout(_width: number, _height: number, _playerId: string): LayoutNode {

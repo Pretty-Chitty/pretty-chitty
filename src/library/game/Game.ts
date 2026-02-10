@@ -7,6 +7,7 @@ import { PlayerChit } from "./PlayerChit";
 import { RootChit } from "./RootChit";
 import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
 import { TokenDefinition } from "../components/TokenizedMessage";
+import { GameMetaData } from "./GameMetaData";
 
 export interface IChitLibrary<P extends PlayerChit, R extends RootChit<P>> {
   [key: string]: new () => Chit;
@@ -39,10 +40,11 @@ export type GameResult<P extends PlayerChit> = {
  */
 export interface Game<P extends PlayerChit, R extends RootChit<P>> {
   get theme(): GameTheme;
-  get name(): string;
   get chitLibrary(): IChitLibrary<P, R>;
   get canvasLibrary(): ICanvasLibrary;
   get buttonLibrary(): IButtonLibrary;
+  get metadata(): GameMetaData;
+
   tokenMap?: { [key: string]: TokenDefinition };
 
   run(setup: Turn<GameResult<P>, P, R>, rootChit: R): Promise<GameResult<P>>;

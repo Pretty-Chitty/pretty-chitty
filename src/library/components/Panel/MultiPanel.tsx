@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Stack } from "@mui/material";
-import { useDebounce } from "@react-hook/debounce";
 import { Chit } from "../../game/Chit";
 import { useGameTheme } from "../../hooks/useGameTheme";
-import { useAnimationSpeedMultiplier, useTimeController, useTimeState } from "../../hooks/useTimeController";
+import {
+  useAnimationSpeedMultiplier,
+  useClientPrompts,
+  useTimeController,
+  useTimeState,
+} from "../../hooks/useTimeController";
 import { usePanelStates } from "../../hooks/usePanelStates";
 import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
 import { useEventChannelState } from "../../hooks/useEventChannelState";
@@ -15,7 +19,7 @@ import { ViewerZoomControls } from "./ViewerZoomControls";
 
 const ANIMATION_DURATION = 0.125;
 
-const PANEL_ADJUST_IGNORE_DURATION = 5000;
+const PANEL_ADJUST_IGNORE_DURATION = 10000;
 
 export function MultiPanel({
   chits,
@@ -52,6 +56,8 @@ export function MultiPanel({
   const timeMultiplier = useAnimationSpeedMultiplier();
 
   const [ignoreChangesBefore, setIgnoreChangesBefore] = useState(0);
+  const clientPrompt = useClientPrompts();
+  const [prompt] = useEventChannelState(clientPrompt.currentPrompt);
 
   const [isSliding, setIsSliding] = useState(false);
   const [isLoading] = useEventChannelState(timeState.isLoading);
@@ -71,6 +77,8 @@ export function MultiPanel({
   );
   const panelStates = usePanelStates(rootRenders);
 
+  const effectiveTabHeight = rootRenders.length > 1 ? TAB_HEIGHT : 0;
+
   const manuallyChangeSelectedIndex = useCallback(
     (index: number) => {
       if (index !== selectedIndex) {
@@ -81,6 +89,7 @@ export function MultiPanel({
         if (!prompt) {
           setIgnoreChangesBefore(Date.now() + PANEL_ADJUST_IGNORE_DURATION);
         }
+        timeState.killAnimations();
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -89,10 +98,13 @@ export function MultiPanel({
 
   useEffect(() => {
     if (ignoreChangesBefore) {
-      const to = setTimeout(() => setIgnoreChangesBefore(0), ignoreChangesBefore - Date.now());
+      const to = setTimeout(() => {
+        setIgnoreChangesBefore(0);
+        rootRenders.forEach((chit) => chit && chit.resetMarks());
+      }, ignoreChangesBefore - Date.now());
       return () => clearTimeout(to);
     }
-  }, [ignoreChangesBefore]);
+  }, [ignoreChangesBefore, rootRenders]);
 
   useEffect(() => {
     if (isFocusedPanel) {
@@ -197,7 +209,7 @@ export function MultiPanel({
         x: x + theme.spacing / 4,
         y: y + theme.spacing / 4,
         w: w - theme.spacing / 2,
-        h: h - TAB_HEIGHT - theme.spacing / 2,
+        h: h - effectiveTabHeight - theme.spacing / 2,
         paused: isPaused,
         panCallback,
         visible: true,
@@ -223,6 +235,7 @@ export function MultiPanel({
     refContainer,
     panCallback,
     timeMultiplier,
+    effectiveTabHeight,
   ]);
 
   const focusedRoot = focusedPanel?.renderInstance as RootChitRenderInstance;
@@ -263,7 +276,7 @@ export function MultiPanel({
         )}
       </Box>
 
-      {enabled && (
+      {enabled && chits.length > 1 && (
         <PanelTabStack
           chits={chits}
           selectedIndex={effectiveSelectedIndex}
