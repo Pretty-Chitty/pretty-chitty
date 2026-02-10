@@ -91,8 +91,8 @@ function saveMatchMeta(gameName: string, info: SavedMatchInfo): void {
 function deleteMatchData(gameName: string, matchId: string): void {
   localStorage.removeItem(getMatchMetaKey(gameName, matchId));
   localStorage.removeItem(getMatchStateKey(gameName, matchId));
-  // Also remove match state stored via LocalMatchStorage under the generic key.
-  localStorage.removeItem(`match${matchId}`);
+  // Also remove match state stored via LocalMatchStorage under its composite key.
+  localStorage.removeItem(`match${getMatchStateKey(gameName, matchId)}`);
 }
 
 function generateMatchId(): string {
