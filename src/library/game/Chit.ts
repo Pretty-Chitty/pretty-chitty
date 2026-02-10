@@ -12,7 +12,6 @@ import type { Game } from "./Game";
 import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 
-
 export const ORDERED_CHILDREN = "orderedChildren";
 
 const EXTRA_SERIALIZATION_PROPS_ARRAY = ["id", "_parent", "_parentOutlet", "_parentOutletIndex", "_parentFallback"];

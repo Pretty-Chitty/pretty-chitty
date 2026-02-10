@@ -26,7 +26,6 @@ export class BadAIClientPrompts<P extends PlayerChit, R extends RootChit<P>> ext
         const picks = prompt.details.picks;
         const pickIndex = Math.floor(Math.random() * picks.length);
         const pick = picks[pickIndex];
-        console.log("picking pick", pick);
         switch (pick.type as PickType) {
           case "ButtonPick": {
             await this.serverPrompts.resolvePrompt({
