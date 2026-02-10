@@ -34,7 +34,7 @@ import { PlayerAid } from "./PlayerAid";
 import { table } from "./assets/environment";
 import { cityscape } from "./assets/network_overload";
 import { Bookshelf, ShelfRow, ShelfSpace } from "./Bookshelft";
-import { ButtonPick, DragTarget } from "../library/game/Pick";
+import { DragTarget } from "../library/game/Pick";
 
 const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
@@ -50,13 +50,12 @@ theme.galleryItemSpacing = 10;
 // theme.fontFamily = "monospace";
 
 export class DemoGame implements Game<Player, Root> {
-  metadata = {
+  metadata: GameMetaData = {
     name: "Demo Game",
-    author: "Pretty Chitty Team",
     description: "A demo game to showcase Pretty Chitty features",
     boxArt: "",
     screenshot: "",
-  } as GameMetaData;
+  };
 
   chitLibrary = {
     Card3,

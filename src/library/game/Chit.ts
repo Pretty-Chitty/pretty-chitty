@@ -11,7 +11,7 @@ import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
 import type { Game } from "./Game";
 import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
-import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
+
 
 export const ORDERED_CHILDREN = "orderedChildren";
 

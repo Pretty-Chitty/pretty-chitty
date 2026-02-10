@@ -77,7 +77,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         const rootChit = new this.game.chitLibrary.Root() as R;
         rootChit.id = "root";
         rootChit.game = this.game;
-        rootChit.processMatchOptions(this.matchOptions);
+        rootChit.processMatchOptions(this.matchOptions ?? {});
 
         this.players.forEach((p) => {
           const Player = this.game.chitLibrary.Player;
