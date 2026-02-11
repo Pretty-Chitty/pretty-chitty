@@ -14,7 +14,14 @@ import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 
 export const ORDERED_CHILDREN = "orderedChildren";
 
-const EXTRA_SERIALIZATION_PROPS_ARRAY = ["id", "_parent", "_parentOutlet", "_parentOutletIndex", "_parentFallback"];
+const EXTRA_SERIALIZATION_PROPS_ARRAY = [
+  "id",
+  "_parent",
+  "_parentOutlet",
+  "_parentOutletIndex",
+  "_parentFallback",
+  "__hiddenProps",
+];
 const EXTRA_SERIALIZATION_PROPS_SET = new Set(EXTRA_SERIALIZATION_PROPS_ARRAY);
 
 export type ChitClick = () => void;
