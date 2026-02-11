@@ -12,7 +12,7 @@ export class ObjectWithProps {
   public get props(): string[] {
     const props = Object.keys(this).filter((key) => !checkAnnotation(this, key, NonEditable));
     props.forEach((key) => {
-      if (!this._propsSet.has(key)) {
+      if (!key.startsWith("_") && !this._propsSet.has(key)) {
         this._propsSet.add(key);
         this._propsArray.push(key);
       }
@@ -24,7 +24,7 @@ export class ObjectWithProps {
   public expandedPropsFromJson(json: { [key: string]: unknown }): string[] {
     this.props; // make sure this runs.
     for (const key of Object.keys(json)) {
-      if (!this._propsSet!.has(key) && !checkAnnotation(this, key, NonEditable)) {
+      if (!key.startsWith("_") && !this._propsSet!.has(key) && !checkAnnotation(this, key, NonEditable)) {
         this._propsSet!.add(key);
         this._propsArray!.push(key);
       }
