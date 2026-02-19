@@ -21,7 +21,7 @@ export function InlineGalleryDisplay() {
   const [items, setItems] = useState<GalleryItem[] | undefined>(undefined);
   const [_source, setSource] = useEventChannelState(modalState.gallerySource);
   const [inlineSource, setInlineSource] = useEventChannelState(modalState.inlineGallerySource);
-  const inlineGallerySize = inlineSource?.inlineGallerySize ?? DEFAULT_INLINE_GALLERY_SIZE;
+  const inlineGallerySize = inlineSource ? (inlineSource.inlineGallerySize ?? DEFAULT_INLINE_GALLERY_SIZE) : 0;
   const [displaySize, setDisplaySize] = useState(0);
   const [_galleryDisplayMode, setGalleryDisplayMode] = useButtonGalleriesOptions();
 
@@ -41,7 +41,7 @@ export function InlineGalleryDisplay() {
   }, [inlineSource, setItems, inlineGallerySize]);
 
   useEffect(() => {
-    if (items && items.length > 0) {
+    if (items && items.length > 0 && inlineGallerySize > 0) {
       setDisplaySize(inlineGallerySize);
     } else {
       const to = setTimeout(() => {
