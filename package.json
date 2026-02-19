@@ -1,6 +1,6 @@
 {
   "name": "@pretty-chitty/core",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "license": "SEE LICENSE IN LICENSE.md",
   "description": "A TypeScript framework for building high-quality async or realtime 3D strategy board games",
   "author": "Pretty Chitty, LLC",

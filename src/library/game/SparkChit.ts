@@ -16,8 +16,8 @@ export class SparkChit extends Chit {
 
   private _color: string = "#ffffff";
   public get color() {
-    if (this._boundPlayer) {
-      return this._boundPlayer.color ?? "#ffffff";
+    if (this.boundPlayer) {
+      return this.boundPlayer.color ?? "#ffffff";
     }
     return this._color;
   }
@@ -26,14 +26,14 @@ export class SparkChit extends Chit {
   }
 
   public get icon(): IUpdatingCanvas | undefined {
-    if (this._boundPlayer) {
-      return this._boundPlayer.icon;
+    if (this.boundPlayer) {
+      return this.boundPlayer.icon;
     }
     return undefined;
   }
 
   public get headerIcon(): IUpdatingCanvas | undefined {
-    if (this._boundPlayer) {
+    if (this.boundPlayer) {
       return undefined;
     }
     return this.icon;
@@ -48,14 +48,14 @@ export class SparkChit extends Chit {
   }
   public set value(newValue: number) {
     this._value = newValue;
-    if (this._boundPlayer) {
-      this._boundPlayer.matchScoreNumber = newValue;
+    if (this.boundPlayer) {
+      this.boundPlayer.matchScoreNumber = newValue;
     }
   }
 
-  private _boundPlayer?: PlayerChit;
+  private boundPlayer?: PlayerChit;
   public bindToPlayer(p: PlayerChit) {
-    this._boundPlayer = p;
+    this.boundPlayer = p;
     p.matchScoreNumber = this.value;
   }
 
