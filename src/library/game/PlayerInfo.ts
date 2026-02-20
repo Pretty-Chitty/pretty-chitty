@@ -13,7 +13,7 @@ export class PlayerInfo {
 
   /** @internal */
   public generateAvatar() {
-    if (!this._imageUrl && window?.URL) {
+    if (!this.myImageUrl && window?.URL) {
       const data = multiavatar(`${this.name} ${this.id}`, true).replace("<svg", '<svg width="231" height="231"');
       return `data:image/svg+xml;base64,${base64.encode(data)}`;
     }
@@ -21,15 +21,15 @@ export class PlayerInfo {
   }
 
   /** @internal */
-  private _imageUrl?: string;
+  private myImageUrl?: string;
   get imageUrl() {
-    if (!this._imageUrl && window?.URL) {
+    if (!this.myImageUrl && window?.URL) {
       return this.generateAvatar();
     }
-    return this._imageUrl;
+    return this.myImageUrl;
   }
   set imageUrl(value: string | undefined) {
-    this._imageUrl = value;
+    this.myImageUrl = value;
   }
 
   constructor(idOrPlayerInfo: string | IPlayerInfo, name?: string) {

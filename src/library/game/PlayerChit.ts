@@ -13,16 +13,16 @@ export class PlayerChit extends Chit {
   public color: string = "#000000";
 
   /** @internal */
-  private _imageUrl?: string = undefined;
+  private myImageUrl?: string = undefined;
   get imageUrl() {
-    if (!this._imageUrl) {
+    if (!this.myImageUrl) {
       const tempPlayerInfo = new PlayerInfo(this.playerId, this.name);
       return tempPlayerInfo.generateAvatar();
     }
-    return this._imageUrl;
+    return this.myImageUrl;
   }
   set imageUrl(value: string | undefined) {
-    this._imageUrl = value;
+    this.myImageUrl = value;
   }
 
   /** @internal */

@@ -433,12 +433,15 @@ export class Chit extends ObjectWithProps {
   }
 
   /** @internal */
-  public deserialize(serialized: string, findChit: (id: string) => Chit) {
-    this._version++;
+  public deserialize(serialized: string, findChit: (id: string) => Chit, propsOnly = false) {
     const j = JSON.parse(serialized);
-    if (j.____deleted) {
-      this.setParent();
-      return;
+
+    if (!propsOnly) {
+      this._version++;
+      if (j.____deleted) {
+        this.setParent();
+        return;
+      }
     }
 
     const inflateValue = (value: any): any => {
@@ -476,14 +479,17 @@ export class Chit extends ObjectWithProps {
       }
     });
 
-    this.id = j.id;
-    this._parentFallback = inflateValue(j._parentFallback);
+    if (!propsOnly) {
+      this.id = j.id;
 
-    if (this._version === 1 && this._parentFallback) {
-      this.setParent(this._parentFallback, j._parentOutlet ?? "graveyard");
+      this._parentFallback = inflateValue(j._parentFallback);
+
+      if (this._version === 1 && this._parentFallback) {
+        this.setParent(this._parentFallback, j._parentOutlet ?? "graveyard");
+      }
+
+      this.setParent(inflateValue(j._parent), j._parentOutlet, j._parentOutletIndex);
     }
-
-    this.setParent(inflateValue(j._parent), j._parentOutlet, j._parentOutletIndex);
   }
 
   /**

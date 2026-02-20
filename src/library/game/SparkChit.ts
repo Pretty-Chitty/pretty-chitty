@@ -14,15 +14,15 @@ export class SparkChit extends Chit {
     return "Score";
   }
 
-  private _color: string = "#ffffff";
+  private myColor: string = "#ffffff";
   public get color() {
     if (this.boundPlayer) {
       return this.boundPlayer.color ?? "#ffffff";
     }
-    return this._color;
+    return this.myColor;
   }
   public set color(newColor: string) {
-    this._color = newColor;
+    this.myColor = newColor;
   }
 
   public get icon(): IUpdatingCanvas | undefined {
@@ -42,12 +42,12 @@ export class SparkChit extends Chit {
   /** @internal */
   @NonEditable public element: RefObject<HTMLElement> | undefined;
 
-  private _value: number = 0;
+  private myValue: number = 0;
   public get value() {
-    return this._value;
+    return this.myValue;
   }
   public set value(newValue: number) {
-    this._value = newValue;
+    this.myValue = newValue;
     if (this.boundPlayer) {
       this.boundPlayer.matchScoreNumber = newValue;
     }
