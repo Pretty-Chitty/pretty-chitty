@@ -29,11 +29,15 @@ function PlayerEditor({ playerId, match, showBack }: { showBack?: boolean; playe
     (newConnection.transport as LocalConnectionTransport).connect(newRemoteConnection);
     match.connect(newRemoteConnection, playerId);
 
-    const opponentRemoteConnection = new LocalConnectionTransport();
-    const opponentConnection = new Connection(new LocalConnectionTransport());
-    opponentConnection.register(new BadAIClientPrompts<any, any>("p1", opponentConnection), "ClientPrompts");
-    (opponentConnection.transport as LocalConnectionTransport).connect(opponentRemoteConnection);
-    match.connect(opponentRemoteConnection, "p1");
+    match.players.forEach((p) => {
+      if (p.id !== playerId) {
+        const opponentRemoteConnection = new LocalConnectionTransport();
+        const opponentConnection = new Connection(new LocalConnectionTransport());
+        opponentConnection.register(new BadAIClientPrompts<any, any>(p.id, opponentConnection), "ClientPrompts");
+        (opponentConnection.transport as LocalConnectionTransport).connect(opponentRemoteConnection);
+        match.connect(opponentRemoteConnection, p.id);
+      }
+    });
 
     setLocalConnection(newConnection);
     setRemoteConnection(newRemoteConnection);
