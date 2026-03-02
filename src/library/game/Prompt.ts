@@ -1,12 +1,13 @@
 import { Chit } from "./Chit";
 import { IButtonLibrary } from "./Game";
 import { Confirm, GameButton } from "./GameButton";
-import { ButtonPick, ChitPick, Pick } from "./Pick";
+import { ButtonPick, ChitPick, Pick, PickType } from "./Pick";
 import { MismatchError, Turn } from "./Turn";
 
 type PromptType = "PickPrompt" | "NoValidMovesPrompt";
 
 export type PromptSerialization = {
+  id: string;
   type: PromptType;
   canReset: boolean;
   details: any;
@@ -35,6 +36,7 @@ export abstract class Prompt {
 
   serialize(): PromptSerialization {
     return {
+      id: this.id,
       type: this.type,
       canReset: this.canReset,
       details: this.serializeDetails(),
@@ -42,6 +44,7 @@ export abstract class Prompt {
   }
 
   deserialize(prompt: PromptSerialization) {
+    this.id = prompt.id;
     this.canReset = prompt.canReset;
     this.deserializeDetails(prompt.details);
   }
@@ -72,6 +75,7 @@ export abstract class Prompt {
   }
 
   abstract get type(): PromptType;
+  abstract canResolveResponse(response: any): boolean;
   abstract serializeDetails(): any;
   abstract deserializeDetails(state: any): void;
   abstract resolveDetails(details: any): void;
@@ -137,6 +141,10 @@ export class NoValidMovesPrompt extends Prompt {
     this._help = newHelp;
   }
 
+  canResolveResponse(): boolean {
+    return false;
+  }
+
   serializeDetails(): any {
     return {
       message: this._message,
@@ -158,7 +166,7 @@ export class NoValidMovesPrompt extends Prompt {
   stageOut(): void {}
 }
 
-type PickResolution = { idx: number; value: any };
+type PickResolution = { idx: number; value: any; pickType?: PickType };
 
 export class PickPrompt extends Prompt {
   type: PromptType = "PickPrompt";
@@ -191,6 +199,23 @@ export class PickPrompt extends Prompt {
       .join("\n\nor\n\n");
   }
 
+  canResolveResponse(response: any): boolean {
+    if (this.resolved) {
+      return false;
+    }
+    if (response?.idx === undefined) {
+      return false;
+    }
+    const pick = this.picks[response.idx];
+    if (!pick) {
+      return false;
+    }
+    if (response.pickType && response.pickType !== pick.type) {
+      return false;
+    }
+    return pick.canResolveResponse(response.value);
+  }
+
   async autoResolve(): Promise<boolean> {
     if (this.picks.length === 1 && this.picks[0].canAutoResolve()) {
       await this.picks[0].autoResolve();
@@ -215,7 +240,7 @@ export class PickPrompt extends Prompt {
 
   resolvePick(pick: Pick, value: any) {
     const idx = this.picks.indexOf(pick);
-    this.resolve({ idx, value });
+    this.resolve({ idx, value, pickType: pick.type });
   }
 
   resolveDetails(resolution: PickResolution) {

@@ -28,22 +28,25 @@ export class BadAIClientPrompts<P extends PlayerChit, R extends RootChit<P>> ext
         const pick = picks[pickIndex];
         switch (pick.type as PickType) {
           case "ButtonPick": {
-            await this.serverPrompts.resolvePrompt({
+            await this.serverPrompts.resolvePrompt(prompt.id, {
               idx: pickIndex,
+              pickType: "ButtonPick",
             });
             break;
           }
           case "ChitPick": {
-            await this.serverPrompts.resolvePrompt({
+            await this.serverPrompts.resolvePrompt(prompt.id, {
               idx: pickIndex,
+              pickType: "ChitPick",
               value: pick.details.c[Math.floor(Math.random() * pick.details.c.length)],
             });
             break;
           }
           case "DragPick": {
             const target = pick.details.d[Math.floor(Math.random() * pick.details.d.length)];
-            await this.serverPrompts.resolvePrompt({
+            await this.serverPrompts.resolvePrompt(prompt.id, {
               idx: pickIndex,
+              pickType: "DragPick",
               value: {
                 chitId: pick.details.c[Math.floor(Math.random() * pick.details.c.length)],
                 targetChitId: target[Math.floor(Math.random() * target.length)],

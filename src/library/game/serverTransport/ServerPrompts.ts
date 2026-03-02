@@ -53,14 +53,30 @@ export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
     return this.match.turn.value?.rootChit.players;
   }
 
-  async resolvePrompt(response: any): Promise<void | PromptSerialization> {
+  async resolvePrompt(promptId: string, response: any): Promise<void | PromptSerialization> {
     const player = this.playerChits?.find((p) => p.playerId === this.playerId);
     if (player && player.promptStatus.latestPrompt.value) {
+      const currentPrompt = player.promptStatus.latestPrompt.value;
+
+      if (currentPrompt.id !== promptId) {
+        console.warn(
+          `[ServerPrompts] Prompt ID mismatch for player ${this.playerId}: received "${promptId}", expected "${currentPrompt.id}". Ignoring resolution.`,
+        );
+        return currentPrompt.serialize();
+      }
+
+      if (!currentPrompt.canResolveResponse(response)) {
+        console.warn(
+          `[ServerPrompts] Prompt "${currentPrompt.id}" for player ${this.playerId} cannot resolve response (type=${currentPrompt.type}). Ignoring resolution.`,
+        );
+        return currentPrompt.serialize();
+      }
+
       let cb: (() => void) | undefined;
       const p = new Promise((resolve) => {
         cb = this.match.onChange(() => resolve(0), false);
       });
-      player.promptStatus.latestPrompt.value.resolve(response);
+      currentPrompt.resolve(response);
       await p;
       if (cb) {
         cb();

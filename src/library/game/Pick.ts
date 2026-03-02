@@ -37,6 +37,8 @@ export abstract class Pick {
   }
 
   /** @internal */
+  abstract canResolveResponse(value: any): boolean;
+  /** @internal */
   abstract serializeDetails(): any;
   /** @internal */
   abstract deserializeDetails(state: any, findChit: FindChit, buttonLibrary: IButtonLibrary): void;
@@ -197,6 +199,11 @@ export class ChitPick<T extends Chit> extends Pick {
   }
 
   /** @internal */
+  canResolveResponse(chitId: string): boolean {
+    return this.chits.some((chit) => chit.id === chitId);
+  }
+
+  /** @internal */
   resolveDetails(chitId: string) {
     const selectedChit = this.chits.find((chit) => chit.id === chitId);
     if (!selectedChit) {
@@ -295,6 +302,12 @@ export class DragPick<C extends Chit> extends Pick {
   }
 
   /** @internal */
+  canResolveResponse(value: { chitId: string; targetChitId: string }): boolean {
+    if (!value || !this.chits.some((chit) => chit.id === value.chitId)) return false;
+    return this.dropTargets.some((dt) => dt.chits.some((chit) => chit.id === value.targetChitId));
+  }
+
+  /** @internal */
   resolveDetails({ chitId, targetChitId }: { chitId: string; targetChitId: string }): Promise<void> {
     const selectedChit = this.chits.find((chit) => chit.id === chitId);
     if (!selectedChit) {
@@ -382,6 +395,11 @@ export class ButtonPick extends Pick {
     }
     this.button = new ButtonType();
     this.button.deserialize(state, findChit);
+  }
+
+  /** @internal */
+  canResolveResponse(): boolean {
+    return !!this.button;
   }
 
   /** @internal */

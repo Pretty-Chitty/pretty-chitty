@@ -65,7 +65,7 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
         try {
           this.fixActiveLog();
           if (success) {
-            const newPromptSpec = await this.serverPrompts.resolvePrompt(prompt.response);
+            const newPromptSpec = await this.serverPrompts.resolvePrompt(prompt.id, prompt.response);
             this.getPromptEventChannelForPlayer(this.playerId).value = newPromptSpec ?? undefined;
           } else if (prompt.shouldStepBack) {
             this.getPromptEventChannelForPlayer(this.playerId).value = undefined;
