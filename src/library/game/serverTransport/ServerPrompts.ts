@@ -29,11 +29,13 @@ export class ServerPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
           if (newTurn) {
             unsubs = newTurn.rootChit.players.map((player) =>
               player.promptStatus.latestPrompt.on((latestPrompt: any) =>
-                this.clientPrompts.setPromptForPlayer(
-                  player.playerId,
-                  latestPrompt?.serialize(),
-                  this.match.turn.value?.clockDetails(playerId),
-                ),
+                this.clientPrompts
+                  .setPromptForPlayer(
+                    player.playerId,
+                    latestPrompt?.serialize(),
+                    this.match.turn.value?.clockDetails(playerId),
+                  )
+                  .catch((e: any) => console.error("Failed to send prompt to client:", e)),
               ),
             );
           }

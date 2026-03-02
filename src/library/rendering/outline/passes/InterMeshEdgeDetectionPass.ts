@@ -221,12 +221,16 @@ export class InterMeshEdgeDetectionPass extends Pass {
 
           // Only draw if we're near an edge (inside the mesh)
           if (edgeDistance < 1000.0) {
-            // Create thick outline with smooth falloff
+            // Create thick outline with solid core and soft outer edge
             float lineThickness = thickness + 0.5;
-            float alpha = 1.0 - smoothstep(0.5, lineThickness, edgeDistance);
+            float feather = min(1.5, lineThickness * 0.5);
+            float solidEnd = lineThickness - feather;
+            float alpha = 1.0 - smoothstep(solidEnd, lineThickness, edgeDistance);
 
             if (alpha > 0.01) {
-              gl_FragColor = vec4(centerOutlineColor.rgb, alpha * strength);
+              // Output premultiplied alpha for correct blending with LinearFilter
+              float finalAlpha = alpha * strength;
+              gl_FragColor = vec4(centerOutlineColor.rgb * finalAlpha, finalAlpha);
             } else {
               gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
             }

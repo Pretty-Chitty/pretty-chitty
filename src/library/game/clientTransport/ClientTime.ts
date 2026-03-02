@@ -148,74 +148,80 @@ export class ClientTime extends ConnectionObject {
     const animationKey = `minimumAnimationDuration${Date.now()}`;
     this.clientTimeState.setAnimationState(animationKey, true);
 
-    const response = await this.serverTime.serializeDelta(this.clientTimeState.targetClock.value);
-    const serializedChits = this.inflateSerializedResponse(response.newStates, response.chits);
+    try {
+      const response = await this.serverTime.serializeDelta(this.clientTimeState.targetClock.value);
+      const serializedChits = this.inflateSerializedResponse(response.newStates, response.chits);
 
-    // make sure nothing changed while we were waiting...
-    if (this.clientTimeState.targetClock.value === newTargetClock && currentClock === this.currentClock.value) {
-      if (newTargetClock >= this.startTime) {
-        this.clientTimeState.isLoading.value = false;
-      }
-
-      // track the active log message
-      this.activeLog.value = response.log?.message;
-      this.clientPrompt?.fixActiveLog();
-
-      // first make sure all chits exist (because they may link to each other)
-      Object.entries(serializedChits).forEach(([id, value]) => {
-        let chit = this.chitLookup[id];
-        if (!chit) {
-          const c = Chit.deflate(value, this.game);
-          if (c) {
-            chit = this.chitLookup[id] = c;
-          }
+      // make sure nothing changed while we were waiting...
+      if (this.clientTimeState.targetClock.value === newTargetClock && currentClock === this.currentClock.value) {
+        if (newTargetClock >= this.startTime) {
+          this.clientTimeState.isLoading.value = false;
         }
-      });
 
-      Object.values(this.chitLookup).forEach((chit) => {
-        if (chit.id && !serializedChits[chit.id]) {
-          if (chit.parentFallback) {
-            chit.beginDeserializing();
-            chit.setParent(chit.parentFallback, chit.parentOutlet ?? "graveyard");
-            chit.doneDeserializing();
-          } else {
-            chit.removeFromParent();
+        // track the active log message
+        this.activeLog.value = response.log?.message;
+        this.clientPrompt?.fixActiveLog();
+
+        // first make sure all chits exist (because they may link to each other)
+        Object.entries(serializedChits).forEach(([id, value]) => {
+          let chit = this.chitLookup[id];
+          if (!chit) {
+            const c = Chit.deflate(value, this.game);
+            if (c) {
+              chit = this.chitLookup[id] = c;
+            }
           }
-          delete this.lastSerializedState[chit.id];
-        }
-      });
-
-      this.currentClock.value = response.clockDetails;
-
-      // now actually load the new state
-      const changedIds = new Set(
-        Object.entries(serializedChits)
-          .filter(([id, value]) => this.chitLookup[id] && this.lastSerializedState[id] !== value)
-          .map(([id]) => id),
-      );
-
-      const chits: Chit[] = Object.entries(serializedChits)
-        .filter(([id, value]) => this.chitLookup[id] && this.lastSerializedState[id] !== value)
-        .map(([id]) => this.chitLookup[id]);
-
-      chits.forEach((chit) => chit.beginDeserializing());
-
-      Object.entries(serializedChits)
-        .filter(([id]) => changedIds.has(id))
-        .forEach(([id, value]) => {
-          const chit = this.chitLookup[id];
-          chit.deserialize(value, this.findChit);
-          this.lastSerializedState[id] = value;
         });
 
-      chits.forEach((chit) => chit.doneDeserializing());
+        Object.values(this.chitLookup).forEach((chit) => {
+          if (chit.id && !serializedChits[chit.id]) {
+            if (chit.parentFallback) {
+              chit.beginDeserializing();
+              chit.setParent(chit.parentFallback, chit.parentOutlet ?? "graveyard");
+              chit.doneDeserializing();
+            } else {
+              chit.removeFromParent();
+            }
+            delete this.lastSerializedState[chit.id];
+          }
+        });
 
-      this.rootChit.value = this.findChit("root") as RootChit<any>;
+        this.currentClock.value = response.clockDetails;
 
-      // sometimes deserializing chits does not result in animations (maybe a pure texture change?)
-      // in that case, we need to make sure that the clock moves forward
-      setTimeout(() => this.clientTimeState.setAnimationState(animationKey, false), 100);
-    } else {
+        // now actually load the new state
+        const changedIds = new Set(
+          Object.entries(serializedChits)
+            .filter(([id, value]) => this.chitLookup[id] && this.lastSerializedState[id] !== value)
+            .map(([id]) => id),
+        );
+
+        const chits: Chit[] = Object.entries(serializedChits)
+          .filter(([id, value]) => this.chitLookup[id] && this.lastSerializedState[id] !== value)
+          .map(([id]) => this.chitLookup[id]);
+
+        chits.forEach((chit) => chit.beginDeserializing());
+
+        Object.entries(serializedChits)
+          .filter(([id]) => changedIds.has(id))
+          .forEach(([id, value]) => {
+            const chit = this.chitLookup[id];
+            chit.deserialize(value, this.findChit);
+            this.lastSerializedState[id] = value;
+          });
+
+        chits.forEach((chit) => chit.doneDeserializing());
+
+        this.rootChit.value = this.findChit("root") as RootChit<any>;
+
+        // sometimes deserializing chits does not result in animations (maybe a pure texture change?)
+        // in that case, we need to make sure that the clock moves forward
+        setTimeout(() => this.clientTimeState.setAnimationState(animationKey, false), 100);
+      } else {
+        this.clientTimeState.setAnimationState(animationKey, false);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
       this.clientTimeState.setAnimationState(animationKey, false);
     }
   }

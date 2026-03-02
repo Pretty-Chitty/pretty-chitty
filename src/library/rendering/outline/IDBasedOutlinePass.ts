@@ -429,22 +429,26 @@ export class IDBasedOutlinePass extends Pass {
     (this.copyUniforms["tDiffuse"].value as any) = this.renderTargetTempBuffer.texture;
     this.fsQuad.render(renderer);
 
-    // Second: Add edges using additive blending
+    // Second: Composite edges using premultiplied alpha blending
+    // Edge texture stores premultiplied alpha: (rgb * a, a)
     renderer.autoClear = false;
 
     const originalBlending = this.materialCopy.blending;
     const originalTransparent = this.materialCopy.transparent;
+    const originalPremultipliedAlpha = this.materialCopy.premultipliedAlpha;
 
     this.materialCopy.blending = NormalBlending;
     this.materialCopy.transparent = true;
+    this.materialCopy.premultipliedAlpha = true;
     this.materialCopy.needsUpdate = true;
 
     (this.copyUniforms["tDiffuse"].value as any) = edgeTexture;
     this.fsQuad.render(renderer);
 
-    // // Restore material blending settings
+    // Restore material blending settings
     this.materialCopy.blending = originalBlending;
     this.materialCopy.transparent = originalTransparent;
+    this.materialCopy.premultipliedAlpha = originalPremultipliedAlpha;
     this.materialCopy.needsUpdate = true;
 
     this.restoreRenderState(renderer);

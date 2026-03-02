@@ -601,6 +601,12 @@ export class Chit extends ObjectWithProps {
     return result;
   }
 
+  /**
+   * Creates a DragPick options for the chit(s).  Create an array of DragTargets that these chits can be dropped on.
+   * @param chit A single chit, an array of chits (that can be empty-ish or nullish and ignored), or an OrderedOutlet of chits
+   * @param targets An array of DragTargets that the chits can be dropped on
+   * @returns A DragPick instance configured with the specified chits and targets
+   */
   public static dragPick<T extends Chit>(
     chit: T | (T | undefined | null | false)[] | OrderedOutlet<T>,
     targets: DragTarget<any, T>[],

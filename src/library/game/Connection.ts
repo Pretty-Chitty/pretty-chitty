@@ -12,6 +12,7 @@ type Message = {
 };
 
 export class Connection {
+  private disposed = false;
   private requestCounter = 0;
   private actualConnectionObjects: ConnectionObject[] = [];
   private registry: { [name: string]: object } = {};
@@ -19,7 +20,12 @@ export class Connection {
   private unprocessableMessages: Message[] = [];
 
   constructor(public transport: ConnectionTransport) {
-    this.transport.onReceiveMessage((message) => this.handleMessage(message));
+    this.transport.onReceiveMessage((message) => {
+      if (this.disposed) {
+        return;
+      }
+      this.handleMessage(message);
+    });
   }
 
   handleMessage(message: Message) {
@@ -30,6 +36,7 @@ export class Connection {
       if (!resolve) {
         throw new Error("Cannot find requestId");
       }
+      delete this.requestRegistry[requestId];
 
       if (errorMessage) {
         reject(errorMessage);
@@ -68,6 +75,9 @@ export class Connection {
   }
 
   dispose() {
+    this.disposed = true;
+    Object.values(this.requestRegistry).forEach(({ reject }) => reject("Connection disposed"));
+    this.requestRegistry = {};
     this.actualConnectionObjects.forEach((conn) => conn.dispose());
   }
 
@@ -97,19 +107,28 @@ export class Connection {
         {
           get: (target, prop) => {
             return (...args: any) => {
+              if (this.disposed) {
+                return Promise.reject("Connection disposed");
+              }
+
               const fnName = prop;
               const requestId = this.requestCounter++;
               const result = new Promise((resolve, reject) => {
                 this.requestRegistry[requestId] = { resolve, reject };
               });
 
-              this.transport.sendMessage({
-                name,
-                fnName,
-                requestId,
-                args,
-                isResponse: false,
-              });
+              try {
+                this.transport.sendMessage({
+                  name,
+                  fnName,
+                  requestId,
+                  args,
+                  isResponse: false,
+                });
+              } catch (e) {
+                delete this.requestRegistry[requestId];
+                return Promise.reject(e);
+              }
 
               return result;
             };

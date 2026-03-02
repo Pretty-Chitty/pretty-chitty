@@ -21,13 +21,21 @@ export function ServerTrustMatchViewer({
   onBack?: () => void;
   onLoadProgress?: LoadingStatesCallback;
 }) {
+  const [activeTransport, setActiveTransport] = useState<ConnectionTransport>(transport);
   const [loadingStates] = useState<LoadingStates>(new LoadingStates());
   const [localConnection, setLocalConnection] = useState<Connection | undefined>();
 
   useEffect(() => {
-    const newConnection = new Connection(transport);
+    const newConnection = new Connection(activeTransport);
+    const unsubscribe = activeTransport.onReconnect((transport) => {
+      setActiveTransport(transport);
+    });
     setLocalConnection(newConnection);
-  }, [transport]);
+    return () => {
+      unsubscribe();
+      newConnection.dispose();
+    };
+  }, [activeTransport]);
 
   useEffect(() => {
     if (onLoadProgress) {

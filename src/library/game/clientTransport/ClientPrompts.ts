@@ -62,13 +62,18 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
       this._currentPromptSpec = promptSpec;
       const prompt = Prompt.deserialize(promptSpec, this.clientTime.findChit, this.clientTime.game.buttonLibrary);
       prompt.onResolve(async (success) => {
-        this.fixActiveLog();
-        if (success) {
-          const newPromptSpec = await this.serverPrompts.resolvePrompt(prompt.response);
-          this.getPromptEventChannelForPlayer(this.playerId).value = newPromptSpec ?? undefined;
-        } else if (prompt.shouldStepBack) {
-          this.getPromptEventChannelForPlayer(this.playerId).value = undefined;
-          await this.serverPrompts.stepBackPrompt(prompt.shouldReset ?? false);
+        try {
+          this.fixActiveLog();
+          if (success) {
+            const newPromptSpec = await this.serverPrompts.resolvePrompt(prompt.response);
+            this.getPromptEventChannelForPlayer(this.playerId).value = newPromptSpec ?? undefined;
+          } else if (prompt.shouldStepBack) {
+            this.getPromptEventChannelForPlayer(this.playerId).value = undefined;
+            await this.serverPrompts.stepBackPrompt(prompt.shouldReset ?? false);
+          }
+        } catch (e) {
+          prompt.stageOut();
+          this.currentPrompt.value = undefined;
         }
       });
       prompt.stageIn();

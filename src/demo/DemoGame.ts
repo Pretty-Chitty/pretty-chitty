@@ -42,11 +42,15 @@ theme.dialogForegroundColor = "#000000ee";
 theme.chitHighlightColor = "#ffffff";
 theme.gallerySummaryBackgroundColor = "#ff0000";
 theme.dialogForegroundColor = "#ffffff";
-theme.chitOutlineStrength = 0.5;
+// theme.chitOutlineStrength = 0.5;
+theme.chitOutlineStrength = 0.9;
+theme.chitOutlineWidth = 3;
 
 theme.galleryItemWidth = 50;
 theme.galleryItemHeight = 50;
 theme.galleryItemSpacing = 10;
+// theme.fontScalar = 2;
+// theme.bottomBarFontFamily = "monospace";
 // theme.fontFamily = "monospace";
 
 export class DemoGame implements Game<Player, Root> {
@@ -129,20 +133,20 @@ export class DemoGame implements Game<Player, Root> {
     setup.flush();
     setup.log("Cards set up!");
 
-    // for (let i = 0; i < 3000; i++) {
-    //   for (let c = 0; c < 6; c++) {
-    //     const index = Math.floor((await setup.rng()) * 3) - 1;
-    //     const pieceIndex = Math.floor((await setup.rng()) * pieces.length);
-    //     pieces[pieceIndex].something = i * c;
-    //     if (index === -1) {
-    //       rootChit.mainBoard.add(pieces[pieceIndex]);
-    //       pieces[pieceIndex].raised = !pieces[pieceIndex].raised;
-    //     } else {
-    //       players[index].add(pieces[pieceIndex]);
-    //     }
-    //   }
-    //   setup.flush();
-    // }
+    for (let i = 0; i < 10; i++) {
+      for (let c = 0; c < 4; c++) {
+        const index = Math.floor((await setup.rng()) * 3) - 1;
+        const pieceIndex = Math.floor((await setup.rng()) * pieces.length);
+        pieces[pieceIndex].something = i * c;
+        if (index === -1) {
+          rootChit.mainBoard.add(pieces[pieceIndex]);
+          pieces[pieceIndex].raised = !pieces[pieceIndex].raised;
+        } else {
+          players[index].add(pieces[pieceIndex]);
+        }
+      }
+      setup.flush();
+    }
 
     // players[2].add(pieces[2]);
     // setup.flush();

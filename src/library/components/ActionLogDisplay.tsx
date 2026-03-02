@@ -173,7 +173,7 @@ export function ActionLogDisplay({ toggleSidebarLog }: { toggleSidebarLog: boole
           justifyContent: "center",
         }}
       >
-        <TokenizedMessage message={messageToShow ?? ""} fontSize={14} tokenMap={tokenMap} />
+        <TokenizedMessage message={messageToShow ?? ""} fontSize={14 * theme.fontScalar} tokenMap={tokenMap} />
       </Box>
       {!toggleSidebarLog && <Arrow flipped={visible} />}
       <Box flex={1} />

@@ -210,7 +210,7 @@ export class ChitRenderSpec {
       }
 
       const p = this.outletPositions[ordered.outletName] ?? new Vector3(0, 0, 0);
-      mesh.position.set(p.x + offsetX, p.y + offsetY, box3.max.z - box3.min.z + p.z + 0.001);
+      mesh.position.set(p.x + offsetX, p.y + offsetY, box3.max.z + p.z + 0.001);
       this.ornaments.push(mesh);
     }
   }

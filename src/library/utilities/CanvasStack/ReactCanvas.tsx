@@ -7,7 +7,9 @@ import {
   HorizontalStackCanvasOperation,
   IconMap,
   ImageCanvasOperation,
+  ImageHorizontalAlign,
   ImageSpec,
+  ImageVerticalAlign,
   LayeredCanvasOperation,
   MarkdownCanvasOperation,
   OutletCanvasOperation,
@@ -183,8 +185,20 @@ export function Image({
   image,
   fill,
   overlayColor,
-}: { image: ImageSpec; fill?: boolean; overlayColor?: string } & DefaultProps): ReactNode {
-  return <WrappedCanvasOperation operation={new ImageCanvasOperation(image, { fill, overlayColor })} />;
+  horizontalAlign,
+  verticalAlign,
+}: {
+  image: ImageSpec;
+  fill?: boolean;
+  overlayColor?: string;
+  horizontalAlign?: ImageHorizontalAlign;
+  verticalAlign?: ImageVerticalAlign;
+} & DefaultProps): ReactNode {
+  return (
+    <WrappedCanvasOperation
+      operation={new ImageCanvasOperation(image, { fill, overlayColor, horizontalAlign, verticalAlign })}
+    />
+  );
 }
 
 /**

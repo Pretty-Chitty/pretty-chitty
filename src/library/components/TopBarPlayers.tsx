@@ -19,7 +19,13 @@ function PlayerInfoCell({ spark, size }: { size: number; spark: SparkChit }) {
   return (
     <Box sx={{ width: `${spark.width}px`, pl: 1, pr: 1, borderRight: `1px solid ${theme.barTopLineColor}` }}>
       <Typography
-        sx={{ fontSize: 14, textOverflow: "ellipsis", overflow: "hidden", textAlign: "right", lineHeight: `${size}px` }}
+        sx={{
+          fontSize: 14 * theme.fontScalar,
+          textOverflow: "ellipsis",
+          overflow: "hidden",
+          textAlign: "right",
+          lineHeight: `${size}px`,
+        }}
       >
         {spark.value}
       </Typography>
@@ -33,7 +39,7 @@ function TextPlayerInfoCell({ text, size, width }: { size: number; text: string;
     <Box sx={{ width: `${width}px`, pl: 1, pr: 1, borderRight: `1px solid ${theme.barTopLineColor}` }}>
       <Typography
         sx={{
-          fontSize: 14,
+          fontSize: 14 * theme.fontScalar,
           textOverflow: "ellipsis",
           overflow: "hidden",
           whiteSpace: "nowrap",
@@ -141,7 +147,7 @@ export default function TopBarPlayers() {
             sx={{
               p: 1,
               lineHeight: `${theme.topBarHeight - theme.spacing * 4}px`,
-              fontSize: 14,
+              fontSize: 14 * theme.fontScalar,
               whiteSpace: "nowrap",
               textOverflow: "ellipsis",
               overflow: "hidden",

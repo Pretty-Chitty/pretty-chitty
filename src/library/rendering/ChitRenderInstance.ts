@@ -18,7 +18,6 @@ import { Easing, Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { RootChitRenderInstance } from "./RootChitRenderInstance";
 import { fixBbox } from "../utilities/BboxUtils";
 import { ChitGalleryItemInstance } from "./ChitGalleryItemInstance";
-import Color from "color";
 
 const LINE_COLOR = new MeshBasicMaterial({ color: 0xff0000, wireframe: true, wireframeLinewidth: 2 });
 const CLICK_LINE_COLOR = new MeshBasicMaterial({ color: 0xffff00, wireframe: true, wireframeLinewidth: 2 });
@@ -128,8 +127,10 @@ export class ChitRenderInstance {
       let intersection = this.attemptToFindPlaneZ0(this.rootRenderInstance, positionEntranceChit);
 
       if (intersection && oldParent) {
-        // Ensure entrance coordinates are outside visible region if they overlap
-        intersection = this.ensureCoordinatesOutsideVisibleRegion(intersection);
+        if (positionEntranceChit && positionEntranceChit !== chit.parentFallback) {
+          // Ensure entrance coordinates are outside visible region if they overlap
+          intersection = this.ensureCoordinatesOutsideVisibleRegion(intersection);
+        }
 
         this.group.removeFromParent();
         this.group.position.set(intersection.x, intersection.y, intersection.z);
@@ -662,8 +663,7 @@ export class ChitRenderInstance {
 
     if (outlineContext && this.renderSpec.object && outlineContext.renderSpec?.object && c) {
       const id = outlineContext.renderSpec.object.id % 60000;
-      const color = Color(c);
-      const threeColor = new ThreeColor(color.red() / 256, color.green() / 256, color.blue() / 256);
+      const threeColor = new ThreeColor(c);
       this.renderSpec.object.traverseVisible((o) => {
         o.userData.outlineId = id;
         o.userData.outlineColor = threeColor;

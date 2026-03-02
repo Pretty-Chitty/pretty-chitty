@@ -150,3 +150,17 @@ See [LICENSE.md](./LICENSE.md) for full details.
 ## Contributing
 
 This is a source-available project. Public redistribution and derivative works are not permitted under the license. For contribution opportunities or commercial partnerships, please contact legal@prettychitty.com.
+
+## TODO:
+
+Notes to add:
+
+- dropshadow color is bad for light color backgrounds
+- font scaling parameter?
+- offset with children click handler is maybe weird/wrong?
+- 10x gallery has extra line return?
+- need to show 10x counter on inline gallery
+- outline color isn't perfect? why does it make it ligher? purple on purple should be invisible
+- inline gallery context always renders? eats up CPU
+- is there a settimeout somewhere that fails if server is slow?
+- droppick should take single array

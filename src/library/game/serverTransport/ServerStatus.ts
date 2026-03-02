@@ -18,13 +18,17 @@ export class ServerStatus<P extends PlayerChit, R extends RootChit<P>> extends C
 
     this.register(
       this.match.errorState.on((errorMessage) => {
-        this.clientStatus.setErrorMessage(errorMessage);
+        this.clientStatus
+          .setErrorMessage(errorMessage)
+          .catch((e: any) => console.error("Failed to send error message to client:", e));
       }),
     );
 
     this.register(
       this.match.result.on((result) => {
-        this.clientStatus.setMatchResult(result?.winners?.map((winner) => winner.id ?? ""));
+        this.clientStatus
+          .setMatchResult(result?.winners?.map((winner) => winner.id ?? ""))
+          .catch((e: any) => console.error("Failed to send match result to client:", e));
       }),
     );
   }

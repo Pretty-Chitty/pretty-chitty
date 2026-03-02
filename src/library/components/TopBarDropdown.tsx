@@ -43,7 +43,7 @@ export default function TopBarDropdown({
           pl: 2,
           pr: 4,
           position: "relative",
-          fontSize: 14,
+          fontSize: 14 * theme.fontScalar,
           height: "100%",
           color: theme.barTextColor,
           background: theme.barColor,
@@ -59,8 +59,8 @@ export default function TopBarDropdown({
           style={{
             position: "absolute",
             right: 10,
-            top: "calc(50% - 14px)",
-            fontSize: "25px",
+            top: `calc(50% - ${14 * theme.fontScalar}px)`,
+            fontSize: `${25 * theme.fontScalar}px`,
             transform: open ? "rotate(-90deg)" : "rotate(90deg)",
             transition: "transform linear 0.15s",
           }}
@@ -83,7 +83,7 @@ export default function TopBarDropdown({
           borderBottomLeftRadius: 10,
           maxHeight: `calc(60vh - ${theme.topBarHeight}px - 10px)`,
           overflow: "auto",
-          fontSize: 14,
+          fontSize: 14 * theme.fontScalar,
           p: 1,
         }}
       >

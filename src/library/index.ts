@@ -10,7 +10,7 @@ export { Chit } from "./game/Chit";
 /** @group Core Game Elements */
 export { Turn } from "./game/Turn";
 /** @group Core Game Elements */
-export { Pick, ButtonPick, ChitPick } from "./game/Pick";
+export { Pick, ButtonPick, ChitPick, DragTarget, DragPick } from "./game/Pick";
 /** @group Core Game Elements */
 export { GameTheme } from "./game/GameTheme";
 /** @group Chits */

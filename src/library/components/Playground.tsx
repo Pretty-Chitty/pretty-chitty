@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 
 import { Chit } from "../game/Chit";
 import {
@@ -22,7 +22,7 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-import { Add, Delete, Refresh, GridOn, PhoneIphone, Tab as TabIcon, Upload, Download } from "@mui/icons-material";
+import { Add, Delete, Refresh, GridOn, PhoneIphone, Tab as TabIcon, Upload, Download, LinkOff } from "@mui/icons-material";
 import useLocalStorageState from "use-local-storage-state";
 import { MatchViewer } from "./MatchViewer";
 import { Game } from "../game/Game";
@@ -407,26 +407,62 @@ function PlayerEditor({
   playerId,
   match,
   showBack,
+  disconnectSignal,
 }: {
   showBack?: boolean;
   playerId: string;
   match: Match<any, any>;
+  disconnectSignal?: number;
 }) {
   const [localConnection, setLocalConnection] = useState<Connection | undefined>();
-  const [, setRemoteConnection] = useState<LocalConnectionTransport>(new LocalConnectionTransport());
+  const [clientTransport, setClientTransport] = useState<LocalConnectionTransport | null>(null);
+  const [serverTransport, setServerTransport] = useState<LocalConnectionTransport | null>(null);
+  const clientTransportRef = useRef<LocalConnectionTransport | null>(null);
 
+  // Create initial transport pair and connect to match
   useEffect(() => {
-    const newRemoteConnection = new LocalConnectionTransport();
-    const newConnection = new Connection(new LocalConnectionTransport());
-    (newConnection.transport as LocalConnectionTransport).connect(newRemoteConnection);
-    match.connect(newRemoteConnection, playerId);
-
-    setLocalConnection(newConnection);
-    setRemoteConnection(newRemoteConnection);
-    return () => {
-      newConnection.dispose();
-    };
+    const server = new LocalConnectionTransport();
+    const client = new LocalConnectionTransport();
+    client.connect(server);
+    match.connect(server, playerId);
+    setClientTransport(client);
+    setServerTransport(server);
   }, [match, playerId]);
+
+  // Manage Connection from active client transport (re-runs on reconnect)
+  useEffect(() => {
+    if (!clientTransport) return;
+    const connection = new Connection(clientTransport);
+    clientTransportRef.current = clientTransport;
+
+    const unsub = clientTransport.onReconnect((newTransport) => {
+      setClientTransport(newTransport as LocalConnectionTransport);
+    });
+
+    setLocalConnection(connection);
+    return () => {
+      unsub();
+      clientTransportRef.current = null;
+      connection.dispose();
+    };
+  }, [clientTransport]);
+
+  // Reconnect server-side transport to match when it changes
+  useEffect(() => {
+    if (!serverTransport) return;
+    const unsub = serverTransport.onReconnect((newTransport) => {
+      match.connect(newTransport as LocalConnectionTransport, playerId);
+      setServerTransport(newTransport as LocalConnectionTransport);
+    });
+    return () => unsub();
+  }, [serverTransport, match, playerId]);
+
+  // Respond to disconnect signal from toolbar
+  useEffect(() => {
+    if (disconnectSignal && disconnectSignal > 0) {
+      clientTransportRef.current?.simulateDisconnect(2000);
+    }
+  }, [disconnectSignal]);
 
   if (!localConnection) {
     return null;
@@ -441,7 +477,7 @@ function PlayerEditor({
   );
 }
 
-function MatchGrid({ match }: { match: Match<any, any> }) {
+function MatchGrid({ match, disconnectSignal }: { match: Match<any, any>; disconnectSignal: number }) {
   let rows = Math.ceil(Math.sqrt(match.players.length));
   let columns = Math.ceil(match.players.length / rows);
 
@@ -463,7 +499,7 @@ function MatchGrid({ match }: { match: Match<any, any> }) {
         <Stack key={i} direction="row" sx={{ height: `${100 / playerRows.length}%`, width: "100%" }}>
           {ps.map((p) => (
             <Box key={p.id} sx={{ width: `${100 / ps.length}%`, height: "100%" }}>
-              <PlayerEditor playerId={p.id} match={match} />
+              <PlayerEditor playerId={p.id} match={match} disconnectSignal={disconnectSignal} />
             </Box>
           ))}
         </Stack>
@@ -472,7 +508,7 @@ function MatchGrid({ match }: { match: Match<any, any> }) {
   );
 }
 
-function MatchTabs({ match }: { match: Match<any, any> }) {
+function MatchTabs({ match, disconnectSignal }: { match: Match<any, any>; disconnectSignal: number }) {
   const [tabIndex, setTabIndex] = useLocalStorageState("selectedPlayerIndex", {
     defaultValue: 0,
   });
@@ -496,20 +532,20 @@ function MatchTabs({ match }: { match: Match<any, any> }) {
       </Tabs>
       <Box flex={1} sx={{ height: "100%" }}>
         {[match.players[tabIndex].id].map((id) => (
-          <PlayerEditor key={id} playerId={id} match={match} />
+          <PlayerEditor key={id} playerId={id} match={match} disconnectSignal={disconnectSignal} />
         ))}
       </Box>
     </Stack>
   );
 }
 
-function MatchPhone({ match }: { match: Match<any, any> }) {
+function MatchPhone({ match, disconnectSignal }: { match: Match<any, any>; disconnectSignal: number }) {
   return (
     <Box sx={{ height: "100%", width: "100%", overflow: "scroll" }}>
       <Stack direction={"row"} sx={{ width: `${390 * match.players.length}px` }}>
         {match.players.map((p) => (
           <Box key={p.id} sx={{ width: `390px`, height: "684px" }}>
-            <PlayerEditor showBack playerId={p.id} match={match} />
+            <PlayerEditor showBack playerId={p.id} match={match} disconnectSignal={disconnectSignal} />
           </Box>
         ))}
       </Stack>
@@ -521,10 +557,12 @@ function Editor({
   layout,
   game,
   matchInfo,
+  disconnectSignal,
 }: {
   layout: Layout;
   game: Game<any, any>;
   matchInfo: SavedMatchInfo;
+  disconnectSignal: number;
 }) {
   const [match, setMatch] = useState<Match<any, any> | null>(null);
   const [storage, setStorage] = useState<LocalMatchStorage | null>(null);
@@ -563,9 +601,9 @@ function Editor({
 
   return (
     <GameProvider game={game}>
-      {layout === "tile" && <MatchGrid match={match} />}
-      {layout === "tab" && <MatchTabs match={match} />}
-      {layout === "phone" && <MatchPhone match={match} />}
+      {layout === "tile" && <MatchGrid match={match} disconnectSignal={disconnectSignal} />}
+      {layout === "tab" && <MatchTabs match={match} disconnectSignal={disconnectSignal} />}
+      {layout === "phone" && <MatchPhone match={match} disconnectSignal={disconnectSignal} />}
     </GameProvider>
   );
 }
@@ -585,6 +623,8 @@ export default function Playground({ game }: { game: Game<any, any> }) {
   const [matchKey, setMatchKey] = useState(0); // For forcing re-render on reset
   const [loadStateDialogOpen, setLoadStateDialogOpen] = useState(false);
   const [exportStateDialogOpen, setExportStateDialogOpen] = useState(false);
+  const [disconnectSignal, setDisconnectSignal] = useState(0);
+  const [isDisconnected, setIsDisconnected] = useState(false);
 
   const gameName = game.metadata.name;
 
@@ -796,6 +836,21 @@ export default function Playground({ game }: { game: Game<any, any> }) {
               </IconButton>
             </Tooltip>
 
+            <Tooltip title={isDisconnected ? "Reconnecting..." : "Simulate Disconnect"}>
+              <IconButton
+                onClick={() => {
+                  setIsDisconnected(true);
+                  setDisconnectSignal((prev) => prev + 1);
+                  setTimeout(() => setIsDisconnected(false), 2000);
+                }}
+                size="small"
+                disabled={isDisconnected || !selectedMatchId}
+                color={isDisconnected ? "error" : "default"}
+              >
+                <LinkOff />
+              </IconButton>
+            </Tooltip>
+
             <Box sx={{ flexGrow: 1 }} />
 
             {loadingProgress && <Box sx={{ mr: 2 }}>{loadingProgress}</Box>}
@@ -825,6 +880,7 @@ export default function Playground({ game }: { game: Game<any, any> }) {
               layout={layout}
               game={game}
               matchInfo={selectedMatch}
+              disconnectSignal={disconnectSignal}
             />
           )}
         </Box>

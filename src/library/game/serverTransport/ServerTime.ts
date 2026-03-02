@@ -20,7 +20,9 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
     this.register(
       match.onChange(() => {
         if (match.turn.value) {
-          this.clientTime.newMaxClock(match.turn.value.clockDetails(this.playerId));
+          this.clientTime
+            .newMaxClock(match.turn.value.clockDetails(this.playerId))
+            .catch((e: any) => console.error("Failed to send newMaxClock to client:", e));
         }
 
         if (!this.hasSentLastActionTime) {
@@ -28,7 +30,9 @@ export class ServerTime<P extends PlayerChit, R extends RootChit<P>> extends Con
 
           const player = match.turn.value?.rootChit.players.find((p) => p.id === playerId);
           if (player) {
-            this.clientTime.setStartTime(player.promptStatus.latestPromptResponseTime);
+            this.clientTime
+              .setStartTime(player.promptStatus.latestPromptResponseTime)
+              .catch((e: any) => console.error("Failed to send setStartTime to client:", e));
           }
         }
       }),

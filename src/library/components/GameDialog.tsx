@@ -24,7 +24,7 @@ export default function GameDialog({
         style: {
           backgroundColor: "transparent",
           color: theme.dialogForegroundColor,
-          fontSize: 16,
+          fontSize: 16 * theme.fontScalar,
           fontFamily: muiTheme.typography.fontFamily,
         },
         elevation: 0,

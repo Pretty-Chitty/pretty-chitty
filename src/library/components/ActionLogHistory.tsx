@@ -58,9 +58,9 @@ function RowComponent({ index, messages, style, tokenMap, theme }: RowComponentP
             : "transparent",
       }}
     >
-      <Box sx={{ width: 25, fontSize: 11, textAlign: "right" }}>{messages[index].clock + 1}</Box>
+      <Box sx={{ width: 25, fontSize: 11 * theme.fontScalar, textAlign: "right" }}>{messages[index].clock + 1}</Box>
       <Box flex={1} sx={{ pl: 2 }}>
-        <TokenizedMessage message={messages[index].message} fontSize={14} tokenMap={tokenMap} />
+        <TokenizedMessage message={messages[index].message} fontSize={14 * theme.fontScalar} tokenMap={tokenMap} />
       </Box>
     </Stack>
   );

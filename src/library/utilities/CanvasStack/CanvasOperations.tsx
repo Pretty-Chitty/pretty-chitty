@@ -363,9 +363,14 @@ export type ImageColorSpec = {
   };
 };
 
+export type ImageHorizontalAlign = "left" | "center" | "right";
+export type ImageVerticalAlign = "top" | "middle" | "bottom";
+
 export interface ImageOptions {
   fill?: boolean;
   overlayColor?: string;
+  horizontalAlign?: ImageHorizontalAlign;
+  verticalAlign?: ImageVerticalAlign;
 }
 
 export class ImageCanvasOperation extends CanvasOperation {
@@ -400,11 +405,21 @@ export class ImageCanvasOperation extends CanvasOperation {
 
     if (targetAspect > sourceAspect) {
       const newW = h * sourceAspect;
-      x += Math.floor((w - newW) / 2);
+      const hAlign = this.options.horizontalAlign ?? "center";
+      if (hAlign === "center") {
+        x += Math.floor((w - newW) / 2);
+      } else if (hAlign === "right") {
+        x += w - newW;
+      }
       w = newW;
     } else {
       const newH = w / sourceAspect;
-      y += Math.floor((h - newH) / 2);
+      const vAlign = this.options.verticalAlign ?? "middle";
+      if (vAlign === "middle") {
+        y += Math.floor((h - newH) / 2);
+      } else if (vAlign === "bottom") {
+        y += h - newH;
+      }
       h = newH;
     }
 
@@ -440,9 +455,10 @@ export class ImageCanvasOperation extends CanvasOperation {
       if (maxH && syi + shi > maxH) {
         shi = Math.max(0, maxH - syi);
       }
-      // If sw/sh rounded to zero, skip drawing.
-      if (swi > 0 && shi > 0) {
-        context.drawImage(source as any, sxi, syi, swi, shi, x, y, w, h);
+      // Inset by half a texel so bilinear filtering never samples neighboring sprites.
+      const inset = 0.5;
+      if (swi > inset * 2 && shi > inset * 2) {
+        context.drawImage(source as any, sxi + inset, syi + inset, swi - inset * 2, shi - inset * 2, x, y, w, h);
       }
     }
   }
@@ -467,13 +483,23 @@ export class ImageCanvasOperation extends CanvasOperation {
       sh = sourceBounds.height;
 
     if (targetAspect > sourceAspect) {
-      // Target is wider than source; adjust source height and y to maintain aspect ratio
+      // Target is wider than source; crop source height
       sh = sw / targetAspect;
-      sy += (sourceBounds.height - sh) / 2; // Center vertically in source
+      const vAlign = this.options.verticalAlign ?? "middle";
+      if (vAlign === "middle") {
+        sy += (sourceBounds.height - sh) / 2;
+      } else if (vAlign === "bottom") {
+        sy += sourceBounds.height - sh;
+      }
     } else {
-      // Target is taller than source; adjust source width and x to maintain aspect ratio
+      // Target is taller than source; crop source width
       sw = sh * targetAspect;
-      sx += (sourceBounds.width - sw) / 2; // Center horizontally in source
+      const hAlign = this.options.horizontalAlign ?? "center";
+      if (hAlign === "center") {
+        sx += (sourceBounds.width - sw) / 2;
+      } else if (hAlign === "right") {
+        sx += sourceBounds.width - sw;
+      }
     }
 
     if (typeof sourceImage === "string") {
@@ -492,24 +518,46 @@ export class ImageCanvasOperation extends CanvasOperation {
       let syiF = Math.floor(sy);
       let swiF = Math.ceil(sw);
       let shiF = Math.ceil(sh);
+      // Clamp to sprite bounds so rounding never bleeds into neighboring sprites.
+      const sbRight = sourceBounds.x + sourceBounds.width;
+      const sbBottom = sourceBounds.y + sourceBounds.height;
+      if (sxiF < sourceBounds.x) {
+        swiF -= sourceBounds.x - sxiF;
+        sxiF = sourceBounds.x;
+      }
+      if (syiF < sourceBounds.y) {
+        shiF -= sourceBounds.y - syiF;
+        syiF = sourceBounds.y;
+      }
+      if (sxiF + swiF > sbRight) {
+        swiF = sbRight - sxiF;
+      }
+      if (syiF + shiF > sbBottom) {
+        shiF = sbBottom - syiF;
+      }
+      // Also clamp to overall image dimensions.
       const maxWF = (source as any).width ?? (source as any).naturalWidth ?? 0;
       const maxHF = (source as any).height ?? (source as any).naturalHeight ?? 0;
-      if (sxiF < 0) {
-        swiF += sxiF;
-        sxiF = 0;
-      }
-      if (syiF < 0) {
-        shiF += syiF;
-        syiF = 0;
-      }
       if (maxWF && sxiF + swiF > maxWF) {
         swiF = Math.max(0, maxWF - sxiF);
       }
       if (maxHF && syiF + shiF > maxHF) {
         shiF = Math.max(0, maxHF - syiF);
       }
-      if (swiF > 0 && shiF > 0) {
-        context.drawImage(source as any, sxiF, syiF, swiF, shiF, x, y, w, h);
+      // Inset by half a texel so bilinear filtering never samples neighboring sprites.
+      const inset = 0.5;
+      if (swiF > inset * 2 && shiF > inset * 2) {
+        context.drawImage(
+          source as any,
+          sxiF + inset,
+          syiF + inset,
+          swiF - inset * 2,
+          shiF - inset * 2,
+          x,
+          y,
+          w,
+          h,
+        );
       }
     }
   }

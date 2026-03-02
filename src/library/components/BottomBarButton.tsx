@@ -171,11 +171,28 @@ export default function BottomBarButton({
       )}
       <Stack sx={{ position: "relative", zIndex: ZINDEX_BOTTOM_BAR_BUTTON_LABEL, height: "100%" }}>
         <Box flex={1} />
-        <Box sx={{ color: iconColor, fontSize: "30px", lineHeight: "30px", height: "30px", textAlign: "center" }}>
+        <Box
+          sx={{
+            color: iconColor,
+            fontSize: 30,
+            lineHeight: "30px",
+            height: "30px",
+            textAlign: "center",
+          }}
+        >
           <IconType fontSize="inherit" />
         </Box>
         {!removeLabel && (
-          <Typography sx={{ textAlign: "center", mt: 0.5, fontSize: 12 }}>{label ?? "\u00a0"}</Typography>
+          <Typography
+            sx={{
+              fontFamily: theme.bottomBarFontFamily ?? theme.fontFamily,
+              textAlign: "center",
+              mt: 0.5,
+              fontSize: 12 * theme.bottomBarFontScalar,
+            }}
+          >
+            {label ?? "\u00a0"}
+          </Typography>
         )}
         <Box flex={1} />
       </Stack>

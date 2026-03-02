@@ -39,10 +39,10 @@ export class TestStack extends ParameterizedCanvas {
           <Color val={img.borderColor} />
           <Pad amount={20}>
             <Vertical>
-              <RoundedRect radius={50}>
+              <RoundedRect radius={50} size={135}>
                 <Color hex="#033" />
 
-                <Image fill image={img} />
+                <Image image={img} fill />
                 <Vertical>
                   <></>
                   <Text size={50} fill="#fff" fontSize={50}>

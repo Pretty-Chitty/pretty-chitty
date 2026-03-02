@@ -24,6 +24,10 @@ export class GameTheme {
     GameTheme.defaultFontFamily = value;
   }
 
+  public fontScalar = 1;
+  public bottomBarFontFamily?: string;
+  public bottomBarFontScalar = 1;
+
   public backgroundColor = "#0f0119";
 
   public spacing = 8;
