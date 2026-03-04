@@ -65,6 +65,7 @@ export class AnimationController {
     });
   }
 
+  _lastSeenIds: Set<string> = new Set();
   private animatePanToNearest(
     delta: number,
     max: number,
@@ -73,6 +74,15 @@ export class AnimationController {
     itemSpacing: number,
     items: BuiltItem[],
   ) {
+    if (items.length === 0) {
+      return;
+    }
+    const ids = items.map((item) => item.id);
+    if (!ids.some((id) => this._lastSeenIds.has(id))) {
+      this.offsetX = 0;
+    }
+    this._lastSeenIds = new Set(ids);
+
     let target = this.offsetX + delta;
     const itemIndex = Math.round(target / (itemWidth + itemSpacing));
     target = itemIndex * (itemWidth + itemSpacing);

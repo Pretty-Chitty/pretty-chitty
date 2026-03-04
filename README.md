@@ -156,16 +156,16 @@ This is a source-available project. Public redistribution and derivative works a
 Notes to add:
 
 - dropshadow color is bad for light color backgrounds
-- font scaling parameter?
+  x font scaling parameter?
 - offset with children click handler is maybe weird/wrong?
 - 10x gallery has extra line return?
 - need to show 10x counter on inline gallery
-- outline color isn't perfect? why does it make it ligher? purple on purple should be invisible
-- inline gallery context always renders? eats up CPU
-- is there a settimeout somewhere that fails if server is slow?
-- droppick should take single array
+  x outline color isn't perfect? why does it make it ligher? purple on purple should be invisible
+  x inline gallery context always renders? eats up CPU
+  x is there a settimeout somewhere that fails if server is slow?
+  x droppick should take single array
 
 - inline gallery scrolls all the way left after selecting
-  x inline gallery doesn't get staged out correctly on disconnect
-- ordered outlets need a way to insert! or keep them sorted
-- zip needs a reset point (and persist logs)
+  X inline gallery doesn't get staged out correctly on disconnect
+  X ordered outlets need a way to insert! or keep them sorted
+  X zip needs a reset point (and persist logs)

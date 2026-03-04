@@ -245,6 +245,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     step.log = message;
   }
 
+  _zipStartPoint = 0;
+
   /**
    * Compress the history in the timeline such that a user with maybe many moves (and changing their minds) won't
    * clock up the replay timeline.  Basically takes all of the flushes and smushes them together into a single flush.
@@ -256,7 +258,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   zip() {
     this.flush();
     let hasChange = false;
-    while (this.clockSteps.length >= 2) {
+    while (this.clockSteps.length >= this._zipStartPoint + 2) {
       const lastStep = this.clockSteps[this.clockSteps.length - 1];
       const previousStep = this.clockSteps[this.clockSteps.length - 2];
       if (!(lastStep instanceof FlushClockStep) || !(previousStep instanceof FlushClockStep)) {
@@ -272,6 +274,14 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       this.pass++;
       this.flush();
     }
+  }
+
+  /**
+   * Marks the current point in the clock steps as a "zip start point".  This does nothing by itself, but when you later call zip(),
+   * it will not zip past this point
+   */
+  markZipStartPoint() {
+    this._zipStartPoint = this.clockSteps.length;
   }
 
   /**

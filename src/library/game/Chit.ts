@@ -609,12 +609,12 @@ export class Chit extends ObjectWithProps {
    */
   public static dragPick<T extends Chit>(
     chit: T | (T | undefined | null | false)[] | OrderedOutlet<T>,
-    targets: DragTarget<any, T>[],
+    targets: DragTarget<any, T> | DragTarget<any, T>[],
   ) {
     const result = new DragPick<T>();
     result.chits =
       chit instanceof OrderedOutlet ? chit.copy() : Array.isArray(chit) ? (chit.filter((c) => c) as T[]) : [chit];
-    result.dropTargets = targets;
+    result.dropTargets = Array.isArray(targets) ? targets : [targets];
     return result;
   }
 

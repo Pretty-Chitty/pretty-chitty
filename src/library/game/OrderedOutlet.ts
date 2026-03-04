@@ -47,6 +47,16 @@ export class OrderedOutlet<C extends Chit> {
     return this.chits[this.chits.length - 1];
   }
 
+  public insert(c: C, i: number) {
+    if (this.parent?.isDeserializing) {
+      return;
+    }
+    c.setParent();
+
+    this.chits.splice(i, 0, c);
+    this.fixOrder();
+  }
+
   public add(c: C) {
     if (this.parent?.isDeserializing) {
       return;
@@ -54,7 +64,6 @@ export class OrderedOutlet<C extends Chit> {
     c.setParent();
 
     this.chits.push(c);
-    this.fixSort();
     this.fixOrder();
   }
 
@@ -71,7 +80,6 @@ export class OrderedOutlet<C extends Chit> {
       c.forEach((c) => c.setParent());
       c.forEach((c) => this.chits.push(c));
     }
-    this.fixSort();
     this.fixOrder();
   }
 
@@ -95,6 +103,18 @@ export class OrderedOutlet<C extends Chit> {
 
   public find(cb: (c: C) => boolean) {
     return this.chits.find(cb);
+  }
+
+  public findLastIndex(cb: (c: C) => boolean): number {
+    return this.chits.findLastIndex(cb);
+  }
+
+  public findLast(cb: (c: C) => boolean): C | undefined {
+    const index = this.chits.findLastIndex(cb);
+    if (index === -1) {
+      return undefined;
+    }
+    return this.chits[index];
   }
 
   public map<D>(cb: (c: C) => D): D[] {
@@ -192,7 +212,8 @@ export class OrderedOutlet<C extends Chit> {
     });
   }
 
-  private fixSort() {
-    // do nothing by default?
+  public sort(compareFn?: (a: C, b: C) => number) {
+    this.chits.sort(compareFn);
+    this.fixOrder();
   }
 }

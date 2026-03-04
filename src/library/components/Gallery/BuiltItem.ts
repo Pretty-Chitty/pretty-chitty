@@ -282,6 +282,8 @@ export class BuiltItem {
     this.group.parent?.remove(this.group);
     this.unsubscribe();
     this.removing = true;
+    TextureReferenceCounter.update();
+    this.sceneWrapper.markDirty();
   }
 
   //

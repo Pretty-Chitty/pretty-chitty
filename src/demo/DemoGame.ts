@@ -191,7 +191,38 @@ export class DemoGame implements Game<Player, Root> {
       }
 
       await turn.pick(
-        Chit.pick(pieces.slice(0, 6), async (c: Card) => {
+        Chit.pick(pieces.slice(0, 20), async (c: Card) => {
+          // const target = players[0];
+          // target.add(c);
+          // c.raised = true;
+          // c.something = 9999;
+          players[0].add(c);
+
+          if (c === pieces[1]) {
+            turn.log(":p1: chose the first card");
+            await turn.pick([
+              Chit.pick(pieces, async (c2: Card) => {
+                c2.something = 8888;
+                players[0].add(c2);
+
+                turn.amendLog((oldLog) => oldLog + " followed by a new card");
+              }).message(
+                "pick a second piece to take, or if you don't want to, then don't.  it's totally up to you, you can do whatever you want.  I don't really care.  I bet you wish i did, but i don't",
+              ),
+              Chit.pick([pieces[0].token2], async (c2: Card2) => {
+                c2.something = 7777;
+                players[0].add(c2);
+              }).message("third thing that causes it to go to another line"),
+            ]);
+          }
+        })
+          .message("pick a piece to take")
+          .toggleButton(new HandButton())
+          .context(pieces[7]),
+      );
+
+      await turn.pick(
+        Chit.pick(pieces.slice(20, 40), async (c: Card) => {
           // const target = players[0];
           // target.add(c);
           // c.raised = true;
