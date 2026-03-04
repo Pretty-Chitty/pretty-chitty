@@ -90,6 +90,15 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
     }
   }
 
+  disconnect() {
+    this._currentPromptSpec = undefined;
+    if (this.currentPrompt.value) {
+      this.currentPrompt.value.stageOut();
+    }
+    this.currentPrompt.value = undefined;
+    this.fixActiveLog();
+  }
+
   public async setPromptForPlayer(playerId: string, prompt?: PromptSerialization, clockDetails?: ClockDetails) {
     this.getPromptEventChannelForPlayer(playerId).value = prompt;
     if (clockDetails) {

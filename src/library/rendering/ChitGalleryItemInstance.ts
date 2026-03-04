@@ -37,7 +37,7 @@ export class ChitGalleryItemInstance implements GalleryItem {
     };
 
     // handle refreshes.
-    this.unsubscribe = chit.onChange("deserialized parent onClick", () => {
+    this.unsubscribe = chit.onChange("deserialized parent onClick renderInstance", () => {
       if (chit.renderInstance) {
         chit.renderInstance.createGalleryItem(this);
       }

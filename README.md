@@ -164,3 +164,8 @@ Notes to add:
 - inline gallery context always renders? eats up CPU
 - is there a settimeout somewhere that fails if server is slow?
 - droppick should take single array
+
+- inline gallery scrolls all the way left after selecting
+  x inline gallery doesn't get staged out correctly on disconnect
+- ordered outlets need a way to insert! or keep them sorted
+- zip needs a reset point (and persist logs)

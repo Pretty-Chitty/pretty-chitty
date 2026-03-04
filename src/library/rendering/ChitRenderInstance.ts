@@ -140,6 +140,7 @@ export class ChitRenderInstance {
 
     this.bboxGroup.add(this.bbox);
     this.bboxGroup.add(this.clickbox);
+    this.chit.notifyChange("renderInstance");
   }
 
   public get effectiveParent() {

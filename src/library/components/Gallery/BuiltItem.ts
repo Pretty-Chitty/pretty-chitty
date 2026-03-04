@@ -149,8 +149,9 @@ export class BuiltItem {
     this.center.z = 0;
   }
 
-  remove() {
+  remove(whenDone: () => void) {
     if (this.removing) {
+      whenDone();
       return;
     }
 
@@ -170,6 +171,7 @@ export class BuiltItem {
       .onComplete(() => {
         this.destroy();
         this.enterLeaveTween = undefined;
+        whenDone();
       })
       .start();
   }

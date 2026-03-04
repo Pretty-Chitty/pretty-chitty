@@ -76,6 +76,9 @@ export function TimeControllerProvider({ children }: { children: ReactNode }) {
 
     if (!clientTime || clientTime.connection !== connection) {
       clientTime?.dispose();
+      if (clientTime?.clientPrompt) {
+        clientTime.clientPrompt.disconnect();
+      }
 
       const newClientTime = new ClientTime(connection, game, clientTimeState);
       connection.register(newClientTime);

@@ -173,8 +173,10 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
 
     const itemsToDelete = this.items.filter((item) => seenIds.has(item.id));
     itemsToDelete.forEach((item) => {
-      item.remove();
       this.leavingItems.push(item);
+      item.remove(() => {
+        this.leavingItems.splice(this.leavingItems.indexOf(item), 1);
+      });
     });
 
     this.items = this.items.filter((item) => !seenIds.has(item.id));

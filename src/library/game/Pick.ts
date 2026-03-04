@@ -213,16 +213,29 @@ export class ChitPick<T extends Chit> extends Pick {
   }
 
   /** @internal */
+  _unsub?: () => void;
   stageIn(prompt: PickPrompt) {
     this.chits.forEach((c) => (c.onClick = () => prompt.resolvePick(this, c.id)));
     this.processFocus();
     this.button?.computeItemSource(this);
     if (this.button?.autoShow && this.button?.galleryItemSource) {
       const inline = localStorage.galleryFullScreen !== `"modal"`; // hacky but maybe okay
-      this.closeGallery = this.chits[0]?.renderInstance?.rootRenderInstance.showGallery(
-        this.button.galleryItemSource,
-        inline,
-      );
+      if (this.chits[0]) {
+        const chit = this.chits[0];
+
+        const source = this.button.galleryItemSource;
+        if (chit.renderInstance) {
+          this.closeGallery = chit.renderInstance.rootRenderInstance.showGallery(source, inline);
+        } else {
+          this._unsub = chit.onChange("renderInstance", () => {
+            if (chit.renderInstance) {
+              this.closeGallery = chit.renderInstance.rootRenderInstance.showGallery(source, inline);
+            }
+            this._unsub?.();
+            this._unsub = undefined;
+          });
+        }
+      }
     }
   }
 
@@ -235,6 +248,8 @@ export class ChitPick<T extends Chit> extends Pick {
     if (this.button instanceof ToggleGalleryButton && this.button?.galleryItemSource) {
       this.chits[0]?.renderInstance?.rootRenderInstance.hideGallery(this.button.galleryItemSource);
     }
+    this._unsub?.();
+    this._unsub = undefined;
   }
 
   /** @internal */
