@@ -169,3 +169,7 @@ Notes to add:
   X inline gallery doesn't get staged out correctly on disconnect
   X ordered outlets need a way to insert! or keep them sorted
   X zip needs a reset point (and persist logs)
+
+- gallery popup from chits should sort by parentoutlet and then parentoutletindex
+- sprite selection is still off
+- chits don't move to other panesl to non-rendered chits correctly

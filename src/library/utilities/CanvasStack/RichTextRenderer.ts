@@ -162,17 +162,23 @@ export class RichTextRenderer {
             sprite.width > 0 &&
             sprite.height > 0
           ) {
+            // Inset source rect by half a texel so bilinear filtering
+            // never samples neighboring sprites in the spritesheet.
+            const inset = 0.5;
+            const prevSmoothing = ctx.imageSmoothingEnabled;
+            ctx.imageSmoothingEnabled = false;
             ctx.drawImage(
               sprite.image,
-              sprite.x,
-              sprite.y,
-              sprite.width,
-              sprite.height, // source rect
+              sprite.x + inset,
+              sprite.y + inset,
+              sprite.width - inset * 2,
+              sprite.height - inset * 2, // source rect
               Math.round(cursorX),
               Math.round(drawY),
               Math.round(seg.width),
               Math.round(seg.height), // destination rect (aspect preserved)
             );
+            ctx.imageSmoothingEnabled = prevSmoothing;
           } else {
             // Placeholder box with preserved layout size
             ctx.save();

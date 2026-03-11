@@ -19,7 +19,15 @@ export class GalleryItemChitChildrenSource implements GalleryItemSource {
 
   get items(): GalleryItem[] {
     const children = this.backingObject.children.concat();
-    children.sort((a, b) => a.createdOrder - b.createdOrder);
+    children.sort((a, b) => {
+      if (a.parentOutlet !== b.parentOutlet) {
+        return (a.parentOutlet ?? "").localeCompare(b.parentOutlet ?? "");
+      }
+      if (a.parentOutletIndex !== b.parentOutletIndex) {
+        return (a.parentOutletIndex ?? 0) - (b.parentOutletIndex ?? 0);
+      }
+      return a.createdOrder - b.createdOrder;
+    });
     return chitsToGalleryItems(children);
   }
 

@@ -67,6 +67,11 @@ export function FullScreenGalleryDisplay() {
           onClose={() => {
             setSource(undefined);
           }}
+          onLongPress={source?.inlineGallerySize ? () => {
+            setInlineSource(source);
+            setSource(undefined);
+            setGalleryDisplayMode("inline");
+          } : undefined}
           fov={10}
           items={items ?? []}
           tweenDuration={DELAY * animationSpeedMultiplier * 0.8}

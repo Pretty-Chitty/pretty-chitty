@@ -84,6 +84,11 @@ export function InlineGalleryDisplay() {
           <GalleryViewer
             zFactor={0}
             onClose={() => {}}
+            onLongPress={() => {
+              setSource(inlineSource);
+              setInlineSource(undefined);
+              setGalleryDisplayMode("modal");
+            }}
             fov={5}
             items={items ?? []}
             tweenDuration={DELAY * animationSpeedMultiplier * 0.8}

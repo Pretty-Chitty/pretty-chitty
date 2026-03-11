@@ -455,10 +455,14 @@ export class ImageCanvasOperation extends CanvasOperation {
       if (maxH && syi + shi > maxH) {
         shi = Math.max(0, maxH - syi);
       }
-      // Inset by half a texel so bilinear filtering never samples neighboring sprites.
+      // Inset by half a texel and disable smoothing so bilinear filtering
+      // never samples neighboring sprites in the spritesheet.
       const inset = 0.5;
       if (swi > inset * 2 && shi > inset * 2) {
+        const prevSmoothing = context.imageSmoothingEnabled;
+        context.imageSmoothingEnabled = false;
         context.drawImage(source as any, sxi + inset, syi + inset, swi - inset * 2, shi - inset * 2, x, y, w, h);
+        context.imageSmoothingEnabled = prevSmoothing;
       }
     }
   }
@@ -544,9 +548,12 @@ export class ImageCanvasOperation extends CanvasOperation {
       if (maxHF && syiF + shiF > maxHF) {
         shiF = Math.max(0, maxHF - syiF);
       }
-      // Inset by half a texel so bilinear filtering never samples neighboring sprites.
+      // Inset by half a texel and disable smoothing so bilinear filtering
+      // never samples neighboring sprites in the spritesheet.
       const inset = 0.5;
       if (swiF > inset * 2 && shiF > inset * 2) {
+        const prevSmoothing = context.imageSmoothingEnabled;
+        context.imageSmoothingEnabled = false;
         context.drawImage(
           source as any,
           sxiF + inset,
@@ -558,6 +565,7 @@ export class ImageCanvasOperation extends CanvasOperation {
           w,
           h,
         );
+        context.imageSmoothingEnabled = prevSmoothing;
       }
     }
   }

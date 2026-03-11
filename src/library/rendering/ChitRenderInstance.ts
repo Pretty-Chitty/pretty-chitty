@@ -372,7 +372,7 @@ export class ChitRenderInstance {
 
   protected updateGroupPosition(key: OwnerOriginPosition | string, group: Group) {
     const vector = this.targetAnchorPoint(key);
-    group.position.set(vector.x, vector.y, vector.z + this.sizeZ / 2 + (this.renderSpec?.childrenOffsetZ ?? 0));
+    group.position.set(vector.x, vector.y, vector.z + this.sizeZ / 2 + this.centerZ + (this.renderSpec?.childrenOffsetZ ?? 0));
   }
 
   protected setOutletPosition(positionKey: string, position: Vector3) {
@@ -885,7 +885,7 @@ export class ChitRenderInstance {
       const targetOffset = {
         x: this.renderSpec.offsetX,
         y: this.renderSpec.offsetY,
-        z: this.renderSpec.offsetZ + this.sizeZ / 2,
+        z: this.renderSpec.offsetZ + this.sizeZ / 2 - this.centerZ,
       };
       this.handleOffsetForSplay(targetOffset);
 
@@ -1054,7 +1054,7 @@ export class ChitRenderInstance {
     const targetOffset = {
       x: this.renderSpec.offsetX,
       y: this.renderSpec.offsetY,
-      z: this.renderSpec.offsetZ + this.sizeZ / 2,
+      z: this.renderSpec.offsetZ + this.sizeZ / 2 - this.centerZ,
     };
     const targetRotation = { x: this.renderSpec.rotateX, y: this.renderSpec.rotateY, z: this.renderSpec.rotateZ };
 

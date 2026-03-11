@@ -221,7 +221,6 @@ export class ClientTime extends ConnectionObject {
       }
     } catch (e) {
       console.error(e);
-    } finally {
       this.clientTimeState.setAnimationState(animationKey, false);
     }
   }

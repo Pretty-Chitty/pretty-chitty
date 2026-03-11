@@ -36,6 +36,7 @@ export interface GalleryViewerProps {
   galleryItemWidth?: number;
   galleryItemHeight?: number;
   onClose?: () => void;
+  onLongPress?: () => void;
   showSummary?: SummaryMode;
   zFactor?: number;
 }
@@ -47,6 +48,7 @@ export function GalleryViewer({
   fov = DEFAULT_FOV,
   angle = DEFAULT_ANGLE,
   onClose,
+  onLongPress,
   itemSpacing = DEFAULT_ITEM_SPACING,
   tweenDuration = DEFAULT_TWEEN_DURATION,
   w = 0,
@@ -127,14 +129,20 @@ export function GalleryViewer({
 
     const hammer = new Hammer.Manager(el);
     hammer.add(new Hammer.Pan({ direction: Hammer.DIRECTION_HORIZONTAL }));
-    hammer.add(new Hammer.Tap());
+
+    const singleTap = new Hammer.Tap({ event: "singletap" });
+    const press = new Hammer.Press({ event: "longtap", time: 600 });
+
+    hammer.add([singleTap, press]);
+    press.recognizeWith(singleTap);
+    singleTap.requireFailure(press);
 
     const fixPosition = (ev: any) => {
       const rect = el.getBoundingClientRect();
       return { x: ev.center.x - rect.left, y: ev.center.y - rect.top };
     };
 
-    hammer.on("tap", (ev) => {
+    hammer.on("singletap", (ev) => {
       const pos = fixPosition(ev);
       // TODO: fix this
       if (galleryController.isAnimating()) {
@@ -147,6 +155,10 @@ export function GalleryViewer({
           onClose();
         }
       }
+    });
+
+    hammer.on("longtap", () => {
+      onLongPress?.();
     });
 
     let lastX: number | undefined = undefined;
@@ -184,7 +196,7 @@ export function GalleryViewer({
       hammer.destroy();
       removeWheelListener(el, wheelListener);
     };
-  }, [galleryController, onClose]);
+  }, [galleryController, onClose, onLongPress]);
 
   useEffect(() => {
     TextureReferenceCounter.registerInstance(galleryController);
