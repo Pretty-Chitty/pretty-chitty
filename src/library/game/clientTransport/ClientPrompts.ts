@@ -37,6 +37,30 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
     }
   }
 
+  private stageInPrompt(promptSpec: PromptSerialization) {
+    this._currentPromptSpec = promptSpec;
+    const prompt = Prompt.deserialize(promptSpec, this.clientTime.findChit, this.clientTime.game.buttonLibrary);
+    prompt.onResolve(async (success) => {
+      try {
+        this.fixActiveLog();
+        if (success) {
+          const newPromptSpec = await this.serverPrompts.resolvePrompt(prompt.id, prompt.response);
+          this.getPromptEventChannelForPlayer(this.playerId).value = newPromptSpec ?? undefined;
+        } else if (prompt.shouldStepBack) {
+          this.getPromptEventChannelForPlayer(this.playerId).value = undefined;
+          await this.serverPrompts.stepBackPrompt(prompt.shouldReset ?? false);
+        }
+      } catch (e) {
+        prompt.stageOut();
+        this.currentPrompt.value = undefined;
+      }
+    });
+    prompt.stageIn();
+
+    this.currentPrompt.value = prompt;
+    this.fixActiveLog();
+  }
+
   private checkIfPromptCanBeInflated() {
     const isLive = this.clientTime.clientTimeState.live.value;
     const currentTime = this.clientTime.currentClock.value.clock;
@@ -59,27 +83,23 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
         this.currentPrompt.value.stageOut();
       }
 
-      this._currentPromptSpec = promptSpec;
-      const prompt = Prompt.deserialize(promptSpec, this.clientTime.findChit, this.clientTime.game.buttonLibrary);
-      prompt.onResolve(async (success) => {
-        try {
-          this.fixActiveLog();
-          if (success) {
-            const newPromptSpec = await this.serverPrompts.resolvePrompt(prompt.id, prompt.response);
-            this.getPromptEventChannelForPlayer(this.playerId).value = newPromptSpec ?? undefined;
-          } else if (prompt.shouldStepBack) {
-            this.getPromptEventChannelForPlayer(this.playerId).value = undefined;
-            await this.serverPrompts.stepBackPrompt(prompt.shouldReset ?? false);
-          }
-        } catch (e) {
-          prompt.stageOut();
-          this.currentPrompt.value = undefined;
-        }
-      });
-      prompt.stageIn();
-
-      this.currentPrompt.value = prompt;
-      this.fixActiveLog();
+      this.stageInPrompt(promptSpec);
+    } else if (
+      isLive &&
+      promptSpec &&
+      currentTime > 0 &&
+      promptSpec.canStageInEarly > 0 &&
+      currentTime >= maxTime - promptSpec.canStageInEarly &&
+      samePasses(this.clientTime.currentClock.value, this.clientTime.maxClock.value)
+    ) {
+      // if we are live and have a prompt spec, but our current time is greater than our max time, then we should stage in the prompt, but not mark it as the current prompt spec, so that if we go back in time we can stage out the prompt and stage it back in when we return to the current time
+      if (this.currentPrompt.value && this.currentPrompt.value.isSameSerialization(promptSpec)) {
+        return;
+      }
+      if (this.currentPrompt.value) {
+        this.currentPrompt.value.stageOut();
+      }
+      this.stageInPrompt(promptSpec);
     } else {
       this._currentPromptSpec = undefined;
       if (this.currentPrompt.value) {

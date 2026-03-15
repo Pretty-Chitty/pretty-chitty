@@ -11,6 +11,7 @@ export type PromptSerialization = {
   type: PromptType;
   canReset: boolean;
   details: any;
+  canStageInEarly: number;
 };
 
 const defaultFindChit: FindChit = () => {
@@ -39,11 +40,18 @@ export abstract class Prompt {
       id: this.id,
       type: this.type,
       canReset: this.canReset,
+      canStageInEarly: this.canStageInEarly,
       details: this.serializeDetails(),
     };
   }
 
+  private serializationThatCreatedThisPrompt?: PromptSerialization;
+  isSameSerialization(promptSpec: PromptSerialization) {
+    return this.serializationThatCreatedThisPrompt === promptSpec;
+  }
+
   deserialize(prompt: PromptSerialization) {
+    this.serializationThatCreatedThisPrompt = prompt;
     this.id = prompt.id;
     this.canReset = prompt.canReset;
     this.deserializeDetails(prompt.details);
@@ -74,6 +82,9 @@ export abstract class Prompt {
     this.cbs.forEach((cb) => cb(false));
   }
 
+  get canStageInEarly() {
+    return 0;
+  }
   abstract get type(): PromptType;
   abstract canResolveResponse(response: any): boolean;
   abstract serializeDetails(): any;
@@ -176,6 +187,10 @@ export class PickPrompt extends Prompt {
 
   public picks: Pick[] = [];
   public finished: () => void | Promise<void> = () => {};
+
+  override get canStageInEarly() {
+    return Math.max(0, ...this.picks.map((p) => p.canStageInEarly));
+  }
 
   override get message() {
     if (this._message) {

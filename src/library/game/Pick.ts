@@ -52,6 +52,13 @@ export abstract class Pick {
   abstract autoResolve(): Promise<void | undefined>;
   /** @internal */
   abstract numberOfChoices(): number;
+  /** @internal */
+  public canStageInEarly = 0;
+
+  stageInEarly(steps: number): this {
+    this.canStageInEarly = steps;
+    return this;
+  }
 
   /** @internal */
   canAutoResolve() {
@@ -214,6 +221,8 @@ export class ChitPick<T extends Chit> extends Pick {
 
   /** @internal */
   _unsub?: () => void;
+
+  /** @internal */
   stageIn(prompt: PickPrompt) {
     this.chits.forEach((c) => (c.onClick = () => prompt.resolvePick(this, c.id)));
     this.processFocus();

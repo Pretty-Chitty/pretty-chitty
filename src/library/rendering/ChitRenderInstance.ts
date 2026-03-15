@@ -1144,7 +1144,29 @@ export class ChitRenderInstance {
 
     if (rotationEasing) {
       rotation.order = "ZYX";
-      this.rotationTween = this.createTween({ x: rotation.x, y: rotation.y, z: rotation.z }, (tween) =>
+
+      // Adjust current angles so each axis takes the shortest path to the target.
+      // e.g. 355° → 5° becomes -5° → 5° (10° rotation) instead of 355° → 5° (350° rotation).
+      // Adding/subtracting full turns doesn't change the visual orientation.
+      const adjustForShortestPath = (current: number, target: number) => {
+        let diff = target - current;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        return target - diff;
+      };
+
+      const adjustedStart = {
+        x: adjustForShortestPath(rotation.x, targetRotation.x),
+        y: adjustForShortestPath(rotation.y, targetRotation.y),
+        z: adjustForShortestPath(rotation.z, targetRotation.z),
+      };
+
+      // Snap the group rotation to the adjusted values (visually identical)
+      rotation.x = adjustedStart.x;
+      rotation.y = adjustedStart.y;
+      rotation.z = adjustedStart.z;
+
+      this.rotationTween = this.createTween({ x: adjustedStart.x, y: adjustedStart.y, z: adjustedStart.z }, (tween) =>
         tween
           .to(targetRotation, duration * this.animationSpeedMultiplier)
           .onUpdate((obj) => {
