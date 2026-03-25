@@ -28,6 +28,8 @@ type ChitHistoryResponse = {
   [id: string]: ChitHistoryItem[];
 };
 
+export type ConfirmContext = "turn_end" | "roll" | "switch_player";
+
 type ValidPick = undefined | false | Pick | Pick[] | ButtonPick | ButtonPick[] | GameButton | GameButton[];
 export type Picks = ValidPick | ValidPick[];
 

@@ -193,6 +193,7 @@ export function GalleryViewer({
     addWheelListener(el, wheelListener);
 
     return () => {
+      clearTimeout(wheelTimeout);
       hammer.destroy();
       removeWheelListener(el, wheelListener);
     };
@@ -201,6 +202,7 @@ export function GalleryViewer({
   useEffect(() => {
     TextureReferenceCounter.registerInstance(galleryController);
     return () => {
+      galleryController.destroy();
       TextureReferenceCounter.unregisterInstance(galleryController);
       galleryController.sceneWrapper.dispose();
     };

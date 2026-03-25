@@ -24,7 +24,21 @@ export class BadAIClientPrompts<P extends PlayerChit, R extends RootChit<P>> ext
     if (prompt && playerId === this.playerId) {
       if (prompt.type === "PickPrompt") {
         const picks = prompt.details.picks;
-        const pickIndex = Math.floor(Math.random() * picks.length);
+        const weights = picks.map((p: any) => {
+          switch (p.type as PickType) {
+            case "ButtonPick": return 1;
+            case "ChitPick": return p.details.c.length;
+            case "DragPick": return (p.details.d as any[][]).reduce((sum: number, targets: any[]) => sum + targets.length, 0);
+            default: return 1;
+          }
+        });
+        const totalWeight = weights.reduce((sum: number, w: number) => sum + w, 0);
+        let roll = Math.random() * totalWeight;
+        let pickIndex = 0;
+        for (let i = 0; i < weights.length; i++) {
+          roll -= weights[i];
+          if (roll <= 0) { pickIndex = i; break; }
+        }
         const pick = picks[pickIndex];
         switch (pick.type as PickType) {
           case "ButtonPick": {

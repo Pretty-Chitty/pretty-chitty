@@ -152,11 +152,14 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
     const seenIds = new Set<string>(this.items.map((item) => item.id));
 
     const newItems: BuiltItem[] = [];
+    const reorderedItems: BuiltItem[] = [];
     items.forEach((item, i) => {
       seenIds.delete(item.id);
 
       const existingItem = itemLookup[item.id];
-      if (!existingItem) {
+      if (existingItem) {
+        reorderedItems.push(existingItem);
+      } else {
         const newItem = new BuiltItem(
           this.layoutManager,
           this.animationController,
@@ -166,7 +169,7 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
           this.theme,
         );
         newItem.setZFactor(this.zFactor);
-        this.items.push(newItem);
+        reorderedItems.push(newItem);
         newItems.push(newItem);
       }
     });
@@ -179,7 +182,7 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
       });
     });
 
-    this.items = this.items.filter((item) => !seenIds.has(item.id));
+    this.items = reorderedItems;
     this.items.forEach((item, i) => {
       item.setIndex(i);
     });
@@ -191,5 +194,11 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
     if (currentItemCount !== prevItemCount && !this.animationController.isAnimating()) {
       this.pan(0, true);
     }
+  }
+
+  destroy() {
+    [...this.items, ...this.leavingItems].forEach((item) => item.destroy());
+    this.items = [];
+    this.leavingItems = [];
   }
 }

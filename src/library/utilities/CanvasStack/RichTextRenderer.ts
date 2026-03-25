@@ -17,6 +17,8 @@ export interface IconMap {
   [name: string]: SpriteRef | undefined;
 }
 
+export type WordBreak = "break-all" | "keep-all" | "keep-words";
+
 export type RichTextRenderOptionsParameters = {
   fontFamily?: string;
   fontSize?: number;
@@ -27,6 +29,7 @@ export type RichTextRenderOptionsParameters = {
   iconMap?: IconMap;
   iconBaseline?: IconBaseline;
   iconScale?: number; // 1.0 = same height as text
+  wordBreak?: WordBreak; // "keep-all" prevents word breaking/hyphenation
 };
 
 export interface RenderOptions extends RichTextRenderOptionsParameters {
@@ -89,6 +92,7 @@ export class RichTextRenderer {
       iconBaseline = "text",
       iconScale = 1.0,
       debug = false,
+      wordBreak,
     } = opts;
 
     if (!maxWidth || maxWidth <= 0) {
@@ -105,7 +109,7 @@ export class RichTextRenderer {
 
     const tokens = this.tokenize(text);
     const runs = this.expandRuns(tokens);
-    const lines = this.layoutRunsToLines(ctx, runs, metrics, maxWidth, iconMap);
+    const lines = this.layoutRunsToLines(ctx, runs, metrics, maxWidth, iconMap, wordBreak);
 
     // Draw
     ctx.save();
@@ -331,6 +335,7 @@ export class RichTextRenderer {
     metrics: Metrics,
     maxWidth: number,
     iconMap: IconMap,
+    wordBreak?: WordBreak,
   ): Line[] {
     const lines: Line[] = [];
     let line: Line = this.newLine();
@@ -420,6 +425,56 @@ export class RichTextRenderer {
             style: { bold: r.bold, italic: r.italic },
           });
           cursorW += wordWidth;
+          continue;
+        }
+
+        // In keep-all mode, never break words — move to next line and let long words overflow.
+        if (wordBreak === "keep-all") {
+          if (cursorW > 0) {
+            flushLine(true);
+          }
+          line.segments.push({
+            kind: "text",
+            text: r.text,
+            width: wordWidth,
+            style: { bold: r.bold, italic: r.italic },
+          });
+          cursorW = wordWidth;
+          continue;
+        }
+
+        // In keep-words mode, don't break words mid-line, but hyphenate if a word
+        // is too wide to fit on a line by itself.
+        if (wordBreak === "keep-words") {
+          if (cursorW > 0) {
+            flushLine(true);
+          }
+          if (wordWidth > maxWidth) {
+            // Word doesn't fit on a line by itself — hyphenate it.
+            const res = this.hyphenateIntoLines(
+              ctx,
+              r.text,
+              r,
+              styleKey,
+              metrics,
+              maxWidth,
+              lines,
+              line,
+              0,
+              maxWidth,
+              hyphenWidth(styleKey),
+            );
+            line = res.line;
+            cursorW = res.cursorW;
+          } else {
+            line.segments.push({
+              kind: "text",
+              text: r.text,
+              width: wordWidth,
+              style: { bold: r.bold, italic: r.italic },
+            });
+            cursorW = wordWidth;
+          }
           continue;
         }
 

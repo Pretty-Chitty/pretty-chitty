@@ -205,10 +205,7 @@ export class Card extends Chit {
       spec.worthSlidingToPanelToShowChange = false;
     }
 
-    // spec.summary =
-    //   `Test ${this.something} :someicon: :abc: :tunnel:\nTest ${this.something} :someicon: :abc: :tunnel:\nTest ${this.something} :someicon: :abc: :tunnel:\nTest ${this.something} :someicon: :abc: :tunnel:\nTest ${this.something} :someicon: :abc: :tunnel:\nTest ${this.something} :someicon: :abc: :tunnel:`.repeat(
-    //     1,
-    //   );
+    spec.summary = `Test ${this.something} :someicon:`.repeat(1);
     spec.summaryIconMap = {
       someicon: walk,
       tunnel: tunnel,

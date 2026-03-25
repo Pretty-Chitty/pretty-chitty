@@ -279,6 +279,7 @@ export class BuiltItem {
       this.enterLeaveTween = undefined;
     }
 
+    this.disposeSummaryMesh();
     this.group.parent?.remove(this.group);
     this.unsubscribe();
     this.removing = true;
@@ -331,12 +332,19 @@ export class BuiltItem {
     }
   }
 
-  private createHelpText() {
-    // Remove old summary mesh if it exists
+  private disposeSummaryMesh() {
     if (this.summaryMesh) {
+      const mesh = this.summaryMesh as Mesh;
+      mesh.geometry?.dispose();
+      (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((m) => m?.dispose());
       this.summaryMesh.removeFromParent();
       this.summaryMesh = undefined;
     }
+  }
+
+  private createHelpText() {
+    // Remove old summary mesh if it exists
+    this.disposeSummaryMesh();
 
     const summary = this.getSummaryText();
     if (!summary) {
@@ -370,6 +378,7 @@ export class BuiltItem {
     // First pass: render with full height to let text flow and calculate actual size
     const stack1 = new CanvasStack(itemWidth * window.devicePixelRatio, height * window.devicePixelRatio, ops);
     stack1.render();
+    stack1.dispose();
 
     // Second pass: render with actual measured height for final material
     const stack2 = new CanvasStack(itemWidth * window.devicePixelRatio, markdown.height + pad * 2, ops);
