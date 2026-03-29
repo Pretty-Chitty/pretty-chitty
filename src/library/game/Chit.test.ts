@@ -64,3 +64,94 @@ test("chit references", () => {
   // TODO: maybe assigning parentoutlet should be two way street?  but probably doesn't matter and serialization and deserialization will always go
   // at the same time.
 });
+
+test("dirty tracking: unchanged chit returns cached serialization", () => {
+  const c = new ChitSubClass();
+  const first = c.serialize();
+  const second = c.serialize();
+  // Same reference — no re-serialization happened
+  expect(second).toBe(first);
+});
+
+test("dirty tracking: property assignment marks dirty", () => {
+  const c = new ChitSubClass();
+  const first = c.serialize();
+  c.s1 = "changed";
+  expect(c._dirty).toBe(true);
+  const second = c.serialize();
+  expect(second).not.toBe(first);
+  expect(JSON.parse(second).s1).toBe("changed");
+});
+
+test("dirty tracking: same-value assignment does not mark dirty", () => {
+  const c = new ChitSubClass();
+  c.serialize(); // instrument + cache
+  expect(c._dirty).toBe(false);
+  c.s1 = "s1"; // same value
+  expect(c._dirty).toBe(false);
+});
+
+test("dirty tracking: nested object mutation marks dirty via proxy", () => {
+  const c = new ChitSubClass();
+  c.serialize(); // instrument + cache
+  expect(c._dirty).toBe(false);
+  c.o1.a = 99;
+  expect(c._dirty).toBe(true);
+  const serialized = c.serialize();
+  expect(JSON.parse(serialized).o1.a).toBe(99);
+});
+
+test("dirty tracking: setParent marks child and parents dirty", () => {
+  const parent1 = new ChitSubClass();
+  const parent2 = new ChitSubClass();
+  const child = new ChitSubClass();
+  parent1.id = "p1";
+  parent2.id = "p2";
+  child.id = "child";
+
+  // Serialize all to clear dirty flags
+  parent1.serialize();
+  parent2.serialize();
+  child.serialize();
+
+  child.setParent(parent1, "orderedChildren", 0);
+  expect(child._dirty).toBe(true);
+  expect(parent1._dirty).toBe(true);
+
+  // Clear dirty
+  child.serialize();
+  parent1.serialize();
+  parent2.serialize();
+
+  // Reparent
+  child.setParent(parent2, "orderedChildren", 0);
+  expect(child._dirty).toBe(true);
+  expect(parent1._dirty).toBe(true); // old parent
+  expect(parent2._dirty).toBe(true); // new parent
+});
+
+test("dirty tracking: deserialize marks dirty and clears cache", () => {
+  const c = new ChitSubClass();
+  const serialized = c.serialize();
+  expect(c._dirty).toBe(false);
+
+  c.deserialize(serialized, () => c, true);
+  expect(c._dirty).toBe(true);
+  expect((c as any)._lastSerialized).toBeUndefined();
+});
+
+test("dirty tracking: array mutation via proxy marks dirty", () => {
+  class ChitWithArray extends Chit {
+    public items: number[] = [1, 2, 3];
+  }
+
+  const c = new ChitWithArray();
+  c.serialize();
+  expect(c._dirty).toBe(false);
+
+  c.items.push(4);
+  expect(c._dirty).toBe(true);
+
+  const serialized = c.serialize();
+  expect(JSON.parse(serialized).items).toEqual([1, 2, 3, 4]);
+});

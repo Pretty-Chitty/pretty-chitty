@@ -91,6 +91,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private chitLookup: ChitLookup = {};
   private lockedChitStates: ChitStateLookup = {};
   private lastChitStates: ChitStateLookup = {};
+  private dirtyChitIds = new Set<string>();
+  private pendingNewChits = new Set<Chit>();
   private _statePool?: Map<string, string>;
 
   private get statePool(): Map<string, string> {
@@ -111,6 +113,15 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     if (existing !== undefined) return existing;
     pool.set(s, s);
     return s;
+  }
+
+  /** @internal */
+  public notifyChitDirty(chit: Chit) {
+    if (chit.id) {
+      this.dirtyChitIds.add(chit.id);
+    } else {
+      this.pendingNewChits.add(chit);
+    }
   }
 
   /**
@@ -295,7 +306,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     if (hasChange) {
       this.pass++;
-      this.flush();
+      this.flush(true);
     }
   }
 
@@ -313,91 +324,89 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
    * then we have to identify those as well.
    */
   flush(force = false) {
-    const seenIds = new Set<string>();
     const newStates: ChitStateLookup = {};
     let sawChange = force;
 
-    // first ensure they all are locked and all have ids
-    const chitsToAddIdsTo: Chit[] = [];
-    Chit.walk(this.chitsToLock, (c) => {
-      if (!c.id) {
-        chitsToAddIdsTo.push(c);
+    // 1. Assign IDs to pending new chits and their children
+    if (this.pendingNewChits.size > 0) {
+      // collect all chits needing IDs by walking each new chit's subtree
+      const chitsToAddIdsTo: Chit[] = [];
+      for (const c of this.pendingNewChits) {
+        if (!c.parent) continue; // created then deleted before flush — skip
+        c.walk((child) => {
+          if (!child.id) {
+            chitsToAddIdsTo.push(child);
+          }
+        });
       }
-    });
+      this.pendingNewChits.clear();
 
-    chitsToAddIdsTo.sort((a, b) => a.createdOrder - b.createdOrder);
-    chitsToAddIdsTo.forEach((c) => {
-      const type = c.chitTypeName();
-      const counter = (this.newChitCounter[type] || 0) + 1;
-      this.newChitCounter[type] = counter;
-      c.id = `${this.id}.${type}.${counter}`;
-      c.lock(this);
+      chitsToAddIdsTo.sort((a, b) => a.createdOrder - b.createdOrder);
+      for (const c of chitsToAddIdsTo) {
+        if (c.id) continue; // may have been assigned by a prior iteration
+        const type = c.chitTypeName();
+        const counter = (this.newChitCounter[type] || 0) + 1;
+        this.newChitCounter[type] = counter;
+        c.id = `${this.id}.${type}.${counter}`;
+        c.lock(this);
 
-      const existing = this.chitLookup[c.id];
-      this.chitLookup[c.id] = c; // it's possible that this is kicking out an "old" version of this chit from a previous pass
-      if (existing) {
-        existing.removeFromParent(); // do not want to leave stray references to this cloned chit around!
-        existing.unlock(this);
-      }
-    });
-
-    // now (once per chit) we serialize the state if it changed
-    Chit.walk(this.chitsToLock, (c) => {
-      if (!c.id) {
-        throw new Error("Should not be possible unless Chit.walk is misbehaving");
-      }
-      if (!seenIds.has(c.id)) {
-        seenIds.add(c.id);
-        const lastState = this.lastChitStates[c.id];
-        const serialized = this.internState(c.serialize(this._playerIds), lastState);
-        if (serialized !== lastState) {
-          this.lastChitStates[c.id] = newStates[c.id] = serialized;
-          sawChange = true;
-        } else {
-          newStates[c.id] = serialized;
+        const existing = this.chitLookup[c.id];
+        this.chitLookup[c.id] = c;
+        if (existing) {
+          existing.removeFromParent();
+          existing.unlock(this);
         }
+        this.dirtyChitIds.add(c.id);
+      }
+    }
+
+    // 2. Serialize only dirty chits
+    for (const id of this.dirtyChitIds) {
+      const chit = this.chitLookup[id];
+      if (!chit) continue;
+      const lastState = this.lastChitStates[id];
+      const serialized = this.internState(chit.serialize(this._playerIds), lastState);
+      if (serialized !== lastState) {
+        this.lastChitStates[id] = newStates[id] = serialized;
+        sawChange = true;
       } else {
-        return false; // already saw this - no need to keep digging into children
+        newStates[id] = serialized;
       }
-    });
+    }
+    this.dirtyChitIds.clear();
 
-    // find any chits that we previously serialized that we no longer see
-    // these should be marked as deleted now
-    const chitsToDelete = Object.keys(this.lastChitStates)
-      .filter((id) => !seenIds.has(id) && this.lastChitStates[id] !== Chit.deletedIfSerialized())
-      .map((id) => this.findChit(id));
+    // 4. Carry forward all non-dirty chit states
+    for (const id of Object.keys(this.lastChitStates)) {
+      if (newStates[id] === undefined) {
+        newStates[id] = this.lastChitStates[id];
+      }
+    }
 
-    // make sure any missing items that were previously also missing are still deleted
-    Object.keys(this.lastChitStates)
-      .filter((id) => !seenIds.has(id) && this.lastChitStates[id] == Chit.deletedIfSerialized())
-      .forEach((id) => {
-        newStates[id] = Chit.deletedIfSerialized();
-      });
+    // 5. Detect deleted chits — orphans in lastChitStates that weren't serialized above
+    const deletedRoots: Chit[] = [];
+    for (const id of Object.keys(this.lastChitStates)) {
+      if (this.lastChitStates[id] === Chit.deletedIfSerialized()) continue;
+      const chit = this.chitLookup[id];
+      if (chit && !chit.parent && !this.chitsToLock.includes(chit)) {
+        deletedRoots.push(chit);
+      }
+    }
 
-    // find all chits without parents - all of their descendants are safe to be purged
-    chitsToDelete
-      .filter((chit) => !chit.parent)
-      .forEach((chit) => {
-        if (chit.id) {
-          sawChange = true;
-          chit.unlock(this);
-          newStates[chit.id] = Chit.deletedIfSerialized();
-          // do not store this new state in lastChitStates, but rather delete this record from it altogether
-          chit.walk((c) => {
-            if (c.id) {
-              seenIds.add(c.id);
-              this.lastChitStates[c.id] = Chit.deletedIfSerialized();
-              newStates[c.id] = Chit.deletedIfSerialized();
-              chit.unlock(this);
-            }
-          });
-        }
-      });
-
-    // any chits remaining that we haven't seen are bad news - they have likely been reparented to some other Turn, which
-    // is against the rules.  They need to remain under this turns control.
-    if (chitsToDelete.find((c) => c.id && !seenIds.has(c.id))) {
-      throw new Error("Chit has been reparented to another Turn which will corrupt control");
+    for (const chit of deletedRoots) {
+      if (chit.id) {
+        sawChange = true;
+        chit.unlock(this);
+        newStates[chit.id] = Chit.deletedIfSerialized();
+        this.lastChitStates[chit.id] = Chit.deletedIfSerialized();
+        // walk only the deleted subtree to mark descendants as deleted
+        chit.walk((c) => {
+          if (c.id) {
+            this.lastChitStates[c.id] = Chit.deletedIfSerialized();
+            newStates[c.id] = Chit.deletedIfSerialized();
+            chit.unlock(this);
+          }
+        });
+      }
     }
 
     if (sawChange) {
@@ -1180,6 +1189,13 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     });
 
     this.lastChitStates = { ...this.lockedChitStates }; // reset our known chit states
+    this.dirtyChitIds.clear();
+    this.pendingNewChits.clear();
+    // chits were deserialized back to locked state — mark them clean so future
+    // modifications correctly trigger markDirty() → notifyChitDirty()
+    Chit.walk(this.chitsToLock, (c) => {
+      c._dirty = false;
+    });
     this.clockSteps = [];
     this.decisionIndex = 0;
     this.newChitCounter = {};

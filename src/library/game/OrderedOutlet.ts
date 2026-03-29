@@ -41,6 +41,7 @@ export class OrderedOutlet<C extends Chit> {
   /** @internal */
   public deserialize(chits: C[]) {
     this.chits = chits;
+    if (this.parent) this.parent.markDirty();
   }
 
   public last(): C | undefined {
@@ -207,6 +208,7 @@ export class OrderedOutlet<C extends Chit> {
   }
 
   private fixOrder() {
+    if (this.parent) this.parent.markDirty();
     this.chits.forEach((c, i) => {
       c.setParent(this.parent, this.outletName, i);
     });

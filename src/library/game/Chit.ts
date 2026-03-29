@@ -17,6 +17,45 @@ export const ORDERED_CHILDREN = "orderedChildren";
 const EXTRA_SERIALIZATION_PROPS_ARRAY = ["id", "_parent", "_parentOutlet", "_parentOutletIndex", "_parentFallback"];
 const EXTRA_SERIALIZATION_PROPS_SET = new Set(EXTRA_SERIALIZATION_PROPS_ARRAY);
 
+const dirtyProxyCache = new WeakMap<object, object>();
+
+function wrapWithDirtyProxy(value: any, chit: Chit): any {
+  if (value === null || value === undefined) return value;
+  if (typeof value !== "object") return value;
+  if (value instanceof Chit || value instanceof OrderedOutlet) return value;
+
+  const existing = dirtyProxyCache.get(value);
+  if (existing) return existing;
+
+  const proxy = new Proxy(value, {
+    set(target, prop, newValue) {
+      if (typeof newValue === "object" && newValue !== null && !(newValue instanceof Chit) && !(newValue instanceof OrderedOutlet)) {
+        target[prop] = newValue;
+      } else {
+        target[prop] = newValue;
+      }
+      chit.markDirty();
+      return true;
+    },
+    deleteProperty(target, prop) {
+      delete target[prop];
+      chit.markDirty();
+      return true;
+    },
+    get(target, prop) {
+      const val = target[prop];
+      if (typeof val === "function") return val.bind(target);
+      if (typeof val === "object" && val !== null && !(val instanceof Chit) && !(val instanceof OrderedOutlet)) {
+        return wrapWithDirtyProxy(val, chit);
+      }
+      return val;
+    },
+  });
+
+  dirtyProxyCache.set(value, proxy);
+  return proxy;
+}
+
 export type ChitClick = () => void;
 export type ChitDrag = (dropOn: Chit) => void;
 
@@ -102,6 +141,7 @@ export class Chit extends ObjectWithProps {
   }
   public set parentFallback(newValue: Chit | undefined) {
     this._parentFallback = newValue;
+    this.markDirty();
   }
 
   @NonEditable private _lastParent?: Chit;
@@ -150,6 +190,24 @@ export class Chit extends ObjectWithProps {
   @NonEditable public renderInstance?: ChitRenderInstance;
   @NonEditable private _version = 0;
   @NonEditable private _createdOrder = ++CHIT_CREATED_ORDER;
+
+  /** @internal */
+  @NonEditable public _dirty = true;
+  @NonEditable private _lastSerialized?: string;
+  @NonEditable private _instrumented = false;
+
+  /** @internal */
+  public markDirty() {
+    const wasDirty = this._dirty;
+    this._dirty = true;
+    if (!wasDirty || !this.id) {
+      try {
+        this.currentTurn.notifyChitDirty(this);
+      } catch {
+        // no current turn yet — chit will be discovered when parented
+      }
+    }
+  }
 
   /** @internal */
   public get version() {
@@ -345,7 +403,10 @@ export class Chit extends ObjectWithProps {
 
   public setParent(newValue?: Chit, parentOutlet?: string, parentOutletIndex?: number) {
     if (this._parent === newValue && this._parentOutlet === parentOutlet) {
-      this._parentOutletIndex = parentOutletIndex;
+      if (this._parentOutletIndex !== parentOutletIndex) {
+        this._parentOutletIndex = parentOutletIndex;
+        this.markDirty();
+      }
       return;
     }
 
@@ -353,23 +414,24 @@ export class Chit extends ObjectWithProps {
       this._lastParent = this._parent;
     }
 
+    const oldParent = this._parent;
+
     if (this._parent) {
       if (!this._parentOutlet) {
         throw new Error("Cannot have a parent without a parent outlet");
       }
 
-      const oldParent = this._parent as unknown as any,
-        oldOutlet = this._parentOutlet;
+      const oldOutlet = this._parentOutlet;
 
       this._parent = undefined;
       this._parentOutlet = undefined;
       this._parentOutletIndex = undefined;
 
-      oldParent.children = oldParent.children.filter((c: Chit) => c !== this);
+      (oldParent as any).children = (oldParent as any).children.filter((c: Chit) => c !== this);
 
-      const existingParentOutletValue = oldParent[oldOutlet];
+      const existingParentOutletValue = (oldParent as any)[oldOutlet];
       if (existingParentOutletValue === this) {
-        oldParent[oldOutlet] = undefined;
+        (oldParent as any)[oldOutlet] = undefined;
       } else if (existingParentOutletValue instanceof OrderedOutlet) {
         existingParentOutletValue.remove(this);
       }
@@ -387,6 +449,10 @@ export class Chit extends ObjectWithProps {
         this.renderInstance = undefined;
       }
     }
+
+    this.markDirty();
+    if (oldParent) oldParent.markDirty();
+    if (newValue) newValue.markDirty();
 
     this.notifyChange("parent");
   }
@@ -490,6 +556,9 @@ export class Chit extends ObjectWithProps {
 
       this.setParent(inflateValue(j._parent), j._parentOutlet, j._parentOutletIndex);
     }
+
+    this.markDirty();
+    this._lastSerialized = undefined;
   }
 
   /**
@@ -501,9 +570,43 @@ export class Chit extends ObjectWithProps {
     return undefined;
   }
 
+  private instrumentForDirtyTracking() {
+    if (this._instrumented) return;
+    this._instrumented = true;
+
+    for (const key of this.serializationProps) {
+      const descriptor = Object.getOwnPropertyDescriptor(this, key);
+      if (descriptor && (descriptor.get || descriptor.set)) continue;
+
+      let value = (this as any)[key];
+      Object.defineProperty(this, key, {
+        enumerable: true,
+        configurable: true,
+        get: () => {
+          if (typeof value === "object" && value !== null && !(value instanceof Chit) && !(value instanceof OrderedOutlet)) {
+            return wrapWithDirtyProxy(value, this);
+          }
+          return value;
+        },
+        set: (newValue: any) => {
+          if (newValue !== value) {
+            value = newValue;
+            this.markDirty();
+          }
+        },
+      });
+    }
+  }
+
   /** @internal */
   public serialize(playerIds?: string[]): string {
-    return JSON.stringify(
+    this.instrumentForDirtyTracking();
+
+    if (!this._dirty && this._lastSerialized !== undefined) {
+      return this._lastSerialized;
+    }
+
+    const result = JSON.stringify(
       this.serializationProps.reduce(
         (acc, key) => {
           const value = (this as any)[key];
@@ -516,6 +619,10 @@ export class Chit extends ObjectWithProps {
         } as { [key: string]: any },
       ),
     );
+
+    this._dirty = false;
+    this._lastSerialized = result;
+    return result;
   }
 
   //
