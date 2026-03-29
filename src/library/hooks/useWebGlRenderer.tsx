@@ -30,6 +30,8 @@ class WebGLRendererWrapper {
   private currentHeight = 0;
   public pixelRatio = Math.max(1.5, typeof window !== "undefined" ? window.devicePixelRatio : 1.5);
   private maxComposers = 8;
+  private _contextLost = false;
+  private _dirtyCallbacks = new Set<() => void>();
 
   constructor() {
     this.renderer = new WebGLRenderer({ alpha: true, antialias: true });
@@ -49,6 +51,56 @@ class WebGLRendererWrapper {
 
     // Enable scissor test for partial rendering
     this.renderer.setScissorTest(true);
+
+    // Handle WebGL context loss and restoration
+    const canvas = this.renderer.domElement;
+    canvas.addEventListener(
+      "webglcontextlost",
+      (e) => {
+        e.preventDefault(); // allows context to be restored
+        this._contextLost = true;
+        console.warn("[WebGLRenderer] Context lost");
+      },
+      false,
+    );
+
+    canvas.addEventListener(
+      "webglcontextrestored",
+      () => {
+        console.warn("[WebGLRenderer] Context restored, reinitializing");
+        this._contextLost = false;
+
+        // Re-apply renderer state
+        this.renderer.setPixelRatio(this.pixelRatio);
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.setClearColor(0xffffff, 1.0);
+        this.renderer.setScissorTest(true);
+
+        // All render targets are invalid after context loss — clear the composer pool
+        for (const entry of this.composerPool.values()) {
+          entry.composer.dispose();
+          entry.outlinePass.dispose();
+        }
+        this.composerPool.clear();
+        this.currentWidth = 0;
+        this.currentHeight = 0;
+
+        // Notify all active viewers to re-render
+        for (const cb of this._dirtyCallbacks) {
+          cb();
+        }
+      },
+      false,
+    );
+  }
+
+  get contextLost() {
+    return this._contextLost;
+  }
+
+  onDirty(cb: () => void): () => void {
+    this._dirtyCallbacks.add(cb);
+    return () => this._dirtyCallbacks.delete(cb);
   }
 
   private evictLeastRecentlyUsedComposer() {
@@ -124,15 +176,64 @@ class WebGLRendererWrapper {
     return entry;
   }
 
-  private ensureRendererSize(targetWidth: number, targetHeight: number) {
+  private _shrinkTimer?: ReturnType<typeof setTimeout>;
+  private _activeRenderSizes = new Map<string, { width: number; height: number }>();
+
+  private ensureRendererSize(targetWidth: number, targetHeight: number, viewerId?: string) {
+    if (viewerId) {
+      this._activeRenderSizes.set(viewerId, { width: targetWidth, height: targetHeight });
+    }
+
     if (targetWidth > this.currentWidth || targetHeight > this.currentHeight) {
+      const prevWidth = this.currentWidth;
+      const prevHeight = this.currentHeight;
       this.currentWidth = Math.max(this.currentWidth, targetWidth);
       this.currentHeight = Math.max(this.currentHeight, targetHeight);
       this.renderer.setSize(this.currentWidth, this.currentHeight);
+      console.log(
+        `[WebGLRenderer] Renderer size grew: ${prevWidth}x${prevHeight} -> ${this.currentWidth}x${this.currentHeight} (requested ${targetWidth}x${targetHeight})`,
+      );
     }
   }
 
-  render(sceneWrapper: SceneWrapper, camera: Camera, context2d: CanvasRenderingContext2D, theme: GameTheme) {
+  /** Remove a viewer from the active set and schedule a shrink check. */
+  unregisterViewerSize(viewerId: string) {
+    this._activeRenderSizes.delete(viewerId);
+    this.scheduleShrink();
+  }
+
+  private scheduleShrink() {
+    if (this._shrinkTimer) return;
+    this._shrinkTimer = setTimeout(() => {
+      this._shrinkTimer = undefined;
+      this.shrinkToFit();
+    }, 2000);
+  }
+
+  private shrinkToFit() {
+    let maxW = 0;
+    let maxH = 0;
+    for (const size of this._activeRenderSizes.values()) {
+      maxW = Math.max(maxW, size.width);
+      maxH = Math.max(maxH, size.height);
+    }
+
+    // Only shrink if we can save at least 25% in one dimension
+    if (maxW > 0 && maxH > 0 && (maxW < this.currentWidth * 0.75 || maxH < this.currentHeight * 0.75)) {
+      const prevWidth = this.currentWidth;
+      const prevHeight = this.currentHeight;
+      this.currentWidth = maxW;
+      this.currentHeight = maxH;
+      this.renderer.setSize(this.currentWidth, this.currentHeight);
+      console.log(
+        `[WebGLRenderer] Renderer size shrunk: ${prevWidth}x${prevHeight} -> ${this.currentWidth}x${this.currentHeight}`,
+      );
+    }
+  }
+
+  render(sceneWrapper: SceneWrapper, camera: Camera, context2d: CanvasRenderingContext2D, theme: GameTheme, viewerId?: string) {
+    if (this._contextLost) return;
+
     const canvas = context2d.canvas;
     const width = Math.floor(canvas.width / this.pixelRatio);
     const height = Math.floor(canvas.height / this.pixelRatio);
@@ -140,7 +241,7 @@ class WebGLRendererWrapper {
     const targetHeight = Math.ceil(height * this.pixelRatio);
 
     // Ensure renderer can accommodate this size
-    this.ensureRendererSize(width, height);
+    this.ensureRendererSize(width, height, viewerId);
 
     // Get or create appropriate composer
     const transparent = true; // Always use transparent for composition

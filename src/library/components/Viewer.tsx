@@ -148,7 +148,10 @@ export default function Viewer({
       return;
     }
 
-    // chitRenderInstance.sceneWrapper.markDirty();
+    // Re-render when WebGL context is restored after a loss
+    const unsubDirty = rendererWrapper.onDirty(() => {
+      chitRenderInstance.markDirty();
+    });
 
     let renderNextFrame: boolean | undefined;
     let cancelled = false;
@@ -169,7 +172,7 @@ export default function Viewer({
           ) {
             if (!hardPaused) {
               // Clear canvas and render
-              rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme);
+              rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme, id);
 
               loadingState.setLoading(id, false);
 
@@ -200,6 +203,8 @@ export default function Viewer({
     return () => {
       timeState.setAnimationState(id, false);
       cancelled = true;
+      unsubDirty();
+      rendererWrapper.unregisterViewerSize(id);
     };
   }, [
     id,

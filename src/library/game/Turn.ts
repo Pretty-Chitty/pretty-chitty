@@ -91,6 +91,27 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private chitLookup: ChitLookup = {};
   private lockedChitStates: ChitStateLookup = {};
   private lastChitStates: ChitStateLookup = {};
+  private _statePool?: Map<string, string>;
+
+  private get statePool(): Map<string, string> {
+    if (this.parent) return this.parent.statePool;
+    if (!this._statePool) this._statePool = new Map();
+    return this._statePool;
+  }
+
+  /**
+   * Intern a serialized state string. If `hint` is provided (e.g. the last known state),
+   * a cheap content comparison is done first to avoid the Map lookup entirely — which matters
+   * because Map.get with large string keys is O(n) on string length.
+   */
+  private internState(s: string, hint?: string): string {
+    if (hint !== undefined && s === hint) return hint;
+    const pool = this.statePool;
+    const existing = pool.get(s);
+    if (existing !== undefined) return existing;
+    pool.set(s, s);
+    return s;
+  }
 
   /**
    * Locates a chit by its ID.  If not found, will throw.
@@ -162,7 +183,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       if (!c.id) {
         throw new Error("Cannot serialize a chit without an id");
       }
-      this.lastChitStates[c.id] = this.lockedChitStates[c.id] = c.serialize(this._playerIds);
+      this.lastChitStates[c.id] = this.lockedChitStates[c.id] = this.internState(c.serialize(this._playerIds));
     });
   }
 
@@ -327,8 +348,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
       if (!seenIds.has(c.id)) {
         seenIds.add(c.id);
-        const serialized = c.serialize(this._playerIds);
         const lastState = this.lastChitStates[c.id];
+        const serialized = this.internState(c.serialize(this._playerIds), lastState);
         if (serialized !== lastState) {
           this.lastChitStates[c.id] = newStates[c.id] = serialized;
           sawChange = true;
