@@ -3,6 +3,7 @@ import {
   UVMapping,
   ClampToEdgeWrapping,
   LinearFilter,
+  LinearMipmapLinearFilter,
   MeshPhongMaterial,
   Material,
   SRGBColorSpace,
@@ -12,6 +13,7 @@ import { IUpdatingCanvas } from "../IUpdatingCanvas";
 import { CanvasOperation } from "./CanvasOperations";
 import { ImageResult, ImageCache } from "./ImageCache";
 import { ThreeDisposer } from "../ThreeDisposer";
+import { getWebGlRendererInstance } from "../../hooks/useWebGlRenderer";
 
 export type RenderBounds = {
   x: number;
@@ -96,6 +98,7 @@ export class CanvasStack implements IUpdatingCanvas {
     this.canvas!.title = `Disposed, mat ${this._material?.uuid} texture ${this._texture?.uuid}`;
     this.canvas = undefined;
     this.context = undefined;
+    CanvasStack._liveStacks.delete(this);
 
     if (this._material) {
       this._material.dispose();
@@ -122,7 +125,33 @@ export class CanvasStack implements IUpdatingCanvas {
     }
     this.context = context;
 
+    CanvasStack._liveStacks.add(this);
+    CanvasStack.ensureContextRestoreSubscription();
+
     this.render();
+  }
+
+  private static _liveStacks: Set<CanvasStack> = new Set();
+  private static _restoreSubscribed = false;
+
+  /**
+   * After a WebGL context restore, GPU-side textures are gone. The 2D canvas
+   * backing data is still valid, but three.js needs to be told to re-upload it.
+   * Subscribe once to the renderer's restore notification and re-flag every
+   * live instance's texture.
+   */
+  private static ensureContextRestoreSubscription() {
+    if (CanvasStack._restoreSubscribed) return;
+    const wrapper = getWebGlRendererInstance();
+    if (!wrapper) return;
+    CanvasStack._restoreSubscribed = true;
+    wrapper.onDirty(() => {
+      for (const stack of CanvasStack._liveStacks) {
+        if (stack._texture) {
+          stack._texture.needsUpdate = true;
+        }
+      }
+    });
   }
 
   get outlets() {
@@ -146,14 +175,18 @@ export class CanvasStack implements IUpdatingCanvas {
     }
 
     if (!this._texture) {
+      // WebGL1 only supports mipmaps on power-of-two textures, and these
+      // canvases are arbitrarily sized. Skip mipmap generation outside WebGL2.
+      const useMipmaps = getWebGlRendererInstance()?.isWebGL2 ?? false;
       this._texture = new Texture(
         this.canvas,
         UVMapping,
         ClampToEdgeWrapping,
         ClampToEdgeWrapping,
         LinearFilter,
-        LinearFilter,
+        useMipmaps ? LinearMipmapLinearFilter : LinearFilter,
       );
+      this._texture.generateMipmaps = useMipmaps;
       this._texture.needsUpdate = true;
       this._texture.colorSpace = SRGBColorSpace;
 
@@ -179,6 +212,10 @@ export class CanvasStack implements IUpdatingCanvas {
       canvasStack._texture.source.data = _NOTHING_CANVAS; // prevent memory leaks! somehow it holding this reference stops the GC from cleaning anything up
       canvasStack._texture = undefined;
     }
+    // Drop the strong reference so the instance can be GC'd. Both this
+    // path and the explicit dispose() can run for the same stack — Set.delete
+    // is idempotent, so the duplicate is harmless.
+    CanvasStack._liveStacks.delete(canvasStack);
   });
 
   public static materialDisposer = new ThreeDisposer<Material>((material) => {

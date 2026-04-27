@@ -172,14 +172,18 @@ export default function Viewer({
           ) {
             if (!hardPaused) {
               // Clear canvas and render
-              rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme, id);
+              const drew = rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme, id);
 
               loadingState.setLoading(id, false);
 
-              // Clear snapshot after first render at new size
-              const canvasEl = canvas as any;
-              if (canvasEl.clearSnapshot) {
-                canvasEl.clearSnapshot();
+              // Only clear the snapshot overlay once we've actually painted a fresh frame.
+              // If render bailed (e.g. WebGL context lost), keeping the snapshot visible
+              // avoids a blank canvas until the context is restored.
+              if (drew) {
+                const canvasEl = canvas as any;
+                if (canvasEl.clearSnapshot) {
+                  canvasEl.clearSnapshot();
+                }
               }
             } else {
               loadingState.setLoading(id, false);
