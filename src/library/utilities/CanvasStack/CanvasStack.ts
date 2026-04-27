@@ -175,15 +175,18 @@ export class CanvasStack implements IUpdatingCanvas {
     }
 
     if (!this._texture) {
+      // WebGL1 only supports mipmaps on power-of-two textures, and these
+      // canvases are arbitrarily sized. Skip mipmap generation outside WebGL2.
+      const useMipmaps = getWebGlRendererInstance()?.isWebGL2 ?? false;
       this._texture = new Texture(
         this.canvas,
         UVMapping,
         ClampToEdgeWrapping,
         ClampToEdgeWrapping,
         LinearFilter,
-        LinearMipmapLinearFilter,
+        useMipmaps ? LinearMipmapLinearFilter : LinearFilter,
       );
-      this._texture.generateMipmaps = true;
+      this._texture.generateMipmaps = useMipmaps;
       this._texture.needsUpdate = true;
       this._texture.colorSpace = SRGBColorSpace;
 
@@ -209,6 +212,10 @@ export class CanvasStack implements IUpdatingCanvas {
       canvasStack._texture.source.data = _NOTHING_CANVAS; // prevent memory leaks! somehow it holding this reference stops the GC from cleaning anything up
       canvasStack._texture = undefined;
     }
+    // Drop the strong reference so the instance can be GC'd. Both this
+    // path and the explicit dispose() can run for the same stack — Set.delete
+    // is idempotent, so the duplicate is harmless.
+    CanvasStack._liveStacks.delete(canvasStack);
   });
 
   public static materialDisposer = new ThreeDisposer<Material>((material) => {

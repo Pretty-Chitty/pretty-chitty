@@ -34,7 +34,10 @@ class WebGLRendererWrapper {
   private _contextLost = false;
   private _restoreScheduled = false;
   private _lastLossAt = 0;
+  private _lastRestoreAttemptAt = 0;
+  private static RESTORE_BACKOFF_MS = 250;
   private _dirtyCallbacks = new Set<() => void>();
+  public readonly isWebGL2: boolean;
 
   constructor() {
     this.renderer = new WebGLRenderer({ alpha: true, antialias: true });
@@ -48,6 +51,9 @@ class WebGLRendererWrapper {
     const gl = this.renderer.getContext();
     this.memoryExtension = gl.getExtension("WEBGL_debug_renderer_info");
     this.loseContextExt = gl.getExtension("WEBGL_lose_context");
+    this.isWebGL2 =
+      typeof WebGL2RenderingContext !== "undefined" &&
+      gl instanceof WebGL2RenderingContext;
 
     this.renderer.setPixelRatio(this.pixelRatio);
     this.renderer.shadowMap.enabled = true;
@@ -93,10 +99,10 @@ class WebGLRendererWrapper {
 
     // If the loss was silent (no event from the browser), the matching `restored`
     // event also won't fire on its own. Schedule a forced restore so rendering
-    // resumes without requiring the user to switch panels.
-    if (source === "silent" && !this._restoreScheduled) {
-      this._restoreScheduled = true;
-      queueMicrotask(() => this.forceRestore());
+    // resumes without requiring the user to switch panels. The "event" path is
+    // expected to recover on its own; if it doesn't, render() will reschedule.
+    if (source === "silent") {
+      this.maybeScheduleRestore();
     }
   }
 
@@ -125,29 +131,55 @@ class WebGLRendererWrapper {
     }
   }
 
-  private forceRestore() {
-    if (!this._contextLost) {
-      this._restoreScheduled = false;
+  /**
+   * Throttled scheduler for forceRestore(). Call this any time we observe the
+   * context is still lost and want to try recovery — it dedupes against an
+   * already-pending attempt and enforces a backoff so we don't spin.
+   */
+  private maybeScheduleRestore() {
+    if (!this._contextLost) return;
+    if (this._restoreScheduled) return;
+    const sinceLastAttempt = Date.now() - this._lastRestoreAttemptAt;
+    if (this._lastRestoreAttemptAt > 0 && sinceLastAttempt < WebGLRendererWrapper.RESTORE_BACKOFF_MS) {
+      // Defer until backoff elapses
+      const wait = WebGLRendererWrapper.RESTORE_BACKOFF_MS - sinceLastAttempt;
+      this._restoreScheduled = true;
+      setTimeout(() => {
+        this._restoreScheduled = false;
+        this.forceRestore();
+      }, wait);
       return;
     }
+    this._restoreScheduled = true;
+    queueMicrotask(() => {
+      this._restoreScheduled = false;
+      this.forceRestore();
+    });
+  }
+
+  private forceRestore() {
+    if (!this._contextLost) return;
+    this._lastRestoreAttemptAt = Date.now();
+
     if (this.loseContextExt) {
       try {
         this.loseContextExt.restoreContext();
+        // If the browser honors this, `webglcontextrestored` fires asynchronously
+        // and clears _contextLost. If it doesn't fire, the next render() call
+        // will hit the _contextLost early-return and schedule another attempt.
         return;
       } catch (e) {
-        console.warn("[WebGLRenderer] restoreContext() threw, falling back", e);
+        console.warn("[WebGLRenderer] restoreContext() threw, falling back to setSize", e);
       }
     }
     // Fallback: nudge the canvas size to encourage the driver to rebuild the context.
     // Some Android drivers fire `webglcontextrestored` in response to setSize on a
-    // lost context. If that doesn't happen, the next render call will re-detect
-    // and reschedule.
+    // lost context. If neither path triggers a restore, render() reschedules us.
     try {
       this.renderer.setSize(Math.max(1, this.currentWidth), Math.max(1, this.currentHeight));
     } catch (e) {
       console.warn("[WebGLRenderer] setSize fallback threw", e);
     }
-    this._restoreScheduled = false;
   }
 
   get contextLost() {
@@ -288,7 +320,12 @@ class WebGLRendererWrapper {
   }
 
   render(sceneWrapper: SceneWrapper, camera: Camera, context2d: CanvasRenderingContext2D, theme: GameTheme, viewerId?: string): boolean {
-    if (this._contextLost) return false;
+    if (this._contextLost) {
+      // Still lost — keep trying to restore. The previous attempt may have used
+      // the setSize fallback that doesn't always trigger `webglcontextrestored`.
+      this.maybeScheduleRestore();
+      return false;
+    }
 
     // Detect silent context loss — on some Android WebViews the `webglcontextlost`
     // event isn't fired reliably for GPU process kills. Without this check we'd
