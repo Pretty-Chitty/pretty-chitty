@@ -27,34 +27,67 @@ interface SparkLineChartProps {
   width?: number;
 }
 
-// Helper function to calculate color contrast
-function getColorLuminance(color: string): number {
-  // Convert hex to RGB
+const HALO_OPACITY = 0.35;
+
+function hexToLinearRgb(color: string): { r: number; g: number; b: number } {
   const hex = color.replace("#", "");
-  const r = parseInt(hex.substr(0, 2), 16) / 255;
-  const g = parseInt(hex.substr(2, 2), 16) / 255;
-  const b = parseInt(hex.substr(4, 2), 16) / 255;
-
-  // Calculate relative luminance
-  const [rs, gs, bs] = [r, g, b].map((c) => {
+  const toLin = (n: number) => {
+    const c = n / 255;
     return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  });
-
-  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+  };
+  return {
+    r: toLin(parseInt(hex.slice(0, 2), 16)),
+    g: toLin(parseInt(hex.slice(2, 4), 16)),
+    b: toLin(parseInt(hex.slice(4, 6), 16)),
+  };
 }
 
-// Check if two colors have enough contrast
+function getColorLuminance(color: string): number {
+  const { r, g, b } = hexToLinearRgb(color);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+// Convert sRGB hex → CIE Lab (D65), so we can measure perceptual distance.
+function hexToLab(color: string): { L: number; a: number; b: number } {
+  const { r, g, b } = hexToLinearRgb(color);
+  const X = (r * 0.4124564 + g * 0.3575761 + b * 0.1804375) / 0.95047;
+  const Y = r * 0.2126729 + g * 0.7151522 + b * 0.072175;
+  const Z = (r * 0.0193339 + g * 0.119192 + b * 0.9503041) / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const fx = f(X);
+  const fy = f(Y);
+  const fz = f(Z);
+  return { L: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
+}
+
+// Perceptual contrast: a stroke is only needed if both luminance AND hue/chroma
+// are too close to distinguish. Pure red vs pure green have similar luminance
+// but enormous Lab distance, so they should pass without an outline.
 function hasGoodContrast(color1: string, color2: string): boolean {
   const lum1 = getColorLuminance(color1);
   const lum2 = getColorLuminance(color2);
-  const ratio = (Math.max(lum1, lum2) + 0.05) / (Math.min(lum1, lum2) + 0.05);
-  return ratio >= 3; // WCAG AA for large text
+  const lumRatio = (Math.max(lum1, lum2) + 0.05) / (Math.min(lum1, lum2) + 0.05);
+  if (lumRatio >= 3) return true;
+
+  const lab1 = hexToLab(color1);
+  const lab2 = hexToLab(color2);
+  const dL = lab1.L - lab2.L;
+  const da = lab1.a - lab2.a;
+  const db = lab1.b - lab2.b;
+  const deltaE = Math.sqrt(dL * dL + da * da + db * db);
+  return deltaE >= 35;
 }
 
-// Get appropriate stroke color for contrast
+// The halo has to separate the line from BOTH the background and the line color
+// itself — a white halo around a light-teal line on a dark-teal bg merges into
+// the line and reads as fuzz. Pick black or white by whichever gives the higher
+// minimum WCAG contrast against line and bg simultaneously.
 function getStrokeColor(lineColor: string, backgroundColor: string): string {
   const lineLum = getColorLuminance(lineColor);
-  return lineLum > 0.5 ? "#000000" : "#ffffff";
+  const bgLum = getColorLuminance(backgroundColor);
+  const blackMin = Math.min((lineLum + 0.05) / 0.05, (bgLum + 0.05) / 0.05);
+  const whiteMin = Math.min(1.05 / (lineLum + 0.05), 1.05 / (bgLum + 0.05));
+  return blackMin >= whiteMin ? "#000000" : "#ffffff";
 }
 
 export function SparkLineChart({
@@ -169,6 +202,10 @@ export function SparkLineChart({
   const getY = (value: number) => chartHeight - ((value - chartMinValue) / chartValueRange) * chartHeight;
   const chartEndX = chartWidth;
 
+  // If any line needs a halo, give one to all of them so the chart reads
+  // consistently — singling out one line with an outline looks arbitrary.
+  const anyNeedsStroke = lines.some((line) => !hasGoodContrast(line.color, backgroundColor));
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", my: 4 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>
@@ -181,6 +218,14 @@ export function SparkLineChart({
         preserveAspectRatio="preserve"
         style={{ overflow: "visible", maxWidth: "100%" }}
       >
+        <defs>
+          {/* Soften halo edges so the contrast outline reads as a smooth glow,
+              not a stairstepped stroke. */}
+          <filter id="sparkline-soften" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="0.6" />
+          </filter>
+        </defs>
+
         {/* Grid lines */}
         <g opacity={0.1}>
           {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
@@ -193,12 +238,15 @@ export function SparkLineChart({
 
         {/* Draw each line */}
         {lines.map((line) => {
-          // Create path for the line
+          // Step interpolation: values change instantaneously in the game (e.g. $0 → $50
+          // at t=100), so hold the previous value until the new clock, then jump vertically.
           const pathData = line.points
             .map((point, index) => {
               const x = getX(point.clock);
               const y = getY(point.value);
-              return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+              if (index === 0) return `M ${x} ${y}`;
+              const prevY = getY(line.points[index - 1].value);
+              return `L ${x} ${prevY} L ${x} ${y}`;
             })
             .join(" ");
 
@@ -207,8 +255,9 @@ export function SparkLineChart({
           const lastY = getY(lastPoint.value);
           const extendedPathData = `${pathData} L ${chartEndX} ${lastY}`;
 
-          // Check contrast and add stroke if needed
-          const needsStroke = !hasGoodContrast(line.color, backgroundColor);
+          // All lines get the same halo treatment if any line needs one — picked
+          // per line so each gets the right black/white for its own color.
+          const needsStroke = anyNeedsStroke;
           const strokeColor = needsStroke ? getStrokeColor(line.color, backgroundColor) : undefined;
 
           const adjustedLabelY = labelPositions[line.id];
@@ -221,10 +270,11 @@ export function SparkLineChart({
                   d={extendedPathData}
                   fill="none"
                   stroke={strokeColor}
-                  strokeWidth={4.5}
+                  strokeWidth={6}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  opacity={0.8}
+                  filter="url(#sparkline-soften)"
+                  opacity={HALO_OPACITY}
                 />
               )}
               <path
@@ -277,7 +327,9 @@ export function SparkLineChart({
                     dominantBaseline="middle"
                     fill={strokeColor}
                     stroke={strokeColor}
-                    strokeWidth={3}
+                    strokeWidth={5}
+                    filter="url(#sparkline-soften)"
+                    opacity={HALO_OPACITY}
                   >
                     {line.finalValue}
                   </text>
@@ -288,7 +340,16 @@ export function SparkLineChart({
               </g>
 
               {/* End point marker */}
-              {needsStroke && <circle cx={chartEndX} cy={lastY} r={5} fill={strokeColor} opacity={0.8} />}
+              {needsStroke && (
+                <circle
+                  cx={chartEndX}
+                  cy={lastY}
+                  r={6}
+                  fill={strokeColor}
+                  filter="url(#sparkline-soften)"
+                  opacity={HALO_OPACITY}
+                />
+              )}
               <circle cx={chartEndX} cy={lastY} r={3} fill={line.color} />
             </g>
           );

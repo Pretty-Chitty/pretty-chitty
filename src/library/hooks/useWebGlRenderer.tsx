@@ -26,11 +26,14 @@ class WebGLRendererWrapper {
   private renderer: WebGLRenderer;
   private composerPool = new Map<string, ComposerEntry>();
   private memoryExtension: any;
+  private loseContextExt: WEBGL_lose_context | null = null;
   private currentWidth = 0;
   private currentHeight = 0;
   public pixelRatio = Math.max(1.5, typeof window !== "undefined" ? window.devicePixelRatio : 1.5);
   private maxComposers = 8;
   private _contextLost = false;
+  private _restoreScheduled = false;
+  private _lastLossAt = 0;
   private _dirtyCallbacks = new Set<() => void>();
 
   constructor() {
@@ -44,6 +47,7 @@ class WebGLRendererWrapper {
     // Get memory extension for GPU memory monitoring
     const gl = this.renderer.getContext();
     this.memoryExtension = gl.getExtension("WEBGL_debug_renderer_info");
+    this.loseContextExt = gl.getExtension("WEBGL_lose_context");
 
     this.renderer.setPixelRatio(this.pixelRatio);
     this.renderer.shadowMap.enabled = true;
@@ -58,8 +62,7 @@ class WebGLRendererWrapper {
       "webglcontextlost",
       (e) => {
         e.preventDefault(); // allows context to be restored
-        this._contextLost = true;
-        console.warn("[WebGLRenderer] Context lost");
+        this.handleContextLost("event");
       },
       false,
     );
@@ -67,31 +70,84 @@ class WebGLRendererWrapper {
     canvas.addEventListener(
       "webglcontextrestored",
       () => {
-        console.warn("[WebGLRenderer] Context restored, reinitializing");
-        this._contextLost = false;
-
-        // Re-apply renderer state
-        this.renderer.setPixelRatio(this.pixelRatio);
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.setClearColor(0xffffff, 1.0);
-        this.renderer.setScissorTest(true);
-
-        // All render targets are invalid after context loss — clear the composer pool
-        for (const entry of this.composerPool.values()) {
-          entry.composer.dispose();
-          entry.outlinePass.dispose();
-        }
-        this.composerPool.clear();
-        this.currentWidth = 0;
-        this.currentHeight = 0;
-
-        // Notify all active viewers to re-render
-        for (const cb of this._dirtyCallbacks) {
-          cb();
-        }
+        this.handleContextRestored();
       },
       false,
     );
+  }
+
+  private handleContextLost(source: "event" | "silent") {
+    const wasLost = this._contextLost;
+    this._contextLost = true;
+    this._lastLossAt = Date.now();
+    console.warn(
+      `[WebGLRenderer] Context lost (source=${source}, alreadyLost=${wasLost}, size=${this.currentWidth}x${this.currentHeight}, composers=${this.composerPool.size})`,
+    );
+
+    // All render targets are invalid — drop them so we don't keep using stale ones
+    for (const entry of this.composerPool.values()) {
+      entry.composer.dispose();
+      entry.outlinePass.dispose();
+    }
+    this.composerPool.clear();
+
+    // If the loss was silent (no event from the browser), the matching `restored`
+    // event also won't fire on its own. Schedule a forced restore so rendering
+    // resumes without requiring the user to switch panels.
+    if (source === "silent" && !this._restoreScheduled) {
+      this._restoreScheduled = true;
+      queueMicrotask(() => this.forceRestore());
+    }
+  }
+
+  private handleContextRestored() {
+    const downMs = this._lastLossAt ? Date.now() - this._lastLossAt : -1;
+    console.warn(
+      `[WebGLRenderer] Context restored (downMs=${downMs}, size=${this.currentWidth}x${this.currentHeight})`,
+    );
+    this._contextLost = false;
+    this._restoreScheduled = false;
+
+    // Re-apply renderer state
+    this.renderer.setPixelRatio(this.pixelRatio);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.setClearColor(0xffffff, 1.0);
+    this.renderer.setScissorTest(true);
+
+    // Composer pool was cleared on loss; reset size tracking so the next
+    // render call rebuilds the backing framebuffer at the right dimensions.
+    this.currentWidth = 0;
+    this.currentHeight = 0;
+
+    // Notify all active viewers to re-render
+    for (const cb of this._dirtyCallbacks) {
+      cb();
+    }
+  }
+
+  private forceRestore() {
+    if (!this._contextLost) {
+      this._restoreScheduled = false;
+      return;
+    }
+    if (this.loseContextExt) {
+      try {
+        this.loseContextExt.restoreContext();
+        return;
+      } catch (e) {
+        console.warn("[WebGLRenderer] restoreContext() threw, falling back", e);
+      }
+    }
+    // Fallback: nudge the canvas size to encourage the driver to rebuild the context.
+    // Some Android drivers fire `webglcontextrestored` in response to setSize on a
+    // lost context. If that doesn't happen, the next render call will re-detect
+    // and reschedule.
+    try {
+      this.renderer.setSize(Math.max(1, this.currentWidth), Math.max(1, this.currentHeight));
+    } catch (e) {
+      console.warn("[WebGLRenderer] setSize fallback threw", e);
+    }
+    this._restoreScheduled = false;
   }
 
   get contextLost() {
@@ -231,8 +287,18 @@ class WebGLRendererWrapper {
     }
   }
 
-  render(sceneWrapper: SceneWrapper, camera: Camera, context2d: CanvasRenderingContext2D, theme: GameTheme, viewerId?: string) {
-    if (this._contextLost) return;
+  render(sceneWrapper: SceneWrapper, camera: Camera, context2d: CanvasRenderingContext2D, theme: GameTheme, viewerId?: string): boolean {
+    if (this._contextLost) return false;
+
+    // Detect silent context loss — on some Android WebViews the `webglcontextlost`
+    // event isn't fired reliably for GPU process kills. Without this check we'd
+    // happily call composer.render() on a dead context, produce no pixels, and
+    // strip the snapshot overlay → blank canvas until the user switches panels.
+    const gl = this.renderer.getContext();
+    if (gl && gl.isContextLost()) {
+      this.handleContextLost("silent");
+      return false;
+    }
 
     const canvas = context2d.canvas;
     const width = Math.floor(canvas.width / this.pixelRatio);
@@ -259,8 +325,6 @@ class WebGLRendererWrapper {
 
       // Copy the rendered result to the 2D canvas
       const webglCanvas = this.renderer.domElement;
-      // context2d.save();
-      // context2d.scale(1 / this.pixelRatio, 1 / this.pixelRatio);
       context2d.drawImage(
         webglCanvas,
         0,
@@ -272,7 +336,7 @@ class WebGLRendererWrapper {
         targetWidth,
         targetHeight, // Dest width, height
       );
-      // context2d.restore();
+      return true;
     } finally {
       entry.referenceCount--;
     }
@@ -324,5 +388,9 @@ export function useWebGlRenderer(): WebGLRendererWrapper {
     _wrapper = new WebGLRendererWrapper();
     _wrapper.updateTheme(theme);
   }
+  return _wrapper;
+}
+
+export function getWebGlRendererInstance(): WebGLRendererWrapper | undefined {
   return _wrapper;
 }
