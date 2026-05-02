@@ -40,7 +40,7 @@ class WebGLRendererWrapper {
   public readonly isWebGL2: boolean;
 
   constructor() {
-    this.renderer = new WebGLRenderer({ alpha: true, antialias: true });
+    this.renderer = new WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
 
     // Check if WebGL context is available
     if (!this.renderer.getContext()) {
@@ -356,6 +356,18 @@ class WebGLRendererWrapper {
       // Set scissor to render only to target region
       this.renderer.setScissor(0, 0, targetWidth, targetHeight);
       this.renderer.setViewport(0, 0, width, height);
+
+      // Clear *depth only* in this panel's scissor region before composer.render().
+      // All viewers share the same WebGL backbuffer (and thus its depth buffer).
+      // Each composer's OutputPass renders a fullscreen quad at the same NDC z,
+      // and the default depth func is LESS — so the second panel's quad fails
+      // depth-test against the first panel's quad and the fragment is discarded.
+      // The panel then "didn't render": the backbuffer keeps the previous panel's
+      // pixels in its region, and drawImage copies those into the wrong panel's
+      // 2D canvas. Clearing depth (but not color) lets the OutputPass actually
+      // write its real output without stomping on whatever fallback content might
+      // already be visible from a prior frame.
+      this.renderer.clear(false, true, false);
 
       // Render using the composer
       entry.composer.render(sceneWrapper, camera);

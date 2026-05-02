@@ -33,7 +33,7 @@ function PlayerEditor({ playerId, match, showBack }: { showBack?: boolean; playe
       if (p.id !== playerId) {
         const opponentRemoteConnection = new LocalConnectionTransport();
         const opponentConnection = new Connection(new LocalConnectionTransport());
-        opponentConnection.register(new BadAIClientPrompts<any, any>(p.id, opponentConnection), "ClientPrompts");
+        opponentConnection.register(new BadAIClientPrompts<any, any>(p.id, opponentConnection, match), "ClientPrompts");
         (opponentConnection.transport as LocalConnectionTransport).connect(opponentRemoteConnection);
         match.connect(opponentRemoteConnection, p.id);
       }

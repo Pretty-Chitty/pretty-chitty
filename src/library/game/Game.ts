@@ -54,4 +54,11 @@ export interface Game<P extends PlayerChit, R extends RootChit<P>> {
    * @param spec
    */
   renderDefaultRootChit?(spec: ChitRenderSpec): void;
+
+  /**
+   * Useful to help the bad AI demo pick more interesting picks.  This function should return a multiplier for the weight of a given pick, where the weight is determined by the type of pick (e.g. ButtonPick is 1, ChitPick is the number of chits that can be picked, DragPick is the number of targets that can be dragged to).  The picks parameter is the full list of picks available, and the pick parameter is the specific pick we are calculating the weight for.
+   * @param picks The list of available pickes
+   * @param pick the pick we are looking at
+   */
+  demoPickWeight?(picks: any[], pick: any): number;
 }
