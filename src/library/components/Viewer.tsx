@@ -170,9 +170,10 @@ export default function Viewer({
             rendererWrapper &&
             (paused || prevRenderNextFrame === undefined || prevRenderNextFrame || chitRenderInstance.dirty)
           ) {
+            let drew: boolean | undefined;
             if (!hardPaused) {
               // Clear canvas and render
-              const drew = rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme, id);
+              drew = rendererWrapper.render(chitRenderInstance.sceneWrapper, chitRenderInstance.camera, context, theme, id);
 
               loadingState.setLoading(id, false);
 
@@ -189,7 +190,15 @@ export default function Viewer({
               loadingState.setLoading(id, false);
             }
 
-            chitRenderInstance.resetDirty();
+            // If render bailed, keep dirty=true so the next iteration retries.
+            // When paused, no rAF is queued, so schedule one explicitly.
+            if (drew === false) {
+              if (paused) {
+                requestSharedAnimationFrame(animate);
+              }
+            } else {
+              chitRenderInstance.resetDirty();
+            }
             if (!hardPaused) {
               timeState.setAnimationState(id, !paused);
             }

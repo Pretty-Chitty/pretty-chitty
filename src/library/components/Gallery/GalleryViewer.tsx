@@ -102,6 +102,7 @@ export function GalleryViewer({
     if (!ctx) return;
 
     let cancelled = false;
+    let needsRedraw = false;
 
     const animate = () => {
       if (cancelled) return;
@@ -109,11 +110,15 @@ export function GalleryViewer({
 
       const isAnimating = galleryController.render();
 
-      if (isAnimating) {
+      if (isAnimating || needsRedraw) {
         ctx.canvas.width = w * rendererWrapper.pixelRatio;
         ctx.canvas.height = h * rendererWrapper.pixelRatio;
         ctx.clearRect(0, 0, w * rendererWrapper.pixelRatio, h * rendererWrapper.pixelRatio);
-        rendererWrapper.render(galleryController.sceneWrapper, galleryController.camera, ctx, theme);
+        const drew = rendererWrapper.render(galleryController.sceneWrapper, galleryController.camera, ctx, theme);
+        // If render bailed (e.g. WebGL context lost), retry next frame even if
+        // the controller has settled — otherwise the last frame of an animation
+        // gets stuck on a stale snapshot.
+        needsRedraw = !drew;
       }
     };
 

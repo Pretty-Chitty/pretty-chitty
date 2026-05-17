@@ -69,7 +69,7 @@ export class EffectComposer {
       Math.max(1, Math.floor(this._width * this._pixelRatio)),
       Math.max(1, Math.floor(this._height * this._pixelRatio)),
     );
-    // renderTarget.depthTexture.type = FloatType;
+    if (renderer.capabilities.isWebGL2) renderTarget.depthTexture.type = FloatType;
 
     this.renderTarget = renderTarget;
 
@@ -83,7 +83,7 @@ export class EffectComposer {
       Math.max(1, Math.floor(this._width * this._pixelRatio)),
       Math.max(1, Math.floor(this._height * this._pixelRatio)),
     );
-    // this.renderTarget2.depthTexture.type = FloatType;
+    if (renderer.capabilities.isWebGL2) this.renderTarget2.depthTexture.type = FloatType;
 
     this.copyPass = new ShaderPass(CopyShader, this.textureId);
   }
@@ -166,13 +166,13 @@ export class EffectComposer {
     if (this.renderTarget.depthTexture) {
       this.renderTarget.depthTexture.dispose();
       this.renderTarget.depthTexture = new DepthTexture(effectiveWidth, effectiveHeight);
-      // this.renderTarget.depthTexture.type = FloatType;
+      if (this.renderer.capabilities.isWebGL2) this.renderTarget.depthTexture.type = FloatType;
     }
 
     if (this.renderTarget2.depthTexture) {
       this.renderTarget2.depthTexture.dispose();
       this.renderTarget2.depthTexture = new DepthTexture(effectiveWidth, effectiveHeight);
-      // this.renderTarget2.depthTexture.type = FloatType;
+      if (this.renderer.capabilities.isWebGL2) this.renderTarget2.depthTexture.type = FloatType;
     }
 
     for (let i = 0; i < this.passes.length; i++) {

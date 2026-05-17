@@ -332,7 +332,7 @@ class WebGLRendererWrapper {
     // happily call composer.render() on a dead context, produce no pixels, and
     // strip the snapshot overlay → blank canvas until the user switches panels.
     const gl = this.renderer.getContext();
-    if (gl && gl.isContextLost()) {
+    if (!gl || gl.isContextLost()) {
       this.handleContextLost("silent");
       return false;
     }
@@ -371,6 +371,17 @@ class WebGLRendererWrapper {
 
       // Render using the composer
       entry.composer.render(sceneWrapper, camera);
+
+      // Re-check for context loss after the render. The webglcontextlost event
+      // is dispatched asynchronously, so a loss that happened during composer.render
+      // wouldn't have been caught by the pre-render check above. If we proceeded to
+      // drawImage anyway, we'd copy stale pixels from the WebGL backbuffer (which
+      // is preserved across frames) and report success.
+      const glAfter = this.renderer.getContext();
+      if (!glAfter || glAfter.isContextLost()) {
+        this.handleContextLost("silent");
+        return false;
+      }
 
       // Copy the rendered result to the 2D canvas
       const webglCanvas = this.renderer.domElement;

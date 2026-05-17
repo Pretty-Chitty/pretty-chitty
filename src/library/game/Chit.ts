@@ -44,7 +44,7 @@ function wrapWithDirtyProxy(value: any, chit: Chit): any {
     },
     get(target, prop) {
       const val = target[prop];
-      if (typeof val === "function") return val.bind(target);
+      if (typeof val === "function") return val.bind(proxy);
       if (typeof val === "object" && val !== null && !(val instanceof Chit) && !(val instanceof OrderedOutlet)) {
         return wrapWithDirtyProxy(val, chit);
       }

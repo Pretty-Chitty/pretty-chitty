@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { Box, Typography } from "@mui/material";
+import Color from "color";
 import { SparkChit } from "../game/SparkChit";
 import { PlayerChit } from "../game/PlayerChit";
 
@@ -29,65 +30,30 @@ interface SparkLineChartProps {
 
 const HALO_OPACITY = 0.35;
 
-function hexToLinearRgb(color: string): { r: number; g: number; b: number } {
-  const hex = color.replace("#", "");
-  const toLin = (n: number) => {
-    const c = n / 255;
-    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  };
-  return {
-    r: toLin(parseInt(hex.slice(0, 2), 16)),
-    g: toLin(parseInt(hex.slice(2, 4), 16)),
-    b: toLin(parseInt(hex.slice(4, 6), 16)),
-  };
+// One halo color for every line in the chart, picked as the extreme furthest
+// from the bg — so the halo is always visible against the bg and provides the
+// edge that separates each line from the bg. Per-line halos flipping between
+// black and white read as arbitrary noise.
+function getUnifiedHaloColor(backgroundColor: string): string {
+  return Color(backgroundColor).isLight() ? "#000000" : "#ffffff";
 }
 
-function getColorLuminance(color: string): number {
-  const { r, g, b } = hexToLinearRgb(color);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-// Convert sRGB hex → CIE Lab (D65), so we can measure perceptual distance.
-function hexToLab(color: string): { L: number; a: number; b: number } {
-  const { r, g, b } = hexToLinearRgb(color);
-  const X = (r * 0.4124564 + g * 0.3575761 + b * 0.1804375) / 0.95047;
-  const Y = r * 0.2126729 + g * 0.7151522 + b * 0.072175;
-  const Z = (r * 0.0193339 + g * 0.119192 + b * 0.9503041) / 1.08883;
-  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
-  const fx = f(X);
-  const fy = f(Y);
-  const fz = f(Z);
-  return { L: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
-}
-
-// Perceptual contrast: a stroke is only needed if both luminance AND hue/chroma
-// are too close to distinguish. Pure red vs pure green have similar luminance
-// but enormous Lab distance, so they should pass without an outline.
-function hasGoodContrast(color1: string, color2: string): boolean {
-  const lum1 = getColorLuminance(color1);
-  const lum2 = getColorLuminance(color2);
-  const lumRatio = (Math.max(lum1, lum2) + 0.05) / (Math.min(lum1, lum2) + 0.05);
-  if (lumRatio >= 3) return true;
-
-  const lab1 = hexToLab(color1);
-  const lab2 = hexToLab(color2);
-  const dL = lab1.L - lab2.L;
-  const da = lab1.a - lab2.a;
-  const db = lab1.b - lab2.b;
-  const deltaE = Math.sqrt(dL * dL + da * da + db * db);
-  return deltaE >= 35;
-}
-
-// The halo has to separate the line from BOTH the background and the line color
-// itself — a white halo around a light-teal line on a dark-teal bg merges into
-// the line and reads as fuzz. Pick black or white by whichever gives the higher
-// minimum WCAG contrast against line and bg simultaneously.
-function getStrokeColor(lineColor: string, backgroundColor: string): string {
-  const lineLum = getColorLuminance(lineColor);
-  const bgLum = getColorLuminance(backgroundColor);
-  const blackMin = Math.min((lineLum + 0.05) / 0.05, (bgLum + 0.05) / 0.05);
-  const whiteMin = Math.min(1.05 / (lineLum + 0.05), 1.05 / (bgLum + 0.05));
-  return blackMin >= whiteMin ? "#000000" : "#ffffff";
+// The halo only does its job when every line clearly contrasts against it —
+// otherwise a dark line drowns into the dark halo and you get fuzz instead of
+// a crisp edge. Push any too-close line toward the halo's opposite (which is
+// also the bg side) in 5% steps until WCAG luminance contrast clears the
+// threshold. This is the "lighten the dark line until it's distinguishable"
+// step — only the dark-red-burger gets touched in a sea of light pastels.
+function adjustLineForHalo(lineColor: string, haloColor: string, minRatio = 7): string {
+  const halo = Color(haloColor);
+  const line = Color(lineColor);
+  if (line.contrast(halo) >= minRatio) return line.hex();
+  const target = halo.isDark() ? Color("#ffffff") : Color("#000000");
+  for (let t = 0.05; t <= 1; t += 0.05) {
+    const candidate = line.mix(target, t);
+    if (candidate.contrast(halo) >= minRatio) return candidate.hex();
+  }
+  return target.hex();
 }
 
 export function SparkLineChart({
@@ -202,9 +168,15 @@ export function SparkLineChart({
   const getY = (value: number) => chartHeight - ((value - chartMinValue) / chartValueRange) * chartHeight;
   const chartEndX = chartWidth;
 
-  // If any line needs a halo, give one to all of them so the chart reads
-  // consistently — singling out one line with an outline looks arbitrary.
-  const anyNeedsStroke = lines.some((line) => !hasGoodContrast(line.color, backgroundColor));
+  // The chart always gets one unified halo (opposite of bg). Each line is then
+  // shifted only if it sits too close to the halo's luminance — so on a light
+  // bg the halo is dark, all the light pastels keep their hue, and the lone
+  // dark line gets lightened until the dark halo can actually frame it.
+  const haloColor = getUnifiedHaloColor(backgroundColor);
+  const displayLines = lines.map((line) => ({
+    ...line,
+    color: adjustLineForHalo(line.color, haloColor),
+  }));
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", my: 4 }}>
@@ -237,7 +209,7 @@ export function SparkLineChart({
         </g>
 
         {/* Draw each line */}
-        {lines.map((line) => {
+        {displayLines.map((line) => {
           // Step interpolation: values change instantaneously in the game (e.g. $0 → $50
           // at t=100), so hold the previous value until the new clock, then jump vertically.
           const pathData = line.points
@@ -255,28 +227,21 @@ export function SparkLineChart({
           const lastY = getY(lastPoint.value);
           const extendedPathData = `${pathData} L ${chartEndX} ${lastY}`;
 
-          // All lines get the same halo treatment if any line needs one — picked
-          // per line so each gets the right black/white for its own color.
-          const needsStroke = anyNeedsStroke;
-          const strokeColor = needsStroke ? getStrokeColor(line.color, backgroundColor) : undefined;
-
           const adjustedLabelY = labelPositions[line.id];
 
           return (
             <g key={line.id}>
-              {/* Line with optional stroke for contrast */}
-              {needsStroke && (
-                <path
-                  d={extendedPathData}
-                  fill="none"
-                  stroke={strokeColor}
-                  strokeWidth={6}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  filter="url(#sparkline-soften)"
-                  opacity={HALO_OPACITY}
-                />
-              )}
+              {/* Unified halo behind every line — soft glow opposite the bg. */}
+              <path
+                d={extendedPathData}
+                fill="none"
+                stroke={haloColor}
+                strokeWidth={6}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter="url(#sparkline-soften)"
+                opacity={HALO_OPACITY}
+              />
               <path
                 d={extendedPathData}
                 fill="none"
@@ -320,36 +285,32 @@ export function SparkLineChart({
 
               {/* Final value label at the adjusted position */}
               <g transform={`translate(${chartEndX + (line.icon ? 30 : 10)}, ${adjustedLabelY})`}>
-                {needsStroke && (
-                  <text
-                    fontSize={20}
-                    fontWeight="bold"
-                    dominantBaseline="middle"
-                    fill={strokeColor}
-                    stroke={strokeColor}
-                    strokeWidth={5}
-                    filter="url(#sparkline-soften)"
-                    opacity={HALO_OPACITY}
-                  >
-                    {line.finalValue}
-                  </text>
-                )}
+                <text
+                  fontSize={20}
+                  fontWeight="bold"
+                  dominantBaseline="middle"
+                  fill={haloColor}
+                  stroke={haloColor}
+                  strokeWidth={5}
+                  filter="url(#sparkline-soften)"
+                  opacity={HALO_OPACITY}
+                >
+                  {line.finalValue}
+                </text>
                 <text fill={line.color} fontSize={20} fontWeight="bold" dominantBaseline="middle">
                   {line.finalValue}
                 </text>
               </g>
 
-              {/* End point marker */}
-              {needsStroke && (
-                <circle
-                  cx={chartEndX}
-                  cy={lastY}
-                  r={6}
-                  fill={strokeColor}
-                  filter="url(#sparkline-soften)"
-                  opacity={HALO_OPACITY}
-                />
-              )}
+              {/* End point marker halo + dot */}
+              <circle
+                cx={chartEndX}
+                cy={lastY}
+                r={6}
+                fill={haloColor}
+                filter="url(#sparkline-soften)"
+                opacity={HALO_OPACITY}
+              />
               <circle cx={chartEndX} cy={lastY} r={3} fill={line.color} />
             </g>
           );
