@@ -566,7 +566,13 @@ export class CameraWrapperPerspective {
             tween
               .to(newPosition, duration)
               .easing(Easing.Quadratic.InOut)
-              .onUpdate((obj) => this.camera.position.set(obj.x, obj.y, obj.z)),
+              .onUpdate((obj) => {
+                this.camera.position.set(obj.x, obj.y, obj.z);
+                const planes = this.calculateOptimalNearFar(this.bbox, this.camera.position);
+                this.camera.near = planes.near;
+                this.camera.far = planes.far;
+                this.camera.updateProjectionMatrix();
+              }),
         );
       }
 
@@ -581,8 +587,8 @@ export class CameraWrapperPerspective {
         );
       }
 
-      // Always tween near/far if they differ, even slightly
-      if (nearFarDistance > 0.001) {
+      // Only tween near/far independently when camera position isn't changing
+      if (positionDistance === 0 && nearFarDistance > 0.001) {
         this.nearFarTween = this.chit.createTween({ near: currentNear, far: currentFar }, (tween) =>
           tween
             .to({ near: optimalPlanes.near, far: optimalPlanes.far }, duration)
@@ -593,8 +599,7 @@ export class CameraWrapperPerspective {
               this.camera.updateProjectionMatrix();
             }),
         );
-      } else if (nearFarDistance > 0) {
-        // If difference is tiny, just set immediately
+      } else if (positionDistance === 0 && nearFarDistance > 0) {
         this.camera.near = optimalPlanes.near;
         this.camera.far = optimalPlanes.far;
         this.camera.updateProjectionMatrix();

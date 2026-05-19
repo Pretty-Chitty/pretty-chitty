@@ -74,7 +74,6 @@ export class LightWrapper {
         l.shadow.camera.right = 0.1;
         l.shadow.camera.top = 0.1;
         l.shadow.camera.bottom = -0.1;
-        l.shadow.camera.near = 0.000001;
         this.group.add(l);
       }
 
@@ -147,6 +146,26 @@ export class LightWrapper {
     camera.right = Math.max(right, b.max.x);
     camera.bottom = Math.min(bottom, b.min.y);
     camera.top = Math.max(top, b.max.y);
+
+    const lDist = light.position.length();
+    if (lDist > 0) {
+      const lightDir = light.position.clone().normalize();
+      let minDepth = Infinity;
+      let maxDepth = -Infinity;
+      [this.bbox.min.x, this.bbox.max.x].forEach((x) =>
+        [this.bbox.min.y, this.bbox.max.y].forEach((y) =>
+          [this.bbox.min.z, this.bbox.max.z].forEach((z) => {
+            const depth = lDist - (x * lightDir.x + y * lightDir.y + z * lightDir.z);
+            minDepth = Math.min(minDepth, depth);
+            maxDepth = Math.max(maxDepth, depth);
+          }),
+        ),
+      );
+      const margin = Math.max(1, (maxDepth - minDepth) * 0.1);
+      camera.near = Math.max(0.1, minDepth - margin);
+      camera.far = maxDepth + margin;
+    }
+
     camera.updateProjectionMatrix();
   }
 }
