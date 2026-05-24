@@ -7,11 +7,14 @@ export class PlayerCanvas extends ParameterizedCanvas {
   width = 50;
   height = 50;
 
-  constructor(private player: PlayerChit) {
+  constructor(
+    private player: PlayerChit,
+    private colorBlend?: number,
+  ) {
     super();
   }
 
   protected render() {
-    return <Player player={this.player} />;
+    return <Player player={this.player} colorBlend={this.colorBlend} />;
   }
 }

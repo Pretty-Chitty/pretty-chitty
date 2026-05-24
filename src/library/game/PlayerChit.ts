@@ -33,12 +33,16 @@ export class PlayerChit extends Chit {
   public get panelTab() {
     return {
       color: this.color,
-      icon: new PlayerCanvas(this).get(),
+      icon: new PlayerCanvas(this, this.colorBlend).get(),
     };
   }
 
   public get icon() {
-    return new PlayerCanvas(this).get();
+    return new PlayerCanvas(this, this.colorBlend).get();
+  }
+
+  public get colorBlend() {
+    return 0;
   }
 
   public get logKey() {

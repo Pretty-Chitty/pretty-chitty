@@ -397,6 +397,10 @@ export class Player extends PlayerChit {
     return [this.counter, this.counter2];
   }
 
+  get colorBlend() {
+    return 0.6;
+  }
+
   override render(spec: ChitRenderSpec): void {
     spec.worthSlidingToPanelToShowChange = false;
 

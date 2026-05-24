@@ -39,6 +39,9 @@ export class CanvasStack implements IUpdatingCanvas {
   private static imageCache = new ImageCache(50); // 50? Is that good? No idea.
   private _outlets: { [id: string]: Coord } = {};
 
+  private _mipCanvases: HTMLCanvasElement[] = [];
+  private _mipContexts: CanvasRenderingContext2D[] = [];
+
   public createdAt = Date.now();
 
   public get hasBuiltTexture(): boolean {
@@ -90,6 +93,7 @@ export class CanvasStack implements IUpdatingCanvas {
         this._outlets[id] = coords;
       },
     );
+    this._renderMipCanvases();
     this.cbs.forEach((cb) => cb());
   }
 
@@ -98,6 +102,8 @@ export class CanvasStack implements IUpdatingCanvas {
     this.canvas!.title = `Disposed, mat ${this._material?.uuid} texture ${this._texture?.uuid}`;
     this.canvas = undefined;
     this.context = undefined;
+    this._mipCanvases = [];
+    this._mipContexts = [];
     CanvasStack._liveStacks.delete(this);
 
     if (this._material) {
@@ -114,6 +120,7 @@ export class CanvasStack implements IUpdatingCanvas {
     public width: number,
     public height: number,
     public operation: CanvasOperation,
+    private _mipLevelsOverride?: number,
   ) {
     this.canvas = document.createElement("canvas");
     this.canvas.width = width;
@@ -129,6 +136,56 @@ export class CanvasStack implements IUpdatingCanvas {
     CanvasStack.ensureContextRestoreSubscription();
 
     this.render();
+    this._initMipCanvases();
+  }
+
+  get mipMaps(): number {
+    if (this._mipLevelsOverride !== undefined) return this._mipLevelsOverride;
+    return this.operation.benefitsFromMipMap() ? 2 : 0;
+  }
+
+  private _initMipCanvases() {
+    this._mipCanvases = [];
+    this._mipContexts = [];
+    // Build the full mipmap chain down to 1×1. WebGL requires a complete chain
+    // when using a mipmap filter — a partial chain makes the texture incomplete
+    // and WebGL renders it as transparent.
+    let w = this.width;
+    let h = this.height;
+    while (w > 1 || h > 1) {
+      w = Math.max(1, Math.floor(w / 2));
+      h = Math.max(1, Math.floor(h / 2));
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      this._mipCanvases.push(c);
+      this._mipContexts.push(c.getContext("2d")!);
+    }
+    this._renderMipCanvases();
+  }
+
+  private _renderMipCanvases() {
+    const noop = () => {};
+    const numCustomLevels = this.mipMaps;
+    for (let i = 0; i < this._mipCanvases.length; i++) {
+      const ctx = this._mipContexts[i];
+      const c = this._mipCanvases[i];
+      if (i < numCustomLevels) {
+        // Custom render: canvas scale so text is rasterized natively at the
+        // smaller effective size rather than downsampled from the base canvas.
+        const scale = c.width / this.width;
+        ctx.save();
+        ctx.scale(scale, scale);
+        ctx.clearRect(0, 0, this.width, this.height);
+        this.operation.render(ctx, { x: 0, y: 0, w: this.width, h: this.height }, this.loadUrl.bind(this), noop);
+        ctx.restore();
+      } else {
+        // Complete the chain by box-filtering down from the previous level.
+        const prev = i === 0 ? this.canvas! : this._mipCanvases[i - 1];
+        ctx.clearRect(0, 0, c.width, c.height);
+        ctx.drawImage(prev, 0, 0, c.width, c.height);
+      }
+    }
   }
 
   private static _liveStacks: Set<CanvasStack> = new Set();
@@ -175,18 +232,35 @@ export class CanvasStack implements IUpdatingCanvas {
     }
 
     if (!this._texture) {
-      // WebGL1 only supports mipmaps on power-of-two textures, and these
-      // canvases are arbitrarily sized. Skip mipmap generation outside WebGL2.
-      const useMipmaps = getWebGlRendererInstance()?.isWebGL2 ?? false;
-      this._texture = new Texture(
-        this.canvas,
-        UVMapping,
-        ClampToEdgeWrapping,
-        ClampToEdgeWrapping,
-        LinearFilter,
-        useMipmaps ? LinearMipmapLinearFilter : LinearFilter,
-      );
-      this._texture.generateMipmaps = useMipmaps;
+      const wrapper = getWebGlRendererInstance();
+      if (this.mipMaps > 0) {
+        this._texture = new Texture(
+          this.canvas,
+          UVMapping,
+          ClampToEdgeWrapping,
+          ClampToEdgeWrapping,
+          LinearFilter,
+          LinearMipmapLinearFilter,
+        );
+        this._texture.generateMipmaps = false;
+        // mipmaps[i] is uploaded as WebGL level i. Level 0 must be the base
+        // canvas; levels 1..N are the custom-rendered smaller canvases.
+        // Rendering text natively at each mip size is sharper than GPU box-filtering.
+        this._texture.mipmaps = [this.canvas, ...this._mipCanvases];
+      } else {
+        // WebGL1 only supports mipmaps on power-of-two textures, and these
+        // canvases are arbitrarily sized. Skip mipmap generation outside WebGL2.
+        this._texture = new Texture(
+          this.canvas,
+          UVMapping,
+          ClampToEdgeWrapping,
+          ClampToEdgeWrapping,
+          LinearFilter,
+          LinearMipmapLinearFilter,
+        );
+        this._texture.generateMipmaps = true;
+      }
+      this._texture.anisotropy = wrapper?.maxAnisotropy ?? 1;
       this._texture.needsUpdate = true;
       this._texture.colorSpace = SRGBColorSpace;
 

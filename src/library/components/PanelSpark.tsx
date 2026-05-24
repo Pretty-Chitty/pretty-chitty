@@ -71,7 +71,7 @@ export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; c
     backgroundColor = Color(color).lighten(0.3).hex();
   }
 
-  if (Color(backgroundColor).lightness() < 30) {
+  if (Color(backgroundColor).lightness() < 40) {
     foregroundColor = Color(foregroundColor).lightness(80).hex();
   } else {
     foregroundColor = Color(foregroundColor).lightness(10).hex();

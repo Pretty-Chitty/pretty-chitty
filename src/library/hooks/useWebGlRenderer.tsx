@@ -51,11 +51,8 @@ class WebGLRendererWrapper {
     const gl = this.renderer.getContext();
     this.memoryExtension = gl.getExtension("WEBGL_debug_renderer_info");
     this.loseContextExt = gl.getExtension("WEBGL_lose_context");
-    this.isWebGL2 =
-      typeof WebGL2RenderingContext !== "undefined" &&
-      gl instanceof WebGL2RenderingContext;
+    this.isWebGL2 = typeof WebGL2RenderingContext !== "undefined" && gl instanceof WebGL2RenderingContext;
 
-    this.renderer.setPixelRatio(this.pixelRatio);
     this.renderer.shadowMap.enabled = true;
     this.renderer.setClearColor(0xffffff, 1.0);
 
@@ -115,7 +112,6 @@ class WebGLRendererWrapper {
     this._restoreScheduled = false;
 
     // Re-apply renderer state
-    this.renderer.setPixelRatio(this.pixelRatio);
     this.renderer.shadowMap.enabled = true;
     this.renderer.setClearColor(0xffffff, 1.0);
     this.renderer.setScissorTest(true);
@@ -186,6 +182,10 @@ class WebGLRendererWrapper {
     return this._contextLost;
   }
 
+  get maxAnisotropy(): number {
+    return this.renderer.capabilities.getMaxAnisotropy();
+  }
+
   onDirty(cb: () => void): () => void {
     this._dirtyCallbacks.add(cb);
     return () => this._dirtyCallbacks.delete(cb);
@@ -222,7 +222,9 @@ class WebGLRendererWrapper {
 
       const composer = new EffectComposer(this.renderer, width, height);
       const renderPass = new RenderPass();
-      const outlinePass = new IDBasedOutlinePass(new Vector2(width, height), this.pixelRatio);
+      // width/height are already physical pixels; pixelRatio=1 so the pass
+      // doesn't scale them again when creating its internal render targets.
+      const outlinePass = new IDBasedOutlinePass(new Vector2(width, height), 1);
       const outputPass = new OutputPass();
 
       // Configure transparency
@@ -319,12 +321,27 @@ class WebGLRendererWrapper {
     }
   }
 
-  render(sceneWrapper: SceneWrapper, camera: Camera, context2d: CanvasRenderingContext2D, theme: GameTheme, viewerId?: string): boolean {
+  render(
+    sceneWrapper: SceneWrapper,
+    camera: Camera,
+    context2d: CanvasRenderingContext2D,
+    theme: GameTheme,
+    viewerId?: string,
+  ): boolean {
     if (this._contextLost) {
-      // Still lost — keep trying to restore. The previous attempt may have used
-      // the setSize fallback that doesn't always trigger `webglcontextrestored`.
-      this.maybeScheduleRestore();
-      return false;
+      // On some mobile browsers (Android Chrome, iOS Safari) the context may be
+      // silently restored after a screen lock without firing `webglcontextrestored`.
+      // Detect this by checking the actual GL state instead of relying on the event.
+      const glCheck = this.renderer.getContext();
+      if (glCheck && !glCheck.isContextLost()) {
+        this.handleContextRestored();
+        // fall through to render
+      } else {
+        // Still lost — keep trying to restore. The previous attempt may have used
+        // the setSize fallback that doesn't always trigger `webglcontextrestored`.
+        this.maybeScheduleRestore();
+        return false;
+      }
     }
 
     // Detect silent context loss — on some Android WebViews the `webglcontextlost`
@@ -337,11 +354,11 @@ class WebGLRendererWrapper {
       return false;
     }
 
+    // Use physical pixel dimensions directly — Viewer.tsx is responsible for
+    // passing a canvas sized at the correct physical resolution.
     const canvas = context2d.canvas;
-    const width = Math.floor(canvas.width / this.pixelRatio);
-    const height = Math.floor(canvas.height / this.pixelRatio);
-    const targetWidth = Math.ceil(width * this.pixelRatio);
-    const targetHeight = Math.ceil(height * this.pixelRatio);
+    const width = canvas.width;
+    const height = canvas.height;
 
     // Ensure renderer can accommodate this size
     this.ensureRendererSize(width, height, viewerId);
@@ -353,8 +370,8 @@ class WebGLRendererWrapper {
     entry.referenceCount++;
 
     try {
-      // Set scissor to render only to target region
-      this.renderer.setScissor(0, 0, targetWidth, targetHeight);
+      // Set scissor and viewport in physical pixels (pixelRatio=1 on the renderer).
+      this.renderer.setScissor(0, 0, width, height);
       this.renderer.setViewport(0, 0, width, height);
 
       // Clear *depth only* in this panel's scissor region before composer.render().
@@ -383,18 +400,21 @@ class WebGLRendererWrapper {
         return false;
       }
 
-      // Copy the rendered result to the 2D canvas
+      // Copy the rendered result to the 2D canvas.
+      // WebGL origin is bottom-left; canvas/DOM is top-left. When the renderer
+      // is larger than this viewer (multi-viewer sharing), the rendered region
+      // sits at the bottom of the WebGL canvas, so offset by the difference.
       const webglCanvas = this.renderer.domElement;
       context2d.drawImage(
         webglCanvas,
         0,
-        webglCanvas.height - targetHeight, // Invert Y axis
-        targetWidth,
-        targetHeight, // Source width, height
+        webglCanvas.height - height, // Y-flip for bottom-left WebGL origin
+        width,
+        height,
         0,
-        0, // Dest x, y
-        targetWidth,
-        targetHeight, // Dest width, height
+        0,
+        width,
+        height,
       );
       return true;
     } finally {

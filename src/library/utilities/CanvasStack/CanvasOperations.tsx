@@ -16,6 +16,8 @@ export abstract class CanvasOperation {
     getImage: GetImage,
     reportOutlet: ReportOutlet,
   ): void;
+
+  abstract benefitsFromMipMap(): boolean;
 }
 
 export type RenderCallback = (context: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => void;
@@ -23,6 +25,10 @@ export type RenderCallback = (context: CanvasRenderingContext2D, x: number, y: n
 export class LayeredCanvasOperation extends CanvasOperation {
   constructor(private layers: CanvasOperation[]) {
     super();
+  }
+
+  override benefitsFromMipMap() {
+    return this.layers.some((l) => l.benefitsFromMipMap());
   }
 
   override render(
@@ -41,6 +47,10 @@ export class ColorCanvasOperation extends CanvasOperation {
     private opacity: number = 1,
   ) {
     super();
+  }
+
+  override benefitsFromMipMap() {
+    return false;
   }
 
   override render(
@@ -67,6 +77,10 @@ export class VerticalStackCanvasOperation extends CanvasOperation {
     super();
   }
 
+  override benefitsFromMipMap() {
+    return this.items.some((i) => i.layer?.benefitsFromMipMap() ?? false);
+  }
+
   override render(
     context: CanvasRenderingContext2D,
     bounds: RenderBounds,
@@ -88,6 +102,10 @@ export class VerticalStackCanvasOperation extends CanvasOperation {
 export class HorizontalStackCanvasOperation extends CanvasOperation {
   constructor(private items: Array<StackItem>) {
     super();
+  }
+
+  override benefitsFromMipMap() {
+    return this.items.some((i) => i.layer?.benefitsFromMipMap() ?? false);
   }
 
   override render(
@@ -116,6 +134,10 @@ export class OutletCanvasOperation extends CanvasOperation {
     super();
   }
 
+  override benefitsFromMipMap() {
+    return this.child.benefitsFromMipMap();
+  }
+
   override render(
     context: CanvasRenderingContext2D,
     bounds: RenderBounds,
@@ -140,6 +162,10 @@ export class PadCanvasOperation extends CanvasOperation {
     private item: CanvasOperation,
   ) {
     super();
+  }
+
+  override benefitsFromMipMap() {
+    return this.item.benefitsFromMipMap();
   }
 
   override render(
@@ -188,6 +214,10 @@ export class MarkdownCanvasOperation extends CanvasOperation {
     private params: RichTextRenderOptionsParameters,
   ) {
     super();
+  }
+
+  override benefitsFromMipMap() {
+    return true;
   }
 
   public height = 0;
@@ -250,6 +280,10 @@ export class TextCanvasOperation extends CanvasOperation {
     private options: TextOptions,
   ) {
     super();
+  }
+
+  override benefitsFromMipMap() {
+    return true;
   }
 
   private makeFont(): string {
@@ -379,6 +413,10 @@ export class ImageCanvasOperation extends CanvasOperation {
     private options: ImageOptions,
   ) {
     super();
+  }
+
+  override benefitsFromMipMap() {
+    return false;
   }
 
   draw(
@@ -554,17 +592,7 @@ export class ImageCanvasOperation extends CanvasOperation {
       if (swiF > inset * 2 && shiF > inset * 2) {
         const prevSmoothing = context.imageSmoothingEnabled;
         context.imageSmoothingEnabled = false;
-        context.drawImage(
-          source as any,
-          sxiF + inset,
-          syiF + inset,
-          swiF - inset * 2,
-          shiF - inset * 2,
-          x,
-          y,
-          w,
-          h,
-        );
+        context.drawImage(source as any, sxiF + inset, syiF + inset, swiF - inset * 2, shiF - inset * 2, x, y, w, h);
         context.imageSmoothingEnabled = prevSmoothing;
       }
     }
@@ -592,8 +620,15 @@ export class ImageCanvasOperation extends CanvasOperation {
 }
 
 export class PlayerCanvasOperation extends CanvasOperation {
-  constructor(private player: PlayerChit) {
+  constructor(
+    private player: PlayerChit,
+    private colorBlend: number = 0,
+  ) {
     super();
+  }
+
+  override benefitsFromMipMap() {
+    return false;
   }
 
   drawFill(context: CanvasRenderingContext2D, bounds: RenderBounds, sourceImage: HTMLImageElement) {
@@ -611,17 +646,44 @@ export class PlayerCanvasOperation extends CanvasOperation {
       sh = sourceImage.height;
 
     if (targetAspect > sourceAspect) {
-      // Target is wider than source; adjust source height and y to maintain aspect ratio
       sh = sw / targetAspect;
-      sy += (sourceImage.height - sh) / 2; // Center vertically in source
+      sy += (sourceImage.height - sh) / 2;
     } else {
-      // Target is taller than source; adjust source width and x to maintain aspect ratio
       sw = sh * targetAspect;
-      sx += (sourceImage.width - sw) / 2; // Center horizontally in source
+      sx += (sourceImage.width - sw) / 2;
     }
 
+    if (this.colorBlend < 1) {
+      context.globalAlpha = 1 - this.colorBlend;
+      context.drawImage(sourceImage, sx, sy, sw, sh, x, y, w, h);
+    }
+
+    if (this.colorBlend <= 0) return;
+
+    // Build tinted version on an offscreen canvas using composite blend modes
+    const pw = Math.ceil(w),
+      ph = Math.ceil(h);
+    const offscreen = document.createElement("canvas");
+    offscreen.width = pw;
+    offscreen.height = ph;
+    const offCtx = offscreen.getContext("2d")!;
+
+    // Grayscale + slight contrast boost via CSS filter
+    offCtx.filter = "grayscale(1) contrast(2)";
+    offCtx.drawImage(sourceImage, sx, sy, sw, sh, 0, 0, pw, ph);
+    offCtx.filter = "none";
+
+    // For dark player colors, screen blend makes dark areas take the color while whites stay white.
+    // For light player colors, multiply blend makes white areas take the color while blacks stay black.
+    offCtx.globalCompositeOperation = Colors.default(this.player.color).lightness() < 40 ? "screen" : "multiply";
+    offCtx.fillStyle = this.player.color;
+    offCtx.fillRect(0, 0, pw, ph);
+    offCtx.globalCompositeOperation = "source-over";
+
+    // Overlay the tinted version at colorBlend strength
+    context.globalAlpha = this.colorBlend;
+    context.drawImage(offscreen, x, y, w, h);
     context.globalAlpha = 1;
-    context.drawImage(sourceImage, sx, sy, sw, sh, x, y, w, h);
   }
 
   override render(
@@ -648,6 +710,10 @@ export class CallbackCanvasOperation extends CanvasOperation {
     super();
   }
 
+  override benefitsFromMipMap() {
+    return false;
+  }
+
   override render(
     context: CanvasRenderingContext2D,
     bounds: RenderBounds,
@@ -668,6 +734,10 @@ export class RoundedRectCanvasOperation extends CanvasOperation {
     private radius: number,
   ) {
     super();
+  }
+
+  override benefitsFromMipMap() {
+    return this.children.some((c) => c.benefitsFromMipMap());
   }
 
   override render(

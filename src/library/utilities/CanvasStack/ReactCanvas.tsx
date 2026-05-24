@@ -206,8 +206,8 @@ export function Image({
  * @param args
  * @returns
  */
-export function Player({ player }: { player: PlayerChit }) {
-  return <WrappedCanvasOperation operation={new PlayerCanvasOperation(player)} />;
+export function Player({ player, colorBlend }: { player: PlayerChit; colorBlend?: number }) {
+  return <WrappedCanvasOperation operation={new PlayerCanvasOperation(player, colorBlend)} />;
 }
 
 /**

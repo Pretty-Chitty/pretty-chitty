@@ -40,6 +40,10 @@ export abstract class ParameterizedCanvas extends ObjectWithProps {
       .join("___")}`;
   }
 
+  protected get mipLevels(): number | undefined {
+    return undefined;
+  }
+
   get(): IUpdatingCanvas {
     const signature = this.signature();
     let result = ParameterizedCanvas.lu[signature];
@@ -48,7 +52,7 @@ export abstract class ParameterizedCanvas extends ObjectWithProps {
       result = ParameterizedCanvas.lu[signature] = (() => {
         try {
           const ops = this.render();
-          return new CanvasStack(this.width, this.height, unwrapCanvasNode(ops));
+          return new CanvasStack(this.width, this.height, unwrapCanvasNode(ops), this.mipLevels);
         } catch (e) {
           console.error(e);
           return new CanvasStack(this.width, this.height, new LayeredCanvasOperation([]));
