@@ -94,6 +94,16 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private dirtyChitIds = new Set<string>();
   private pendingNewChits = new Set<Chit>();
   private _statePool?: Map<string, string>;
+  private _serializeCache?: SerializeCache;
+
+  /**
+   * Drop any cached serialize() reconstruction on this turn and every ancestor,
+   * since their snapshots include our contribution.
+   */
+  private invalidateSerializeCache() {
+    this._serializeCache = undefined;
+    this.parent?.invalidateSerializeCache();
+  }
 
   private get statePool(): Map<string, string> {
     if (this.parent) return this.parent.statePool;
@@ -305,8 +315,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     }
 
     if (hasChange) {
+      // Pops and in-place merges can leave any cached walk pointing into invalid territory.
+      this.invalidateSerializeCache();
       this.pass++;
-      this.flush(true);
+      // No trailing force-flush: it would only push an empty FlushClockStep (no chit
+      // diff, no log) that the client has to walk through for no visual change. The
+      // bumped `pass` is read live from `clockDetails` on the next notify.
     }
   }
 
@@ -360,7 +374,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
     }
 
-    // 2. Serialize only dirty chits
+    // 2. Serialize only dirty chits. `newStates` now stores only the diff against the
+    // previous flush — unchanged-after-dirty-check chits are dropped from the step.
     for (const id of this.dirtyChitIds) {
       const chit = this.chitLookup[id];
       if (!chit) continue;
@@ -369,20 +384,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       if (serialized !== lastState) {
         this.lastChitStates[id] = newStates[id] = serialized;
         sawChange = true;
-      } else {
-        newStates[id] = serialized;
       }
     }
     this.dirtyChitIds.clear();
 
-    // 4. Carry forward all non-dirty chit states
-    for (const id of Object.keys(this.lastChitStates)) {
-      if (newStates[id] === undefined) {
-        newStates[id] = this.lastChitStates[id];
-      }
-    }
-
-    // 5. Detect deleted chits — orphans in lastChitStates that weren't serialized above
+    // 3. Detect deleted chits — orphans in lastChitStates that weren't serialized above
     const deletedRoots: Chit[] = [];
     for (const id of Object.keys(this.lastChitStates)) {
       if (this.lastChitStates[id] === Chit.deletedIfSerialized()) continue;
@@ -416,6 +422,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
 
       this.clockSteps.push(new FlushClockStep(this.clock, newStates));
+      // Ancestors' caches included our prior contribution; the new step makes them stale.
+      this.parent?.invalidateSerializeCache();
     }
   }
 
@@ -479,6 +487,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
       lastStep.turns.push(turn);
     }
+    // Either case mutates a step our own cache (or an ancestor's) may have already walked past.
+    this.invalidateSerializeCache();
 
     this.activeSubTurns.push(turn);
 
@@ -501,8 +511,25 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     });
 
     this.lastChitStates = { ...this.lastChitStates, ...turn.lastChitStates };
+    turn.releasePostAbsorptionRefs();
 
     return result;
+  }
+
+  /**
+   * Called by the parent right after it has absorbed our `chitLookup` and `lastChitStates`.
+   * After this we will only ever be walked via `serialize` / `chitsHistory` / `gameLog`,
+   * which only need `clockSteps` and `lockedChitStates` — so drop the heavy per-chit
+   * bookkeeping to keep finished sub-turns from pinning hundreds of chit references.
+   * @internal
+   */
+  private releasePostAbsorptionRefs() {
+    this.chitLookup = {};
+    this.chitsToLock = [];
+    this.lastChitStates = {};
+    this.pendingNewChits.clear();
+    this.dirtyChitIds.clear();
+    this._serializeCache = undefined;
   }
 
   public async runParallelTurns<A>(
@@ -761,31 +788,6 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     return result;
   }
 
-  private findIndexOfLastFlushStepBefore(clock: number): number {
-    for (let j = this.clockSteps.length - 1; j >= 0; j--) {
-      if (this.clockSteps[j] instanceof FlushClockStep && this.clockSteps[j].startClock < clock) {
-        return j;
-      }
-    }
-    return 0;
-  }
-  private findIndexOfLastFlushStepWithLogMessageBefore(clock: number): number {
-    for (let j = this.clockSteps.length - 1; j >= 0; j--) {
-      if (
-        this.clockSteps[j] instanceof FlushClockStep &&
-        this.clockSteps[j].startClock < clock &&
-        (this.clockSteps[j] as FlushClockStep).log
-      ) {
-        return j;
-      }
-      if (this.clockSteps[j].startClock < clock && this.clockSteps[j] instanceof SubTurnsClockStep) {
-        // logs cannot be inside subturns
-        break;
-      }
-    }
-    return -1;
-  }
-
   /** @internal */
   chitsHistory(playerId: string, ids: string[]): ChitHistoryResponse {
     const result: ChitHistoryResponse = {};
@@ -802,6 +804,15 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         });
       }
     };
+
+    // Seed with the initial locked state so chits that never diff in this turn still
+    // surface their starting form (flush steps now hold diffs only).
+    ids.forEach((id) => {
+      const initial = this.lockedChitStates[id];
+      if (initial !== undefined) {
+        appendLog(id, 0, initial);
+      }
+    });
 
     this.clockSteps.forEach((step) => {
       if (step instanceof FlushClockStep) {
@@ -824,51 +835,51 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   serialize(playerId: string, clock: number): ChitSerializationResponse {
     clock = Math.max(0, Math.min(clock, this.playerVisibleClockTime(playerId)));
 
-    let chits = {};
-    let resultingClock = -1;
-
-    // going forwards
-    let index = this.findIndexOfLastFlushStepBefore(clock);
-    const lastLogIndex = this.findIndexOfLastFlushStepWithLogMessageBefore(clock);
-
-    // set up logs
+    let chits: ChitStateLookup;
+    let subTurns: { [turnId: string]: ClockDetails } | undefined;
     let log: LogMessageSerializationResponse | undefined;
-    if (lastLogIndex >= 0) {
-      const messageStep = this.clockSteps[lastLogIndex] as FlushClockStep;
-      log = {
-        message: messageStep.log!,
-        clock: messageStep.startClock,
-      };
+    let resultingClock: number;
+    let index: number;
+
+    const cache = this._serializeCache;
+    if (cache && cache.playerId === playerId && clock >= cache.resultingClock) {
+      chits = { ...cache.chits };
+      subTurns = cache.subTurns ? { ...cache.subTurns } : undefined;
+      log = cache.log ? { ...cache.log } : undefined;
+      resultingClock = cache.resultingClock;
+      index = cache.nextIndex;
+    } else {
+      // Diff-replay: seed with the initial locked snapshot and merge every flush diff
+      // up to (but not including) the target clock.
+      chits = { ...this.lockedChitStates };
+      subTurns = undefined;
+      log = undefined;
+      resultingClock = -1;
+      index = 0;
     }
-    let subTurns: { [turnId: string]: ClockDetails } | undefined = undefined;
 
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    let cacheable = true;
+    while (index < this.clockSteps.length) {
       const clockStep = this.clockSteps[index];
-      index++;
-      if (!clockStep) {
-        break;
-      }
-
-      if (clockStep.startClock >= clock) {
-        break;
-      }
+      if (clockStep.startClock >= clock) break;
 
       if (clockStep instanceof FlushClockStep) {
         subTurns = undefined;
-        chits = { ...clockStep.state };
+        Object.assign(chits, clockStep.state);
         resultingClock = clockStep.endClock();
+        if (clockStep.log) {
+          log = { message: clockStep.log, clock: clockStep.startClock };
+        }
+        index++;
       } else if (clockStep instanceof SubTurnsClockStep) {
         subTurns = {};
         resultingClock = clockStep.startClock;
         let remainingClocksToSpend = clock - clockStep.startClock;
         for (const turn of clockStep.visibleTurns(playerId)) {
           const time = Math.max(remainingClocksToSpend, 0);
-          if (time <= 0) {
-            break;
-          }
+          if (time <= 0) break;
 
-          // we are going forward so we never want to have a turn go backwards.  ever.
+          // we are going forward so we never want to have a turn go backwards. ever.
           const serialized = turn.serialize(playerId, time);
           Object.assign(chits, serialized.chits);
 
@@ -876,11 +887,33 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           remainingClocksToSpend -= serialized.clockDetails.clock;
           subTurns[turn.id] = serialized.clockDetails;
           if (serialized.log) {
-            log = serialized.log;
-            log.clock += clockStep.startClock;
+            log = { message: serialized.log.message, clock: serialized.log.clock + clockStep.startClock };
           }
         }
+        // We can only advance `index` past this step (and cache from here) if the
+        // requested `clock` consumed this step's *entire* extent — i.e. every visible
+        // sub-turn was asked for at least its full clock time. Otherwise a future
+        // request at a higher `clock` needs to re-ask the sub-turn for more time,
+        // which means re-processing this same step.
+        if (clock < clockStep.endClock(playerId)) {
+          cacheable = false;
+          break;
+        }
+        index++;
+      } else {
+        index++;
       }
+    }
+
+    if (cacheable) {
+      this._serializeCache = {
+        playerId,
+        nextIndex: index,
+        chits: { ...chits },
+        subTurns: subTurns ? { ...subTurns } : undefined,
+        log: log ? { ...log } : undefined,
+        resultingClock: resultingClock === -1 ? clock : resultingClock,
+      };
     }
 
     return {
@@ -1202,6 +1235,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.unresolvedPrompt = undefined;
     this.activeSubTurns = [];
     this.pass++;
+    this.invalidateSerializeCache();
   }
 }
 
@@ -1211,6 +1245,15 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
 type ChitLookup = { [id: string]: Chit };
 type ChitStateLookup = { [id: string]: string };
+
+type SerializeCache = {
+  playerId: string;
+  nextIndex: number;
+  chits: ChitStateLookup;
+  subTurns?: { [turnId: string]: ClockDetails };
+  log?: { message: string; clock: number };
+  resultingClock: number;
+};
 
 abstract class ClockStep {
   abstract get startClock(): number;
