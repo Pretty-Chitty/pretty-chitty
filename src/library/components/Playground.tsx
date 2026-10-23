@@ -21,6 +21,11 @@ import {
   InputLabel,
   IconButton,
   Tooltip,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  FormLabel,
+  Typography,
 } from "@mui/material";
 import { Add, Delete, Refresh, GridOn, PhoneIphone, Tab as TabIcon, Upload, Download, LinkOff } from "@mui/icons-material";
 import useLocalStorageState from "use-local-storage-state";
@@ -37,6 +42,7 @@ import { PlayerProvider } from "../hooks/usePlayer";
 import { LoadingStateProvider, LoadingStates } from "../hooks/useLoadingStates";
 import { RootChit } from "../game/RootChit";
 import { SelectablePropertyInfo } from "../utilities/Annotations";
+import { connectAiPlayer } from "../game/ai/connectAiPlayer";
 
 type Layout = "tile" | "tab" | "phone";
 
@@ -51,6 +57,8 @@ interface SavedMatchInfo {
   playerCount: number;
   matchOptions: any;
   createdAt: number;
+  /** Seat indexes played by AI */
+  aiSeats?: number[];
 }
 
 // Helper functions for match storage
@@ -119,7 +127,7 @@ function NewMatchDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (name: string, playerCount: number, matchOptions: any) => void;
+  onCreate: (name: string, playerCount: number, matchOptions: any, aiSeats: number[]) => void;
   configOptions: SelectablePropertyInfo[];
   minPlayers: number;
   maxPlayers: number;
@@ -129,17 +137,24 @@ function NewMatchDialog({
   const [name, setName] = useState(`Match ${Date.now()}`);
   const [playerCount, setPlayerCount] = useState(defaultPlayerCount);
   const [matchOptions, setMatchOptions] = useState<any>({ ...defaultMatchOptions });
+  const [aiSeats, setAiSeats] = useState<number[]>([]);
 
   useEffect(() => {
     if (open) {
       setName(`Match ${new Date().toLocaleString()}`);
       setPlayerCount(defaultPlayerCount);
       setMatchOptions({ ...defaultMatchOptions });
+      setAiSeats([]);
     }
   }, [open, defaultPlayerCount, defaultMatchOptions]);
 
   const handleCreate = () => {
-    onCreate(name, playerCount, matchOptions);
+    onCreate(
+      name,
+      playerCount,
+      matchOptions,
+      aiSeats.filter((seat) => seat < playerCount),
+    );
     onClose();
   };
 
@@ -173,6 +188,27 @@ function NewMatchDialog({
                 </MenuItem>
               ))}
             </Select>
+          </FormControl>
+          <FormControl component="fieldset">
+            <FormLabel component="legend">AI players</FormLabel>
+            <FormGroup row>
+              {[...new Array(playerCount)].map((_, seat) => (
+                <FormControlLabel
+                  key={seat}
+                  label={generatePlayerName(seat)}
+                  control={
+                    <Checkbox
+                      checked={aiSeats.includes(seat)}
+                      onChange={(e) =>
+                        setAiSeats((prev) =>
+                          e.target.checked ? [...prev, seat] : prev.filter((s) => s !== seat),
+                        )
+                      }
+                    />
+                  }
+                />
+              ))}
+            </FormGroup>
           </FormControl>
           {configOptions.map((option) => (
             <FormControl key={option.fieldName} fullWidth>
@@ -477,9 +513,26 @@ function PlayerEditor({
   );
 }
 
+/** Seats a person plays in the Playground. AI seats play themselves, so they get no view. */
+function humanSeats(match: Match<any, any>) {
+  return match.players.filter((p) => !p.ai);
+}
+
+function NoHumanSeats() {
+  return (
+    <Box sx={{ p: 2 }}>
+      <Typography>Every seat in this match is played by AI, so there is nothing to show.</Typography>
+    </Box>
+  );
+}
+
 function MatchGrid({ match, disconnectSignal }: { match: Match<any, any>; disconnectSignal: number }) {
-  let rows = Math.ceil(Math.sqrt(match.players.length));
-  let columns = Math.ceil(match.players.length / rows);
+  const seats = humanSeats(match);
+  if (seats.length === 0) {
+    return <NoHumanSeats />;
+  }
+  let rows = Math.ceil(Math.sqrt(seats.length));
+  let columns = Math.ceil(seats.length / rows);
 
   if (rows > columns) {
     const t = rows;
@@ -487,7 +540,7 @@ function MatchGrid({ match, disconnectSignal }: { match: Match<any, any>; discon
     columns = t;
   }
 
-  const playerRows = match.players.reduce((acc: PlayerInfo[][], player, i) => {
+  const playerRows = seats.reduce((acc: PlayerInfo[][], player, i) => {
     const rowIndex = Math.floor(i / columns);
     acc[rowIndex] ??= [];
     acc[rowIndex].push(player);
@@ -512,7 +565,11 @@ function MatchTabs({ match, disconnectSignal }: { match: Match<any, any>; discon
   const [tabIndex, setTabIndex] = useLocalStorageState("selectedPlayerIndex", {
     defaultValue: 0,
   });
-  if (tabIndex >= match.players.length && tabIndex > 0) {
+  const seats = humanSeats(match);
+  if (seats.length === 0) {
+    return <NoHumanSeats />;
+  }
+  if (tabIndex >= seats.length && tabIndex > 0) {
     setTabIndex(0);
     return null;
   }
@@ -526,12 +583,12 @@ function MatchTabs({ match, disconnectSignal }: { match: Match<any, any>; discon
         textColor="inherit"
         variant="fullWidth"
       >
-        {match.players.map((p) => (
+        {seats.map((p) => (
           <Tab label={p.name} key={p.id} />
         ))}
       </Tabs>
       <Box flex={1} sx={{ height: "100%" }}>
-        {[match.players[tabIndex].id].map((id) => (
+        {[seats[tabIndex].id].map((id) => (
           <PlayerEditor key={id} playerId={id} match={match} disconnectSignal={disconnectSignal} />
         ))}
       </Box>
@@ -540,10 +597,14 @@ function MatchTabs({ match, disconnectSignal }: { match: Match<any, any>; discon
 }
 
 function MatchPhone({ match, disconnectSignal }: { match: Match<any, any>; disconnectSignal: number }) {
+  const seats = humanSeats(match);
+  if (seats.length === 0) {
+    return <NoHumanSeats />;
+  }
   return (
     <Box sx={{ height: "100%", width: "100%", overflow: "scroll" }}>
-      <Stack direction={"row"} sx={{ width: `${390 * match.players.length}px` }}>
-        {match.players.map((p) => (
+      <Stack direction={"row"} sx={{ width: `${390 * seats.length}px` }}>
+        {seats.map((p) => (
           <Box key={p.id} sx={{ width: `390px`, height: "684px" }}>
             <PlayerEditor showBack playerId={p.id} match={match} disconnectSignal={disconnectSignal} />
           </Box>
@@ -575,21 +636,27 @@ function Editor({
 
     const players: PlayerInfo[] = [];
     for (let i = 0; i < matchInfo.playerCount; i++) {
-      players.push(new PlayerInfo(`p${i}`, generatePlayerName(i)));
+      const isAi = matchInfo.aiSeats?.includes(i);
+      const player = new PlayerInfo(`p${i}`, isAi ? `${generatePlayerName(i)} (AI)` : generatePlayerName(i));
+      player.ai = isAi ? {} : undefined;
+      players.push(player);
     }
 
     const newMatch = new Match(game, players, newStorage, matchInfo.matchOptions);
     let cancelled = false;
+    let bots: { dispose: () => void }[] = [];
 
     newMatch.load().then(() => {
       if (cancelled) {
         return;
       }
+      bots = players.filter((p) => p.ai).map((p) => connectAiPlayer(newMatch, p.id, { thinkMs: [400, 900] }));
       newMatch.start();
       setMatch(newMatch);
     });
 
     return () => {
+      bots.forEach((bot) => bot.dispose());
       newMatch.dispose();
       cancelled = true;
     };
@@ -693,7 +760,7 @@ export default function Playground({ game }: { game: Game<any, any> }) {
     });
   }, [loadingStates]);
 
-  const handleCreateMatch = (name: string, playerCount: number, matchOptions: any) => {
+  const handleCreateMatch = (name: string, playerCount: number, matchOptions: any, aiSeats: number[]) => {
     const matchId = generateMatchId();
     const newMatchInfo: SavedMatchInfo = {
       matchId,
@@ -701,6 +768,7 @@ export default function Playground({ game }: { game: Game<any, any> }) {
       playerCount,
       matchOptions,
       createdAt: Date.now(),
+      aiSeats,
     };
     saveMatchMeta(gameName, newMatchInfo);
     const matchIds = loadMatchList(gameName);

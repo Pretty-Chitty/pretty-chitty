@@ -51,15 +51,25 @@ export class LocalMatchStorage implements IMatchStorage {
 }
 
 export class EphemeralMatchStorage implements IMatchStorage {
-  constructor(private matchId: string) {}
+  /**
+   * @param lazy Headless runs only (simulations, testbeds): keep a reference to the saved state and
+   * turn it into JSON only when read. Saves get much cheaper (stringifying the whole match on every
+   * change cost ~10% of a headless game), but a read returns the match as it is *now*, not as of the
+   * last save. Off by default: every save is a snapshot.
+   */
+  constructor(
+    private matchId: string,
+    private lazy = false,
+  ) {}
   private onChangeCallbacks: ((state: any) => void)[] = [];
 
-  private state: string = "{}";
+  private state: any = "{}";
 
   async readState(): Promise<any> {
     const result = this.state;
     if (result) {
-      return JSON.parse(result);
+      // A string is a snapshot (or the initial empty state); an object is a lazy reference.
+      return JSON.parse(typeof result === "string" ? result : JSON.stringify(result));
     }
     return null;
   }
@@ -70,7 +80,7 @@ export class EphemeralMatchStorage implements IMatchStorage {
     winners?: PlayerChit[],
     notify = false,
   ): Promise<void> {
-    this.state = JSON.stringify(newState);
+    this.state = this.lazy ? newState : JSON.stringify(newState);
     if (notify) {
       this.notify(newState);
     }

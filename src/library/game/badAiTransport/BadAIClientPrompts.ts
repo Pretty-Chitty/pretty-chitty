@@ -8,6 +8,9 @@ import { PromptSerialization } from "../Prompt";
 import { RootChit } from "../RootChit";
 import { ServerPrompts } from "../serverTransport/ServerPrompts";
 
+/**
+ * @deprecated Random-only bot that can also see hidden state.  Use `connectAiPlayer` instead.
+ */
 export class BadAIClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends ConnectionObject {
   private serverPrompts: ServerPrompts<P, R>;
 

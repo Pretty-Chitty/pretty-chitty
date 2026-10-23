@@ -12,7 +12,7 @@ import { PlayerInfo } from "../game/PlayerInfo";
 import { EphemeralMatchStorage } from "../game/MatchStorage";
 import { PlayerProvider } from "../hooks/usePlayer";
 import { LoadingStateProvider, LoadingStates } from "../hooks/useLoadingStates";
-import { BadAIClientPrompts } from "../game/badAiTransport/BadAIClientPrompts";
+import { connectAiPlayer } from "../game/ai/connectAiPlayer";
 import { RootChit } from "../game/RootChit";
 
 export interface IChitLibrary {
@@ -29,20 +29,15 @@ function PlayerEditor({ playerId, match, showBack }: { showBack?: boolean; playe
     (newConnection.transport as LocalConnectionTransport).connect(newRemoteConnection);
     match.connect(newRemoteConnection, playerId);
 
-    match.players.forEach((p) => {
-      if (p.id !== playerId) {
-        const opponentRemoteConnection = new LocalConnectionTransport();
-        const opponentConnection = new Connection(new LocalConnectionTransport());
-        opponentConnection.register(new BadAIClientPrompts<any, any>(p.id, opponentConnection, match), "ClientPrompts");
-        (opponentConnection.transport as LocalConnectionTransport).connect(opponentRemoteConnection);
-        match.connect(opponentRemoteConnection, p.id);
-      }
-    });
+    const bots = match.players
+      .filter((p) => p.id !== playerId)
+      .map((p) => connectAiPlayer(match, p.id, { thinkMs: [400, 900] }));
 
     setLocalConnection(newConnection);
     setRemoteConnection(newRemoteConnection);
     return () => {
       newConnection.dispose();
+      bots.forEach((bot) => bot.dispose());
     };
   }, [match, playerId]);
 

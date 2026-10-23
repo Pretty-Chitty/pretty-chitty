@@ -8,12 +8,15 @@ import { MismatchError, Turn } from "./Turn";
 
 export type FindChit = (id: string) => Chit;
 export type PickType = "ChitPick" | "ButtonPick" | "DragPick";
+/** Links a pick to a rule in the game's AI (see {@link Pick.ai}). `d` must be JSON and public. */
+export type PickAiTag = { k: string; d?: unknown };
 export type PickSerialization = {
   type: PickType;
   message?: string;
   help?: string;
   details: any;
   context?: string;
+  ai?: PickAiTag;
 };
 
 export abstract class Pick {
@@ -29,6 +32,9 @@ export abstract class Pick {
 
   /** @internal */
   public contextChit?: Chit;
+
+  /** @internal */
+  public aiTag?: PickAiTag;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   /** @internal */
@@ -75,6 +81,18 @@ export abstract class Pick {
     return this;
   }
 
+  /**
+   * Tags this pick so AI players score its options with the rule named `key` in the game's
+   * `ai` (see `defineAi`).  Untagged picks fall back to the AI's `default` rule, or random.
+   * @param key Rule name, e.g. "market.buy"
+   * @param data Optional JSON hint passed to the rule.  It is sent to every client, so it must
+   * only contain information the prompted player is allowed to see.
+   */
+  ai(key: string, data?: unknown): this {
+    this.aiTag = data === undefined ? { k: key } : { k: key, d: data };
+    return this;
+  }
+
   /** @internal */
   serialize(): PickSerialization {
     return {
@@ -83,6 +101,7 @@ export abstract class Pick {
       message: this.messageContents,
       details: this.serializeDetails(),
       context: this.contextChit ? this.contextChit.id : undefined,
+      ai: this.aiTag,
     };
   }
 
@@ -108,6 +127,7 @@ export abstract class Pick {
       p.contextChit = pick.context ? findChit(pick.context) : undefined;
       p.messageContents = pick.message;
       p.helpContents = pick.help;
+      p.aiTag = pick.ai;
       p.deserializeDetails(pick.details, findChit, buttonLibrary);
       return p;
     }

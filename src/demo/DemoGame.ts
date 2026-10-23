@@ -35,6 +35,7 @@ import { table } from "./assets/environment";
 import { cityscape } from "./assets/network_overload";
 import { Bookshelf, ShelfRow, ShelfSpace } from "./Bookshelft";
 import { DragTarget } from "../library/game/Pick";
+import { demoAi } from "./ai";
 
 const theme = GameTheme.withDefaults("#003344", "#ef8354", "#ffeedd");
 theme.dialogBackgroundColor = "#ef8354cc";
@@ -82,6 +83,8 @@ export class DemoGame implements Game<Player, Root> {
   };
   canvasLibrary = CanvasLibrary;
   buttonLibrary = { FlipButton, PassButton, HandButton };
+
+  ai = demoAi;
 
   theme = theme;
 
@@ -180,12 +183,16 @@ export class DemoGame implements Game<Player, Root> {
         await turn.pick([
           new PassButton(() => {
             done = true;
-          }).pick(),
+          })
+            .pick()
+            .ai("demo.stopMoving"),
           Chit.dragPick(pieces.slice(pieces.length - 5, pieces.length), [
             DragTarget.from(pieces, (from, to) => {
               to.add(from);
             }),
-          ]).message("pick a piece to take and put in the bag"),
+          ])
+            .message("pick a piece to take and put in the bag")
+            .ai("demo.move"),
         ]);
         turn.zip();
       }
@@ -206,17 +213,22 @@ export class DemoGame implements Game<Player, Root> {
                 players[0].add(c2);
 
                 turn.amendLog((oldLog) => oldLog + " followed by a new card");
-              }).message(
-                "pick a second piece to take, or if you don't want to, then don't.  it's totally up to you, you can do whatever you want.  I don't really care.  I bet you wish i did, but i don't",
-              ),
+              })
+                .message(
+                  "pick a second piece to take, or if you don't want to, then don't.  it's totally up to you, you can do whatever you want.  I don't really care.  I bet you wish i did, but i don't",
+                )
+                .ai("demo.take"),
               Chit.pick([pieces[0].token2], async (c2: Card2) => {
                 c2.something = 7777;
                 players[0].add(c2);
-              }).message("third thing that causes it to go to another line"),
+              })
+                .message("third thing that causes it to go to another line")
+                .ai("demo.token"),
             ]);
           }
         })
           .message("pick a piece to take")
+          .ai("demo.take")
           .toggleButton(new HandButton())
           .context(pieces[7]),
       );
@@ -237,17 +249,22 @@ export class DemoGame implements Game<Player, Root> {
                 players[0].add(c2);
 
                 turn.amendLog((oldLog) => oldLog + " followed by a new card");
-              }).message(
-                "pick a second piece to take, or if you don't want to, then don't.  it's totally up to you, you can do whatever you want.  I don't really care.  I bet you wish i did, but i don't",
-              ),
+              })
+                .message(
+                  "pick a second piece to take, or if you don't want to, then don't.  it's totally up to you, you can do whatever you want.  I don't really care.  I bet you wish i did, but i don't",
+                )
+                .ai("demo.take"),
               Chit.pick([pieces[0].token2], async (c2: Card2) => {
                 c2.something = 7777;
                 players[0].add(c2);
-              }).message("third thing that causes it to go to another line"),
+              })
+                .message("third thing that causes it to go to another line")
+                .ai("demo.token"),
             ]);
           }
         })
           .message("pick a piece to take")
+          .ai("demo.take")
           .toggleButton(new HandButton())
           .context(pieces[7]),
       );
@@ -262,7 +279,7 @@ export class DemoGame implements Game<Player, Root> {
           c.raised = true;
           // const target = players[Math.floor((await turn.rng()) * players.length)];
           // target.add(c);
-        }),
+        }).ai("demo.raise"),
       );
       // await turn.noValidMoves("You did thing", "bad thing");
     });

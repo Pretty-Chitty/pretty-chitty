@@ -640,14 +640,14 @@ export class Chit extends ObjectWithProps {
       if (rule) {
         if (rule.fields === "all") {
           Object.keys(data)
-            .filter((a) => a !== "id" && !a.startsWith("_") && !data[a].___orderedOutlet)
+            .filter((a) => a !== "id" && !a.startsWith("_") && !data[a]?.___orderedOutlet)
             .forEach((key) => {
               delete data[key];
             });
         } else {
           rule.fields
             .filter((k) => {
-              if (data[k].___orderedOutlet) {
+              if (data[k]?.___orderedOutlet) {
                 throw new Error("Cannot mask ordered outlets");
               }
               return true;

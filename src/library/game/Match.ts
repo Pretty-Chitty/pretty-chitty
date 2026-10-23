@@ -136,8 +136,27 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
     return connection;
   }
 
+  /**
+   * Headless runs only (simulations, testbeds): notify once per event-loop pass on setImmediate
+   * instead of the 0 ms debounce timer, which waits ≥1 ms per change in Node. Every prompt
+   * response waits for the next notification (ServerPrompts.resolvePrompt), so that timer was most
+   * of a simulated game's run time. Off by default: servers and browsers keep the debounce.
+   */
+  public immediateNotify = false;
   private _timeout?: NodeJS.Timeout | number = undefined;
+  private _notifyQueued = false;
   private notify() {
+    if (this.immediateNotify && typeof setImmediate === "function") {
+      // Not a re-deferring debounce: with several bots answering every pass it would never fire,
+      // and the prompt responses waiting on it would stall.
+      if (this._notifyQueued) return;
+      this._notifyQueued = true;
+      setImmediate(() => {
+        this._notifyQueued = false;
+        this.processNotify();
+      });
+      return;
+    }
     clearTimeout(this._timeout);
     this._timeout = setTimeout(() => this.processNotify(), 0);
   }

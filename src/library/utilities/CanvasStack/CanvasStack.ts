@@ -105,6 +105,7 @@ export class CanvasStack implements IUpdatingCanvas {
     this._mipCanvases = [];
     this._mipContexts = [];
     CanvasStack._liveStacks.delete(this);
+    CanvasStack._pendingMips.delete(this);
 
     if (this._material) {
       this._material.dispose();
@@ -136,12 +137,69 @@ export class CanvasStack implements IUpdatingCanvas {
     CanvasStack.ensureContextRestoreSubscription();
 
     this.render();
-    this._initMipCanvases();
+    if (this.mipMaps > 0) CanvasStack.scheduleMips(this);
   }
 
   get mipMaps(): number {
     if (this._mipLevelsOverride !== undefined) return this._mipLevelsOverride;
     return this.operation.benefitsFromMipMap() ? 2 : 0;
+  }
+
+  // Faces with text get hand-drawn mip levels: text rasterised at the small size is sharper than GPU box-filtering.
+  // Building that chain (a canvas per level, down to 1×1) for every face while the table loads is what stalled
+  // phones — Safari queues 2D drawing in its GPU process and the first texture upload waits for all of it (8 s on an
+  // iPhone for ~950 canvases). So every texture starts with GPU-generated mipmaps, and once canvas creation has gone
+  // quiet the faces that benefit get their custom chain a few per frame, swapped in by a re-upload. Plain images
+  // (mipMaps 0) never used the chain: the GPU builds theirs.
+  private static _pendingMips = new Set<CanvasStack>();
+  private static _mipTimer: ReturnType<typeof setTimeout> | undefined;
+  private static _firstPendingAt = 0;
+  private static readonly MIP_QUIET_MS = 1000; // build once no new canvas has appeared for this long…
+  private static readonly MIP_MAX_WAIT_MS = 5000; // …or this long after the first one started waiting
+  private static readonly MIP_FRAME_BUDGET_MS = 6;
+
+  private static scheduleMips(stack: CanvasStack) {
+    if (CanvasStack._pendingMips.size === 0) CanvasStack._firstPendingAt = Date.now();
+    CanvasStack._pendingMips.add(stack);
+    if (CanvasStack._mipTimer) clearTimeout(CanvasStack._mipTimer);
+    const waited = Date.now() - CanvasStack._firstPendingAt;
+    const delay = Math.max(0, Math.min(CanvasStack.MIP_QUIET_MS, CanvasStack.MIP_MAX_WAIT_MS - waited));
+    CanvasStack._mipTimer = setTimeout(() => {
+      CanvasStack._mipTimer = undefined;
+      requestAnimationFrame(CanvasStack.buildPendingMips);
+    }, delay);
+  }
+
+  private static buildPendingMips = () => {
+    const start = performance.now();
+    for (const stack of CanvasStack._pendingMips) {
+      CanvasStack._pendingMips.delete(stack);
+      if (stack.canvas) stack._buildMips();
+      if (performance.now() - start > CanvasStack.MIP_FRAME_BUDGET_MS) break;
+    }
+    if (CanvasStack._pendingMips.size > 0) requestAnimationFrame(CanvasStack.buildPendingMips);
+  };
+
+  private _buildMips() {
+    this._initMipCanvases();
+    if (this._texture) {
+      this._applyMipmaps(this._texture);
+      this._texture.needsUpdate = true;
+      CanvasStack.disposer.notifyChange(this._texture.uuid);
+    }
+  }
+
+  /** Custom levels once the chain is built (same level count as GPU generation, so the re-upload reuses the storage). */
+  private _applyMipmaps(texture: Texture) {
+    if (this._mipCanvases.length > 0) {
+      texture.generateMipmaps = false;
+      // mipmaps[i] is uploaded as WebGL level i. Level 0 must be the base
+      // canvas; levels 1..N are the custom-rendered smaller canvases.
+      texture.mipmaps = [this.canvas!, ...this._mipCanvases];
+    } else {
+      texture.generateMipmaps = true;
+      texture.mipmaps = [];
+    }
   }
 
   private _initMipCanvases() {
@@ -233,33 +291,15 @@ export class CanvasStack implements IUpdatingCanvas {
 
     if (!this._texture) {
       const wrapper = getWebGlRendererInstance();
-      if (this.mipMaps > 0) {
-        this._texture = new Texture(
-          this.canvas,
-          UVMapping,
-          ClampToEdgeWrapping,
-          ClampToEdgeWrapping,
-          LinearFilter,
-          LinearMipmapLinearFilter,
-        );
-        this._texture.generateMipmaps = false;
-        // mipmaps[i] is uploaded as WebGL level i. Level 0 must be the base
-        // canvas; levels 1..N are the custom-rendered smaller canvases.
-        // Rendering text natively at each mip size is sharper than GPU box-filtering.
-        this._texture.mipmaps = [this.canvas, ...this._mipCanvases];
-      } else {
-        // WebGL1 only supports mipmaps on power-of-two textures, and these
-        // canvases are arbitrarily sized. Skip mipmap generation outside WebGL2.
-        this._texture = new Texture(
-          this.canvas,
-          UVMapping,
-          ClampToEdgeWrapping,
-          ClampToEdgeWrapping,
-          LinearFilter,
-          LinearMipmapLinearFilter,
-        );
-        this._texture.generateMipmaps = true;
-      }
+      this._texture = new Texture(
+        this.canvas,
+        UVMapping,
+        ClampToEdgeWrapping,
+        ClampToEdgeWrapping,
+        LinearFilter,
+        LinearMipmapLinearFilter,
+      );
+      this._applyMipmaps(this._texture);
       this._texture.anisotropy = wrapper?.maxAnisotropy ?? 1;
       this._texture.needsUpdate = true;
       this._texture.colorSpace = SRGBColorSpace;

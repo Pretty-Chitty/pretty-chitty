@@ -10,6 +10,9 @@ export interface ConnectionTransport {
 const LOCAL_LATENCY_SIMULATION = 50;
 
 export class LocalConnectionTransport implements ConnectionTransport {
+  /** @param latencyMs Max simulated latency per message (each message waits a random 0..latencyMs) */
+  constructor(private latencyMs: number = LOCAL_LATENCY_SIMULATION) {}
+
   disposed = false;
   public connected = new EventChannel(false);
   private cbs: ((message: any) => void)[] = [];
@@ -46,7 +49,13 @@ export class LocalConnectionTransport implements ConnectionTransport {
         this.connectedTransport.cbs.forEach((cb) => cb(copied));
       }
     });
-    setTimeout(() => this.processMessageOnQueue(), Math.random() * LOCAL_LATENCY_SIMULATION);
+    if (this.latencyMs <= 0 && typeof setImmediate === "function") {
+      // No simulated latency (in-process bots, simulations): a timer of 0 still waits ≥1 ms per
+      // message in Node, which dominated headless games. setImmediate keeps the queue's order.
+      setImmediate(() => this.processMessageOnQueue());
+    } else {
+      setTimeout(() => this.processMessageOnQueue(), Math.random() * this.latencyMs);
+    }
   }
 
   processMessageOnQueue() {
@@ -66,8 +75,8 @@ export class LocalConnectionTransport implements ConnectionTransport {
 
     setTimeout(() => {
       // Create fresh transport pair
-      const newClient = new LocalConnectionTransport();
-      const newServer = new LocalConnectionTransport();
+      const newClient = new LocalConnectionTransport(this.latencyMs);
+      const newServer = new LocalConnectionTransport(this.latencyMs);
       newClient.connect(newServer);
 
       // Notify client listeners with new client transport

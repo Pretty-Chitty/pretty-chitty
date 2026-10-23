@@ -11,6 +11,8 @@ export { Chit } from "./game/Chit";
 export { Turn } from "./game/Turn";
 /** @group Core Game Elements */
 export { Pick, ButtonPick, ChitPick, DragTarget, DragPick } from "./game/Pick";
+/** @group Supporting Types */
+export type { PickAiTag } from "./game/Pick";
 /** @group Core Game Elements */
 export { GameTheme } from "./game/GameTheme";
 /** @group Chits */
@@ -34,6 +36,31 @@ export { OrderedOutlet } from "./game/OrderedOutlet";
 export { ChildOutlet, NonEditable, Ordered, Selectable } from "./utilities/Annotations";
 /** @group Chit Annotations */
 export type { SelectableChoice, SelectableConfig, SelectablePropertyInfo } from "./utilities/Annotations";
+
+/** @group AI */
+export { defineAi } from "./game/ai/defineAi";
+/** @group AI */
+export type {
+  GameAi,
+  AiRule,
+  AiScore,
+  AiContext,
+  AiOption,
+  AiChitOption,
+  AiDragOption,
+  AiButtonOption,
+  AiPickInfo,
+} from "./game/ai/defineAi";
+/** @group AI */
+export { connectAiPlayer } from "./game/ai/connectAiPlayer";
+/** @group AI */
+export type { ConnectAiPlayerOptions, AiPlayerHandle } from "./game/ai/connectAiPlayer";
+/** @group AI */
+export type { AiPlayerOptions, AiPlayerStats, AiDecision } from "./game/ai/AiClientPrompts";
+/** @group AI */
+export { simulateMatches } from "./game/ai/simulateMatches";
+/** @group AI */
+export type { SimulateMatchesOptions, SimulatedMatch, SimulationReport } from "./game/ai/simulateMatches";
 
 /** @group Buttons */
 export { GameButton, DynamicGameButton, ToggleGalleryButton } from "./game/GameButton";
@@ -81,7 +108,7 @@ export type { Stage } from "./game/GameDeckChit";
 /** @group Supporting Types */
 export { PlayerInfo } from "./game/PlayerInfo";
 /** @group Supporting Types */
-export type { IPlayerInfo } from "./game/PlayerInfo";
+export type { IPlayerInfo, AiSeatInfo } from "./game/PlayerInfo";
 /** @internal */
 /** @group Supporting Types */
 export { MatchViewer } from "./components/MatchViewer";

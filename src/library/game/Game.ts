@@ -8,6 +8,7 @@ import { RootChit } from "./RootChit";
 import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
 import { TokenDefinition } from "../components/TokenizedMessage";
 import { GameMetaData } from "./GameMetaData";
+import type { GameAi } from "./ai/defineAi";
 
 export interface IChitLibrary<P extends PlayerChit, R extends RootChit<P>> {
   [key: string]: new () => Chit;
@@ -61,4 +62,11 @@ export interface Game<P extends PlayerChit, R extends RootChit<P>> {
    * @param pick the pick we are looking at
    */
   demoPickWeight?(picks: any[], pick: any): number;
+
+  /**
+   * Optional rules for AI players (see `defineAi`).  Tag picks with `.ai(key)` and add a rule
+   * per key; AI players then score every legal option using only what their seat can see, and
+   * pick the best.  Without this, AI players pick at random (weighted by `demoPickWeight`).
+   */
+  ai?: GameAi<P, R, any>;
 }
