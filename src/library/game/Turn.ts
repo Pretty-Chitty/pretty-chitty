@@ -1,4 +1,5 @@
 import { Chit } from "./Chit";
+import { buildTokenMap, tokenizedMessageToText } from "../utilities/TokenizedText";
 import { Match } from "./Match";
 import { NoValidMovesPrompt, PickPrompt, Prompt } from "./Prompt";
 import { PromptResponse, RngResponse, TurnState } from "./TurnState";
@@ -241,6 +242,20 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       }
       return results[counter++];
     };
+  }
+
+  /**
+   * Records what a player is being asked for: the tokenized message for the in-game UI, and a plain-text version
+   * (player tokens become names, etc.) for anything that can only show text.
+   */
+  private setPromptMessage(player: P, message: string | undefined) {
+    player.promptStatus.latestPromptMessage = message;
+    if (message === undefined) {
+      player.promptStatus.latestPromptMessageText = undefined;
+      return;
+    }
+    const tokenMap = buildTokenMap(this.match.game.tokenMap, this.rootChit.players.map((p) => p));
+    player.promptStatus.latestPromptMessageText = tokenizedMessageToText(message, tokenMap);
   }
 
   /**
@@ -538,7 +553,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     action: (p: P, turn: Turn<A, P, R>) => Promise<A>,
   ): Promise<A[]> {
     // the whole point of this function is so we can mark all players as having a prompt waiting for them
-    players.forEach((player) => (player.promptStatus.latestPromptMessage = "Waiting for turn to complete"));
+    players.forEach((player) => this.setPromptMessage(player, "Waiting for turn to complete"));
 
     const turns = players.map((player) =>
       this.createTurn(chits(player), player, (turn: Turn<A, P, R>) => action(player, turn)),
@@ -971,10 +986,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     prompt.id = `${this.id} prompt ${this.decisionIndex}`;
     prompt.clock = this.clock;
     prompt.canReset = this.state.hasUserMadeChoiceSinceUserContextChangedOrRng(this.decisionIndex - 1);
-    this.player.promptStatus.latestPromptMessage = prompt.message;
-    if (!this.player.promptStatus.latestPromptMessage.length) {
-      this.player.promptStatus.latestPromptMessage = "No prompt set";
-    }
+    this.setPromptMessage(this.player, prompt.message.length ? prompt.message : "No prompt set");
 
     this.flush();
 
@@ -1039,7 +1051,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.state.setOrCreatePromptResponse(this.decisionIndex, resolution);
 
     this.player.promptStatus.latestPromptResponseTime = this.absoluteClock(this.player.id);
-    this.player.promptStatus.latestPromptMessage = undefined;
+    this.setPromptMessage(this.player, undefined);
     this.decisionIndex++;
   }
 
@@ -1145,7 +1157,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
   private cleanUp() {
     if (this.player) {
-      this.player.promptStatus.latestPromptMessage = undefined;
+      this.setPromptMessage(this.player, undefined);
     }
     this.completed = true;
     this.flush();

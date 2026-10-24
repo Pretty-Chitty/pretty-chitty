@@ -128,6 +128,10 @@ export class BuiltItem {
 
     this.checkRecreateSummaryMesh();
 
+    // The clone changed; make sure the next render() repositions and repaints
+    // it, otherwise the canvas keeps the previous frame until a pan happens.
+    this.dirty = true;
+
     TextureReferenceCounter.update();
     this.sceneWrapper.markDirty();
   }

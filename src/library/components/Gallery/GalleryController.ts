@@ -98,7 +98,9 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
   }
 
   render(): boolean {
-    let changed = this.dirty;
+    // Item rebuilds (and other paths) only mark the scene wrapper dirty; honor
+    // that here the same way RootChitRenderInstance does so the canvas repaints.
+    let changed = this.dirty || this.sceneWrapper.isDirty();
 
     while (this.layoutManager.dirty) {
       changed = true;

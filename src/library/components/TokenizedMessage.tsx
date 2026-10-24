@@ -4,34 +4,15 @@ import Color from "color";
 import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
 import { UpdatingCanvasImage } from "./UpdatingCanvasImage";
 import { StaticImage } from "../utilities/StaticImage";
+import { TokenDefinition, parseMessageTokens } from "../utilities/TokenizedText";
 
-export interface TokenDefinition {
-  image?: string | ImageSpec;
-  label?: string;
-  color?: string;
-}
+export type { TokenDefinition } from "../utilities/TokenizedText";
 
 export interface TokenizedMessageProps {
   message: string;
   fontSize: number;
   tokenMap?: Record<string, TokenDefinition>;
 }
-
-// Token parsing types
-interface ParsedToken {
-  type: "token";
-  name: string;
-  definition?: TokenDefinition;
-  key: string;
-}
-
-interface ParsedText {
-  type: "text";
-  content: string;
-  key: string;
-}
-
-type ParsedElement = ParsedToken | ParsedText;
 
 // Color utility function
 function calculateBackgroundColor(textColor: string): string {
@@ -139,48 +120,6 @@ function Token({ name, definition, fontSize }: TokenProps) {
       {definition.label && <TokenLabel label={definition.label} color={definition.color} fontSize={fontSize} />}
     </Box>
   );
-}
-
-// Parser function
-function parseMessageTokens(message: string, tokenMap: Record<string, TokenDefinition>): ParsedElement[] {
-  const elements: ParsedElement[] = [];
-  const tokenRegex = /:([a-zA-Z0-9_-]+):/g;
-  let lastIndex = 0;
-  let match;
-
-  while ((match = tokenRegex.exec(message)) !== null) {
-    const tokenName = match[1];
-
-    // Add text before the token
-    if (match.index > lastIndex) {
-      elements.push({
-        type: "text",
-        content: message.substring(lastIndex, match.index),
-        key: `text-${lastIndex}`,
-      });
-    }
-
-    // Add the token
-    elements.push({
-      type: "token",
-      name: tokenName,
-      definition: tokenMap[tokenName],
-      key: `token-${match.index}`,
-    });
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text after last token
-  if (lastIndex < message.length) {
-    elements.push({
-      type: "text",
-      content: message.substring(lastIndex),
-      key: `text-${lastIndex}`,
-    });
-  }
-
-  return elements;
 }
 
 // Main Component

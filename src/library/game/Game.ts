@@ -6,7 +6,7 @@ import { GameButton } from "./GameButton";
 import { PlayerChit } from "./PlayerChit";
 import { RootChit } from "./RootChit";
 import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
-import { TokenDefinition } from "../components/TokenizedMessage";
+import { TokenDefinition } from "../utilities/TokenizedText";
 import { GameMetaData } from "./GameMetaData";
 import type { GameAi } from "./ai/defineAi";
 

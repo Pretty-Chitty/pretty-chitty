@@ -117,7 +117,12 @@ function PlayerInfoRow({ headers, player }: { player: PlayerChit; headers?: bool
         <PlayerInfoCell size={size} key={spark.id} spark={spark} />
       ))}
       <TextPlayerInfoCell size={size} width={NAME_WIDTH} text={player.name} />
-      <TextPlayerInfoCell size={size} width={PROMPT_WIDTH} text={player.promptStatus.latestPromptMessage ?? ""} />
+      {/* This cell is single-line, ellipsized text, so use the plain-text prompt (player tokens become names). */}
+      <TextPlayerInfoCell
+        size={size}
+        width={PROMPT_WIDTH}
+        text={player.promptStatus.latestPromptMessageText ?? player.promptStatus.latestPromptMessage ?? ""}
+      />
     </Stack>
   );
 }

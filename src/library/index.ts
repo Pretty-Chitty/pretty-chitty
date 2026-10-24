@@ -69,6 +69,9 @@ export { GameButton, DynamicGameButton, ToggleGalleryButton } from "./game/GameB
 export { ParameterizedCanvas } from "./utilities/ParameterizedCanvas";
 /** @group 2D Rendering */
 export { StaticImage } from "./utilities/StaticImage";
+
+export { tokenizedMessageToText, buildTokenMap, parseMessageTokens } from "./utilities/TokenizedText";
+export type { TokenDefinition, TokenMap } from "./utilities/TokenizedText";
 /** @group 2D Rendering */
 export * as ReactCanvas from "./utilities/CanvasStack/ReactCanvas";
 /** @group 2D Rendering */
