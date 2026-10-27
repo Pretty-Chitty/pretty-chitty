@@ -12,7 +12,6 @@ import { PlayerInfo } from "../game/PlayerInfo";
 import { EphemeralMatchStorage } from "../game/MatchStorage";
 import { PlayerProvider } from "../hooks/usePlayer";
 import { LoadingStateProvider, LoadingStates } from "../hooks/useLoadingStates";
-import { connectAiPlayer } from "../game/ai/connectAiPlayer";
 import { RootChit } from "../game/RootChit";
 
 export interface IChitLibrary {
@@ -29,15 +28,10 @@ function PlayerEditor({ playerId, match, showBack }: { showBack?: boolean; playe
     (newConnection.transport as LocalConnectionTransport).connect(newRemoteConnection);
     match.connect(newRemoteConnection, playerId);
 
-    const bots = match.players
-      .filter((p) => p.id !== playerId)
-      .map((p) => connectAiPlayer(match, p.id, { thinkMs: [400, 900] }));
-
     setLocalConnection(newConnection);
     setRemoteConnection(newRemoteConnection);
     return () => {
       newConnection.dispose();
-      bots.forEach((bot) => bot.dispose());
     };
   }, [match, playerId]);
 
@@ -74,7 +68,9 @@ function Editor({ game }: { game: Game<any, any> }) {
 
     const players = [];
     for (let i = 0; i < playerCount; i++) {
-      players.push(new PlayerInfo(`p${i}`, i === 0 ? "Human" : `Robot ${i}`));
+      const player = new PlayerInfo(`p${i}`, i === 0 ? "Human" : `Robot ${i}`);
+      player.ai = i === 0 ? undefined : {};
+      players.push(player);
     }
     const match = new Match(game, players, storage, configOptions);
     let cancelled = false;
@@ -82,6 +78,7 @@ function Editor({ game }: { game: Game<any, any> }) {
       if (cancelled) {
         return;
       }
+      match.seatAiPlayers({ thinkMs: [400, 900] });
       match.start();
       setMatch(match);
     });

@@ -1,6 +1,6 @@
 import { Connection } from "../Connection";
 import { LocalConnectionTransport } from "../ConnectionTransport";
-import { Match } from "../Match";
+import type { Match } from "../Match";
 import { PlayerChit } from "../PlayerChit";
 import { RootChit } from "../RootChit";
 import { ClientStatus } from "../clientTransport/ClientStatus";
@@ -31,8 +31,17 @@ export type AiPlayerHandle = {
  * Seats an AI player in a match.  The bot connects like any other client, so it only ever sees
  * what the server sends to `playerId`.  Uses `match.game.ai` rules if the game defines them.
  *
+ * This is the low-level primitive: it seats exactly one bot with exactly these options, which is
+ * what harnesses want (forced moves, per-seat params, a different AI per seat).  Hosts that just
+ * want every seat flagged `ai` on its `PlayerInfo` played by the engine call
+ * {@link Match.seatAiPlayers} instead; it calls this for each such seat and skips seats already
+ * taken by a bot connected here.
+ *
+ * The bot's plan memory is kept in the match's saved state (see `AiMemoryStore`), so a bot
+ * re-seated after a reload continues its plan.  It also follows `match.ai.enabled`.
+ *
  * ```ts
- * match.players.filter((p) => p.ai).forEach((p) => connectAiPlayer(match, p.id, p.ai));
+ * connectAiPlayer(match, "p2", { params: { weights }, onDecision: log });
  * ```
  *
  * @group AI
@@ -53,6 +62,8 @@ export function connectAiPlayer<P extends PlayerChit, R extends RootChit<P>>(
   const prompts = new AiClientPrompts<P, R>(playerId, connection, match.game, view, {
     ...options,
     difficulty: options.difficulty ?? match.players.find((p) => p.id === playerId)?.ai?.difficulty,
+    memoryStore: options.memoryStore === undefined ? match.aiMemoryStore(playerId) : options.memoryStore,
+    disabled: options.disabled || !match.ai.enabled,
   });
 
   connection.register(view, "ClientTime");
@@ -62,13 +73,16 @@ export function connectAiPlayer<P extends PlayerChit, R extends RootChit<P>>(
   clientSide.connect(serverSide);
   const serverConnection = match.connect(serverSide, playerId);
 
-  return {
+  const handle: AiPlayerHandle = {
     playerId,
     prompts,
     status,
     dispose: () => {
+      match.ai.unregister(handle);
       connection.dispose();
       serverConnection.dispose();
     },
   };
+  match.ai.register(handle);
+  return handle;
 }

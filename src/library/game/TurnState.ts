@@ -20,6 +20,13 @@ export class TurnState {
 
   decisions: Decision[] = [];
 
+  /**
+   * AI players' plan memory, keyed by player id. Only the root turn state carries it. It rides
+   * along with the decisions so a bot that is re-seated after a reload (or in another process)
+   * picks up where it left off. Absent when no bot has committed a plan.
+   */
+  ai?: { [playerId: string]: unknown };
+
   private parentTurnState: TurnState | undefined;
   private parentTurnIndex = 0;
 
@@ -120,6 +127,7 @@ export class TurnState {
     this.playerId = serialized.playerId;
     this.id = serialized.id;
     this.createdDate = serialized.createdDate ?? Date.now();
+    this.ai = serialized.ai;
     this.decisions = (serialized.decisions ?? []).map((d: Decision, i: number) => {
       if (d.type === "turn") {
         const existing = this.decisions[i];

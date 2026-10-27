@@ -1,7 +1,7 @@
 import { Chit } from "../Chit";
 import { ClockDetails } from "../ClockDetails";
 import { ConnectionObject } from "../ConnectionObject";
-import { Match } from "../Match";
+import type { Match } from "../Match";
 import { RootChit } from "../RootChit";
 import { hashString } from "./defineAi";
 

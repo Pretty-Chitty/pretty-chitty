@@ -25,6 +25,16 @@ import {
   normalizeScore,
 } from "./defineAi";
 
+/**
+ * Where a bot keeps its plan memory between prompts. `connectAiPlayer` defaults to a store inside the
+ * match's saved state, so memory survives a reload or a re-seat in another process. Pass your own to
+ * keep it elsewhere, or `false` for in-process only.
+ */
+export type AiMemoryStore<M = any> = {
+  read(): M | undefined;
+  write(memory: M): void;
+};
+
 export type AiPlayerOptions = {
   /** 0–1. Lower values add more noise to scores so the bot plays less predictably. Default 0.85 */
   difficulty?: number;
@@ -51,6 +61,13 @@ export type AiPlayerOptions = {
   choose?: (scored: { option: AiOption; score: number }[], ctx: AiContext<any, any, any>) => number | undefined;
   /** Called after every decision with each option's score and the chosen index (for logging and audits). */
   onDecision?: (decision: AiDecision) => void;
+  /**
+   * Where plan memory is kept (see `AiMemoryStore`). `connectAiPlayer` defaults this to the match's
+   * saved state; `false` keeps memory in-process only, so it resets whenever the bot is re-seated.
+   */
+  memoryStore?: AiMemoryStore | false;
+  /** Start paused (see `setEnabled`). Default false */
+  disabled?: boolean;
 };
 
 /** One decision, as reported to `AiPlayerOptions.onDecision`. */
@@ -99,6 +116,8 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
   private running = false;
   private disposed = false;
   private _stalled = false;
+  private _enabled = true;
+  private memoryStore?: AiMemoryStore<M>;
 
   private memory: M;
   private history: HistoryEntry<M>[] = [];
@@ -129,7 +148,9 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
     super();
     this.serverPrompts = connection.get<ServerPrompts<P, R>>("ServerPrompts");
     this.random = createRandom(options.seed);
-    this.memory = deepFreeze((game.ai?.initialMemory?.() ?? {}) as M);
+    this.memoryStore = options.memoryStore || undefined;
+    this._enabled = !options.disabled;
+    this.memory = deepFreeze(this.loadMemory());
   }
 
   override dispose() {
@@ -145,6 +166,49 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
   /** True when the bot is not working on anything */
   public get idle() {
     return !this.running;
+  }
+
+  /** False while paused: prompts are kept but not answered (see `setEnabled`) */
+  public get enabled() {
+    return this._enabled;
+  }
+
+  /**
+   * Pause or resume the bot without losing its memory. While paused it still receives prompts and
+   * answers the latest one when resumed. Hosts use this to make sure only one copy of a match drives
+   * its bots when several copies exist (every browser tab in client-trust mode, or two bundle
+   * versions of one match on a server). On resume the memory is re-read from the store, since
+   * another copy may have moved the plan on.
+   */
+  public setEnabled(enabled: boolean) {
+    if (this._enabled === enabled) {
+      return;
+    }
+    this._enabled = enabled;
+    if (enabled) {
+      this.memory = deepFreeze(this.loadMemory());
+      this.history = [];
+      this.handledSeq = -1;
+      void this.pump();
+    }
+  }
+
+  private loadMemory(): M {
+    const stored = this.memoryStore?.read();
+    if (stored !== undefined) {
+      return stored;
+    }
+    return (this.game.ai?.initialMemory?.() ?? {}) as M;
+  }
+
+  /** Commits new memory and mirrors it to the store so it survives a reload. */
+  private setMemory(memory: M) {
+    this.memory = deepFreeze(memory);
+    try {
+      this.memoryStore?.write(this.memory);
+    } catch (e) {
+      this.warnOnce("memoryStore", "could not persist memory", e);
+    }
   }
 
   /** True while an answer has been sent but the server has not reacted within `stallWarningMs` */
@@ -168,7 +232,7 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
     }
     this.running = true;
     try {
-      while (this.latest && this.latest.seq !== this.handledSeq && !this.disposed) {
+      while (this.latest && this.latest.seq !== this.handledSeq && !this.disposed && this._enabled) {
         const current = this.latest;
         this.handledSeq = current.seq;
         try {
@@ -178,6 +242,10 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
             console.error(`[AI ${this.playerId}] failed to handle prompt "${current.prompt.id}"`, e);
           }
         }
+        if (!this._enabled && this.latest?.seq === current.seq) {
+          // Paused mid-prompt: leave it unanswered, and answer it when resumed
+          this.handledSeq = -1;
+        }
       }
     } finally {
       this.running = false;
@@ -185,7 +253,7 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
   }
 
   private isCurrent(entry: QueuedPrompt) {
-    return !this.disposed && this.latest?.seq === entry.seq;
+    return !this.disposed && this._enabled && this.latest?.seq === entry.seq;
   }
 
   private async handle(entry: QueuedPrompt) {
@@ -261,7 +329,8 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
 
       const chosen = this.choose(prompt, candidates);
       const memoryBefore = this.memory;
-      this.memory = deepFreeze(applyPlan(memoryBefore, chosen.plan));
+      // Written before the answer is sent, so the save that follows the answer carries it
+      this.setMemory(applyPlan(memoryBefore, chosen.plan));
 
       const result = await this.withStallWarning(
         this.serverPrompts.resolvePrompt(prompt.id, chosen.option.response),
@@ -270,7 +339,7 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
 
       if (result && result.id === prompt.id) {
         // ServerPrompts rejected the answer and sent the same prompt back
-        this.memory = memoryBefore;
+        this.setMemory(memoryBefore);
         this.stats.rejections++;
         rejected.add(choiceKey(chosen.option));
         continue;
@@ -473,7 +542,7 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
       const dead = this.dead.get(last.fingerprint) ?? new Set<string>();
       dead.add(last.choice);
       this.dead.set(last.fingerprint, dead);
-      this.memory = last.memoryBefore;
+      this.setMemory(last.memoryBefore);
     } else {
       // We don't know what we're undoing (e.g. the bot was reconnected), so cap blind undos
       if (++this.blindStepBacks > MAX_BLIND_STEP_BACKS) {

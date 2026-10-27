@@ -1,7 +1,7 @@
 import { ChildOutlet, NonEditable } from "../utilities/Annotations";
 import { PlayerCanvas } from "../utilities/CanvasStack/PlayerCanvas";
 import { Chit } from "./Chit";
-import { PlayerInfo } from "./PlayerInfo";
+import { AiSeatInfo, PlayerInfo } from "./PlayerInfo";
 import { PlayerPromptStatusChit } from "./PlayerPromptStatusChit";
 
 export class PlayerChit extends Chit {
@@ -11,6 +11,8 @@ export class PlayerChit extends Chit {
   public playerId: string = "no id";
   public name: string = "no name";
   public color: string = "#000000";
+  /** Set when this seat is played by the engine's AI (copied from `PlayerInfo.ai`; public, so UIs can mark the seat) */
+  public ai?: AiSeatInfo = undefined;
 
   /** @internal */
   private myImageUrl?: string = undefined;
@@ -55,5 +57,6 @@ export class PlayerChit extends Chit {
     this.name = playerInfo.name;
     this.id = playerInfo.id;
     this.imageUrl = playerInfo.imageUrl;
+    this.ai = playerInfo.ai;
   }
 }

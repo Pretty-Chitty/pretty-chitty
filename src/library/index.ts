@@ -56,7 +56,7 @@ export { connectAiPlayer } from "./game/ai/connectAiPlayer";
 /** @group AI */
 export type { ConnectAiPlayerOptions, AiPlayerHandle } from "./game/ai/connectAiPlayer";
 /** @group AI */
-export type { AiPlayerOptions, AiPlayerStats, AiDecision } from "./game/ai/AiClientPrompts";
+export type { AiPlayerOptions, AiPlayerStats, AiDecision, AiMemoryStore } from "./game/ai/AiClientPrompts";
 /** @group AI */
 export { simulateMatches } from "./game/ai/simulateMatches";
 /** @group AI */
@@ -120,7 +120,9 @@ export { MatchViewer } from "./components/MatchViewer";
 export { DemoWrapper } from "./components/DemoWrapper";
 /** @internal */
 /** @group Supporting Types */
-export { Match } from "./game/Match";
+export { Match, MatchAiControls } from "./game/Match";
+/** @group AI */
+export type { SeatAiPlayersOptions } from "./game/Match";
 /** @internal */
 /** @group Supporting Types */
 export { Connection } from "./game/Connection";

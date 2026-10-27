@@ -42,7 +42,6 @@ import { PlayerProvider } from "../hooks/usePlayer";
 import { LoadingStateProvider, LoadingStates } from "../hooks/useLoadingStates";
 import { RootChit } from "../game/RootChit";
 import { SelectablePropertyInfo } from "../utilities/Annotations";
-import { connectAiPlayer } from "../game/ai/connectAiPlayer";
 
 type Layout = "tile" | "tab" | "phone";
 
@@ -644,19 +643,17 @@ function Editor({
 
     const newMatch = new Match(game, players, newStorage, matchInfo.matchOptions);
     let cancelled = false;
-    let bots: { dispose: () => void }[] = [];
 
     newMatch.load().then(() => {
       if (cancelled) {
         return;
       }
-      bots = players.filter((p) => p.ai).map((p) => connectAiPlayer(newMatch, p.id, { thinkMs: [400, 900] }));
+      newMatch.seatAiPlayers({ thinkMs: [400, 900] });
       newMatch.start();
       setMatch(newMatch);
     });
 
     return () => {
-      bots.forEach((bot) => bot.dispose());
       newMatch.dispose();
       cancelled = true;
     };

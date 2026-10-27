@@ -231,8 +231,7 @@ X's region", "save money for the 7-cost upgrade", "go for the blue majority".
 - A plain object **replaces** memory. Use the function form to keep other fields:
   `plan: (prev) => ({ ...prev, targetCar: car.id })`.
 - Memory must be JSON. Store **chit ids**, not chits, and resolve them with `find(id)`.
-- **Plans are hints, not commitments.** Other players can make them stale, and memory resets
-  if the bot reconnects. Always guard:
+- **Plans are hints, not commitments.** Other players can make them stale. Always guard:
 
   ```ts
   const target = memory.targetCar ? find(memory.targetCar) : undefined;
@@ -241,6 +240,8 @@ X's region", "save money for the 7-cost upgrade", "go for the blue majority".
 
 - When the bot backs out of a dead end, memory rolls back automatically.
 - Clear a plan once it's done: `plan: (prev) => ({ ...prev, targetCar: undefined })`.
+- Memory is saved inside the match state (`state.ai[playerId]`), so it survives a reload or a bot
+  re-seated in another process. That is also why it must be JSON.
 
 Keep plans small. Most games need one or two fields, or none.
 
@@ -305,6 +306,35 @@ Headless runs: set `match.immediateNotify = true` and use `new EphemeralMatchSto
 (lazy saves). Both are off by default because they change behaviour a server relies on; see
 their doc comments.
 
+## Seating bots in a host
+
+A seat is an AI seat when its `IPlayerInfo.ai` is set (`{}` or `{ difficulty }`). The flag on its own
+does nothing; a host opts in by calling `match.seatAiPlayers()` once, after `load()`:
+
+```ts
+const match = new Match(game, players, storage, options);
+await match.load();
+match.seatAiPlayers({ thinkMs: [400, 900] }); // one bot per flagged seat, skipping seats a connectAiPlayer bot already holds
+match.start();
+```
+
+`ClientTrustMatchViewer` does this for you when given `seatAi` (`true` or the options object).
+Harnesses keep calling `connectAiPlayer` directly for the seat under test and can still call
+`seatAiPlayers` to fill the rest.
+
+Then three things the host owns:
+
+- **One driver per match.** Several copies of one match can run at once: every browser tab in
+  client-trust mode, or two bundle versions of a match on a server. Each copy would answer the
+  same prompt, so set `match.ai.enabled = false` on all but one (`aiEnabled` on
+  `ClientTrustMatchViewer`). Paused bots keep their memory and answer the pending prompt when
+  re-enabled, re-reading memory from the state first in case the previous driver moved it on.
+- **Wait for `match.ai.idle`** before tearing a match down, so an answer in flight is not lost.
+- **`match.dispose()`** disposes the bots and every connection with the match.
+
+The flag is copied onto the `PlayerChit` as `player.ai` and serialized publicly, so a UI can mark
+the seat.
+
 ## Heuristic cookbook
 
 Start every key with **1**, **2** and **6**. That alone usually stops a bot looking broken.
@@ -366,12 +396,20 @@ defineAi<P, R, M>({
   default?: (option, ctx) => number | { score, plan? }, // for untagged picks
 })
 
-// Seat a bot (hosts; demo mode and Playground already do this)
+// Seat every flagged seat (hosts; demo mode, Playground and ClientTrustMatchViewer do this)
+match.seatAiPlayers({ thinkMs?, temperature?, seed?, log?, view?, onDecision? }): AiPlayerHandle[]
+match.ai.enabled   // pause/resume every bot of this match (one driver per match!)
+match.ai.idle      // true when no bot is mid-answer
+match.ai.handles   // every bot attached, however it was seated
+
+// Seat one bot with exactly these options (harnesses)
 connectAiPlayer(match, playerId, {
   difficulty?: 0..1, temperature?: number, thinkMs?: number | [min, max], seed?, log?,
   view?: "live" | "serialized", params?: unknown,
   choose?: (scored, ctx) => number | undefined,  // harnesses: force an answer
   onDecision?: (decision) => void,               // harnesses: every choice, with all scores
+  memoryStore?: AiMemoryStore | false,           // default: the match state; false: in-process only
+  disabled?: boolean,                            // start paused
 })
 
 // Headless soak test
