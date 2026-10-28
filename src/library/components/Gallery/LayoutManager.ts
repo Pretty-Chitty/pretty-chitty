@@ -1,5 +1,6 @@
 import { GameTheme } from "../../game/GameTheme";
 import { SummaryMode } from "./types";
+import { MIN_ITEM_HEIGHT_FRACTION, SINGLE_ITEM_SUMMARY_MAX_WIDTH } from "./constants";
 
 export class LayoutManager {
   // Dimensions (all scaled)
@@ -24,6 +25,8 @@ export class LayoutManager {
   // summary info
   private summaryMode: SummaryMode = "full";
   private summaryMaxHeight = 0;
+  private summaryWidth = 100;
+  private summaryHeightLimit = 0;
 
   public dirty = false;
 
@@ -67,6 +70,10 @@ export class LayoutManager {
 
   getItemDimensions() {
     return { w: this.itemWidth, h: this.itemHeight, summaryMaxHeight: this.summaryMaxHeight };
+  }
+
+  getSummaryDimensions() {
+    return { w: this.summaryWidth, maxHeight: this.summaryHeightLimit };
   }
 
   getStageDimensions() {
@@ -117,16 +124,14 @@ export class LayoutManager {
   }
 
   recalculateEffectiveItemDimensions() {
-    // recalcs itemWidth,itemHeight,itemsPerPage and frontStageWidth
+    // recalcs itemWidth,itemHeight,itemsPerPage,frontStageWidth and the summary bounds
 
     let itemWidth = this.itemPreferredWidth ?? this.baseItemWidth;
     let itemHeight = this.itemPreferredHeight ?? this.baseItemHeight;
     const aspectRatio = itemWidth / itemHeight;
 
-    const maxItemHeight = Math.max(
-      this.theme.galleryItemMinimumHeight,
-      this.h - this.itemSpacing * 2 - this.summaryMaxHeight,
-    );
+    const availableHeight = this.h - this.itemSpacing * 2;
+    const maxItemHeight = Math.max(this.theme.galleryItemMinimumHeight, availableHeight);
     const maxItemWidth = Math.max(this.theme.galleryItemMinimumWidth, this.w - this.itemSpacing * 2);
 
     if (itemHeight > maxItemHeight) {
@@ -140,6 +145,19 @@ export class LayoutManager {
 
     itemWidth = Math.max(this.theme.galleryItemMinimumWidth, itemWidth);
 
+    // The summary only takes height away from the item, never width.  The summary is laid out at the item's width,
+    // so narrowing the item would make the summary taller, which would shrink the item further until it collapsed.
+    const itemHeightFloor = Math.max(
+      this.theme.galleryItemMinimumHeight,
+      Math.min(itemHeight, availableHeight * MIN_ITEM_HEIGHT_FRACTION),
+    );
+    const summaryHeightLimit = Math.max(0, availableHeight - itemHeightFloor);
+    itemHeight = Math.max(itemHeightFloor, Math.min(itemHeight, availableHeight - this.summaryMaxHeight));
+
+    // A lone item has the stage to itself, so its summary can spread out instead of stacking into a tall column.
+    const summaryWidth =
+      this.itemCount === 1 ? Math.max(itemWidth, Math.min(maxItemWidth, SINGLE_ITEM_SUMMARY_MAX_WIDTH)) : itemWidth;
+
     const itemsPerPage = Math.max(
       1,
       Math.min(this.itemCount, Math.floor((this.w - this.itemSpacing * 2) / (itemWidth + this.itemSpacing))),
@@ -150,12 +168,16 @@ export class LayoutManager {
       this.itemHeight !== itemHeight ||
       this.itemWidth !== itemWidth ||
       this.itemsPerPage !== itemsPerPage ||
-      this.frontStageWidth !== frontStageWidth
+      this.frontStageWidth !== frontStageWidth ||
+      this.summaryWidth !== summaryWidth ||
+      this.summaryHeightLimit !== summaryHeightLimit
     ) {
       this.itemHeight = itemHeight;
       this.itemWidth = itemWidth;
       this.itemsPerPage = itemsPerPage;
       this.frontStageWidth = frontStageWidth;
+      this.summaryWidth = summaryWidth;
+      this.summaryHeightLimit = summaryHeightLimit;
       this.dirty = true;
     }
   }

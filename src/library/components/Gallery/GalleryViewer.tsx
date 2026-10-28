@@ -71,6 +71,17 @@ export function GalleryViewer({
   galleryController.setTweenDuration(tweenDuration);
   galleryController.showSummary = showSummary;
 
+  // Must run before the effects below build items: each build sweeps unused textures, and the gallery's clones
+  // only count as used once it's registered.
+  useEffect(() => {
+    TextureReferenceCounter.registerInstance(galleryController);
+    return () => {
+      galleryController.destroy();
+      TextureReferenceCounter.unregisterInstance(galleryController);
+      galleryController.sceneWrapper.dispose();
+    };
+  }, [galleryController]);
+
   // Single effect to handle both size and items changes
   useEffect(() => {
     if (!w || !h || !Number.isFinite(calcedItemHeight) || !Number.isFinite(calcedItemWidth)) {
@@ -203,15 +214,6 @@ export function GalleryViewer({
       removeWheelListener(el, wheelListener);
     };
   }, [galleryController, onClose, onLongPress]);
-
-  useEffect(() => {
-    TextureReferenceCounter.registerInstance(galleryController);
-    return () => {
-      galleryController.destroy();
-      TextureReferenceCounter.unregisterInstance(galleryController);
-      galleryController.sceneWrapper.dispose();
-    };
-  }, [galleryController]);
 
   if (!w || !h) {
     return null;

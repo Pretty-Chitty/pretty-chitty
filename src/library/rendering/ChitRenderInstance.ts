@@ -18,6 +18,7 @@ import { Easing, Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { RootChitRenderInstance } from "./RootChitRenderInstance";
 import { fixBbox } from "../utilities/BboxUtils";
 import { ChitGalleryItemInstance } from "./ChitGalleryItemInstance";
+import { CanvasStack } from "../utilities/CanvasStack/CanvasStack";
 
 const LINE_COLOR = new MeshBasicMaterial({ color: 0xff0000, wireframe: true, wireframeLinewidth: 2 });
 const CLICK_LINE_COLOR = new MeshBasicMaterial({ color: 0xffff00, wireframe: true, wireframeLinewidth: 2 });
@@ -451,6 +452,33 @@ export class ChitRenderInstance {
 
   get currentGalleryItem() {
     return this._galleryItem;
+  }
+
+  /**
+   * Hidden chits (e.g. inside a deck or bag) aren't counted by the TextureReferenceCounter, so their textures get
+   * reclaimed while the render spec still points at them.  Galleries clone that spec, so re-render first if stale.
+   */
+  public refreshDisposedTextures() {
+    if (this.usesDisposedTexture()) {
+      this.refresh();
+    }
+    [...this.childrenRenderInstances].forEach((child) => child.refreshDisposedTextures());
+  }
+
+  private usesDisposedTexture() {
+    let disposed = false;
+    [this.renderSpec?.object, ...(this.renderSpec?.ornaments ?? [])].forEach((root) =>
+      root?.traverse((obj) => {
+        if (!disposed && obj instanceof Mesh) {
+          const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+          disposed = materials.some((m) => {
+            const map = (m as MeshBasicMaterial | undefined)?.map;
+            return !!map && CanvasStack.isDisposedTexture(map);
+          });
+        }
+      }),
+    );
+    return disposed;
   }
 
   public destroyGalleryItem() {

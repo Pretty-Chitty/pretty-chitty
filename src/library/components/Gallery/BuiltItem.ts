@@ -327,12 +327,13 @@ export class BuiltItem {
     };
   }
 
-  private _lastSummaryMeshWidth = 0;
+  private _lastSummaryMeshKey = "";
   private checkRecreateSummaryMesh() {
-    const { w: itemWidth } = this.layoutManager.getItemDimensions();
-    if (this._lastSummaryMeshWidth !== itemWidth) {
+    const { w, maxHeight } = this.layoutManager.getSummaryDimensions();
+    const key = `${w}x${maxHeight}`;
+    if (this._lastSummaryMeshKey !== key) {
       this.createHelpText();
-      this._lastSummaryMeshWidth = itemWidth;
+      this._lastSummaryMeshKey = key;
     }
   }
 
@@ -364,7 +365,8 @@ export class BuiltItem {
   }
 
   private createSummaryMesh(summary: string, specs: RichTextRenderOptionsParameters): Mesh {
-    const { w: itemWidth, h: itemHeight } = this.layoutManager.getItemDimensions();
+    const { h: itemHeight } = this.layoutManager.getItemDimensions();
+    const { w: summaryWidth, maxHeight: summaryMaxHeight } = this.layoutManager.getSummaryDimensions();
     const pad =
       this.layoutManager.getSummaryMode() === "full"
         ? this.theme.spacing * window.devicePixelRatio
@@ -380,12 +382,12 @@ export class BuiltItem {
     const height = itemHeight * 2; // arbitrary large height to allow text to flow
 
     // First pass: render with full height to let text flow and calculate actual size
-    const stack1 = new CanvasStack(itemWidth * window.devicePixelRatio, height * window.devicePixelRatio, ops);
+    const stack1 = new CanvasStack(summaryWidth * window.devicePixelRatio, height * window.devicePixelRatio, ops);
     stack1.render();
     stack1.dispose();
 
     // Second pass: render with actual measured height for final material
-    const stack2 = new CanvasStack(itemWidth * window.devicePixelRatio, markdown.height + pad * 2, ops);
+    const stack2 = new CanvasStack(summaryWidth * window.devicePixelRatio, markdown.height + pad * 2, ops);
     stack2.render();
 
     const material = stack2.material;
@@ -393,10 +395,18 @@ export class BuiltItem {
     material.depthWrite = true;
 
     const finalHeight = stack2.height / window.devicePixelRatio;
-    this.summaryHeight = finalHeight;
 
-    const geometry = new PlaneGeometry(itemWidth, finalHeight);
+    const geometry = new PlaneGeometry(summaryWidth, finalHeight);
     const mesh = new Mesh(geometry, material);
+
+    // Too long to fit even at full width: shrink it rather than crowd out the item
+    if (summaryMaxHeight > 0 && finalHeight > summaryMaxHeight) {
+      const scale = summaryMaxHeight / finalHeight;
+      mesh.scale.set(scale, scale, 1);
+      this.summaryHeight = summaryMaxHeight;
+    } else {
+      this.summaryHeight = finalHeight;
+    }
     return mesh;
   }
 }

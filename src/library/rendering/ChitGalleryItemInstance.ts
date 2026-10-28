@@ -26,6 +26,7 @@ export class ChitGalleryItemInstance implements GalleryItem {
   shortSummaryRenderingOptions?: RichTextRenderOptionsParameters;
 
   private sceneWrapper: SceneWrapper | undefined;
+  private creatingMesh = false;
 
   constructor(public chit: Chit) {
     this.id = chit.id ?? "no id";
@@ -82,6 +83,14 @@ export class ChitGalleryItemInstance implements GalleryItem {
     const renderInstance = this.chit.renderInstance;
     const g = new Group();
     if (renderInstance) {
+      // a refresh re-renders the chit, which would ask us to rebuild while we're mid-build
+      this.creatingMesh = true;
+      try {
+        renderInstance.refreshDisposedTextures();
+      } finally {
+        this.creatingMesh = false;
+      }
+
       const mesh = this.cloneWithUserData(renderInstance.group) ?? new Group();
       mesh.visible = true;
       mesh.rotation.set(0, 0, 0);
@@ -101,6 +110,9 @@ export class ChitGalleryItemInstance implements GalleryItem {
   }
 
   update() {
+    if (this.creatingMesh) {
+      return;
+    }
     this.cbs.forEach((cb) => cb());
   }
 

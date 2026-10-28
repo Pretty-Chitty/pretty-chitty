@@ -95,15 +95,40 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private dirtyChitIds = new Set<string>();
   private pendingNewChits = new Set<Chit>();
   private _statePool?: Map<string, string>;
-  private _serializeCache?: SerializeCache;
+
+  // serialize() replays this turn's diffs from its locked snapshot. Checkpoints are that replay
+  // captured part-way, so a request walks only the steps after the nearest one. They cover only
+  // steps that can no longer change (flushes, and sub-turn steps every turn of which the parent
+  // has absorbed) and merge sub-turns in absorption order, so they hold the same chit states for
+  // every player and are shared by every connection to the match.
+  private _checkpoints: SerializeCheckpoint[] = [];
+  /** Steps between checkpoints: the most a request walks before it reaches the live step. @internal */
+  static serializeCheckpointInterval = 32;
+  /** Tests only: false makes every serialize() replay from the locked snapshot. @internal */
+  static serializeCheckpoints = true;
+
+  /** Drop every checkpoint that includes the step at `index`, which is about to change. */
+  private dropCheckpointsFrom(index: number) {
+    if (this._checkpoints.length && this._checkpoints[this._checkpoints.length - 1].nextIndex > index) {
+      this._checkpoints = this._checkpoints.filter((c) => c.nextIndex <= index);
+    }
+  }
 
   /**
-   * Drop any cached serialize() reconstruction on this turn and every ancestor,
-   * since their snapshots include our contribution.
+   * Checkpoints stay at least `serializeCheckpointInterval` steps apart, except the last one,
+   * which marks wherever the latest walk ended and is replaced as walks reach further.
    */
-  private invalidateSerializeCache() {
-    this._serializeCache = undefined;
-    this.parent?.invalidateSerializeCache();
+  private addCheckpoint(checkpoint: SerializeCheckpoint) {
+    const checkpoints = this._checkpoints;
+    const last = checkpoints[checkpoints.length - 1];
+    if (last && last.nextIndex >= checkpoint.nextIndex) {
+      return;
+    }
+    const previous = checkpoints.length >= 2 ? checkpoints[checkpoints.length - 2].nextIndex : 0;
+    if (last && last.nextIndex - previous < Turn.serializeCheckpointInterval) {
+      checkpoints.pop();
+    }
+    checkpoints.push(checkpoint);
   }
 
   private get statePool(): Map<string, string> {
@@ -276,6 +301,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     const flushStep = step as FlushClockStep;
     flushStep.log = message;
+    this.dropCheckpointsFrom(this.clockSteps.length - 1);
   }
 
   /**
@@ -302,6 +328,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       message = message(step.log!);
     }
     step.log = message;
+    this.dropCheckpointsFrom(lastIndex);
   }
 
   _zipStartPoint = 0;
@@ -330,8 +357,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     }
 
     if (hasChange) {
-      // Pops and in-place merges can leave any cached walk pointing into invalid territory.
-      this.invalidateSerializeCache();
+      // The merged step changed in place: checkpoints that include it are stale.
+      this.dropCheckpointsFrom(this.clockSteps.length - 1);
       this.pass++;
       // No trailing force-flush: it would only push an empty FlushClockStep (no chit
       // diff, no log) that the client has to walk through for no visual change. The
@@ -436,9 +463,9 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         throw new Error("Cannot flush while subturns are active");
       }
 
+      // Appending leaves every checkpoint valid, ours and our ancestors': theirs stop before the
+      // step that holds us until we have been absorbed.
       this.clockSteps.push(new FlushClockStep(this.clock, newStates));
-      // Ancestors' caches included our prior contribution; the new step makes them stale.
-      this.parent?.invalidateSerializeCache();
     }
   }
 
@@ -493,17 +520,19 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     this.decisionIndex++;
 
+    let step: SubTurnsClockStep<P, R>;
     if (this.activeSubTurns.length === 0) {
-      this.clockSteps.push(new SubTurnsClockStep(this.clock, [turn]));
+      step = new SubTurnsClockStep(this.clock, [turn]);
+      this.clockSteps.push(step);
     } else {
       const lastStep = this.clockSteps[this.clockSteps.length - 1];
       if (!(lastStep instanceof SubTurnsClockStep)) {
         throw new Error("Unexpected clocksteps stage");
       }
       lastStep.turns.push(turn);
+      step = lastStep;
     }
-    // Either case mutates a step our own cache (or an ancestor's) may have already walked past.
-    this.invalidateSerializeCache();
+    // Neither case touches a checkpoint: none reaches a step with a turn still to absorb.
 
     this.activeSubTurns.push(turn);
 
@@ -526,6 +555,9 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     });
 
     this.lastChitStates = { ...this.lastChitStates, ...turn.lastChitStates };
+    // serialize() merges the step's turns in this order, so a chit written by several parallel
+    // turns serializes as the engine now holds it.
+    step.absorbed.push(turn);
     turn.releasePostAbsorptionRefs();
 
     return result;
@@ -544,7 +576,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.lastChitStates = {};
     this.pendingNewChits.clear();
     this.dirtyChitIds.clear();
-    this._serializeCache = undefined;
+    // Checkpoints stay: nothing in a finished turn changes again, so they are its serialize cache.
   }
 
   public async runParallelTurns<A>(
@@ -856,13 +888,20 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     let resultingClock: number;
     let index: number;
 
-    const cache = this._serializeCache;
-    if (cache && cache.playerId === playerId && clock >= cache.resultingClock) {
-      chits = { ...cache.chits };
-      subTurns = cache.subTurns ? { ...cache.subTurns } : undefined;
-      log = cache.log ? { ...cache.log } : undefined;
-      resultingClock = cache.resultingClock;
-      index = cache.nextIndex;
+    // Resume from the furthest checkpoint that ends at or before the target clock
+    let checkpoint: SerializeCheckpoint | undefined;
+    for (let i = this._checkpoints.length - 1; i >= 0; i--) {
+      if (this._checkpoints[i].resultingClock <= clock) {
+        checkpoint = this._checkpoints[i];
+        break;
+      }
+    }
+    if (checkpoint) {
+      chits = { ...checkpoint.chits };
+      subTurns = checkpoint.subTurns ? { ...checkpoint.subTurns } : undefined;
+      log = checkpoint.log ? { ...checkpoint.log } : undefined;
+      resultingClock = checkpoint.resultingClock;
+      index = checkpoint.nextIndex;
     } else {
       // Diff-replay: seed with the initial locked snapshot and merge every flush diff
       // up to (but not including) the target clock.
@@ -873,7 +912,16 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       index = 0;
     }
 
-    let cacheable = true;
+    const snapshot = (): SerializeCheckpoint => ({
+      nextIndex: index,
+      chits: { ...chits },
+      subTurns: subTurns ? { ...subTurns } : undefined,
+      log: log ? { ...log } : undefined,
+      resultingClock: resultingClock === -1 ? clock : resultingClock,
+    });
+    // True while every step walked is final and was consumed whole, so the walk may be checkpointed
+    let checkpointable = Turn.serializeCheckpoints;
+    let lastCheckpointIndex = index;
     while (index < this.clockSteps.length) {
       const clockStep = this.clockSteps[index];
       if (clockStep.startClock >= clock) break;
@@ -890,7 +938,13 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         subTurns = {};
         resultingClock = clockStep.startClock;
         let remainingClocksToSpend = clock - clockStep.startClock;
-        for (const turn of clockStep.visibleTurns(playerId)) {
+        // A step every turn of which has been absorbed is final, and asked for in full it reads the
+        // same for every player: its turns merge in absorption order, the order their changes
+        // landed in `lastChitStates`, so a chit written by two parallel turns serializes as the
+        // engine holds it. A step still in motion, or asked for part-way, is walked as this player
+        // may see it, and the walk stops there: a later request has to re-walk it.
+        const final = clockStep.fullyAbsorbed && clock >= clockStep.endClock();
+        for (const turn of final ? clockStep.absorbed : clockStep.visibleTurns(playerId)) {
           const time = Math.max(remainingClocksToSpend, 0);
           if (time <= 0) break;
 
@@ -905,30 +959,24 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
             log = { message: serialized.log.message, clock: serialized.log.clock + clockStep.startClock };
           }
         }
-        // We can only advance `index` past this step (and cache from here) if the
-        // requested `clock` consumed this step's *entire* extent — i.e. every visible
-        // sub-turn was asked for at least its full clock time. Otherwise a future
-        // request at a higher `clock` needs to re-ask the sub-turn for more time,
-        // which means re-processing this same step.
-        if (clock < clockStep.endClock(playerId)) {
-          cacheable = false;
+        if (!final) {
+          checkpointable = false;
           break;
         }
         index++;
       } else {
         index++;
       }
+
+      if (checkpointable && index - lastCheckpointIndex >= Turn.serializeCheckpointInterval) {
+        this.addCheckpoint(snapshot());
+        lastCheckpointIndex = index;
+      }
     }
 
-    if (cacheable) {
-      this._serializeCache = {
-        playerId,
-        nextIndex: index,
-        chits: { ...chits },
-        subTurns: subTurns ? { ...subTurns } : undefined,
-        log: log ? { ...log } : undefined,
-        resultingClock: resultingClock === -1 ? clock : resultingClock,
-      };
+    // Remember where this walk ended, so a request for a later clock continues from here
+    if (checkpointable && index > lastCheckpointIndex) {
+      this.addCheckpoint(snapshot());
     }
 
     return {
@@ -1247,7 +1295,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.unresolvedPrompt = undefined;
     this.activeSubTurns = [];
     this.pass++;
-    this.invalidateSerializeCache();
+    this._checkpoints = [];
   }
 }
 
@@ -1258,8 +1306,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 type ChitLookup = { [id: string]: Chit };
 type ChitStateLookup = { [id: string]: string };
 
-type SerializeCache = {
-  playerId: string;
+/** serialize()'s replay captured after `nextIndex` steps; see Turn._checkpoints */
+type SerializeCheckpoint = {
   nextIndex: number;
   chits: ChitStateLookup;
   subTurns?: { [turnId: string]: ClockDetails };
@@ -1273,6 +1321,13 @@ abstract class ClockStep {
 }
 
 class SubTurnsClockStep<P extends PlayerChit, R extends RootChit<P>> extends ClockStep {
+  /** The turns the parent has absorbed, in that order: the order their changes landed in its state */
+  public absorbed: Turn<any, P, R>[] = [];
+
+  get fullyAbsorbed() {
+    return this.absorbed.length === this.turns.length;
+  }
+
   visibleTurns(playerId?: string) {
     if (this.turns.length === 1 || playerId === undefined) {
       return this.turns;

@@ -332,7 +332,12 @@ export class CanvasStack implements IUpdatingCanvas {
     CanvasStack._liveStacks.delete(canvasStack);
   });
 
-  public static materialDisposer = new ThreeDisposer<Material>((material) => {
+  /** True once the disposer has reclaimed this texture; anything still drawing with it renders blank. */
+  public static isDisposedTexture(texture: Texture) {
+    return !!_NOTHING_CANVAS && texture.source.data === _NOTHING_CANVAS;
+  }
+
+  public static materialDisposer =new ThreeDisposer<Material>((material) => {
     material.dispose();
   });
 
