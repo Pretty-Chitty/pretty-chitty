@@ -16,6 +16,7 @@ export const ORDERED_CHILDREN = "orderedChildren";
 
 const EXTRA_SERIALIZATION_PROPS_ARRAY = ["id", "_parent", "_parentOutlet", "_parentOutletIndex", "_parentFallback"];
 const EXTRA_SERIALIZATION_PROPS_SET = new Set(EXTRA_SERIALIZATION_PROPS_ARRAY);
+const DELETED_SERIALIZED = JSON.stringify({ ____deleted: true });
 
 const dirtyProxyCache = new WeakMap<object, object>();
 
@@ -727,8 +728,6 @@ export class Chit extends ObjectWithProps {
 
   /** @internal */
   public static deletedIfSerialized(): string {
-    return JSON.stringify({
-      ____deleted: true,
-    });
+    return DELETED_SERIALIZED;
   }
 }

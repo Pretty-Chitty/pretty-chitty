@@ -11,6 +11,12 @@ export interface TokenDefinition {
   image?: string | ImageSpec;
   label?: string;
   color?: string;
+  /**
+   * How far the image extends above and below its line of text, as a fraction of the font size. The image grows by
+   * twice this amount without pushing lines apart, so a large value can overlap neighbouring lines. Defaults to 0.2,
+   * or 0 when the token has a `color` (so the image stays inside the colored background).
+   */
+  imageBleed?: number;
   /** Plain-text representation of this token, for places that cannot render images or styling. */
   text?: string;
 }

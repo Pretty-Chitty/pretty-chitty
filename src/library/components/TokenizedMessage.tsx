@@ -23,44 +23,34 @@ function calculateBackgroundColor(textColor: string): string {
     : color.lightness(95).hex(); // 95% brightness for dark colors
 }
 
+const LINE_HEIGHT = 1.1;
+const DEFAULT_IMAGE_BLEED = 0.1;
+
 // Token Image Component
 interface TokenImageProps {
   src: string | ImageSpec;
   alt: string;
   fontSize: number;
-  hasLabel: boolean;
+  bleed: number;
 }
 
-function TokenImage({ src, alt, fontSize, hasLabel }: TokenImageProps) {
+function TokenImage({ src, alt, fontSize, bleed }: TokenImageProps) {
+  // grow past the line box, then cancel the extra height with negative margins so lines don't get pushed apart
+  const bleedPx = bleed * fontSize;
+  const style = {
+    height: `${fontSize * LINE_HEIGHT + bleedPx * 2}px`,
+    marginTop: `${-bleedPx}px`,
+    marginBottom: `${-bleedPx}px`,
+    marginLeft: "1px",
+    marginRight: "3px",
+    position: "relative" as const,
+  };
+
   if (typeof src !== "string") {
     const updatingCanvas = new StaticImage(src).get();
-    return (
-      <UpdatingCanvasImage
-        image={updatingCanvas}
-        style={{
-          height: `${fontSize - 4}px`,
-          marginRight: "4px",
-          transform: `scale(1.4)`,
-          position: "relative",
-          marginLeft: "2px",
-        }}
-      />
-    );
+    return <UpdatingCanvasImage image={updatingCanvas} style={style} />;
   } else {
-    return (
-      <Box
-        component="img"
-        src={src}
-        alt={alt}
-        sx={{
-          height: `${fontSize - 4}px`,
-          marginRight: "4px",
-          transform: `scale(1.4)`,
-          position: "relative",
-          marginLeft: "2px",
-        }}
-      />
-    );
+    return <Box component="img" src={src} alt={alt} sx={style} />;
   }
 }
 
@@ -107,7 +97,8 @@ function Token({ name, definition, fontSize }: TokenProps) {
         display: "inline-flex",
         alignItems: "center",
         whiteSpace: "nowrap",
-        verticalAlign: "baseline",
+        // an image has no text baseline, so center image tokens on the text instead
+        verticalAlign: definition.image ? "middle" : "baseline",
         backgroundColor,
         padding: backgroundColor ? "1px 2px" : 0,
         margin: backgroundColor ? "-1px 0" : 0,
@@ -115,7 +106,12 @@ function Token({ name, definition, fontSize }: TokenProps) {
       }}
     >
       {definition.image && (
-        <TokenImage src={definition.image} alt={name} fontSize={fontSize} hasLabel={!!definition.label} />
+        <TokenImage
+          src={definition.image}
+          alt={name}
+          fontSize={fontSize}
+          bleed={definition.imageBleed ?? (backgroundColor ? 0 : DEFAULT_IMAGE_BLEED)}
+        />
       )}
       {definition.label && <TokenLabel label={definition.label} color={definition.color} fontSize={fontSize} />}
     </Box>
@@ -130,7 +126,7 @@ export function TokenizedMessage({ message, fontSize, tokenMap = {} }: Tokenized
     <Box
       sx={{
         fontSize: `${fontSize}px`,
-        lineHeight: `${fontSize * 1.1}px`,
+        lineHeight: `${fontSize * LINE_HEIGHT}px`,
       }}
     >
       {elements.map((element) =>

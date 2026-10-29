@@ -93,6 +93,9 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   private lockedChitStates: ChitStateLookup = {};
   private lastChitStates: ChitStateLookup = {};
   private dirtyChitIds = new Set<string>();
+  // Locked roots of absorbed sub-turns. A sub-turn never deletes its own locked roots, so the next
+  // flush here checks whether any of them lost their parent.
+  private absorbedRootIds = new Set<string>();
   private pendingNewChits = new Set<Chit>();
   private _statePool?: Map<string, string>;
 
@@ -102,6 +105,11 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   // has absorbed) and merge sub-turns in absorption order, so they hold the same chit states for
   // every player and are shared by every connection to the match.
   private _checkpoints: SerializeCheckpoint[] = [];
+  // Set once the parent has absorbed this turn. From then on we are only walked by the parent, which
+  // holds the chit map we started from, so we keep neither our locked snapshot nor checkpoints.
+  private absorbed = false;
+  /** Tests only: false keeps every finished turn's snapshot and checkpoints. @internal */
+  static releaseAbsorbedTurns = true;
   /** Steps between checkpoints: the most a request walks before it reaches the live step. @internal */
   static serializeCheckpointInterval = 32;
   /** Tests only: false makes every serialize() replay from the locked snapshot. @internal */
@@ -225,12 +233,18 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       return p.id;
     });
 
-    // now serialize all chits in their "locked" state
+    // now serialize all chits in their "locked" state. createTurn flushes the parent right before
+    // building us, so a clean chit's state there is already current and interned.
+    const parentStates = this.parent?.lastChitStates;
     Object.values(this.chitLookup).forEach((c) => {
       if (!c.id) {
         throw new Error("Cannot serialize a chit without an id");
       }
-      this.lastChitStates[c.id] = this.lockedChitStates[c.id] = this.internState(c.serialize(this._playerIds));
+      const parentState = parentStates?.[c.id];
+      this.lastChitStates[c.id] = this.lockedChitStates[c.id] =
+        parentState !== undefined && parentState !== Chit.deletedIfSerialized() && !c._dirty
+          ? parentState
+          : this.internState(c.serialize(this._playerIds));
     });
   }
 
@@ -428,17 +442,22 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
         sawChange = true;
       }
     }
-    this.dirtyChitIds.clear();
 
-    // 3. Detect deleted chits — orphans in lastChitStates that weren't serialized above
-    const deletedRoots: Chit[] = [];
-    for (const id of Object.keys(this.lastChitStates)) {
-      if (this.lastChitStates[id] === Chit.deletedIfSerialized()) continue;
+    // 3. Detect deleted chits — orphans in lastChitStates. Losing a parent marks a chit dirty, so
+    // only this flush's dirty chits and the roots of absorbed sub-turns can have become orphans.
+    const deletedRoots = new Set<Chit>();
+    const checkOrphan = (id: string) => {
+      const lastState = this.lastChitStates[id];
+      if (lastState === undefined || lastState === Chit.deletedIfSerialized()) return;
       const chit = this.chitLookup[id];
       if (chit && !chit.parent && !this.chitsToLock.includes(chit)) {
-        deletedRoots.push(chit);
+        deletedRoots.add(chit);
       }
-    }
+    };
+    this.dirtyChitIds.forEach(checkOrphan);
+    this.absorbedRootIds.forEach(checkOrphan);
+    this.dirtyChitIds.clear();
+    this.absorbedRootIds.clear();
 
     for (const chit of deletedRoots) {
       if (chit.id) {
@@ -555,6 +574,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     });
 
     this.lastChitStates = { ...this.lastChitStates, ...turn.lastChitStates };
+    turn.chitsToLock.forEach((chit) => chit.id && this.absorbedRootIds.add(chit.id));
     // serialize() merges the step's turns in this order, so a chit written by several parallel
     // turns serializes as the engine now holds it.
     step.absorbed.push(turn);
@@ -566,8 +586,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   /**
    * Called by the parent right after it has absorbed our `chitLookup` and `lastChitStates`.
    * After this we will only ever be walked via `serialize` / `chitsHistory` / `gameLog`,
-   * which only need `clockSteps` and `lockedChitStates` — so drop the heavy per-chit
-   * bookkeeping to keep finished sub-turns from pinning hundreds of chit references.
+   * and only by the parent, which needs nothing of ours but `clockSteps` — so drop the heavy
+   * per-chit bookkeeping to keep finished sub-turns from pinning hundreds of chit references.
    * @internal
    */
   private releasePostAbsorptionRefs() {
@@ -576,7 +596,14 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     this.lastChitStates = {};
     this.pendingNewChits.clear();
     this.dirtyChitIds.clear();
-    // Checkpoints stay: nothing in a finished turn changes again, so they are its serialize cache.
+    this.absorbedRootIds.clear();
+    if (!Turn.releaseAbsorbedTurns) return;
+    // The locked snapshot and every checkpoint are full copies of the chit map, and a long game
+    // has hundreds of finished turns. The parent walks into us with its own map, which at our
+    // step holds exactly what the snapshot held, so a finished turn keeps neither.
+    this.absorbed = true;
+    this.lockedChitStates = {};
+    this._checkpoints = [];
   }
 
   public async runParallelTurns<A>(
@@ -853,7 +880,8 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     };
 
     // Seed with the initial locked state so chits that never diff in this turn still
-    // surface their starting form (flush steps now hold diffs only).
+    // surface their starting form (flush steps now hold diffs only). A finished turn has no
+    // snapshot; the parent already logged that state before walking into it.
     ids.forEach((id) => {
       const initial = this.lockedChitStates[id];
       if (initial !== undefined) {
@@ -878,8 +906,12 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     return result;
   }
 
-  /** @internal */
-  serialize(playerId: string, clock: number): ChitSerializationResponse {
+  /**
+   * `into` is the parent's working chit map while it walks this turn. A finished turn has no
+   * snapshot of its own and writes its diffs straight into it; the parent then needs no merge.
+   * @internal
+   */
+  serialize(playerId: string, clock: number, into?: ChitStateLookup): ChitSerializationResponse {
     clock = Math.max(0, Math.min(clock, this.playerVisibleClockTime(playerId)));
 
     let chits: ChitStateLookup;
@@ -904,8 +936,9 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       index = checkpoint.nextIndex;
     } else {
       // Diff-replay: seed with the initial locked snapshot and merge every flush diff
-      // up to (but not including) the target clock.
-      chits = { ...this.lockedChitStates };
+      // up to (but not including) the target clock. A finished turn's snapshot was the parent's
+      // map at this step, which is what the parent hands us.
+      chits = this.absorbed ? (into ?? {}) : { ...this.lockedChitStates };
       subTurns = undefined;
       log = undefined;
       resultingClock = -1;
@@ -920,7 +953,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       resultingClock: resultingClock === -1 ? clock : resultingClock,
     });
     // True while every step walked is final and was consumed whole, so the walk may be checkpointed
-    let checkpointable = Turn.serializeCheckpoints;
+    let checkpointable = Turn.serializeCheckpoints && !this.absorbed;
     let lastCheckpointIndex = index;
     while (index < this.clockSteps.length) {
       const clockStep = this.clockSteps[index];
@@ -949,8 +982,10 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
           if (time <= 0) break;
 
           // we are going forward so we never want to have a turn go backwards. ever.
-          const serialized = turn.serialize(playerId, time);
-          Object.assign(chits, serialized.chits);
+          const serialized = turn.serialize(playerId, time, chits);
+          if (serialized.chits !== chits) {
+            Object.assign(chits, serialized.chits);
+          }
 
           resultingClock += serialized.clockDetails.clock;
           remainingClocksToSpend -= serialized.clockDetails.clock;
@@ -1283,6 +1318,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
 
     this.lastChitStates = { ...this.lockedChitStates }; // reset our known chit states
     this.dirtyChitIds.clear();
+    this.absorbedRootIds.clear();
     this.pendingNewChits.clear();
     // chits were deserialized back to locked state — mark them clean so future
     // modifications correctly trigger markDirty() → notifyChitDirty()
