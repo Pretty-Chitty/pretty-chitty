@@ -62,6 +62,60 @@ export { simulateMatches } from "./game/ai/simulateMatches";
 /** @group AI */
 export type { SimulateMatchesOptions, SimulatedMatch, SimulationReport } from "./game/ai/simulateMatches";
 
+/** @group Tutorials */
+export { defineTutorial, listTutorials, findTutorial, splitSentences } from "./game/tutorial/defineTutorial";
+/** @group Tutorials */
+export type {
+  TutorialSpec,
+  TutorialStep,
+  TutorialMatchSetup,
+  TutorialContext,
+  TutorialSummary,
+  Checker,
+  CheckResult,
+  ChitSelector,
+  Target,
+  UiTarget,
+  Focus,
+  Cue,
+  BoxPlacement,
+  BoxAnchor,
+  ForcedDecision,
+  AllowedAction,
+  GalleryCommand,
+  Pose,
+  TimelineCommand,
+  TutorialGalleryState,
+} from "./game/tutorial/defineTutorial";
+/** @group Tutorials */
+export { checks } from "./game/tutorial/checks";
+/** @group Tutorials */
+export { runTutorial } from "./game/tutorial/runTutorial";
+/** @group Tutorials */
+export type { RunTutorialOptions, RunTutorialResult } from "./game/tutorial/runTutorial";
+/** @group Tutorials */
+export { createDemoMatch } from "./game/tutorial/createDemoMatch";
+/** @group Tutorials */
+export type { DemoMatch, CreateDemoMatchOptions } from "./game/tutorial/createDemoMatch";
+/** @group Tutorials */
+export { TutorialController } from "./game/tutorial/TutorialController";
+/** @group Tutorials */
+export type { TutorialEvent, TutorialStatus, TutorialView, NarrationPlayer } from "./game/tutorial/TutorialController";
+/** @group Tutorials */
+export { TutorialRuntime } from "./game/tutorial/TutorialRuntime";
+/** @group Tutorials */
+export type { TutorialTheme } from "./game/tutorial/TutorialTheme";
+/** @group Tutorials */
+export { resolveTutorialTheme } from "./game/tutorial/TutorialTheme";
+/** @group Tutorials */
+export { TokenizedMarkdown } from "./components/TokenizedMarkdown";
+/** @group Tutorials */
+export { TutorialDevPanel } from "./components/Tutorial/TutorialDevPanel";
+/** @group Supporting Types */
+export type { RngSource } from "./game/TurnState";
+/** @group Supporting Types */
+export type { MatchConfig } from "./game/Match";
+
 /** @group Buttons */
 export { GameButton, DynamicGameButton, ToggleGalleryButton } from "./game/GameButton";
 
@@ -115,9 +169,10 @@ export type { IPlayerInfo, AiSeatInfo } from "./game/PlayerInfo";
 /** @internal */
 /** @group Supporting Types */
 export { MatchViewer } from "./components/MatchViewer";
-/** @internal */
-/** @group Supporting Types */
+/** @group Tutorials */
 export { DemoWrapper } from "./components/DemoWrapper";
+/** @group Tutorials */
+export type { DemoWrapperProps } from "./components/DemoWrapper";
 /** @internal */
 /** @group Supporting Types */
 export { Match, MatchAiControls } from "./game/Match";

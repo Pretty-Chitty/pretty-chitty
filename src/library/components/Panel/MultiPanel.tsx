@@ -16,6 +16,7 @@ import { PanelTabStack, TAB_HEIGHT } from "./PanelTabStack";
 import { usePanelPositioning } from "../../hooks/usePanelPositioning";
 import { useSmartDebouncedState } from "../../hooks/useSmartDebouncedState";
 import { ViewerZoomControls } from "./ViewerZoomControls";
+import { usePanelNavigation } from "../../hooks/usePanelNavigation";
 
 const ANIMATION_DURATION = 0.125;
 
@@ -239,6 +240,26 @@ export function MultiPanel({
   ]);
 
   const focusedRoot = focusedPanel?.renderInstance as RootChitRenderInstance;
+
+  // Let the tutorial overlay bring any of our panels to the front
+  const navigation = usePanelNavigation();
+  const selectRef = useRef(manuallyChangeSelectedIndex);
+  selectRef.current = manuallyChangeSelectedIndex;
+  useEffect(() => {
+    if (!navigation || !enabled) {
+      return;
+    }
+    const unregisters = chits.map((chit, index) =>
+      navigation.registerSelector(chit.id ?? "", () => {
+        selectRef.current(index);
+        // A tutorial asked for this panel: hold it against the automatic "show where something
+        // changed" switching for a while, prompt or not
+        setIgnoreChangesBefore(Date.now() + PANEL_ADJUST_IGNORE_DURATION);
+      }),
+    );
+    return () => unregisters.forEach((u) => u());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, chitIdsString, enabled]);
 
   return (
     <Stack

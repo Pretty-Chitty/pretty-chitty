@@ -135,6 +135,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "coverage": "vitest run --coverage",
-    "docs": "typedoc"
+    "docs": "typedoc",
+    "demo:audio": "node src/demo/market/audio/generate.mjs"
   }
 }

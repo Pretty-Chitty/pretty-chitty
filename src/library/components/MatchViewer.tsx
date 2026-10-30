@@ -13,6 +13,7 @@ import { FullScreenGalleryDisplay } from "./FullScreenGalleryDisplay";
 import { ActionLogDisplay } from "./ActionLogDisplay";
 import { ActionLogHistoryDisplay } from "./ActionLogHistoryDisplay";
 import { PanelContents } from "./Panel/PanelContents";
+import { PanelNavigationHolder } from "../hooks/usePanelNavigation";
 import useSize from "@react-hook/size";
 import { SettingsDisplay } from "./SettingsDisplay";
 import { ActionLogSidebar } from "./ActionLogSidebar";
@@ -20,6 +21,7 @@ import { InlineGalleryDisplay } from "./InlineGalleryDisplay";
 import { useLoadingState } from "../hooks/useLoadingStates";
 import { GameTheme } from "../game/GameTheme";
 import { ModalState } from "../game/ModalState";
+import { TutorialOverlay } from "./Tutorial/TutorialOverlay";
 
 function createMuiTheme(gameTheme: GameTheme) {
   return createTheme({
@@ -104,22 +106,31 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
       </Stack>
 
       {largeEnoughToShowLogSidebar && showLog && <ActionLogSidebar />}
+
+      <TutorialOverlay />
     </Stack>
   );
 }
 
-export function MatchViewer({ onBack }: { onBack?: () => void }) {
+/**
+ * @param skipReplay Open live instead of replaying the moves since the player's last answer (a
+ * tutorial uses it after rebuilding the match for Back)
+ */
+export function MatchViewer({ onBack, skipReplay = false }: { onBack?: () => void; skipReplay?: boolean }) {
   const game = useGame();
   const [modalState] = useState<ModalState>(new ModalState());
   const muiTheme = useMemo(() => createMuiTheme(game.theme), [game.theme]);
   return (
-    <TimeControllerProvider>
+    <TimeControllerProvider skipReplay={skipReplay}>
       <PanelScaleProvider>
         <ModalProvider modalState={modalState}>
           <GameThemeProvider theme={game.theme}>
             <ThemeProvider theme={muiTheme}>
               <CssBaseline />
-              <InnerMatchViewer onBack={onBack} />
+              {/* the tutorial overlay sits beside the panels and switches them through this */}
+              <PanelNavigationHolder>
+                <InnerMatchViewer onBack={onBack} />
+              </PanelNavigationHolder>
             </ThemeProvider>
           </GameThemeProvider>
         </ModalProvider>

@@ -83,7 +83,7 @@ interface TokenProps {
   fontSize: number;
 }
 
-function Token({ name, definition, fontSize }: TokenProps) {
+export function Token({ name, definition, fontSize }: TokenProps) {
   if (!definition) {
     return <>{`:${name}:`}</>;
   }

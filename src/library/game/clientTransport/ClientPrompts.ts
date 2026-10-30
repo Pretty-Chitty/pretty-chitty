@@ -3,7 +3,7 @@ import { ClockDetails, samePasses } from "../ClockDetails";
 import { Connection } from "../Connection";
 import { ConnectionObject } from "../ConnectionObject";
 import { PlayerChit } from "../PlayerChit";
-import { Prompt, PromptSerialization } from "../Prompt";
+import { PickPrompt, Prompt, PromptAction, PromptSerialization } from "../Prompt";
 import { RootChit } from "../RootChit";
 import { ServerPrompts } from "../serverTransport/ServerPrompts";
 import { ClientTime } from "./ClientTime";
@@ -12,6 +12,20 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
   private waitingPrompts: { [playerId: string]: EventChannel<PromptSerialization | undefined> } = {};
   private serverPrompts: ServerPrompts<P, R>;
   public currentPrompt = new EventChannel<Prompt | undefined>(undefined);
+
+  /**
+   * Vets the player's answers before they are sent. Undefined (the default) lets everything through.
+   * A tutorial sets this so only the moves its current step asks for go through; everything else
+   * is dropped and `blocked` fires so the UI can say so.
+   */
+  public guard?: (prompt: PickPrompt, action: PromptAction) => boolean | "handled";
+  /**
+   * Replaces what Undo does while set (a tutorial maps it to its Back). Whether Undo is offered does
+   * not change: it still shows only when the current prompt can be undone.
+   */
+  public undoOverride = new EventChannel<{ undo: () => void } | undefined>(undefined);
+  /** Fires with the attempted action each time the guard drops one */
+  public blocked = new EventChannel<{ prompt: PickPrompt; action: PromptAction; at: number } | undefined>(undefined);
 
   private _currentPromptSpec?: PromptSerialization;
 
@@ -40,6 +54,22 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
   private stageInPrompt(promptSpec: PromptSerialization) {
     this._currentPromptSpec = promptSpec;
     const prompt = Prompt.deserialize(promptSpec, this.clientTime.findChit, this.clientTime.game.buttonLibrary);
+    if (prompt instanceof PickPrompt) {
+      prompt.guard = (action) => {
+        if (!this.guard) {
+          return true;
+        }
+        const verdict = this.guard(prompt, action);
+        if (verdict === true) {
+          return true;
+        }
+        if (verdict === false) {
+          this.blocked.value = { prompt, action, at: Date.now() };
+        }
+        // "handled": the guard did something else with it (a tutorial's Undo is its Back)
+        return false;
+      };
+    }
     prompt.onResolve(async (success) => {
       try {
         this.fixActiveLog();

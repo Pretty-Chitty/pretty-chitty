@@ -99,6 +99,8 @@ export default function PromptControls({ collapsible }: { collapsible?: boolean 
   const speed = useAnimationSpeedMultiplier();
   const clientPrompt = useClientPrompts();
   const [prompt] = useEventChannelState(clientPrompt.currentPrompt);
+  const [undoOverride] = useEventChannelState(clientPrompt.undoOverride);
+  const canUndo = !!prompt?.canReset;
   const [promptSpec] = useEventChannelState(clientPrompt.getPromptEventChannelForPlayer(playerId));
   const [expandedBecauseOfPrompt, setExpandedBecauseOfPrompt] = useState(!!prompt);
   const [live] = useEventChannelState(timeState.live);
@@ -127,6 +129,7 @@ export default function PromptControls({ collapsible }: { collapsible?: boolean 
   return (
     <Stack
       direction="row"
+      data-tutorial-target="prompt"
       sx={{
         position: collapsible ? "absolute" : "static",
         overflow: "hidden",
@@ -167,12 +170,13 @@ export default function PromptControls({ collapsible }: { collapsible?: boolean 
         </GameDialog>
       )} */}
 
-      {prompt?.canReset && (
+      {prompt && canUndo && (
         <BottomBarButton
           icon={Replay}
           label="Undo"
-          onClick={() => prompt.stepBack()}
-          onLongClick={() => prompt.stepBack(true)}
+          tutorialTarget="undo"
+          onClick={() => (undoOverride ? undoOverride.undo() : prompt.stepBack())}
+          onLongClick={() => (undoOverride ? undoOverride.undo() : prompt.stepBack(true))}
         />
       )}
       <Box flex={1} />

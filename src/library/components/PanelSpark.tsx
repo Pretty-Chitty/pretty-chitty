@@ -80,6 +80,7 @@ export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; c
   return (
     <Box
       ref={ref}
+      data-tutorial-target={`spark:${chit.id}`}
       sx={{
         position: "relative",
         background: flashed ? theme.sparkFlashColor : backgroundColor,

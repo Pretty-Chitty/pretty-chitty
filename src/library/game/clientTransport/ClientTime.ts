@@ -27,15 +27,11 @@ export class ClientTime extends ConnectionObject {
     this.register(this.clientTimeState.targetClock.on(() => this.processNewTargetClock()));
     this.register(
       this.clientTimeState.isWaitingOnAnimations.on((isWaiting) => {
-        if (
-          !isWaiting &&
-          this.clientTimeState.live.value &&
-          this.clientTimeState.targetClock.value < this.maxClock.value.clock
-        ) {
-          this.clientTimeState.targetClock.value++;
-        }
+        if (!isWaiting) this.playOn();
       }),
     );
+    // A hold that is raised or lifted lets the board carry on from where it stopped
+    this.register(this.clientTimeState.timelineHold.on(() => this.playOn(), false));
 
     this.clientTimeState.animationSpeedMultiplier.value =
       parseFloat(localStorage["animationSpeedMultiplier"] ?? "1") || 1;
@@ -89,12 +85,30 @@ export class ClientTime extends ConnectionObject {
     if (this.clientTimeState.targetClock.value <= newTime || newTime === 0) {
       this.clientTimeState.isLoading.value = true;
 
-      if (!this.clientTimeState.skipReplay.value) {
+      const skip = this.clientTimeState.skipReplay.value || this.clientTimeState.skipInitialReplay;
+      this.clientTimeState.skipInitialReplay = false;
+      if (!skip) {
         this.startTime = newTime;
         this.clientTimeState.targetClock.value = newTime;
       } else {
         this.clientTimeState.goLive(this.maxClock.value.clock);
       }
+    }
+  }
+
+  /** The furthest clock the board may play to right now (the game's latest, or a tutorial's hold) */
+  private get playableClock() {
+    return this.clientTimeState.playableClock(this.maxClock.value.clock);
+  }
+
+  /** Moves the board one clock on, if it is live, idle and allowed further */
+  private playOn() {
+    if (
+      !this.clientTimeState.isWaitingOnAnimations.value &&
+      this.clientTimeState.live.value &&
+      this.clientTimeState.targetClock.value < this.playableClock
+    ) {
+      this.clientTimeState.targetClock.value++;
     }
   }
 
@@ -110,15 +124,15 @@ export class ClientTime extends ConnectionObject {
     if (this.clientTimeState.live.value || !isSamePass) {
       if (
         !this.clientTimeState.isWaitingOnAnimations.value &&
-        this.clientTimeState.targetClock.value < this.maxClock.value.clock
+        this.clientTimeState.targetClock.value < this.playableClock
       ) {
         this.clientTimeState.targetClock.value++;
       } else if (!isSamePass && !this.clientTimeState.isWaitingOnAnimations.value) {
-        this.clientTimeState.targetClock.value = this.maxClock.value.clock;
+        this.clientTimeState.targetClock.value = this.playableClock;
         this.processNewTargetClock();
       } else if (!this.clientTimeState.isWaitingOnAnimations.value) {
         // some other use has reset...
-        this.clientTimeState.targetClock.value = this.maxClock.value.clock;
+        this.clientTimeState.targetClock.value = this.playableClock;
       } else {
         this.processNewTargetClock();
       }
@@ -135,8 +149,9 @@ export class ClientTime extends ConnectionObject {
     const newTargetClock = this.clientTimeState.targetClock.value;
     const currentClock = this.currentClock.value;
 
-    if (newTargetClock > this.maxClock.value.clock) {
-      this.clientTimeState.targetClock.value = this.maxClock.value.clock;
+    if (newTargetClock > this.playableClock) {
+      // past the game's latest clock, or past a tutorial's hold (the Live and Forward buttons too)
+      this.clientTimeState.targetClock.value = this.playableClock;
       return;
     }
     if (newTargetClock < 1) {
@@ -223,6 +238,30 @@ export class ClientTime extends ConnectionObject {
       console.error(e);
       this.clientTimeState.setAnimationState(animationKey, false);
     }
+  }
+
+  /**
+   * Changes a chit in this client's view only: `change` sets properties on the local copy and the
+   * renderer picks it up (and animates it) like any change from the server. The server never hears
+   * of it. A later server change to the same chit overwrites it; `restoreChit` puts it back sooner.
+   * For tutorials and demos (a card flipping over while the narration talks about it).
+   */
+  public poseChit(chit: Chit, change: (chit: Chit) => void) {
+    chit.beginDeserializing();
+    try {
+      change(chit);
+    } finally {
+      chit.doneDeserializing();
+    }
+  }
+
+  /** Puts a chit's properties back to the server's state for the moment on screen, undoing `poseChit`. */
+  public restoreChit(chit: Chit) {
+    const value = chit.id ? this.lastSerializedState[chit.id] : undefined;
+    if (!value) return;
+    chit.beginDeserializing();
+    chit.deserialize(value, this.findChit, true);
+    chit.doneDeserializing();
   }
 
   public async chitHistory(chits: Chit[]) {

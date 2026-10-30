@@ -20,8 +20,11 @@ export default function BottomBarButton({
   onClick,
   onLongClick,
   whileHolding,
+  tutorialTarget,
 }: {
   icon: BottomBarButtonIcon;
+  /** Name a tutorial can point at (`{ ui: "button:Pass" }`). Default: `button:<label>` */
+  tutorialTarget?: string;
   label?: string;
   disabled?: boolean;
   removeLabel?: boolean;
@@ -114,6 +117,7 @@ export default function BottomBarButton({
     },
   );
 
+  const targetName = tutorialTarget ?? (label ? `button:${label}` : undefined);
   label = label?.toUpperCase();
   let color = theme.barTextColor;
   let textShadowColor: string | null = null;
@@ -133,6 +137,7 @@ export default function BottomBarButton({
   return (
     <Box
       ref={ref}
+      data-tutorial-target={targetName}
       onClick={() => {
         if (onClick) {
           onClick();

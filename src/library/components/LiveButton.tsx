@@ -10,18 +10,21 @@ export default function LiveButton({ hideIfLive = true }: { hideIfLive?: boolean
   const [targetClock] = useEventChannelState(timeState.targetClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
   const [live] = useEventChannelState(timeState.live);
+  // A tutorial holding the board counts as the end: there is nothing to skip to past it
+  const [hold] = useEventChannelState(timeState.timelineHold);
+  const end = hold === undefined ? maxClock.clock : Math.min(hold, maxClock.clock);
 
-  if (hideIfLive && targetClock >= maxClock.clock) {
+  if (hideIfLive && targetClock >= end) {
     return null;
   }
 
   return (
     <BottomBarButton
-      disabled={targetClock >= maxClock.clock && live}
+      disabled={targetClock >= end && live}
       icon={SkipNext}
-      label={live && targetClock < maxClock.clock ? "Skip" : "Live"}
-      invisible={live && targetClock >= maxClock.clock}
-      onClick={() => timeState.goLive(maxClock.clock)}
+      label={live && targetClock < end ? "Skip" : "Live"}
+      invisible={live && targetClock >= end}
+      onClick={() => timeState.goLive(end)}
     />
   );
 }

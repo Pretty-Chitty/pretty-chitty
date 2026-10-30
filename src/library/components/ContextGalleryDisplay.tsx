@@ -54,6 +54,8 @@ export function ContextGalleryDisplay({ size }: { size: number }) {
         }}
       >
         <GalleryViewer
+          kind="context"
+          tutorialTarget="gallery:context"
           fov={2}
           angle={0}
           showSummary={"none"}

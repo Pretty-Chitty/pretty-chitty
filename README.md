@@ -81,6 +81,14 @@ Games are structured around the `Turn` class, which provides:
 - Responsive layout system
 - Icon support with customizable icon maps
 
+### Tutorials
+
+Games can ship scripted tutorials: a floating text box with narration, rings and arrows over the
+player, and "do it" steps checked against game state. A tutorial runs like a demo game (one person,
+bots in the other seats) and hands over to normal play when it ends. See
+`src/library/game/tutorial/TUTORIAL_GUIDE.md`, the Playground's Demo tab, and the reference script
+in `src/demo/market/tutorial.ts`.
+
 ## Installation
 
 While this is an npm package, it is _highly_ recommended that you use the `@pretty-chitty/cli` package to install and run Pretty Chitty games. This cli utility will:

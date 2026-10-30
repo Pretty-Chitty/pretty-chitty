@@ -465,6 +465,12 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     this.markDirty();
   }
 
+  /** Zooms the camera to `zoom` around panel pixel (x, y), bringing it to the middle (see `CameraWrapperPerspective.focusOn`) */
+  public focusCamera(x: number, y: number, zoom: number) {
+    this.cameraWrapper.focusOn(x, y, zoom);
+    this.markDirty();
+  }
+
   public get cameraZoom() {
     return this.cameraWrapper.zoom;
   }

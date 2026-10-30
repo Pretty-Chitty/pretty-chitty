@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback, createContext, useContext } from "react";
+import React, { useRef, useState, useEffect, useCallback, createContext, useContext, useMemo } from "react";
 import { Box } from "@mui/material";
 import useSize from "@react-hook/size";
 import { useGameTheme } from "../../hooks/useGameTheme";
@@ -11,6 +11,7 @@ import { Chit } from "../../game/Chit";
 import Hammer from "@egjs/hammerjs";
 import { PanelPositioningContext, ViewerPosition } from "../../hooks/usePanelPositioning";
 import { ViewerWrapper } from "./ViewerWrapper";
+import { PanelNavigation, PanelNavigationContext, usePublishPanelNavigation } from "../../hooks/usePanelNavigation";
 
 // Types for gesture handling
 export interface ViewerGestureHandlers {
@@ -252,9 +253,76 @@ export function PanelContents({
     fullChitList.push(rootChit);
   }
 
+  // Panel navigation (used by the tutorial overlay to bring a chit's panel to the front)
+  const selectorsRef = useRef<Map<string, () => void>>(new Map());
+  const panelRootsRef = useRef<Chit[]>(tabChitList);
+  panelRootsRef.current = tabChitList;
+  const focusedPanelRef = useRef(focusedPanel);
+  focusedPanelRef.current = focusedPanel;
+  /** The panel root (a chit with its own viewer) that shows `chit` */
+  const panelOf = (chit: Chit): Chit | undefined => {
+    const roots = new Set(panelRootsRef.current.map((c) => c.id));
+    let panel: Chit | undefined = chit;
+    while (panel && !roots.has(panel.id)) {
+      panel = panel.parent;
+    }
+    return panel;
+  };
+  const navigation = useMemo<PanelNavigation>(
+    () => ({
+      registerSelector: (chitId, select) => {
+        selectorsRef.current.set(chitId, select);
+        return () => {
+          if (selectorsRef.current.get(chitId) === select) selectorsRef.current.delete(chitId);
+        };
+      },
+      panelRoots: () => panelRootsRef.current,
+      isFront: (chitId) => positionsRef.current.get(chitId)?.front ?? false,
+      revealChit: async (chit) => {
+        const panel = panelOf(chit);
+        if (!panel?.id) {
+          return false;
+        }
+        // Showing a panel full screen (the player zoomed in, or a tutorial focused it): that layout
+        // has every panel as a tab, so switch tabs there rather than leave it
+        const select = selectorsRef.current.get(panel.id);
+        if (select && !(positionsRef.current.get(panel.id)?.front ?? false)) {
+          select();
+          await new Promise((resolve) => setTimeout(resolve, 400));
+        }
+        return true;
+      },
+      keepFront: (chit) => {
+        // Selecting the tab already in front changes nothing but re-arms its hold against the
+        // automatic "show where something changed" switching
+        const panel = panelOf(chit);
+        if (panel?.id && (positionsRef.current.get(panel.id)?.front ?? false)) selectorsRef.current.get(panel.id)?.();
+      },
+      focusedPanel: () => focusedPanelRef.current,
+      focusPanelOf: async (chit) => {
+        const panel = chit ? panelOf(chit) : undefined;
+        if (chit && !panel?.id) return false;
+        if (focusedPanelRef.current === panel) return true;
+        if (!panel) {
+          setFocusedPanel(undefined);
+        } else if (focusedPanelRef.current) {
+          selectorsRef.current.get(panel.id!)?.(); // already full screen: switch to its tab
+        } else {
+          setFocusedPanel(panel);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        return true;
+      },
+    }),
+    [],
+  );
+  // The tutorial overlay is outside these panels: it reaches the navigation through the viewer
+  usePublishPanelNavigation(navigation);
+
   return (
     <GestureContext.Provider value={gestureContextValue}>
       <PanelPositioningContext.Provider value={positioningContextValue}>
+       <PanelNavigationContext.Provider value={navigation}>
         <Box
           sx={{
             position: "relative",
@@ -358,6 +426,7 @@ export function PanelContents({
             })}
           </Box>
         </Box>
+       </PanelNavigationContext.Provider>
       </PanelPositioningContext.Provider>
     </GestureContext.Provider>
   );

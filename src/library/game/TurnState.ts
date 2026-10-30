@@ -12,6 +12,14 @@ export type RngResponse = { readonly type: "rng"; value: number[] };
 
 export type Decision = PromptResponse | RngResponse | TurnState;
 
+/**
+ * Where a match's random numbers come from. Called once per `rng()` / `takeRng(count)` draw with the
+ * number of values wanted; return that many numbers in [0, 1), or `undefined` to fall back to
+ * `Math.random`. Draws are persisted in the turn state as always, so a source only matters for a
+ * draw that has not been made yet (never on replay, reload or undo).
+ */
+export type RngSource = (count: number) => number[] | undefined;
+
 export class TurnState {
   readonly type = "turn";
   id = "root";
@@ -30,9 +38,24 @@ export class TurnState {
   private parentTurnState: TurnState | undefined;
   private parentTurnIndex = 0;
 
+  /** Set on the root turn state (see `Match`); sub-turns inherit it. Not serialized. */
+  public rngSource?: RngSource;
+
+  private get rng(): RngSource | undefined {
+    return this.rngSource ?? this.parentTurnState?.rng;
+  }
+
+  private draw(count: number): number[] {
+    const scripted = this.rng?.(count);
+    if (scripted && scripted.length === count) {
+      return scripted;
+    }
+    return Array.from({ length: count }, () => Math.random());
+  }
+
   toJSON() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { parentTurnIndex, parentTurnState, ...rest } = this;
+    const { parentTurnIndex, parentTurnState, rngSource, ...rest } = this;
     return rest;
   }
 
@@ -75,7 +98,7 @@ export class TurnState {
       }
       return (result as RngResponse).value[0];
     } else if (index === this.decisions.length) {
-      const rng = Math.random();
+      const rng = this.draw(1)[0];
       this.decisions.push({
         type: "rng",
         value: [rng],
@@ -94,7 +117,7 @@ export class TurnState {
       }
       return (result as RngResponse).value;
     } else if (index === this.decisions.length) {
-      const rngs = Array.from({ length: count }, () => Math.random());
+      const rngs = this.draw(count);
       this.decisions.push({
         type: "rng",
         value: rngs,

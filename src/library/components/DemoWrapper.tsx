@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { Chit } from "../game/Chit";
 import { MatchViewer } from "./MatchViewer";
@@ -8,19 +8,30 @@ import { ConnectionProvider } from "../hooks/useConnection";
 import { Connection } from "../game/Connection";
 import { LocalConnectionTransport } from "../game/ConnectionTransport";
 import { Match } from "../game/Match";
-import { PlayerInfo } from "../game/PlayerInfo";
-import { EphemeralMatchStorage } from "../game/MatchStorage";
 import { PlayerProvider } from "../hooks/usePlayer";
 import { LoadingStateProvider, LoadingStates } from "../hooks/useLoadingStates";
-import { RootChit } from "../game/RootChit";
+import { TutorialSpec, findTutorial } from "../game/tutorial/defineTutorial";
+import { createDemoMatch, DemoMatch } from "../game/tutorial/createDemoMatch";
+import { TutorialProvider } from "../hooks/useTutorial";
+import { TutorialTheme } from "../game/tutorial/TutorialTheme";
+import { TutorialEvent } from "../game/tutorial/TutorialController";
 
 export interface IChitLibrary {
   [key: string]: new () => Chit;
 }
 
-function PlayerEditor({ playerId, match, showBack }: { showBack?: boolean; playerId: string; match: Match<any, any> }) {
+function PlayerEditor({
+  playerId,
+  match,
+  onBack,
+  skipReplay,
+}: {
+  onBack?: () => void;
+  playerId: string;
+  match: Match<any, any>;
+  skipReplay?: boolean;
+}) {
   const [localConnection, setLocalConnection] = useState<Connection | undefined>();
-  const [, setRemoteConnection] = useState<LocalConnectionTransport>(new LocalConnectionTransport());
 
   useEffect(() => {
     const newRemoteConnection = new LocalConnectionTransport();
@@ -29,7 +40,6 @@ function PlayerEditor({ playerId, match, showBack }: { showBack?: boolean; playe
     match.connect(newRemoteConnection, playerId);
 
     setLocalConnection(newConnection);
-    setRemoteConnection(newRemoteConnection);
     return () => {
       newConnection.dispose();
     };
@@ -42,68 +52,135 @@ function PlayerEditor({ playerId, match, showBack }: { showBack?: boolean; playe
   return (
     <ConnectionProvider connection={localConnection}>
       <PlayerProvider playerId={playerId}>
-        <MatchViewer
-          onBack={
-            showBack
-              ? () => {
-                  window.history.back();
-                }
-              : undefined
-          }
-        />
+        <MatchViewer onBack={onBack} skipReplay={skipReplay} />
       </PlayerProvider>
     </ConnectionProvider>
   );
 }
 
-function Editor({ game }: { game: Game<any, any> }) {
-  const [match, setMatch] = useState<Match<any, any> | null>(null);
+export type DemoWrapperProps = {
+  game: Game<any, any>;
+  /**
+   * Run a tutorial: its id (looked up on `game.tutorials`, with `locale` when given) or the spec
+   * itself. Without one this is a plain demo game: the same match, no overlay.
+   */
+  tutorial?: string | TutorialSpec<any, any>;
+  locale?: string;
+  /** Colour overrides for the overlay, on top of the game's and the spec's */
+  tutorialTheme?: Partial<TutorialTheme>;
+  onTutorialEvent?: (e: TutorialEvent) => void;
+  /** Shown as the back button; with a tutorial whose last step ends with "back", called when it finishes */
+  onBack?: () => void;
+  /** Start the tutorial at this step (the Playground's "restart at step") */
+  startAt?: number;
+  /** Rendered alongside the match once it exists (the Playground's dev panel) */
+  children?: React.ReactNode;
+};
+
+/**
+ * Runs a demo game in this tab: an ephemeral match with one human seat and a bot in every other
+ * seat. With `tutorial`, the same match runs the given script on top. A demo is a tutorial with no
+ * steps, so both go through `createDemoMatch`.
+ */
+export function DemoWrapper({
+  game,
+  tutorial,
+  locale,
+  tutorialTheme,
+  onTutorialEvent,
+  onBack,
+  startAt = 0,
+  children,
+}: DemoWrapperProps) {
+  const [loadingStates] = useState<LoadingStates>(new LoadingStates());
+  const [demo, setDemo] = useState<DemoMatch<any, any> | null>(null);
+  const demoRef = useRef<DemoMatch<any, any> | null>(null);
+  // Where the script (re)starts and whether it needs the Start tap: a rewind restarts at the step it
+  // went back to, without the tap
+  const [start] = useState<{ at: number; auto: boolean; paused: boolean }>({
+    at: startAt,
+    auto: false,
+    paused: false,
+  });
+
+  const spec = typeof tutorial === "string" ? findTutorial(game, tutorial, locale) : tutorial;
+  if (typeof tutorial === "string" && !spec) {
+    console.warn(`Tutorial "${tutorial}" not found on ${game.metadata.name}; running a plain demo`);
+  }
 
   useEffect(() => {
-    const storage = new EphemeralMatchStorage("demogame");
-
-    const tempRoot = new game.chitLibrary.Root() as RootChit<any>;
-    const playerCount = tempRoot.setupDemoGame();
-    const configOptions = tempRoot.getCurrentlySelectedMatchOptions();
-
-    const players = [];
-    for (let i = 0; i < playerCount; i++) {
-      const player = new PlayerInfo(`p${i}`, i === 0 ? "Human" : `Robot ${i}`);
-      player.ai = i === 0 ? undefined : {};
-      players.push(player);
-    }
-    const match = new Match(game, players, storage, configOptions);
     let cancelled = false;
-    match.load().then(() => {
+    createDemoMatch(game, spec).then((d) => {
       if (cancelled) {
+        d.match.dispose();
         return;
       }
-      match.seatAiPlayers({ thinkMs: [400, 900] });
-      match.start();
-      setMatch(match);
+      demoRef.current?.match.dispose();
+      demoRef.current = d;
+      d.match.start();
+      setDemo(d);
     });
     return () => {
-      match.dispose();
       cancelled = true;
+      demoRef.current?.match.dispose();
+      demoRef.current = null;
     };
-  }, [game]);
+  }, [game, spec]);
 
-  if (!match) {
+  // Back in a tutorial: put the match back to the snapshot taken when that step went live. The
+  // match reruns from it in place (saved decisions replay deterministically; the pinned draws and
+  // forced moves rewind with it) and the viewer animates to the old board without remounting.
+  const snapshot = useCallback(() => JSON.parse(JSON.stringify(demoRef.current?.match.state ?? {})), []);
+  const rewind = useCallback(async (stepId: string) => {
+    const current = demoRef.current;
+    if (!current) return false;
+    const state = current.runtime.restoreSnapshot(stepId);
+    if (state === undefined) return false;
+    await current.replaceState(state);
+    return true;
+  }, []);
+
+  if (!demo) {
     return null;
   }
 
-  return (
-    <GameProvider game={game}>
-      <PlayerEditor playerId={"p0"} match={match} showBack />
-    </GameProvider>
-  );
-}
+  const onFinished = (e: TutorialEvent) => {
+    onTutorialEvent?.(e);
+    if (e.type === "completed" && e.end === "back") {
+      onBack?.();
+    }
+  };
 
-export function DemoWrapper({ game }: { game: Game<any, any> }) {
-  const [loadingStates] = useState<LoadingStates>(new LoadingStates());
+  const viewer = (
+    <PlayerEditor key={demo.key} playerId={demo.playerId} match={demo.match} onBack={onBack} skipReplay={start.auto} />
+  );
+
   return (
     <LoadingStateProvider loadingStates={loadingStates}>
-      <Editor game={game} />
+      <GameProvider game={game}>
+        {spec && spec.steps.length > 0 ? (
+          <TutorialProvider
+            spec={spec}
+            runtime={demo.runtime}
+            themeOverrides={tutorialTheme}
+            ai={demo.match.ai}
+            onEvent={onFinished}
+            startAt={start.at}
+            autoStart={start.auto}
+            startPaused={start.paused}
+            snapshot={snapshot}
+            rewind={rewind}
+          >
+            {viewer}
+            {children}
+          </TutorialProvider>
+        ) : (
+          <>
+            {viewer}
+            {children}
+          </>
+        )}
+      </GameProvider>
     </LoadingStateProvider>
   );
 }

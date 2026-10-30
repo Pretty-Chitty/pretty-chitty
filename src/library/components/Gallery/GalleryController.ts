@@ -1,4 +1,4 @@
-import { Object3D } from "three";
+import { Object3D, Vector3 } from "three";
 import { GameTheme } from "../../game/GameTheme";
 import { SceneWrapper } from "../../rendering/outline";
 import { TextureReferenceCounterRootGroup } from "../../rendering/TextureReferenceCounter";
@@ -95,6 +95,77 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
     }
 
     return item.getGalleryItem();
+  }
+
+  /** The built item showing `matches` (by its gallery item) */
+  private findItem(matches: (item: GalleryItem) => boolean): BuiltItem | undefined {
+    return this.items.find((b) => matches(b.getGalleryItem()));
+  }
+
+  /** Ids of the gallery items currently shown (chit ids for items built from chits) */
+  itemIds(): string[] {
+    return this.items.map((b) => b.id);
+  }
+
+  /** The gallery items currently shown */
+  galleryItems(): GalleryItem[] {
+    return this.items.map((b) => b.getGalleryItem());
+  }
+
+  /**
+   * Where an item is drawn, in the canvas's CSS pixels: a rect when it is on screen, "offscreen"
+   * when it is scrolled out of view, undefined when no item matches.
+   */
+  locateItem(
+    matches: (item: GalleryItem) => boolean,
+  ): { left: number; top: number; right: number; bottom: number } | "offscreen" | undefined {
+    const built = this.findItem(matches);
+    if (!built || !built.settled) return undefined;
+    const box = built.worldBox();
+    if (box.isEmpty()) return undefined;
+    const { w, h } = this.layoutManager.getDimensions();
+    const camera = this.cameraManager.camera;
+    camera.updateMatrixWorld();
+    let left = Infinity,
+      top = Infinity,
+      right = -Infinity,
+      bottom = -Infinity;
+    for (const x of [box.min.x, box.max.x]) {
+      for (const y of [box.min.y, box.max.y]) {
+        for (const z of [box.min.z, box.max.z]) {
+          const p = new Vector3(x, y, z).project(camera);
+          const px = ((p.x + 1) / 2) * w;
+          const py = ((1 - p.y) / 2) * h;
+          left = Math.min(left, px);
+          right = Math.max(right, px);
+          top = Math.min(top, py);
+          bottom = Math.max(bottom, py);
+        }
+      }
+    }
+    // Mostly out of the visible strip: it needs scrolling into view first
+    const visible = Math.max(0, Math.min(right, w) - Math.max(left, 0));
+    if (visible < (right - left) * 0.6) return "offscreen";
+    return {
+      left: Math.max(0, left),
+      top: Math.max(0, top),
+      right: Math.min(w, right),
+      bottom: Math.min(h, bottom),
+    };
+  }
+
+  /** Pans (animated) so the matching item is on screen, roughly centred */
+  scrollToItem(matches: (item: GalleryItem) => boolean) {
+    const built = this.findItem(matches);
+    if (!built) return;
+    const { itemsPerPage, itemSpacing } = this.layoutManager.getStageDimensions();
+    const { w: itemWidth } = this.layoutManager.getItemDimensions();
+    const step = itemWidth + itemSpacing;
+    const firstVisible = -this.animationController.getOffsetX() / step;
+    const index = Math.round(built.getIndex());
+    if (index >= firstVisible && index <= firstVisible + itemsPerPage - 1) return;
+    const target = -(index - Math.floor((itemsPerPage - 1) / 2)) * step;
+    this.pan(target - this.animationController.getOffsetX(), true);
   }
 
   render(): boolean {

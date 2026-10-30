@@ -151,6 +151,7 @@ export function ActionLogDisplay({ toggleSidebarLog }: { toggleSidebarLog: boole
     <Stack
       direction={"row"}
       ref={containerRef}
+      data-tutorial-target="log"
       sx={{
         background: theme.actionLogBackgroundColor,
         cursor: "pointer",

@@ -138,15 +138,18 @@ export default function TopBarPlayers() {
     <TopBarDropdown
       label={
         <Stack direction={"row"} sx={{ pt: 1, pb: 1, maxWidth: "100%" }}>
-          {playerChits.map((player) => (
-            <PlayerImage
-              sx={{ ml: -1 }}
-              borderColor={player.promptStatus.latestPromptMessage ? theme.chitHighlightColor : undefined}
-              size={theme.topBarHeight - theme.spacing * 2}
-              key={player.id}
-              player={player}
-            />
-          ))}
+          {/* The avatar cluster is what a tutorial points at with { ui: "players" }, not the whole strip */}
+          <Stack direction={"row"} data-tutorial-target="players" sx={{ pl: 1 }}>
+            {playerChits.map((player) => (
+              <PlayerImage
+                sx={{ ml: -1 }}
+                borderColor={player.promptStatus.latestPromptMessage ? theme.chitHighlightColor : undefined}
+                size={theme.topBarHeight - theme.spacing * 2}
+                key={player.id}
+                player={player}
+              />
+            ))}
+          </Stack>
           <Typography
             flex={1}
             sx={{

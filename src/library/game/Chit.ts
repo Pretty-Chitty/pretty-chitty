@@ -461,7 +461,10 @@ export class Chit extends ObjectWithProps {
   /** @internal */
   @NonEditable public children: Chit[] = [];
 
-  /** @internal */
+  /**
+   * Visits this chit and everything under it, depth first. Return false from `fn` to skip a chit's
+   * children. Handy in tutorial selectors and checks ("every card on the table").
+   */
   public walk(fn: (c: Chit) => boolean | void) {
     if (fn(this) === false) {
       return;
@@ -682,7 +685,7 @@ export class Chit extends ObjectWithProps {
     return result;
   }
 
-  /** @internal */
+  /** Like `chit.walk` over several roots, visiting each chit (by id) once. */
   public static walk(chits: Chit[], fn: (c: Chit) => boolean | void) {
     const seenIds = new Set();
     chits.forEach((chit) =>

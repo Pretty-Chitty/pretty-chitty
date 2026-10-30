@@ -9,7 +9,11 @@ export class PlayerPromptStatusChit extends Chit {
   public latestPromptMessage?: string;
   /** Plain-text form of {@link latestPromptMessage} for storage, match lists and notifications. @internal */
   public latestPromptMessageText?: string;
-  /** @internal */
+  /**
+   * The prompt this player is being asked right now, on the side that runs the match (undefined when
+   * it is not their turn). Read it, do not resolve it: answers go through the player's own client.
+   * Headless tutorial runs and harnesses use it to see whose turn it is.
+   */
   @NonEditable public latestPrompt = new EventChannel<Prompt | undefined>(undefined, 50);
   /** @internal */
   @NonEditable public latestPromptResponseTime = 0;

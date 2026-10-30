@@ -326,18 +326,32 @@ export class DragPick<C extends Chit> extends Pick {
 
   public dropTargets: DragTarget<any, C>[] = [];
 
+  /** Focus the draggable chits themselves (no argument), or the given chits, when the prompt stages in */
+  focus(chit?: Chit | Chit[]): this {
+    if (!chit) {
+      this.focusChits.push(...this.chits);
+    } else if (Array.isArray(chit)) {
+      this.focusChits.push(...chit);
+    } else {
+      this.focusChits.push(chit);
+    }
+    return this;
+  }
+
   /** @internal */
   serializeDetails() {
     const result: any = {
       c: this.chits.map((chit) => chit.id),
       d: this.dropTargets.map((dropTarget) => dropTarget.chits.map((chit) => chit.id)),
+      f: this.focusChits.map((chit) => chit.id),
     };
     return result;
   }
 
   /** @internal */
-  deserializeDetails({ c, d }: { c: string[]; d: string[][] }, findChit: FindChit): void {
+  deserializeDetails({ c, d, f }: { c: string[]; d: string[][]; f?: string[] }, findChit: FindChit): void {
     this.chits = c.map((chitId) => findChit(chitId) as C).filter((d) => d);
+    this.focusChits = (f ?? []).map((chitId) => findChit(chitId)).filter((d) => d);
     this.dropTargets = d.map((dropIds: string[]) => {
       const result = new DragTarget<any, C>();
       result.chits = dropIds.map((chitId: string) => findChit(chitId)).filter((d) => d);
@@ -375,6 +389,7 @@ export class DragPick<C extends Chit> extends Pick {
         prompt.resolvePick(this, { chitId: c.id!, targetChitId: droppedChit.id! });
       };
     });
+    this.processFocus();
   }
 
   /** @internal */

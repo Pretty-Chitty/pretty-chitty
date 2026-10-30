@@ -18,3 +18,11 @@ declare module "*.css" {
   const value: any;
   export = value;
 }
+declare module "*.mp3" {
+  const value: string;
+  export = value;
+}
+declare module "*.m4a" {
+  const value: string;
+  export = value;
+}

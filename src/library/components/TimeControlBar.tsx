@@ -15,11 +15,13 @@ export default function TimeControlBar({ autoLive = false }: { autoLive?: boolea
   const [live, setLive] = useEventChannelState(timeState.live);
   const [targetClock, setTargetClock] = useEventChannelState(timeState.targetClock);
   const [maxClock] = useEventChannelState(timeController.maxClock);
+  const [hold] = useEventChannelState(timeState.timelineHold);
+  const end = hold === undefined ? maxClock.clock : Math.min(hold, maxClock.clock);
   const modalState = useModalState();
   const [settingsVisible, setSettingsVisible] = useEventChannelState(modalState.settingsVisible);
 
   return (
-    <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
+    <Box data-tutorial-target="time" sx={{ width: "100%", height: "100%", position: "relative" }}>
       <Box sx={{ height: "6px", position: "absolute", width: "100%" }}>
         {targetClock < maxClock.clock && !live && (
           <Box
@@ -50,11 +52,11 @@ export default function TimeControlBar({ autoLive = false }: { autoLive?: boolea
           }}
         />
         <BottomBarButton
-          disabled={targetClock >= maxClock.clock}
+          disabled={targetClock >= end}
           icon={FastForward}
           label={"Forward"}
           whileHolding={(n: number) => {
-            if (autoLive && targetClock + n >= maxClock.clock) {
+            if (autoLive && targetClock + n >= end) {
               setLive(true);
               setTargetClock(targetClock + n);
             } else {

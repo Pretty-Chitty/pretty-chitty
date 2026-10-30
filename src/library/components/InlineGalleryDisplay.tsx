@@ -63,7 +63,9 @@ export function InlineGalleryDisplay() {
     >
       {
         <>
+          {inlineSource && (
           <IconButton
+            data-tutorial-target="gallery:toFullscreen"
             sx={{
               backgroundColor: theme.inlineGalleryButtonBackgroundColor,
               position: "absolute",
@@ -80,8 +82,11 @@ export function InlineGalleryDisplay() {
           >
             <ScreenshotMonitor sx={{ color: theme.inlineGalleryButtonForegroundColor }} />
           </IconButton>
+          )}
 
           <GalleryViewer
+            kind="inline"
+            tutorialTarget="gallery:inline"
             zFactor={0}
             onClose={() => {}}
             onLongPress={() => {

@@ -194,6 +194,16 @@ Narrow on `opt.kind` before using `chit`, `target` or `button`, then cast to you
   the best.
 - **Untagged options in the same prompt score 0.** Keep that in mind when choosing your scale.
 
+### Harness hooks
+
+Harnesses (playouts, tutorials) can steer a bot without touching the game's rules:
+`connectAiPlayer(match, id, { choose, hold })`. `choose(scored, ctx)` is consulted for every prompt,
+the engine's Confirm included: return an index to force that option, `undefined` for the normal
+choice, or `null` to leave the prompt unanswered for now. `hold(prompt)` keeps the bot from
+answering while it returns true for the current prompt (look at the prompt to let some through, such
+as the engine's Confirm). After either, call `handle.prompts.recheck()` when whatever held
+the bot may have changed.
+
 ## Step 4 — Hidden information
 
 The default view is the live board: the bot *could* read other hands, deck order, and other
