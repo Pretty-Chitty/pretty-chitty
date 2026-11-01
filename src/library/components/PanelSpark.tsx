@@ -42,10 +42,14 @@ export default function PanelSpark({ chit, paused, zIndex }: { zIndex: number; c
         const key = `spark${chit.id ?? "no id"}`;
         timeState.setAnimationState(key, true);
         setFlashed(true);
-        setTimeout(() => {
-          setFlashed(false);
-          timeState.setAnimationState(key, false);
-        }, DURATION);
+        // As fast as the board's other animations when they are hurried (going live, skipping ahead)
+        setTimeout(
+          () => {
+            setFlashed(false);
+            timeState.setAnimationState(key, false);
+          },
+          DURATION * (timeState.animationSpeedOverrideMultiplier.value ?? 1),
+        );
       }
     }
   }, [chit, timeState, paused, value, targetValue, DURATION]);

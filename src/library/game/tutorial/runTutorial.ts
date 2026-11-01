@@ -6,9 +6,10 @@ import { PickPrompt } from "../Prompt";
 import { connectAiPlayer } from "../ai/connectAiPlayer";
 import type { AiContext, AiOption } from "../ai/defineAi";
 import { GalleryCommand, TutorialGalleryState, TutorialSpec, TutorialStep, selectChits } from "./defineTutorial";
-import { isAllowed, shapeOfAiOption, stepsWithoutAllow } from "./allowed";
+import { isAllowed, promptMoves, shapeOfAiOption, stepsWithoutAllow } from "./allowed";
 import { createDemoMatch } from "./createDemoMatch";
 import { TutorialController, TutorialEvent, TutorialView } from "./TutorialController";
+import type { TutorialRuntime } from "./TutorialRuntime";
 
 export type RunTutorialOptions<P extends PlayerChit, R extends RootChit<P>> = {
   /**
@@ -31,9 +32,15 @@ export type RunTutorialOptions<P extends PlayerChit, R extends RootChit<P>> = {
   ui?: (step: TutorialStep<P, R>, ui: { gallery: (command: GalleryCommand<P, R>) => void }) => void;
   /** Let the bots log. Default false */
   log?: boolean;
+  /**
+   * Stop as soon as this step (an id) goes live, and keep going past steps that wait on the screen
+   * (a gallery button…) rather than the game: the run is there to reach the step, not to test the
+   * script. `DemoWrapper` uses it to skip ahead, from the run's `runtime` snapshots.
+   */
+  until?: string;
 };
 
-export type RunTutorialResult = {
+export type RunTutorialResult<P extends PlayerChit = PlayerChit, R extends RootChit<P> = RootChit<P>> = {
   outcome: "completed" | "stuck" | "error";
   /** Step ids in the order they were entered */
   visited: string[];
@@ -42,6 +49,8 @@ export type RunTutorialResult = {
   error?: string;
   warnings: string[];
   rngRemaining: number;
+  /** The run's runtime: its snapshots hold the match as each visited step went live */
+  runtime: TutorialRuntime<P, R>;
 };
 
 /**
@@ -62,7 +71,7 @@ export async function runTutorial<P extends PlayerChit, R extends RootChit<P>>(
   game: Game<P, R>,
   spec: TutorialSpec<P, R>,
   options: RunTutorialOptions<P, R> = {},
-): Promise<RunTutorialResult> {
+): Promise<RunTutorialResult<P, R>> {
   const demo = await createDemoMatch(game, spec, {
     immediateNotify: true,
     ai: { thinkMs: 0, log: options.log ?? false },
@@ -154,6 +163,11 @@ export async function runTutorial<P extends PlayerChit, R extends RootChit<P>>(
     view,
     runtime,
     ai: match.ai,
+    // Snapshots for skipping ahead (see `until`); restoring is never asked for headlessly
+    history: {
+      save: (stepId) => runtime.saveSnapshot(stepId, JSON.parse(JSON.stringify(match.state ?? {}))),
+      restore: async () => false,
+    },
     satisfiedDelayMs: 0,
     // Headless: narration takes no time, so a step's own narration never delays the run
     readingSpeed: Number.POSITIVE_INFINITY,
@@ -212,12 +226,37 @@ export async function runTutorial<P extends PlayerChit, R extends RootChit<P>>(
   );
   controller.start();
 
+  const untilIndex = options.until === undefined ? -1 : spec.steps.findIndex((s) => s.id === options.until);
   const stepTimeout = options.stepTimeoutMs ?? 10000;
   let stuckOn: string | undefined;
   while (!finished && !error && !match.errorState.value) {
     const index = controller.index.value;
     const step = controller.step;
     if (!step) break;
+    if (untilIndex >= 0 && index >= untilIndex) break;
+    // Skipping ahead: a step that waits for a screen control, with no game move it allows on offer
+    // for a while (a prompt can arrive a moment late), is jumped past
+    if (untilIndex >= 0 && step.waitFor && allowsUiControl(step)) {
+      let onScreenSince: number | undefined;
+      const onScreenOnly = () => {
+        const prompt = view.prompt();
+        const root = view.root();
+        const me = view.me();
+        if (prompt && promptMoves(prompt).some((m) => isAllowed(step.allow, m.shape, root, me))) {
+          onScreenSince = undefined;
+          return false;
+        }
+        // Only screen controls allowed: nothing to wait for
+        if (!allowsGameMove(step)) return true;
+        onScreenSince ??= Date.now();
+        return Date.now() - onScreenSince >= 50;
+      };
+      const moved = await waitUntil(() => controller.index.value !== index || finished || !!error || onScreenOnly(), stepTimeout);
+      if (controller.index.value === index && !finished && !error && onScreenOnly()) controller.jumpTo(index + 1);
+      if (moved) continue;
+      stuckOn = step.id;
+      break;
+    }
     // Narration steps advance when the reading clock ends; speed that up headlessly
     if (!step.waitFor) {
       await waitUntil(() => controller.status.value === "narrating" || finished, 1000);
@@ -231,10 +270,14 @@ export async function runTutorial<P extends PlayerChit, R extends RootChit<P>>(
     }
   }
 
-  const outcome: RunTutorialResult["outcome"] = error || match.errorState.value ? "error" : stuckOn ? "stuck" : "completed";
+  const outcome: RunTutorialResult<P, R>["outcome"] = error || match.errorState.value ? "error" : stuckOn ? "stuck" : "completed";
   controller.dispose();
-  human?.dispose();
+  // The match first: a run stopped mid-game (`until`) still has bots moving, and the player's
+  // connection must not be gone while the match still reports to it
   match.dispose();
+  // and its replies already on their way get a moment to land
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  human?.dispose();
   void run;
   void finishedEnd;
 
@@ -245,15 +288,44 @@ export async function runTutorial<P extends PlayerChit, R extends RootChit<P>>(
     error: error ?? match.errorState.value,
     warnings: runtime.warnings.value,
     rngRemaining: runtime.rngRemaining,
+    runtime,
   };
+}
+
+/** Whether a step's `allow` names a screen control (a gallery button…), not only game moves */
+function allowsUiControl(step: TutorialStep<any, any>) {
+  const list = step.allow === undefined ? [] : Array.isArray(step.allow) ? step.allow : [step.allow];
+  return list.some((a) => a !== "any" && a.ui !== undefined);
+}
+
+/** Whether a step's `allow` lists a game move (anything but screen controls) */
+function allowsGameMove(step: TutorialStep<any, any>) {
+  const list = step.allow === undefined ? [] : Array.isArray(step.allow) ? step.allow : [step.allow];
+  return list.some((a) => a === "any" || a.ui === undefined);
 }
 
 async function waitUntil(pred: () => boolean, timeoutMs: number): Promise<boolean> {
   const until = Date.now() + timeoutMs;
   while (Date.now() < until) {
     if (pred()) return true;
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await yieldToEvents();
   }
   return pred();
+}
+
+/**
+ * Lets pending work (the match, the bots) run, then resumes. Not `setTimeout`: browsers stretch
+ * repeated short timers to 4 ms or more, and a skip-ahead waits like this a few hundred times.
+ */
+function yieldToEvents(): Promise<void> {
+  if (typeof MessageChannel === "undefined") return new Promise((resolve) => setTimeout(resolve, 0));
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => {
+      channel.port1.close();
+      resolve();
+    };
+    channel.port2.postMessage(undefined);
+  });
 }
 

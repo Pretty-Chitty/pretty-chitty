@@ -23,6 +23,11 @@ export interface SelectableConfig {
   label: string;
   /** List of possible choices for this property */
   choices: SelectableChoice[];
+  /**
+   * When true the property holds any number of the choices' ids (a `string[]`, e.g. the expansion
+   * modules a match plays with) rather than exactly one. Defaults to false.
+   */
+  multiple?: boolean;
 }
 
 /**
@@ -250,6 +255,16 @@ export function FixChildOutlets(instance: Chit) {
  *     ]
  *   })
  *   public difficulty: string = "medium";
+ *
+ *   @Selectable({
+ *     label: "Expansions",
+ *     multiple: true,
+ *     choices: [
+ *       { id: "rivers", label: "Rivers" },
+ *       { id: "traders", label: "Traders & Builders" },
+ *     ],
+ *   })
+ *   public expansions: string[] = [];
  * }
  * ```
  *

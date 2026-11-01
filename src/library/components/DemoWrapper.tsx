@@ -9,9 +9,10 @@ import { Connection } from "../game/Connection";
 import { LocalConnectionTransport } from "../game/ConnectionTransport";
 import { Match } from "../game/Match";
 import { PlayerProvider } from "../hooks/usePlayer";
-import { LoadingStateProvider, LoadingStates } from "../hooks/useLoadingStates";
+import { LoadingStateProvider, LoadingStates, LoadingStatesCallback } from "../hooks/useLoadingStates";
 import { TutorialSpec, findTutorial } from "../game/tutorial/defineTutorial";
 import { createDemoMatch, DemoMatch } from "../game/tutorial/createDemoMatch";
+import { runTutorial } from "../game/tutorial/runTutorial";
 import { TutorialProvider } from "../hooks/useTutorial";
 import { TutorialTheme } from "../game/tutorial/TutorialTheme";
 import { TutorialEvent } from "../game/tutorial/TutorialController";
@@ -71,6 +72,8 @@ export type DemoWrapperProps = {
   onTutorialEvent?: (e: TutorialEvent) => void;
   /** Shown as the back button; with a tutorial whose last step ends with "back", called when it finishes */
   onBack?: () => void;
+  /** Panel load progress, as on `ClientTrustMatchViewer`: a host hides its loading screen when loaded equals created */
+  onLoadProgress?: LoadingStatesCallback;
   /** Start the tutorial at this step (the Playground's "restart at step") */
   startAt?: number;
   /** Rendered alongside the match once it exists (the Playground's dev panel) */
@@ -89,10 +92,16 @@ export function DemoWrapper({
   tutorialTheme,
   onTutorialEvent,
   onBack,
+  onLoadProgress,
   startAt = 0,
   children,
 }: DemoWrapperProps) {
   const [loadingStates] = useState<LoadingStates>(new LoadingStates());
+  useEffect(() => {
+    if (onLoadProgress) {
+      return loadingStates.onChange(onLoadProgress);
+    }
+  }, [loadingStates, onLoadProgress]);
   const [demo, setDemo] = useState<DemoMatch<any, any> | null>(null);
   const demoRef = useRef<DemoMatch<any, any> | null>(null);
   // Where the script (re)starts and whether it needs the Start tap: a rewind restarts at the step it
@@ -131,14 +140,31 @@ export function DemoWrapper({
   // match reruns from it in place (saved decisions replay deterministically; the pinned draws and
   // forced moves rewind with it) and the viewer animates to the old board without remounting.
   const snapshot = useCallback(() => JSON.parse(JSON.stringify(demoRef.current?.match.state ?? {})), []);
+  // Skipping ahead (the dev panel) goes the same way: a step not played yet is played headlessly
+  // first, and this match takes that run's snapshots, so Back works from wherever it lands.
+  const specRef = useRef(spec);
+  specRef.current = spec;
   const rewind = useCallback(async (stepId: string) => {
     const current = demoRef.current;
     if (!current) return false;
+    if (!current.runtime.hasSnapshot(stepId) && specRef.current) {
+      const T0 = performance.now();
+      const run = await runTutorial(game, specRef.current, { until: stepId, stepTimeoutMs: 5000 });
+      console.info("ZZTIME headless", Math.round(performance.now() - T0));
+      if (demoRef.current !== current) return false;
+      if (!run.runtime.hasSnapshot(stepId)) {
+        console.warn(
+          `[tutorial ${specRef.current.id}] could not play ahead to "${stepId}": ${run.error ?? `stuck on "${run.stuckOn}"`}`,
+        );
+        return false;
+      }
+      current.runtime.adoptSnapshots(run.runtime);
+    }
     const state = current.runtime.restoreSnapshot(stepId);
     if (state === undefined) return false;
     await current.replaceState(state);
     return true;
-  }, []);
+  }, [game]);
 
   if (!demo) {
     return null;

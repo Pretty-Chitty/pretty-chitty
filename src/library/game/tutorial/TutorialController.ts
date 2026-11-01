@@ -117,7 +117,11 @@ export type TutorialControllerOptions<P extends PlayerChit, R extends RootChit<P
    */
   history?: {
     save: (stepId: string) => void;
-    /** Resolves true once the game shows the board as it was when `stepId` went live; false if it cannot */
+    /**
+     * Resolves true once the game shows the board as it was when `stepId` went live; false if it
+     * cannot. Also how `skipTo` reaches a step not played yet: `DemoWrapper` plays the script
+     * headlessly up to it first.
+     */
     restore: (stepId: string, index: number) => Promise<boolean>;
   };
   onEvent?: (e: TutorialEvent) => void;
@@ -246,6 +250,24 @@ export class TutorialController<P extends PlayerChit = PlayerChit, R extends Roo
     this._setTimeout = options.setTimeout ?? ((cb, ms) => setTimeout(cb, ms));
     this._clearTimeout = options.clearTimeout ?? ((h) => clearTimeout(h));
     this._now = options.now ?? (() => Date.now());
+    // Guard from the start: before Start is pressed the board is a picture, not a game
+    this.view.setGuard?.((action) => {
+      // The game's Undo is the tutorial's Back while the tutorial runs
+      if (action.type === "undo" && this.status.value !== "done") {
+        this.back();
+        return "handled";
+      }
+      if (this.allows(action)) return true;
+      // A move the next "do it" step asks for counts as moving on to that step
+      const ahead = this.aheadFor(action);
+      if (ahead === undefined) return false;
+      this.actAhead(ahead);
+      return true;
+    });
+    const unsubBlocked = this.view.onBlocked?.(() => {
+      this.blocked.value = this.blocked.value + 1;
+    });
+    if (unsubBlocked) this.unsubs.push(unsubBlocked);
     // The first recording loads while the start card is up
     this.preloadStep(0);
   }
@@ -295,29 +317,21 @@ export class TutorialController<P extends PlayerChit = PlayerChit, R extends Roo
 
   /** Starts at the first step (or the given one). Call once the board has loaded. */
   public start(at = 0, options: { paused?: boolean } = {}) {
-    if (this.disposed) return;
+    if (!this.begin(options)) return;
+    this.enter(at);
+  }
+
+  private began = false;
+
+  /** Starts watching the board (once): what `start` does before entering its first step */
+  private begin(options: { paused?: boolean } = {}): boolean {
+    if (this.disposed || this.began) return false;
+    this.began = true;
     this.paused.value = !!options.paused;
     this.unsubs.push(this.view.onChange(() => this.onViewChange()));
-    this.view.setGuard?.((action) => {
-      // The game's Undo is the tutorial's Back while the tutorial runs
-      if (action.type === "undo" && this.status.value !== "done") {
-        this.back();
-        return "handled";
-      }
-      if (this.allows(action)) return true;
-      // A move the next "do it" step asks for counts as moving on to that step
-      const ahead = this.aheadFor(action);
-      if (ahead === undefined) return false;
-      this.actAhead(ahead);
-      return true;
-    });
-    const unsubBlocked = this.view.onBlocked?.(() => {
-      this.blocked.value = this.blocked.value + 1;
-    });
-    if (unsubBlocked) this.unsubs.push(unsubBlocked);
     this.onEvent?.({ type: "started" });
     this.lastLog = this.view.latestLog();
-    this.enter(at);
+    return true;
   }
 
   public next() {
@@ -423,6 +437,24 @@ export class TutorialController<P extends PlayerChit = PlayerChit, R extends Roo
     }
     if (index > this.frontier.value) this.frontier.value = index;
     this.enter(index);
+  }
+
+  /**
+   * Go straight to any step with the game as it was when that step went live, and play on from there
+   * (the dev panel's step list). A step not played yet is played headlessly first (see `history`),
+   * so this works before Start too. Without a game history it is `jumpTo`.
+   */
+  public skipTo(index: number) {
+    if (this.disposed || index < 0 || index >= this.spec.steps.length || this.status.value === "done") return;
+    if (!this.history) {
+      if (!this.began) this.start(index);
+      else this.jumpTo(index);
+      return;
+    }
+    this.begin();
+    this.stopFastForward();
+    this.paused.value = false;
+    this.requestRewind(index);
   }
 
   /** Leave a review and return to the live step */
@@ -558,7 +590,8 @@ export class TutorialController<P extends PlayerChit = PlayerChit, R extends Roo
   /**
    * Whether the game should accept this action right now. Only a live "do it" step that is still
    * waiting lets anything through, and then only what it lists in `allow` (the game's Undo never
-   * gets here: it is the tutorial's Back). Once the tutorial is over everything is allowed again.
+   * gets here: it is the tutorial's Back). Nothing is allowed before it starts; once it is over
+   * everything is allowed again.
    */
   public allows(action: PromptAction): boolean {
     if (this.status.value === "done") return true;

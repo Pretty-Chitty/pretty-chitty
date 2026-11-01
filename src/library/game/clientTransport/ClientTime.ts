@@ -190,6 +190,8 @@ export class ClientTime extends ConnectionObject {
 
         Object.values(this.chitLookup).forEach((chit) => {
           if (chit.id && !serializedChits[chit.id]) {
+            // Back into its bag if it came from one; otherwise gone, as a visible fallback would keep it drawn
+            chit.forgetFallbackUnlessHidden();
             if (chit.parentFallback) {
               chit.beginDeserializing();
               chit.setParent(chit.parentFallback, chit.parentOutlet ?? "graveyard");

@@ -150,11 +150,14 @@ function Inner({
                 key={s.id}
                 selected={i === index}
                 onClick={(e) => {
-                  // A later step plays through to it (moves made for the player); Alt-click just jumps
-                  if (controller && i > index && !e.altKey) controller.fastForwardTo(i);
-                  else controller?.jumpTo(i);
+                  // Straight to the step, the game as it was there (played ahead headlessly when needed);
+                  // Shift-click plays through to it on screen; Alt-click jumps and leaves the game as is
+                  if (!controller) return;
+                  if (e.altKey) controller.jumpTo(i);
+                  else if (e.shiftKey && i > index) controller.fastForwardTo(i);
+                  else controller.skipTo(i);
                 }}
-                title="Click: play through to this step · Alt-click: jump without playing"
+                title="Click: go to this step · Shift-click: play through to it on screen · Alt-click: jump, leaving the game as it is"
                 sx={{ py: 0.25 }}
               >
                 <ListItemText

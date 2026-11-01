@@ -88,20 +88,18 @@ function DemoWorkbench({ game }: { game: Game<any, any> }) {
         </Stack>
       </Paper>
       <Stack direction="row" sx={{ flex: 1, minHeight: 0 }}>
-        <Box sx={{ flex: 1, minWidth: 0, position: "relative" }}>
+        {/* The workbench sits beside the game, not over it: the tutorial's own layer (the dark start
+            screen, the box) stays inside the game and never covers the step list */}
+        <Box sx={{ flex: 1, minWidth: 0, position: "relative", display: "flex" }}>
           <DemoWrapper key={`${selected}-${restartKey}`} game={game} tutorial={spec} startAt={startAt}>
             {spec && showDev && (
               <Box
                 sx={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
                   width: 360,
-                  background: "background.paper",
+                  flexShrink: 0,
+                  height: "100%",
                   bgcolor: "background.paper",
                   borderLeft: "1px solid rgba(0,0,0,0.12)",
-                  zIndex: 2,
                   overflow: "hidden",
                 }}
               >

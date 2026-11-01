@@ -209,27 +209,54 @@ function NewMatchDialog({
               ))}
             </FormGroup>
           </FormControl>
-          {configOptions.map((option) => (
-            <FormControl key={option.fieldName} fullWidth>
-              <InputLabel>{option.config.label}</InputLabel>
-              <Select
-                value={matchOptions[option.fieldName] ?? option.currentValue}
-                label={option.config.label}
-                onChange={(e) =>
-                  setMatchOptions((prev: any) => ({
-                    ...prev,
-                    [option.fieldName]: e.target.value,
-                  }))
-                }
-              >
-                {option.config.choices.map((choice) => (
-                  <MenuItem key={choice.id} value={choice.id}>
-                    {choice.label ?? choice.id}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          ))}
+          {configOptions.map((option) => {
+            const setOption = (value: unknown) =>
+              setMatchOptions((prev: any) => ({ ...prev, [option.fieldName]: value }));
+            if (option.config.multiple) {
+              const selected: string[] = matchOptions[option.fieldName] ?? option.currentValue ?? [];
+              return (
+                <FormControl key={option.fieldName} component="fieldset">
+                  <FormLabel component="legend">{option.config.label}</FormLabel>
+                  <FormGroup>
+                    {option.config.choices.map((choice) => (
+                      <FormControlLabel
+                        key={choice.id}
+                        label={choice.label ?? choice.id}
+                        control={
+                          <Checkbox
+                            checked={selected.includes(choice.id)}
+                            onChange={(e) =>
+                              setOption(
+                                e.target.checked
+                                  ? [...selected, choice.id]
+                                  : selected.filter((id) => id !== choice.id),
+                              )
+                            }
+                          />
+                        }
+                      />
+                    ))}
+                  </FormGroup>
+                </FormControl>
+              );
+            }
+            return (
+              <FormControl key={option.fieldName} fullWidth>
+                <InputLabel>{option.config.label}</InputLabel>
+                <Select
+                  value={matchOptions[option.fieldName] ?? option.currentValue}
+                  label={option.config.label}
+                  onChange={(e) => setOption(e.target.value)}
+                >
+                  {option.config.choices.map((choice) => (
+                    <MenuItem key={choice.id} value={choice.id}>
+                      {choice.label ?? choice.id}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            );
+          })}
         </Stack>
       </DialogContent>
       <DialogActions>

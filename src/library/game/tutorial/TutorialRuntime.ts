@@ -92,6 +92,14 @@ export class TutorialRuntime<P extends PlayerChit = PlayerChit, R extends RootCh
     return this.snapshots.has(stepId);
   }
 
+  /**
+   * Takes another run's snapshots in place of this one's (a headless play-through of the same script),
+   * so Back and `restoreSnapshot` reach every step that run got to.
+   */
+  public adoptSnapshots(from: TutorialRuntime<P, R>) {
+    this.snapshots = new Map(from.snapshots);
+  }
+
   /** Rewinds the queues to where they were at `stepId` and returns the match state to rebuild from. */
   public restoreSnapshot(stepId: string): unknown | undefined {
     const snap = this.snapshots.get(stepId);

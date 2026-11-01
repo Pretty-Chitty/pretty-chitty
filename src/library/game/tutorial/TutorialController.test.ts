@@ -187,6 +187,17 @@ describe("TutorialController flow", () => {
     c.dispose();
   });
 
+  test("nothing on the board can be played before Start", () => {
+    let guard: ((a: any) => boolean | "handled") | undefined;
+    const view = { ...makeView(), setGuard: (g: any) => (guard = g) };
+    const c = new TutorialController({ spec, view, autoAdvanceDelayMs: 100, now: () => Date.now() });
+    expect(guard).toBeDefined();
+    expect(guard?.({ type: "pick", pick: {}, value: "x" })).toBe(false);
+    expect(c.index.value).toBe(-1);
+    c.dispose();
+    expect(guard).toBeUndefined();
+  });
+
   test("the game's Undo is the tutorial's Back while it runs", () => {
     let guard: ((a: any) => boolean | "handled") | undefined;
     let undo: { undo: () => void } | undefined;

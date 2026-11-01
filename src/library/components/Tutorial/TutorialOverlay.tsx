@@ -48,14 +48,24 @@ const RING_PADDING = 8;
 /** The box keeps this far from the screen's sides */
 const BOX_MARGIN = 16;
 /** A ringed thing smaller than this (its longer side, in pixels, with the whole table shown) gets zoomed in on */
-const ZOOM_BELOW_PX = 56;
-/** ...until its longer side is this share of its panel's shorter side, or this many pixels */
-const ZOOM_TO_SHARE = 0.45;
-const ZOOM_TO_MAX_PX = 220;
-/** On a screen smaller than this (its shorter side), a step about one panel shows it full screen... */
-const FOCUS_BELOW_PX = 700;
-/** ...when that panel has less than this share of the screen */
-const FOCUS_BELOW_SHARE = 0.6;
+const ZOOM_BELOW_PX = 28;
+/** ...until its longer side is this share of its panel's shorter side, or this many pixels: enough to read it,
+ *  with its surroundings still in view (a zoom that fills the panel loses where the thing is) */
+const ZOOM_TO_SHARE = 0.3;
+const ZOOM_TO_MAX_PX = 140;
+/** Full screen hides every other panel, so it is used only when it buys something the camera cannot: a ringed thing
+ *  smaller than FOCUS_TARGET_PX that zooming in its own panel cannot bring to READABLE_PX (the panel is too small, or the
+ *  camera's max zoom too low), and whose panel full screen would grow at least FOCUS_GAIN times. A board overview, a
+ *  badge, anything readable in place stays in the normal layout, beside the rest of the table (the developer: "it should
+ *  only go full screen when it'd gain something meaningful. otherwise you're losing context") */
+const FOCUS_TARGET_PX = 24;
+const READABLE_PX = 40;
+const FOCUS_GAIN = 1.5;
+/** A zoom the step asks for outright (`zoom: 1.6`) applies on a screen smaller than this (its shorter side: a phone) */
+const SMALL_SCREEN_PX = 500;
+/** The dim stays this long after nothing asks for it (a ring hidden by a tab slide, a sentence with no ring), so the
+ *  gaps between rings do not blink it off and on */
+const DIM_HOLD_MS = 400;
 /** How long a ring that leapt in one frame stays where it was (see the ring tick) */
 const JUMP_HOLD_MS = 120;
 
@@ -225,15 +235,34 @@ function InnerOverlay() {
         snapshot && rewind
           ? {
               save: (stepId) => runtime.saveSnapshot(stepId, snapshot()),
-              restore: async (stepId) => {
+              restore: async (stepId, index) => {
                 // Watch the history live, then wait for the rerun (a new clock pass) to reach this view
                 if (!timeState.live.value) timeState.live.value = true;
                 const before = clientTime.currentClock.value.pass;
-                if (!(await rewind(stepId))) return false;
+                // Skipping ahead shows the board as it is at that step, not each move on the way there:
+                // the view goes straight to the rerun's latest clock, with no time to animate
+                const ahead = index > (tutorial.controller.value?.frontier.value ?? -1);
+                const started = Date.now();
+                const unsubJump = ahead
+                  ? clientTime.maxClock.on((max) => {
+                      if (max.pass !== before) timeState.targetClock.value = max.clock;
+                    }, false)
+                  : undefined;
+                if (ahead) timeState.animationSpeedOverrideMultiplier.value = 0.001;
+                const done = (ok: boolean) => {
+                  unsubJump?.();
+                  if (ahead) {
+                    timeState.animationSpeedOverrideMultiplier.value = undefined;
+                    console.info(`[tutorial] skipped to step ${index + 1} in ${Date.now() - started} ms`);
+                  }
+                  return ok;
+                };
+                if (!(await rewind(stepId))) return done(false);
                 const deadline = Date.now() + 8000;
                 while (Date.now() < deadline) {
                   const current = clientTime.currentClock.value;
                   const max = clientTime.maxClock.value;
+                  if (ahead) console.info("ZZTIME wait", Date.now() - started, current.clock, max.clock, current.pass === max.pass, [...((timeState as any).currentlyAnimating ?? [])].map((k: string) => k.replace(/\d{6,}/, "")).join(","));
                   if (
                     current.pass !== before &&
                     current.clock === max.clock &&
@@ -242,9 +271,9 @@ function InnerOverlay() {
                   ) {
                     break;
                   }
-                  await new Promise((resolve) => setTimeout(resolve, 50));
+                  await new Promise((resolve) => setTimeout(resolve, ahead ? 5 : 50));
                 }
-                return true;
+                return done(true);
               },
             }
           : undefined,
@@ -284,15 +313,22 @@ function InnerOverlay() {
   }, [controller]);
 
   // Keyboard: → next step (or, while a step waits for the player, makes its move for them), ← previous
-  // step, Space play/pause. Otherwise the same as the box's buttons.
+  // step, Space play/pause. Otherwise the same as the box's buttons. Before the start, → or Enter starts.
+  const startRef = useRef<() => void>(() => undefined);
   useEffect(() => {
     if (!controller) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      const status = controller.status.value;
-      if (status === "idle" || status === "done") return;
       const el = e.target as HTMLElement | null;
       if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      const status = controller.status.value;
+      if (status === "idle") {
+        if (e.key !== "ArrowRight" && e.key !== "Enter") return;
+        startRef.current();
+        e.preventDefault();
+        return;
+      }
+      if (status === "done") return;
       if (e.key === "ArrowRight") controller.forward();
       else if (e.key === "ArrowLeft") controller.back();
       else if (e.key === " ") {
@@ -307,10 +343,20 @@ function InnerOverlay() {
   }, [controller]);
 
   const onStart = useCallback(() => {
-    if (!controller) return;
+    if (!controller || controller.status.value !== "idle") return;
     setStarted(true);
     controller.start(tutorial.startAt);
   }, [controller, tutorial.startAt]);
+  startRef.current = onStart;
+  // Skipping to a step (the dev panel) starts the tutorial too
+  useEffect(() => {
+    if (!controller) return;
+    const update = () => {
+      if (controller.status.value !== "idle" || controller.rewinding.value) setStarted(true);
+    };
+    const unsubs = [controller.status.on(update, false), controller.rewinding.on(update, false)];
+    return () => unsubs.forEach((u) => u());
+  }, [controller]);
 
   // ---- per-frame target resolution ------------------------------------------------------------
   const [focus] = useEventChannelState(controller?.focus ?? EMPTY_FOCUS);
@@ -412,12 +458,16 @@ function InnerOverlay() {
     };
   }, [focus, active, navigation, controller, shown]);
 
-  // Frame what the step is about, on a small screen: everything it rings on the table sits in one
-  // panel that has little of the screen, so show that panel full screen (as zooming in does, with
-  // every panel as a tab); rings over several panels go back to the normal layout so all show. Then,
-  // if the thing is still tiny, zoom the camera in on it. Both are undone when no longer needed (not
-  // if the player zoomed or focused meanwhile: that is theirs). Only what is ringed counts, and only
-  // on the table (a gallery shows things at a readable size already).
+  // Frame what the step is about. When everything it rings on the table sits in one panel and is too small
+  // to read even with that panel's camera zoomed (see FOCUS_TARGET_PX), show that panel full screen (as
+  // zooming in does, with every panel as a tab); anything readable in place stays beside the rest of the
+  // table. Rings in another panel go back
+  // to the normal layout first, and full screen comes back only if that one needs it too: switching
+  // tabs inside full screen, sentence after sentence, flips panels with no context. Then, if the thing
+  // is still tiny, zoom the camera in on it, and keep that zoom while the step's later rings still show
+  // in it. Both are undone when no longer needed (not if the player zoomed or focused meanwhile: that is
+  // theirs). Only what is ringed counts, and only on the table (a gallery shows things at a readable
+  // size already).
   const zoomRef = useRef<{ panel: RootChitRenderInstance; zoom: number } | undefined>(undefined);
   const focusedByUsRef = useRef<Chit | undefined>(undefined);
   /** The step whose rings set the current framing */
@@ -480,13 +530,30 @@ function InnerOverlay() {
         if (controller.index.value !== framedStepRef.current) unzoom();
         return;
       }
+      const sameStep = framedStepRef.current === controller.index.value;
       framedStepRef.current = controller.index.value;
       const panel = found[0]?.panel;
       if (!panel || inGallery || found.some((f) => f.panel !== panel)) return unzoom();
+      // Only one panel is remembered as zoomed: moving the framing to another panel zooms the first back out, or
+      // it would stay zoomed in for good and its later rings land off-screen (Lisboa's Court card → Influence disc
+      // → Manuel's office)
+      if (zoomRef.current && zoomRef.current.panel !== panel) unzoom();
       const union = unionRects(found.map((f) => f.rect))!;
       const topLeft = panel.convertCameraSpaceToScreenSpace(-1, 1);
       const bottomRight = panel.convertCameraSpaceToScreenSpace(1, -1);
       if (!topLeft || !bottomRight) return;
+      // Later in the same step, a zoom whose view still shows every ring stays: re-framing each sentence is a
+      // camera that never stops moving
+      const inset = 8;
+      if (
+        sameStep &&
+        zoomRef.current?.panel === panel &&
+        union.left >= topLeft.x + inset &&
+        union.right <= bottomRight.x - inset &&
+        union.top >= topLeft.y + inset &&
+        union.bottom <= bottomRight.y - inset
+      )
+        return;
       // its longer side with the whole table shown
       const current = panel.cameraZoom;
       const size = Math.max(union.right - union.left, union.bottom - union.top) / current;
@@ -506,7 +573,7 @@ function InnerOverlay() {
       }
       const panelShort = Math.min(bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
       // a zoom the step asks for is for small screens, like the full-screen panel
-      const smallScreen = Math.min(width, height) < FOCUS_BELOW_PX;
+      const smallScreen = Math.min(width, height) < SMALL_SCREEN_PX;
       const fits = Math.min(0.85 * (bandBottom - bandTop), 0.85 * (bottomRight.x - topLeft.x)) / size;
       const wanted =
         asked && smallScreen ? asked : size < ZOOM_BELOW_PX ? Math.min(Math.min(panelShort * ZOOM_TO_SHARE, ZOOM_TO_MAX_PX) / size, fits) : 1;
@@ -522,6 +589,19 @@ function InnerOverlay() {
     const frame = async () => {
       if (cancelled || !navigation) return;
       const { panels, inGallery } = ringed();
+      // A new step with nothing on the table (a button, the box alone): full screen we chose goes
+      if (
+        panels.size === 0 &&
+        !inGallery &&
+        focusedByUsRef.current &&
+        navigation.focusedPanel() &&
+        controller.index.value !== framedStepRef.current
+      ) {
+        unzoom();
+        focusedByUsRef.current = undefined;
+        await navigation.focusPanelOf(undefined);
+        forgetTargets();
+      }
       if (!inGallery && panels.size > 1 && navigation.focusedPanel()) {
         // the step needs more than one panel: the normal layout shows them side by side
         unzoom();
@@ -530,14 +610,32 @@ function InnerOverlay() {
         forgetTargets();
       } else if (!inGallery && panels.size === 1) {
         const [[, chit]] = [...panels];
-        const panel = chit.renderInstance?.rootRenderInstance;
-        const share = panel && width && height ? (panel.width * panel.height) / (width * height) : 1;
-        const smallScreen = Math.min(width, height) < FOCUS_BELOW_PX;
-        if (navigation.focusedPanel() || (smallScreen && share < FOCUS_BELOW_SHARE)) {
-          const before = navigation.focusedPanel();
-          await navigation.focusPanelOf(chit);
-          if (!before) focusedByUsRef.current = chit;
+        // Full screen we chose for another panel: back to the normal layout, then decide afresh from there
+        const ours = focusedByUsRef.current;
+        if (ours && navigation.focusedPanel() && ours.renderInstance?.rootRenderInstance !== chit.renderInstance?.rootRenderInstance) {
+          unzoom();
+          focusedByUsRef.current = undefined;
+          await navigation.focusPanelOf(undefined);
           forgetTargets();
+          if (cancelled) return;
+        }
+        if (navigation.focusedPanel()) {
+          // full screen already (the player's, or ours for this panel): switch to its tab
+          await navigation.focusPanelOf(chit);
+          forgetTargets();
+        } else {
+          const panel = chit.renderInstance?.rootRenderInstance;
+          const union = unionRects(ringed().found.map((f) => f.rect));
+          if (panel && union && width && height) {
+            const size = Math.max(union.right - union.left, union.bottom - union.top) / panel.cameraZoom;
+            const zoomable = Math.min(Math.min(panel.width, panel.height) * ZOOM_TO_SHARE, size * panel.cameraWrapper.cameraSpec.maxZoom);
+            const gain = Math.min(width / panel.width, height / panel.height);
+            if (size < FOCUS_TARGET_PX && zoomable < READABLE_PX && gain >= FOCUS_GAIN) {
+              await navigation.focusPanelOf(chit);
+              focusedByUsRef.current = chit;
+              forgetTargets();
+            }
+          }
         }
       }
       if (!cancelled) zoomIn();
@@ -782,7 +880,8 @@ function InnerOverlay() {
     };
     const targets = targetsNow;
     const rectAt = (p: BoxPosition): Rect => ({ left: p.x, top: p.y, right: p.x + bw, bottom: p.y + bh });
-    let next = clamp(place(placement));
+    // The start card sits in the middle of the darkened table
+    let next = clamp(place(started ? placement : { anchor: "center" }));
     // Never sit on what the step is pointing at: if the requested spot covers a target, take the
     // corner that covers the least (the current spot wins ties so the box does not wander)
     if (coverage(rectAt(next), targets) > 0.1) {
@@ -799,7 +898,7 @@ function InnerOverlay() {
       setBoxPos(next);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [placement, width, height, boxSize.width, boxSize.height, frame, controller, safeTop, safeBottom, clampBox, shown]);
+  }, [placement, width, height, boxSize.width, boxSize.height, frame, controller, safeTop, safeBottom, clampBox, shown, started]);
 
   // Dragging keeps the box on screen too: a box dragged off it could not be dragged back
   const clampRef = useRef(clampBox);
@@ -811,6 +910,23 @@ function InnerOverlay() {
   const onMeasure = useCallback((size: { width: number; height: number }) => {
     setBoxSize((prev) => (prev.width === size.width && prev.height === size.height ? prev : size));
   }, []);
+
+  const wantDim = frame.focus.some((f) => f.dim) && frame.focus.some((f) => f.rings.length > 0 || f.arrows.length > 0);
+  const litNow = frame.focus.flatMap((f) => [
+    ...f.rings.map((rect) => ({ rect, shape: f.shape })),
+    ...f.arrows.map((rect) => ({ rect, shape: "rect" as const })),
+  ]);
+  const litRef = useRef(litNow);
+  if (wantDim) litRef.current = litNow;
+  const [anyDim, setAnyDim] = useState(false);
+  useEffect(() => {
+    if (wantDim) {
+      setAnyDim(true);
+      return;
+    }
+    const t = setTimeout(() => setAnyDim(false), DIM_HOLD_MS);
+    return () => clearTimeout(t);
+  }, [wantDim]);
 
   if (!controller) {
     return <Box ref={ref} sx={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: ZINDEX_TUTORIAL }} />;
@@ -825,12 +941,9 @@ function InnerOverlay() {
   const hasNarration = !!controller.step?.audio || controller.spec.steps.some((s) => !!s.audio);
   // Once the tutorial is finished or skipped the box goes away and the match is just a game
   const showBox = !isLoading && (live || !started) && status !== "done";
-  // A spotlight keeps everything the step highlights lit: every ring and every arrow target
-  const anyDim = frame.focus.some((f) => f.dim) && frame.focus.some((f) => f.rings.length > 0 || f.arrows.length > 0);
-  const lit = frame.focus.flatMap((f) => [
-    ...f.rings.map((rect) => ({ rect, shape: f.shape })),
-    ...f.arrows.map((rect) => ({ rect, shape: "rect" as const })),
-  ]);
+  // A spotlight keeps everything the step highlights lit: every ring and every arrow target. Through a short
+  // gap (see DIM_HOLD_MS) the dim stays, with the holes it last had
+  const lit = anyDim && !wantDim ? litRef.current : litNow;
 
   return (
     <Box
@@ -867,35 +980,32 @@ function InnerOverlay() {
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
-            {anyDim && (
-              <mask id="tutorial-dim-mask">
-                <rect x={0} y={0} width={width} height={height} fill="white" />
-                {lit.map((l, i) => (
-                  <RingShape key={i} rect={l.rect} shape={l.shape} pad={RING_PADDING + 4} fill="black" />
-                ))}
-                <rect
-                  x={boxRect.left - 4}
-                  y={boxRect.top - 4}
-                  width={boxRect.right - boxRect.left + 8}
-                  height={boxRect.bottom - boxRect.top + 8}
-                  rx={theme.borderRadius}
-                  fill="black"
-                />
-              </mask>
-            )}
+            <mask id="tutorial-dim-mask">
+              <rect x={0} y={0} width={width} height={height} fill="white" />
+              {lit.map((l, i) => (
+                <RingShape key={i} rect={l.rect} shape={l.shape} pad={RING_PADDING + 4} fill="black" />
+              ))}
+              <rect
+                x={boxRect.left - 4}
+                y={boxRect.top - 4}
+                width={boxRect.right - boxRect.left + 8}
+                height={boxRect.bottom - boxRect.top + 8}
+                rx={theme.borderRadius}
+                fill="black"
+              />
+            </mask>
           </defs>
-          {anyDim && (
-            <rect
-              x={0}
-              y={0}
-              width={width}
-              height={height}
-              fill={theme.dimColor}
-              opacity={theme.dimOpacity}
-              mask="url(#tutorial-dim-mask)"
-              style={{ transition: "opacity 0.3s" }}
-            />
-          )}
+          {/* Always drawn, so it fades in and out rather than popping */}
+          <rect
+            x={0}
+            y={0}
+            width={width}
+            height={height}
+            fill={theme.dimColor}
+            opacity={anyDim ? theme.dimOpacity : 0}
+            mask="url(#tutorial-dim-mask)"
+            style={{ transition: "opacity 0.3s" }}
+          />
           <style>{`
             @keyframes tutorialRingPulse { 0% { stroke-opacity: 0.55; } 50% { stroke-opacity: 1; } 100% { stroke-opacity: 0.55; } }
             @keyframes tutorialDash { to { stroke-dashoffset: -24; } }
@@ -937,6 +1047,12 @@ function InnerOverlay() {
         </svg>
       )}
 
+      {/* Until Start, the whole game sits dark behind the start card, and takes no taps */}
+      {showBox && !started && (
+        <Box
+          sx={{ position: "absolute", inset: 0, pointerEvents: "auto", background: theme.dimColor, opacity: theme.dimOpacity }}
+        />
+      )}
       {showBox && (
         <TutorialBox
           controller={controller}

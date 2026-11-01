@@ -30,6 +30,18 @@ describe("Petty Market tutorials", () => {
     expect(result.warnings).toEqual([]);
   }, 30000);
 
+  test("skipping ahead plays to a step headlessly, past the steps that wait on a screen control", async () => {
+    const spec = marketTutorials[0];
+    const result = await runTutorial(new MarketGame(), spec, { until: "end-turn", stepTimeoutMs: 5000 });
+    expect(result.error).toBeUndefined();
+    expect(result.stuckOn).toBeUndefined();
+    // A snapshot for every step on the way, to land on and to go Back to (a step that passes at once
+    // may already have moved the run one step further)
+    const upTo = spec.steps.findIndex((s) => s.id === "end-turn");
+    spec.steps.slice(0, upTo + 1).forEach((s) => expect(result.runtime.hasSnapshot(s.id)).toBe(true));
+    expect(result.runtime.hasSnapshot("done")).toBe(false);
+  }, 30000);
+
   test("runTutorial holds the engine's Confirm on a step that does not allow it", async () => {
     const spec = marketTutorials[0];
     const strict = {

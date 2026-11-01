@@ -144,7 +144,9 @@ export function TutorialBox({
   const allow = step?.allow;
   const playerActs = !!step?.waitFor && !!allow && (!Array.isArray(allow) || allow.length > 0);
   const statusLabel = rewinding
-    ? "Going back…"
+    ? index > frontier
+      ? "Skipping ahead…"
+      : "Going back…"
     : reviewing
       ? "Reviewing"
       : paused && !(waiting && playerActs)

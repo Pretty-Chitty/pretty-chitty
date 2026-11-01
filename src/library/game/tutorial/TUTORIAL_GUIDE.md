@@ -67,8 +67,8 @@ What the engine does for you. **Do not reimplement these:**
 | Situation | What the engine does |
 |---|---|
 | Target chit is in another panel (phone tab stack) or a zoomed panel | Switches to it, then draws (nothing is ringed while its panel is behind another) |
-| On a small screen (shorter side under 700 px), everything a step rings on the table sits in one panel with under 60% of the screen | Shows that panel full screen, as zooming in does (every panel becomes a tab at the bottom); a step ringing things in several panels goes back to the normal layout, so they show side by side. Already full screen (the player zoomed in), it switches tabs instead of leaving |
-| A ringed thing is still tiny (under ~56 px with the whole table shown) | Zooms its panel's camera in until it is readable, centred, and back out when the step moves on (not if the player zoomed meanwhile). Rings in a gallery do not zoom, nor a ring with `zoom: false` (which leaves the framing as it is: for rings that only flash by); `zoom: 1.6` zooms that much on a small screen whatever the size (a group of small things); the framing waits half a second, so rings that follow each other quickly (one per word) do not move it |
+| Everything a step rings on the table sits in one panel, is under 24 px, and zooming that panel's camera cannot bring it to 40 px (the panel is too small), while full screen would grow the panel at least 1.5× — on any screen size. A board overview or anything readable in place stays in the normal layout, beside the rest of the table | Shows that panel full screen, as zooming in does (every panel becomes a tab at the bottom). Rings in another panel go back to the normal layout first, and full screen returns only if that panel needs it too (tab after tab with no context is what this avoids); a new step ringing nothing on the table leaves full screen on a bigger screen. Already full screen because the player zoomed in, it switches tabs instead of leaving |
+| A ringed thing is still tiny (under ~28 px with the whole table shown) | Zooms its panel's camera in until it is readable (about 30% of the panel, at most 140 px, so its surroundings stay in view), and keeps that zoom while the step's later rings still show in it, and back out when the step moves on (not if the player zoomed meanwhile). Rings in a gallery do not zoom, nor a ring with `zoom: false` (which leaves the framing as it is: for rings that only flash by); `zoom: 1.6` zooms that much on a small screen whatever the size (a group of small things); the framing waits half a second, so rings that follow each other quickly (one per word) do not move it |
 | A prompt's own strip (a toggle button's gallery that opens by itself) is up while the player only watches | Puts it away so the board gets the room; it comes back when it is the player's move or a step points into it (a gallery target, a `gallery:`/`button:` UI target, or one of its chits). A strip the player opens stays open |
 | Narration on a phone | The next step's recording loads while a step talks; the box shows about four lines and scrolls to keep the spoken sentence in view, and stays on screen when dragged |
 | Audio on a phone | Plays after the Start tap (the gesture browsers require) |
@@ -126,6 +126,8 @@ Omit `match` entirely and you get the demo's defaults (`setupDemoGame()` seats, 
 
 The start card (before the player taps Start) shows the spec's `intro` (markdown), or the first
 step's text when there is none. Use `intro` for a welcome line instead of a title-card step.
+The card sits in the middle of a darkened table, and nothing on the board can be played until the
+player taps Start (or presses → or Enter).
 
 ## Step 3 — Write the steps
 
@@ -166,7 +168,8 @@ Rules of thumb:
 - **Highlight as many regions as the step needs.** `focus` is a list; each entry has its own ring
   and arrow (`[{ ring: hand }, { ring: tableau, arrow: true }]`). A ring around several chits is one
   box around all of them; add `separate: true` to ring each one on its own. `dim` keeps every ring
-  and arrow target of the step lit.
+  and arrow target of the step lit; the dim fades in and out, and stays 0.4 s through a gap with nothing ringed
+  (a tab sliding, a sentence with no ring) so it does not blink.
 - **Point at parts of a chit** with `{ chit, offset: { y: 0.3 } }` (bbox units, half-extent 0.5, +y
   toward the top of the chit) and `scale: { y: 0.3 }` to ring a band of it.
 - **UI targets:** `button:<Label>`, `undo`, `log`, `time`, `players`, `prompt`,

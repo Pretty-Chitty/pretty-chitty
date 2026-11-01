@@ -509,6 +509,7 @@ export class Chit extends ObjectWithProps {
     if (!propsOnly) {
       this._version++;
       if (j.____deleted) {
+        this.forgetFallbackUnlessHidden();
         this.setParent();
         return;
       }
@@ -727,6 +728,19 @@ export class Chit extends ObjectWithProps {
       chit instanceof OrderedOutlet ? chit.copy() : Array.isArray(chit) ? (chit.filter((c) => c) as T[]) : [chit];
     result.dropTargets = Array.isArray(targets) ? targets : [targets];
     return result;
+  }
+
+  /**
+   * A deleted chit keeps its `parentFallback` only when that fallback hides its children, as a bag does: then the
+   * chit is "back in the bag", invisible, and can come out again. Any other fallback (a piece a new chit was made to
+   * come from) would keep the deleted chit alive and drawn beside it, since the renderer never destroys a parentless
+   * chit that still has a fallback. Undo deletes chits this way, so without this an undone piece lingers on screen.
+   * @internal
+   */
+  public forgetFallbackUnlessHidden() {
+    if (this._parentFallback && this._parentFallback.shouldRenderChild(this)) {
+      this._parentFallback = undefined;
+    }
   }
 
   /** @internal */
