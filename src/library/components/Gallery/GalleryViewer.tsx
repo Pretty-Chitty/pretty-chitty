@@ -10,6 +10,9 @@ import { requestSharedAnimationFrame } from "../../utilities/RequestSharedAnimat
 import { TextureReferenceCounter } from "../../rendering/TextureReferenceCounter";
 import { GalleryController } from "./GalleryController";
 import { GalleryItem, SummaryMode } from "./types";
+import { GalleryKind, galleryRegistry } from "./registry";
+import { Chit } from "../../game/Chit";
+import { ChitGalleryItemInstance } from "../../rendering/ChitGalleryItemInstance";
 import {
   DEFAULT_TWEEN_DURATION,
   DEFAULT_FOV,
@@ -39,6 +42,20 @@ export interface GalleryViewerProps {
   onLongPress?: () => void;
   showSummary?: SummaryMode;
   zFactor?: number;
+  /** Lets tutorials find and point at this gallery's items (see `galleryRegistry`) */
+  kind?: GalleryKind;
+  /** `data-tutorial-target` for the gallery area */
+  tutorialTarget?: string;
+}
+
+/**
+ * Whether a gallery item shows `chit`: the item is that chit, or (galleries merge identical chits into
+ * one "2x" item) an identical one.
+ */
+function itemShows(item: GalleryItem, chit: Chit) {
+  if (item.id === chit.id) return true;
+  const shown = (item as ChitGalleryItemInstance).chit;
+  return shown instanceof Chit && shown !== chit && shown.functionallyIdentical(chit);
 }
 
 export function GalleryViewer({
@@ -56,6 +73,8 @@ export function GalleryViewer({
   galleryItemHeight = h * 0.7,
   showSummary = "full",
   zFactor = DEFAULT_Z_FACTOR,
+  kind,
+  tutorialTarget,
 }: GalleryViewerProps) {
   const calcedItemWidth =
     items.length > 0 ? Math.min(...items.map((item) => item.preferredWidth ?? galleryItemWidth)) : galleryItemWidth;
@@ -99,6 +118,29 @@ export function GalleryViewer({
       zFactor,
     });
   }, [calcedItemWidth, itemSpacing, calcedItemHeight, w, h, galleryController, zFactor]);
+
+  // Tell tutorials where this gallery's items are
+  useEffect(() => {
+    const canvas = refContainer.current;
+    if (!kind || !canvas) return;
+    return galleryRegistry.register({
+      kind,
+      element: canvas,
+      chitIds: () => galleryController.itemIds(),
+      locate: (chit) => {
+        const exact = galleryController.locateItem((item) => item.id === chit.id);
+        const found = exact ?? galleryController.locateItem((item) => itemShows(item, chit));
+        if (!found || found === "offscreen") return found;
+        const r = canvas.getBoundingClientRect();
+        return { left: r.left + found.left, top: r.top + found.top, right: r.left + found.right, bottom: r.top + found.bottom };
+      },
+      scrollTo: (chit) => {
+        const hasExact = galleryController.itemIds().includes(chit.id ?? "");
+        galleryController.scrollToItem((item) => (hasExact ? item.id === chit.id : itemShows(item, chit)));
+      },
+    });
+    // the canvas exists only once w and h are known
+  }, [kind, galleryController, w, h]);
 
   useEffect(() => {
     galleryController.setItems(items);
@@ -220,7 +262,7 @@ export function GalleryViewer({
   }
 
   return (
-    <Box sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }}>
+    <Box data-tutorial-target={tutorialTarget} sx={{ position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }}>
       <canvas
         width={w * rendererWrapper.pixelRatio}
         height={h * rendererWrapper.pixelRatio}

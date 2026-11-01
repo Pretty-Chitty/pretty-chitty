@@ -28,32 +28,30 @@ interface SparkLineChartProps {
   width?: number;
 }
 
-const HALO_OPACITY = 0.35;
+const HALO_OPACITY = 0.85;
 
-// One halo color for every line in the chart, picked as the extreme furthest
-// from the bg — so the halo is always visible against the bg and provides the
-// edge that separates each line from the bg. Per-line halos flipping between
-// black and white read as arbitrary noise.
+// The halo is the bg itself, made opaque — a knockout that cuts each line and
+// label cleanly out of the grid and the lines it crosses, invisible against the
+// bg. A halo opposite the bg reads as grey fuzz around everything.
 function getUnifiedHaloColor(backgroundColor: string): string {
-  return Color(backgroundColor).isLight() ? "#000000" : "#ffffff";
+  return Color(backgroundColor).alpha(1).hex();
 }
 
-// The halo only does its job when every line clearly contrasts against it —
-// otherwise a dark line drowns into the dark halo and you get fuzz instead of
-// a crisp edge. Push any too-close line toward the halo's opposite (which is
-// also the bg side) in 5% steps until WCAG luminance contrast clears the
-// threshold. This is the "lighten the dark line until it's distinguishable"
-// step — only the dark-red-burger gets touched in a sea of light pastels.
-function adjustLineForHalo(lineColor: string, haloColor: string, minRatio = 7): string {
-  const halo = Color(haloColor);
-  const line = Color(lineColor);
-  if (line.contrast(halo) >= minRatio) return line.hex();
-  const target = halo.isDark() ? Color("#ffffff") : Color("#000000");
-  for (let t = 0.05; t <= 1; t += 0.05) {
-    const candidate = line.mix(target, t);
-    if (candidate.contrast(halo) >= minRatio) return candidate.hex();
+// A player colour too close to the bg's luminance (dark red on a dark dialog)
+// would vanish, so step its HSL lightness away from the bg until WCAG contrast
+// clears the large-text threshold (the 20px bold labels). Hue and saturation
+// are kept, so the colour still reads as that player's; colours that already
+// contrast are left untouched.
+function adjustLineForBackground(lineColor: string, backgroundColor: string, minRatio = 3): string {
+  const bg = Color(backgroundColor).alpha(1);
+  const line = Color(lineColor).alpha(1);
+  if (line.contrast(bg) >= minRatio) return line.hex();
+  const step = bg.isDark() ? 5 : -5;
+  for (let l = line.lightness() + step; l > 0 && l < 100; l += step) {
+    const candidate = line.lightness(l);
+    if (candidate.contrast(bg) >= minRatio) return candidate.hex();
   }
-  return target.hex();
+  return bg.isDark() ? "#ffffff" : "#000000";
 }
 
 export function SparkLineChart({
@@ -168,14 +166,12 @@ export function SparkLineChart({
   const getY = (value: number) => chartHeight - ((value - chartMinValue) / chartValueRange) * chartHeight;
   const chartEndX = chartWidth;
 
-  // The chart always gets one unified halo (opposite of bg). Each line is then
-  // shifted only if it sits too close to the halo's luminance — so on a light
-  // bg the halo is dark, all the light pastels keep their hue, and the lone
-  // dark line gets lightened until the dark halo can actually frame it.
+  // Lines keep their player colours unless they'd sink into the bg; the halo
+  // matches the bg so it separates without tinting anything.
   const haloColor = getUnifiedHaloColor(backgroundColor);
   const displayLines = lines.map((line) => ({
     ...line,
-    color: adjustLineForHalo(line.color, haloColor),
+    color: adjustLineForBackground(line.color, backgroundColor),
   }));
 
   return (
@@ -231,7 +227,7 @@ export function SparkLineChart({
 
           return (
             <g key={line.id}>
-              {/* Unified halo behind every line — soft glow opposite the bg. */}
+              {/* Bg-coloured knockout behind every line. */}
               <path
                 d={extendedPathData}
                 fill="none"

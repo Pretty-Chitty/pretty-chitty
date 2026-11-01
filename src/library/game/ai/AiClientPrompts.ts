@@ -55,10 +55,22 @@ export type AiPlayerOptions = {
    */
   temperature?: number;
   /**
-   * Override the choice: return the index into `scored` to take, or undefined for the normal
-   * choice. For harnesses (forced moves in playouts, scripted openings), not for game rules.
+   * Override the choice: return the index into `scored` to take, undefined for the normal choice,
+   * or null to leave the prompt unanswered for now (call `recheck()` when that may have changed).
+   * Consulted for every prompt, the engine's Confirm included. For harnesses (forced moves in
+   * playouts, scripted openings, tutorials), not for game rules.
    */
-  choose?: (scored: { option: AiOption; score: number }[], ctx: AiContext<any, any, any>) => number | undefined;
+  choose?: (
+    scored: { option: AiOption; score: number }[],
+    ctx: AiContext<any, any, any>,
+  ) => number | null | undefined;
+  /**
+   * While this returns true for the current prompt, the bot leaves it unanswered (call `recheck()`
+   * when that may have changed). For harnesses that hold a bot back, like a tutorial waiting for the
+   * step that scripts its next move. It sees the prompt so it can let some through (the engine's own
+   * Confirm, which ends a turn the script never mentions).
+   */
+  hold?: (prompt: PromptSerialization) => boolean;
   /** Called after every decision with each option's score and the chosen index (for logging and audits). */
   onDecision?: (decision: AiDecision) => void;
   /**
@@ -232,7 +244,13 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
     }
     this.running = true;
     try {
-      while (this.latest && this.latest.seq !== this.handledSeq && !this.disposed && this._enabled) {
+      while (
+        this.latest &&
+        this.latest.seq !== this.handledSeq &&
+        !this.disposed &&
+        this._enabled &&
+        !this.options.hold?.(this.latest.prompt)
+      ) {
         const current = this.latest;
         this.handledSeq = current.seq;
         try {
@@ -250,6 +268,22 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
     } finally {
       this.running = false;
     }
+  }
+
+  /** Seq of a prompt `choose` chose to leave unanswered */
+  private heldSeq = -1;
+
+  /**
+   * Looks at the current prompt again: answers it if `hold` no longer holds the bot and `choose` no
+   * longer leaves it unanswered. Does nothing to a prompt the bot already answered.
+   */
+  public recheck() {
+    if (this.disposed) return;
+    if (this.latest && this.heldSeq === this.latest.seq) {
+      this.heldSeq = -1;
+      this.handledSeq = -1;
+    }
+    void this.pump();
   }
 
   private isCurrent(entry: QueuedPrompt) {
@@ -328,6 +362,11 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
       }
 
       const chosen = this.choose(prompt, candidates);
+      if (!chosen) {
+        // The harness wants this prompt left alone for now (see `recheck`)
+        this.heldSeq = entry.seq;
+        return;
+      }
       const memoryBefore = this.memory;
       // Written before the answer is sent, so the save that follows the answer carries it
       this.setMemory(applyPlan(memoryBefore, chosen.plan));
@@ -429,16 +468,11 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
     return button;
   }
 
-  private choose(prompt: PromptSerialization, candidates: AiOption[]): Scored<M> {
+  private choose(prompt: PromptSerialization, candidates: AiOption[]): Scored<M> | null {
     const ai = this.game.ai;
     const rules: { [key: string]: AiRule<P, R, M> } = (ai?.rules as any) ?? {};
     const defaultRule = ai?.default as AiRule<P, R, M> | undefined;
     const ruleFor = (o: AiOption) => (o.key ? rules[o.key] : undefined) ?? defaultRule;
-
-    if (!candidates.some((o) => ruleFor(o))) {
-      candidates.forEach((o) => this.noteUntagged(o));
-      return { option: this.chooseLegacy(prompt, candidates), score: 0 };
-    }
 
     const root = this.view.root as R;
     const ctx: AiContext<P, R, M> = {
@@ -451,6 +485,19 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
       find: this.view.findChit,
       params: this.options.params,
     };
+
+    if (!candidates.some((o) => ruleFor(o))) {
+      // No rule applies (an untagged pick, or the engine's own Confirm): the harness still decides
+      candidates.forEach((o) => this.noteUntagged(o));
+      const unscored: Scored<M>[] = candidates.map((option) => ({ option, score: 0 }));
+      const forced = this.options.choose?.(unscored, ctx);
+      if (forced === null) return null;
+      if (forced !== undefined && forced >= 0 && forced < unscored.length) {
+        this.options.onDecision?.({ playerId: this.playerId, prompt: ctx.prompt, scored: unscored, chosen: forced, ctx });
+        return unscored[forced];
+      }
+      return { option: this.chooseLegacy(prompt, candidates), score: 0 };
+    }
 
     const scored: Scored<M>[] = candidates.map((option) => {
       const rule = ruleFor(option);
@@ -468,7 +515,9 @@ export class AiClientPrompts<P extends PlayerChit, R extends RootChit<P>, M = an
     });
 
     const scores = scored.map((s) => s.score);
-    let index = this.options.choose?.(scored, ctx);
+    const forced = this.options.choose?.(scored, ctx);
+    if (forced === null) return null;
+    let index = forced;
     if (index === undefined || index < 0 || index >= scored.length) {
       const temperature = this.options.temperature ?? this.game.ai?.temperature;
       index =

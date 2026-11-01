@@ -5,7 +5,7 @@ import { Game, GameResult } from "./Game";
 import { ServerTime } from "./serverTransport/ServerTime";
 import { PlayerInfo } from "./PlayerInfo";
 import { DestroyError, MismatchError, RerunError, Turn } from "./Turn";
-import { TurnState } from "./TurnState";
+import { RngSource, TurnState } from "./TurnState";
 import { IMatchStorage } from "./MatchStorage";
 import { ServerPrompts } from "./serverTransport/ServerPrompts";
 import { EventChannel } from "../utilities/EventChannel";
@@ -14,6 +14,12 @@ import { ServerStatus } from "./serverTransport/ServerStatus";
 import { PlayerChit } from "./PlayerChit";
 import { AiPlayerHandle, ConnectAiPlayerOptions, connectAiPlayer } from "./ai/connectAiPlayer";
 import type { AiMemoryStore } from "./ai/AiClientPrompts";
+
+/** Engine-level knobs for a match (as opposed to the game's own `matchOptions`). */
+export type MatchConfig = {
+  /** Where fresh random draws come from. Default: `Math.random`. See `RngSource`. */
+  rngSource?: RngSource;
+};
 
 /** Options for {@link Match.seatAiPlayers}: applied to every bot it seats. */
 export type SeatAiPlayersOptions = Omit<ConnectAiPlayerOptions, "difficulty" | "params" | "choose" | "memoryStore">;
@@ -91,7 +97,10 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
     public players: PlayerInfo[],
     private matchStorage: IMatchStorage,
     private matchOptions?: any,
-  ) {}
+    private config: MatchConfig = {},
+  ) {
+    this.state.rngSource = config.rngSource;
+  }
 
   async load() {
     const savedState = await this.matchStorage.readState();
@@ -103,6 +112,7 @@ export class Match<P extends PlayerChit, R extends RootChit<P>> {
         return;
       }
       this.state = new TurnState();
+      this.state.rngSource = this.config.rngSource;
       this.state.deserialize(savedState);
       if (this.errorState.value) {
         this.turn.value?.destroy();

@@ -9,6 +9,7 @@ import { ChitRenderSpec } from "../rendering/ChitRenderSpec";
 import { TokenDefinition } from "../utilities/TokenizedText";
 import { GameMetaData } from "./GameMetaData";
 import type { GameAi } from "./ai/defineAi";
+import type { TutorialSpec } from "./tutorial/defineTutorial";
 
 export interface IChitLibrary<P extends PlayerChit, R extends RootChit<P>> {
   [key: string]: new () => Chit;
@@ -69,4 +70,10 @@ export interface Game<P extends PlayerChit, R extends RootChit<P>> {
    * pick the best.  Without this, AI players pick at random (weighted by `demoPickWeight`).
    */
   ai?: GameAi<P, R, any>;
+
+  /**
+   * Scripted tutorials (see `defineTutorial`). A host starts one with `DemoWrapper` (or the bundle's
+   * `createDemoMatchViewer`) by id; the Playground's Demo tab lists them.
+   */
+  tutorials?: TutorialSpec<P, R>[];
 }

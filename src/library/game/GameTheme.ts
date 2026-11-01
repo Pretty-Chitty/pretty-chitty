@@ -1,4 +1,5 @@
 import Color from "color";
+import type { TutorialTheme } from "./tutorial/TutorialTheme";
 
 export const DEFAULT_FONT_FAMILY = "Quicksand, sans-serif";
 
@@ -102,6 +103,9 @@ export class GameTheme {
   public inlineGalleryBackgroundColor = "rgba(255,255,255,0.1)";
   public inlineGalleryButtonBackgroundColor = "#000000";
   public inlineGalleryButtonForegroundColor = "rgba(255,255,255,0.5)";
+
+  /** Overrides for the tutorial overlay's colours (see `TutorialTheme`); the rest derive from this theme */
+  public tutorial?: Partial<TutorialTheme>;
 
   /** Reference to .png or .jpg file to show as box art in advertising the game */
   public boxArt = "";

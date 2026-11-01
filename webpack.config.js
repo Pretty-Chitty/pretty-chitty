@@ -70,6 +70,10 @@ module.exports = {
         type: "asset/resource",
       },
       {
+        test: /\.(mp3|m4a|ogg|wav)$/,
+        type: "asset/resource",
+      },
+      {
         test: /\.(css|sass|scss)$/,
         use: [
           {

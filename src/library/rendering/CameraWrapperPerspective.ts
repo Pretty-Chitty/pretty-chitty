@@ -151,6 +151,23 @@ export class CameraWrapperPerspective {
     this.adjust(this.bbox, !animate);
   }
 
+  /**
+   * Zooms to `zoom` (clamped to the camera's range) and brings the point at panel pixel (x, y) to the
+   * middle of the panel, as far as panning allows. Animated. Zoom 1 is the whole table.
+   */
+  public focusOn(x: number, y: number, zoom: number): void {
+    const z = Math.max(1, Math.min(zoom, this.cameraSpec.maxZoom));
+    // A point on screen sits at (content * zoom + offset) from the middle: keep the content under
+    // (x, y) and move it to the middle
+    const sx = x - this.width / 2;
+    const sy = y - this.height / 2;
+    this.current.x = -(sx - this.current.x) * (z / this.current.z);
+    this.current.y = -(sy - this.current.y) * (z / this.current.z);
+    this.current.z = z;
+    this.lockZoom();
+    this.adjust(this.bbox, false);
+  }
+
   private lockZoom() {
     const maxZoom = this.cameraSpec.maxZoom;
     if (this.current.z <= 1) {

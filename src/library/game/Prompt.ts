@@ -20,8 +20,17 @@ const defaultFindChit: FindChit = () => {
 
 type FindChit = (id: string) => Chit;
 
+/** What a player is trying to do with a prompt; a `PromptGuard` says whether it goes through. */
+export type PromptAction = { type: "pick"; pick: Pick; value: any } | { type: "undo"; fullReset: boolean };
+export type PromptGuard = (action: PromptAction) => boolean;
+
 export abstract class Prompt {
   public id = "";
+  /**
+   * Set on the client (see `ClientPrompts.guard`) to vet a player's answers before they are sent: a
+   * tutorial lets through only the moves its current step asks for. Not serialized.
+   */
+  public guard?: PromptGuard;
   public resolved = false;
   public clock = 0;
   public response: any;
@@ -73,6 +82,11 @@ export abstract class Prompt {
   }
 
   stepBack(fullReset: boolean = false) {
+    // The guard goes first: a tutorial turns Undo into its own Back, which works even where the
+    // engine could not undo (after a draw)
+    if (this.guard && !this.guard({ type: "undo", fullReset })) {
+      return;
+    }
     if (!this.canReset) {
       throw new Error("Cannot be stepped back");
     }
@@ -254,6 +268,12 @@ export class PickPrompt extends Prompt {
   }
 
   resolvePick(pick: Pick, value: any) {
+    if (this.resolved) {
+      return;
+    }
+    if (this.guard && !this.guard({ type: "pick", pick, value })) {
+      return;
+    }
     const idx = this.picks.indexOf(pick);
     this.resolve({ idx, value, pickType: pick.type });
   }

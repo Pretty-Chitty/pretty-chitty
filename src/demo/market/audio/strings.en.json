@@ -1,0 +1,33 @@
+{
+  "locale": "en",
+  "voice": "Samantha",
+  "title": "How to play",
+  "you": "You",
+  "spoken": {
+    "coin": "coins",
+    "gem": "gem",
+    "star": "star"
+  },
+  "steps": {
+    "welcome": "Welcome to **Petty Market**! This is the table. On the left sits the deck. In the middle is the market, with four cards for sale.",
+    "market": "Each card has a suit and a value from 1 to 5. Buying a card costs its value in :coin:. The number at the top is both its score and its price.",
+    "hand": "This is your hand, in your own panel. Cards you buy land here. Above it is your tableau: play cards there to score them.",
+    "coins": "You start with 3 :coin:, shown on your panel. The player strip at the top shows everyone's score and coins.",
+    "market-button": "Cards are easier to read up close. Tap **Market** in the bottom bar to open the market gallery.",
+    "gallery-tour": "This strip is the market gallery, a close-up of the cards for sale. The button in its corner switches between this strip and full screen. Here it is full screen, with the cards you can afford circled.",
+    "buy": "**Your move.** Buy a card: tap one of the circled cards you can afford.",
+    "confirm-draw": "Before the game draws a replacement card it asks you to **confirm**, because a draw can't be undone. Tap Confirm.",
+    "robin": "Now Robin and Sam take their turns. Watch the log: Robin buys a card, and Sam passes to earn 2 :coin:.",
+    "play": "**Your move again.** Play a card: drag one from your hand onto your tableau. You score its value, and a :coin: card earns a coin too.",
+    "end-turn": "Nothing random happened this turn, so the game lets you confirm before it ends. Tap Confirm.",
+    "history": "One more thing: hold **Back** in the bottom bar to rewind and replay what happened. The log line above it describes the current moment.",
+    "done": "## That's the game!\n\n- :coin: cards earn a coin when played\n- :gem: and :star: cards just score\n- Pass when you're broke to earn 2 :coin:\n\nMost points after 3 rounds wins. Robin and Sam will keep playing with you.\n\n![Gem](token:gem)"
+  },
+  "hints": {
+    "market-button": "Tap the Market button in the bottom bar.",
+    "buy": "Tap one of the circled cards. You have 3 coins, so a 1 or a 2 will do.",
+    "confirm-draw": "Tap the Confirm button in the bottom bar.",
+    "play": "Press and drag a card from your hand onto the green mat above it.",
+    "end-turn": "Tap the Confirm button to end your turn."
+  }
+}

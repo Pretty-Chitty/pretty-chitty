@@ -1,0 +1,33 @@
+{
+  "locale": "es",
+  "voice": "Mónica",
+  "title": "Cómo jugar",
+  "you": "Tú",
+  "spoken": {
+    "coin": "monedas",
+    "gem": "gema",
+    "star": "estrella"
+  },
+  "steps": {
+    "welcome": "¡Bienvenido a **Petty Market**! Esta es la mesa. A la izquierda está el mazo. En el centro está el mercado, con cuatro cartas en venta.",
+    "market": "Cada carta tiene un palo y un valor del 1 al 5. Comprar una carta cuesta su valor en :coin:. El número de arriba es a la vez su puntuación y su precio.",
+    "hand": "Esta es tu mano, en tu propio panel. Las cartas que compras llegan aquí. Encima está tu tablero: juega cartas ahí para puntuar.",
+    "coins": "Empiezas con 3 :coin:, que se muestran en tu panel. La barra de jugadores de arriba muestra la puntuación y las monedas de todos.",
+    "market-button": "Las cartas se leen mejor de cerca. Toca **Market** en la barra inferior para abrir la galería del mercado.",
+    "gallery-tour": "Esta tira es la galería del mercado, un primer plano de las cartas en venta. El botón de su esquina cambia entre esta tira y pantalla completa. Aquí está en pantalla completa, con las cartas que puedes pagar rodeadas.",
+    "buy": "**Te toca.** Compra una carta: toca una de las cartas rodeadas que puedes pagar.",
+    "confirm-draw": "Antes de robar una carta de reemplazo el juego te pide **confirmar**, porque un robo no se puede deshacer. Toca Confirmar.",
+    "robin": "Ahora Robin y Sam juegan su turno. Mira el registro: Robin compra una carta y Sam pasa para ganar 2 :coin:.",
+    "play": "**Te toca otra vez.** Juega una carta: arrastra una de tu mano a tu tablero. Puntúas su valor, y una carta :coin: también da una moneda.",
+    "end-turn": "En este turno no hubo nada aleatorio, así que el juego te deja confirmar antes de terminarlo. Toca Confirmar.",
+    "history": "Una cosa más: mantén pulsado **Back** en la barra inferior para rebobinar y repetir lo ocurrido. La línea de registro de arriba describe el momento actual.",
+    "done": "## ¡Eso es todo!\n\n- Las cartas :coin: dan una moneda al jugarlas\n- Las cartas :gem: y :star: solo puntúan\n- Pasa cuando no tengas dinero para ganar 2 :coin:\n\nGana quien tenga más puntos tras 3 rondas. Robin y Sam seguirán jugando contigo.\n\n![Gema](token:gem)"
+  },
+  "hints": {
+    "market-button": "Toca el botón Market en la barra inferior.",
+    "buy": "Toca una de las cartas rodeadas. Tienes 3 monedas, así que un 1 o un 2 sirven.",
+    "confirm-draw": "Toca el botón Confirm en la barra inferior.",
+    "play": "Mantén pulsada una carta de tu mano y arrástrala al tapete verde de arriba.",
+    "end-turn": "Toca el botón Confirm para terminar tu turno."
+  }
+}

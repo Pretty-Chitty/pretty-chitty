@@ -60,11 +60,15 @@ export function useAnimationSpeedMultiplier() {
   return speed;
 }
 
-export function TimeControllerProvider({ children }: { children: ReactNode }) {
+export function TimeControllerProvider({ children, skipReplay = false }: { children: ReactNode; skipReplay?: boolean }) {
   const connection = useConnection();
   const playerId = usePlayerId();
   const game = useGame();
-  const [clientTimeState] = useState<ClientTimeState>(new ClientTimeState());
+  const [clientTimeState] = useState<ClientTimeState>(() => {
+    const state = new ClientTimeState();
+    state.skipInitialReplay = skipReplay;
+    return state;
+  });
   const [clientTime, setClientTime] = useState<ClientTime | null>(null);
   const [clientPrompts, setClientPrompts] = useState<ClientPrompts<any, any> | undefined>(undefined);
   const [clientStatus, setClientStatus] = useState<ClientStatus<any, any> | undefined>(undefined);

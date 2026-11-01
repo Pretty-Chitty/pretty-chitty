@@ -145,14 +145,16 @@ export class LayoutManager {
 
     itemWidth = Math.max(this.theme.galleryItemMinimumWidth, itemWidth);
 
-    // The summary only takes height away from the item, never width.  The summary is laid out at the item's width,
-    // so narrowing the item would make the summary taller, which would shrink the item further until it collapsed.
+    // The summary takes its height from the item, and the item keeps its shape, so the slot (and the summary laid out
+    // at its width) stays as wide as the item actually draws.  A narrower summary can wrap taller and shrink the item
+    // again, but only down to the height floor, so the layout settles instead of collapsing.
     const itemHeightFloor = Math.max(
       this.theme.galleryItemMinimumHeight,
       Math.min(itemHeight, availableHeight * MIN_ITEM_HEIGHT_FRACTION),
     );
     const summaryHeightLimit = Math.max(0, availableHeight - itemHeightFloor);
     itemHeight = Math.max(itemHeightFloor, Math.min(itemHeight, availableHeight - this.summaryMaxHeight));
+    itemWidth = Math.max(this.theme.galleryItemMinimumWidth, itemHeight * aspectRatio);
 
     // A lone item has the stage to itself, so its summary can spread out instead of stacking into a tall column.
     const summaryWidth =

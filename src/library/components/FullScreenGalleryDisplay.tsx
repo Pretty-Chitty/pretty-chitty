@@ -46,6 +46,7 @@ export function FullScreenGalleryDisplay() {
       <GameModalBackdrop visible={!!hasItems}>
         {source?.inlineGallerySize && (
           <IconButton
+            data-tutorial-target="gallery:toInline"
             sx={{
               backgroundColor: theme.inlineGalleryButtonBackgroundColor,
               position: "absolute",
@@ -64,6 +65,8 @@ export function FullScreenGalleryDisplay() {
           </IconButton>
         )}
         <GalleryViewer
+          kind="fullscreen"
+          tutorialTarget="gallery:fullscreen"
           onClose={() => {
             setSource(undefined);
           }}

@@ -1,7 +1,7 @@
 import { Tween, Group as TweenGroup } from "@tweenjs/tween.js";
 import { ChitRenderInstance } from "./ChitRenderInstance";
 import { Chit } from "../game/Chit";
-import { Box3, Group, Object3D, Plane, Raycaster, Vector2, Vector3 } from "three";
+import { Box3, Group, Mesh, Object3D, Plane, Raycaster, Vector2, Vector3 } from "three";
 import { CameraWrapperPerspective } from "./CameraWrapperPerspective";
 import { LightWrapper } from "./LightWrapper";
 import { ModalState } from "../game/ModalState";
@@ -331,6 +331,11 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
     precision: number,
   ): Chit[] {
     const result = new Map<Chit, number>();
+    // Box hits that the ray also hits on the chit's real shape. A clickbox is the axis-aligned box around the whole
+    // object, so a large irregular piece (a sea area, a province) claims every tap inside its rectangle, and
+    // neighbours whose rectangles overlap would all be offered in a gallery. See the end of this function.
+    const exact = new Map<Chit, number>();
+    const hasShape = new Map<Chit, boolean>();
     const chitRenderInstances: ChitRenderInstance[] = [];
     const threeJsToChitLookup: { [threejsId: number]: Chit } = {};
 
@@ -371,9 +376,27 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
           const c = threeJsToChitLookup[id];
           if (filter(c)) {
             result.set(c, Math.min(result.get(c) ?? r, r));
+            const shape = c.renderInstance?.hitObject;
+            if (!hasShape.has(c)) {
+              let meshes = false;
+              shape?.traverse((o) => {
+                if ((o as Mesh).isMesh) meshes = true;
+              });
+              hasShape.set(c, meshes);
+            }
+            if (shape && hasShape.get(c) && (exact.get(c) ?? Infinity) > r && raycaster.intersectObject(shape, true).length) {
+              exact.set(c, r);
+            }
           }
         }
       }
+    }
+    // Keep the chits whose real shape was hit, plus those with no mesh of their own to test (an empty group that
+    // is clicked through its children). If no shape was hit at all (a tap in the gap between pieces, within the
+    // finger tolerance), fall back to the boxes so a near miss still lands. Nearest first.
+    const precise = [...result.keys()].filter((c) => exact.has(c) || !hasShape.get(c));
+    if (precise.length && precise.length < result.size) {
+      return precise.sort((a, b) => (exact.get(a) ?? result.get(a)!) - (exact.get(b) ?? result.get(b)!));
     }
     return [...result.keys()];
   }
@@ -462,6 +485,12 @@ export class RootChitRenderInstance extends ChitRenderInstance implements Textur
 
   public handlePan(dx: number, dy: number) {
     this.cameraWrapper.handlePan(dx, dy);
+    this.markDirty();
+  }
+
+  /** Zooms the camera to `zoom` around panel pixel (x, y), bringing it to the middle (see `CameraWrapperPerspective.focusOn`) */
+  public focusCamera(x: number, y: number, zoom: number) {
+    this.cameraWrapper.focusOn(x, y, zoom);
     this.markDirty();
   }
 

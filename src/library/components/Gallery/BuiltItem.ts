@@ -76,6 +76,17 @@ export class BuiltItem {
     return this.summaryHeight;
   }
 
+  /** The item's mesh in world space (its summary text excluded), for pointing at it */
+  worldBox(): Box3 {
+    this.group.updateWorldMatrix(true, true);
+    return new Box3().setFromObject(this.mesh);
+  }
+
+  /** False while the item is sliding in or out */
+  get settled() {
+    return !this.removing && this.enteredAmount >= 1;
+  }
+
   public raycastHitsItem(camera: Camera, x: number, y: number): boolean {
     const { w, h } = this.layoutManager.getDimensions();
     const ndc = new Vector3((x / w) * 2 - 1, -(y / h) * 2 + 1, 0.5);

@@ -5,6 +5,7 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
+  Object3D,
   Plane,
   Quaternion,
   Raycaster,
@@ -50,6 +51,11 @@ export class ChitRenderInstance {
 
   // rendering info
   protected renderSpec: ChitRenderSpec | null = null;
+
+  /** The chit's own drawn object (not its children or ornaments), for exact hit tests on a tap. */
+  public get hitObject(): Object3D | undefined {
+    return this.renderSpec?.object ?? undefined;
+  }
 
   // threejs info
   public group = new Group(); // group storing the visible meshes.  Will tween

@@ -35,6 +35,7 @@ function PanelTab({ chit, onClick, selected }: { selected?: boolean; chit: Chit;
   return (
     <Box
       onMouseDown={onClick}
+      data-tutorial-target={`panelTab:${chit.id}`}
       sx={{ pt: 1, pb: 1, mt: -1, mb: -1, position: "relative", zIndex: ZINDEX_PANEL_CUTOUTS }}
     >
       <Box

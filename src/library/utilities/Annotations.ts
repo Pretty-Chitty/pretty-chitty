@@ -23,6 +23,11 @@ export interface SelectableConfig {
   label: string;
   /** List of possible choices for this property */
   choices: SelectableChoice[];
+  /**
+   * When true the property holds any number of the choices' ids (a `string[]`, e.g. the expansion
+   * modules a match plays with) rather than exactly one. Defaults to false.
+   */
+  multiple?: boolean;
 }
 
 /**
@@ -203,17 +208,30 @@ export function FixChildOutlets(instance: Chit) {
 
     if (obj?.__orderedOutlets) {
       Object.entries(obj.__orderedOutlets).forEach(([key, prop]: [key: any, prop: any]) => {
-        const existingValue = (instance as any)[key];
-        const v = existingValue || prop?.initializer?.apply(instance, []);
-        if (v) {
-          v.outletName = key;
-          v.parent = instance;
+        if (seenKeys.has(`ordered:${key}`)) {
+          return;
         }
+        seenKeys.add(`ordered:${key}`);
+        const existingValue = (instance as any)[key];
+        let v = existingValue || prop?.initializer?.apply(instance, []);
+        const adopt = (outlet: any) => {
+          if (outlet instanceof OrderedOutlet) {
+            outlet.outletName = key;
+            outlet.parent = instance;
+          }
+        };
+        adopt(v);
+        // An accessor rather than a data property: with TypeScript/esbuild class fields (no babel
+        // initializer capture) the subclass constructor assigns `new OrderedOutlet()` *after* this
+        // runs, and the setter adopts that outlet instead of leaving it parentless.
         Object.defineProperty(instance, key, {
           enumerable: true,
-          writable: true,
           configurable: true,
-          value: v,
+          get: () => v,
+          set: (newValue: any) => {
+            v = newValue;
+            adopt(v);
+          },
         });
       });
     }
@@ -237,6 +255,16 @@ export function FixChildOutlets(instance: Chit) {
  *     ]
  *   })
  *   public difficulty: string = "medium";
+ *
+ *   @Selectable({
+ *     label: "Expansions",
+ *     multiple: true,
+ *     choices: [
+ *       { id: "rivers", label: "Rivers" },
+ *       { id: "traders", label: "Traders & Builders" },
+ *     ],
+ *   })
+ *   public expansions: string[] = [];
  * }
  * ```
  *

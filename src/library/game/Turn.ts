@@ -1285,8 +1285,34 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
     return result;
   }
 
+  /**
+   * Takes every chit this turn made (and those a sub-turn still running under it made) off the board,
+   * ahead of a parent's restart. The parent never absorbed us, so its own reset knows nothing of them:
+   * left alone they would stay on the board, and the next sub-turn would lock them as if they had
+   * always been there. Chits we only changed are the parent's to restore.
+   */
+  private discardCreatedChits() {
+    this.activeSubTurns.forEach((t) => t.discardCreatedChits());
+    for (const chit of Object.values(this.chitLookup)) {
+      if (chit.id && this.lockedChitStates[chit.id] === undefined) {
+        chit.forgetFallbackUnlessHidden();
+        chit.removeFromParent();
+      }
+    }
+    for (const chit of this.pendingNewChits) {
+      if (!chit.id) {
+        chit.forgetFallbackUnlessHidden();
+        chit.removeFromParent();
+      }
+    }
+    this.pendingNewChits.clear();
+  }
+
   private restartExecution() {
-    this.activeSubTurns.forEach((t) => t.destroy());
+    this.activeSubTurns.forEach((t) => {
+      t.discardCreatedChits();
+      t.destroy();
+    });
 
     const chits = Object.values(this.chitLookup).filter((chit) => chit.id);
 
@@ -1299,6 +1325,7 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       if (lockedState) {
         chit.deserialize(lockedState, this.findChit);
       } else {
+        chit.forgetFallbackUnlessHidden(); // a chit made to come from another piece must not linger beside it
         chit.removeFromParent(); // effectively "deletes" it.  In practice, the `fn` will recreate a new chit which will have the new ID, which replaces this one.
       }
     });

@@ -13,3 +13,4 @@ export const ZINDEX_MATCH_END_DISPLAY = 150;
 export const ZINDEX_GALLERY_VISIBLE = 160;
 export const ZINDEX_TOP_BAR_HEADER = 210;
 export const ZINDEX_TOP_BAR_BODY = 200;
+export const ZINDEX_TUTORIAL = 250;
