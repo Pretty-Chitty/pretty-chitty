@@ -74,7 +74,11 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
       prompt = Prompt.deserialize(promptSpec, find, this.clientTime.game.buttonLibrary);
     } catch (e) {
       console.error(`[prompt] could not inflate "${promptSpec.id}" at clock ${JSON.stringify(this.clientTime.currentClock.value)}:`, e);
+      // the caller already staged the previous prompt out: it must not stay up as the current one
       this._currentPromptSpec = undefined;
+      this._provisional = false;
+      this.currentPrompt.value = undefined;
+      this.fixActiveLog();
       return;
     }
     if (missing.length && !early) {
@@ -82,7 +86,9 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
         `[prompt] "${promptSpec.id}" names chits the client has not got at clock ${JSON.stringify(this.clientTime.currentClock.value)} (latest ${JSON.stringify(this.clientTime.maxClock.value)}): ${missing.join(", ")}`,
       );
     }
-    this._provisional = missing.length > 0;
+    // Only an early stage-in is provisional: on time the board will not catch up any further, so restaging it on every
+    // later clock event would only tear it down and log the same error again
+    this._provisional = early && missing.length > 0;
     this._currentPromptSpec = this._provisional ? undefined : promptSpec;
     if (prompt instanceof PickPrompt) {
       prompt.guard = (action) => {

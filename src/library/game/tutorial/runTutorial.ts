@@ -285,9 +285,15 @@ export async function runTutorial<P extends PlayerChit, R extends RootChit<P>>(
   human?.prompts.setEnabled(false);
   const teardown = new Promise<void>((resolve) =>
     setTimeout(() => {
-      match.dispose();
-      human?.dispose();
-      resolve();
+      // a throw here must not leave a full run waiting forever on this promise
+      try {
+        match.dispose();
+        human?.dispose();
+      } catch (e) {
+        console.error("[runTutorial] teardown failed:", e);
+      } finally {
+        resolve();
+      }
     }, 50),
   );
   if (untilIndex < 0) await teardown;

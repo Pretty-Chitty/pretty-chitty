@@ -19,7 +19,19 @@ export class ChitGalleryItemInstance implements GalleryItem {
   preferredHeight?: number;
 
   originalSummary?: string;
-  summary?: string;
+  /**
+   * How many functionally identical chits this item stands for in its gallery (see
+   * `chitsToGalleryItems`); above 1 the summary leads with "Nx". Kept apart from the summary
+   * text, so a refresh that copies the render spec's summary back onto the item keeps the count.
+   */
+  count?: number;
+  private _summary?: string;
+  get summary(): string | undefined {
+    return this.count && this.count > 1 ? `${this.count}x\n${this._summary ?? ""}` : this._summary;
+  }
+  set summary(value: string | undefined) {
+    this._summary = value;
+  }
   shortSummary?: string;
   summaryIconMap?: IconMap;
   summaryRenderingOptions?: RichTextRenderOptionsParameters;
@@ -80,6 +92,11 @@ export class ChitGalleryItemInstance implements GalleryItem {
 
   createMesh(sceneWrapper: SceneWrapper) {
     this.sceneWrapper = sceneWrapper;
+    return this.cloneMesh();
+  }
+
+  /** A copy of the chit as drawn, without binding this item to a scene (a drag's ghost on the board). */
+  cloneMesh(): Object3D {
     const renderInstance = this.chit.renderInstance;
     const g = new Group();
     if (renderInstance) {

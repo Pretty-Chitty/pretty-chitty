@@ -2,6 +2,7 @@ import { Box3, Object3D, Vector3 } from "three";
 import { Chit } from "../../game/Chit";
 import { GalleryItem } from "../Gallery/types";
 import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
+import { ChitGalleryItemInstance } from "../../rendering/ChitGalleryItemInstance";
 
 /**
  * A drag that starts outside the board, for now only in the inline gallery strip: a chit
@@ -42,7 +43,9 @@ export function startExternalDrag(
   clientY: number,
 ): ExternalDrag {
   const root = viewer.renderInstance;
-  const ghost: Object3D = item.createMesh(root.sceneWrapper);
+  // cloneMesh, not createMesh: createMesh would bind the gallery's item to the board's scene, so
+  // after a cancelled drag its updates would redraw the board instead of the strip
+  const ghost: Object3D = item instanceof ChitGalleryItemInstance ? item.cloneMesh() : item.createMesh(root.sceneWrapper);
   ghost.visible = false;
   root.sceneWrapper.scene.add(ghost);
   const lift = chit.renderInstance?.dragLift ?? 1;

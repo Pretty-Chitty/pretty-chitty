@@ -443,7 +443,7 @@ export class ChitRenderInstance {
     item.preferredWidth = this.renderSpec?.galleryPreferredWidth;
     item.summary = this.renderSpec?.summary;
     item.shortSummary = this.renderSpec?.shortSummary;
-    item.originalSummary = item.summary;
+    item.originalSummary = this.renderSpec?.summary; // not item.summary: that leads with the item's "Nx" count
     item.summaryIconMap = this.renderSpec?.summaryIconMap;
     item.summaryRenderingOptions = this.renderSpec?.summaryRenderingOptions;
     item.shortSummaryRenderingOptions = this.renderSpec?.shortSummaryRenderingOptions;

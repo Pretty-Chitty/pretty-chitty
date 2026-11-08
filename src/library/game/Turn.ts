@@ -284,17 +284,14 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
   }
 
   /**
-   * Records what a player is being asked for: the tokenized message for the in-game UI, and a plain-text version
-   * (player tokens become names, etc.) for anything that can only show text.
+   * Records what a player is being asked for, as plain text (player tokens become names, etc.) for match storage,
+   * match lists and notifications. The in-game prompt renders its own tokenized message.
    */
   private setPromptMessage(player: P, message: string | undefined) {
-    player.promptStatus.latestPromptMessage = message;
-    if (message === undefined) {
-      player.promptStatus.latestPromptMessageText = undefined;
-      return;
-    }
-    const tokenMap = buildTokenMap(this.match.game.tokenMap, this.rootChit.players.map((p) => p));
-    player.promptStatus.latestPromptMessageText = tokenizedMessageToText(message, tokenMap);
+    player.promptStatus.latestPromptMessage =
+      message === undefined
+        ? undefined
+        : tokenizedMessageToText(message, buildTokenMap(this.match.game.tokenMap, this.rootChit.players.map((p) => p)));
   }
 
   /**

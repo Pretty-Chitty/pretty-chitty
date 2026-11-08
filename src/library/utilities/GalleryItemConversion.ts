@@ -12,17 +12,16 @@ export function chitsToGalleryItems(chits: Chit[]) {
       return;
     }
     resultChits.push(chit);
-    if (chit.renderInstance?.currentGalleryItem) {
-      result.push(chit.renderInstance?.currentGalleryItem);
-    } else {
-      result.push(new ChitGalleryItemInstance(chit));
-    }
+    const item = chit.renderInstance?.currentGalleryItem ?? new ChitGalleryItemInstance(chit);
+    // a reused item may still carry the count from an earlier gallery
+    item.count = undefined;
+    result.push(item);
   });
 
   for (const [id, count] of Object.entries(dupeCounts)) {
     const dupe = result.find((item) => item.chit.id === id);
     if (dupe) {
-      dupe.summary = `${count}x\n${dupe.originalSummary || ""}`;
+      dupe.count = count;
     }
   }
 
