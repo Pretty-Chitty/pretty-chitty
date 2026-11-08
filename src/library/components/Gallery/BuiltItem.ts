@@ -341,7 +341,9 @@ export class BuiltItem {
   private _lastSummaryMeshKey = "";
   private checkRecreateSummaryMesh() {
     const { w, maxHeight } = this.layoutManager.getSummaryDimensions();
-    const key = `${w}x${maxHeight}`;
+    // The text is part of the key: an item kept across updates (a gallery swapped in place)
+    // must redraw its caption when its chit's summary changes, not only when it resizes.
+    const key = `${w}x${maxHeight}:${this.getSummaryText() ?? ""}`;
     if (this._lastSummaryMeshKey !== key) {
       this.createHelpText();
       this._lastSummaryMeshKey = key;

@@ -584,7 +584,10 @@ export class ChitRenderInstance {
     this.renderSpec.ornaments.forEach((ornament) => this.group.add(ornament));
 
     this.fixObjectPosition();
-    this._galleryItem?.update();
+    if (this._galleryItem) {
+      this.createGalleryItem(this._galleryItem); // copy the new spec's summary and sizes onto it
+      this._galleryItem.update();
+    }
 
     this.rootRenderInstance.markHasChange();
   }
@@ -595,6 +598,22 @@ export class ChitRenderInstance {
     return (
       (this.chit.onClick || this.chit.onDrag || this.chit.isDropTarget) && !this.renderSpec?.isShowingChildrenAsGallery
     );
+  }
+
+  /** Where this chit sits in world space: what a dragged chit's position is compared with. */
+  public worldCenter(): Vector3 {
+    return this.bboxGroup.getWorldPosition(new Vector3());
+  }
+
+  /** Outline (or clear) this chit as the target a drag would drop on. */
+  public markAsDropTarget(on: boolean) {
+    this.chit.isDropTarget = on;
+    this.refresh();
+  }
+
+  /** How far a drag lifts this chit (`ChitRenderSpec.dragZLiftAmount`). */
+  public get dragLift(): number {
+    return this.renderSpec?.dragZLiftAmount ?? 0;
   }
 
   public executeDrag(x: number, y: number) {
@@ -656,8 +675,8 @@ export class ChitRenderInstance {
           dropTarget.isDropTarget = false;
           dropTarget.renderInstance?.refresh();
 
-          this.chit.onDrag!(dropTarget);
-          dropTarget.add(this.chit);
+          // A refused drop (a tutorial's guard) leaves the chit where it was: refresh() puts it back
+          if (this.chit.onDrag!(dropTarget) !== false) dropTarget.add(this.chit);
         }
         this.refresh();
       },

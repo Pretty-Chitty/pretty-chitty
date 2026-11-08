@@ -27,6 +27,8 @@ export type TutorialContextValue = {
   autoStart: boolean;
   /** Start held (after Back): silent until the player presses Play */
   startPaused: boolean;
+  /** A step id to go straight to once the board loads, played up to headlessly (a reload of /demo?step=) */
+  resumeAt?: string;
   /** Serializes the match for a step snapshot; undefined when the host cannot rebuild the match */
   snapshot?: () => unknown;
   /** Puts the match back to the snapshot taken when `stepId` went live; false when there is none */
@@ -49,6 +51,7 @@ export function TutorialProvider({
   startAt = 0,
   autoStart = false,
   startPaused = false,
+  resumeAt,
   snapshot,
   rewind,
   children,
@@ -61,6 +64,7 @@ export function TutorialProvider({
   startAt?: number;
   autoStart?: boolean;
   startPaused?: boolean;
+  resumeAt?: string;
   snapshot?: () => unknown;
   rewind?: (stepId: string) => Promise<boolean>;
   children: ReactNode;
@@ -69,8 +73,8 @@ export function TutorialProvider({
   const [dev] = useState(() => new EventChannel<TutorialDevSettings>({ showTargetRects: false }));
   const [muted] = useState(() => new EventChannel<boolean>(false));
   const value = useMemo<TutorialContextValue>(
-    () => ({ spec, runtime, themeOverrides, ai, onEvent, controller, dev, muted, startAt, autoStart, startPaused, snapshot, rewind }),
-    [spec, runtime, themeOverrides, ai, onEvent, controller, dev, muted, startAt, autoStart, startPaused, snapshot, rewind],
+    () => ({ spec, runtime, themeOverrides, ai, onEvent, controller, dev, muted, startAt, autoStart, startPaused, resumeAt, snapshot, rewind }),
+    [spec, runtime, themeOverrides, ai, onEvent, controller, dev, muted, startAt, autoStart, startPaused, resumeAt, snapshot, rewind],
   );
   return <TutorialContext.Provider value={value}>{children}</TutorialContext.Provider>;
 }

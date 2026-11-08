@@ -58,7 +58,9 @@ function wrapWithDirtyProxy(value: any, chit: Chit): any {
 }
 
 export type ChitClick = () => void;
-export type ChitDrag = (dropOn: Chit) => void;
+/** Called when a dragged chit is dropped on a target; returning `false` says the drop was refused (a
+ *  tutorial's guard), so the dragged chit goes back where it came from instead of onto the target. */
+export type ChitDrag = (dropOn: Chit) => void | boolean;
 
 export type HiddenPropertySerializationRule = {
   fields: "all" | string[];

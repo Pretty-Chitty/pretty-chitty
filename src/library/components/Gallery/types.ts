@@ -41,6 +41,12 @@ export interface GalleryItemSource {
   close(): void;
 
   inlineGallerySize?: number;
+
+  /**
+   * Opt-in (see `ToggleGalleryButton.holdOnCloseMs`): how long the inline strip keeps this
+   * source's items and height after the source is closed, waiting for the next one.
+   */
+  inlineHoldOnCloseMs?: number;
 }
 
 export interface GallerySizeConfig {

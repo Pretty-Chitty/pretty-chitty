@@ -79,7 +79,8 @@ export default function TopBar({ onBack }: { onBack?: () => void }) {
             <TopBarPlayers />
           </Box>
           {dropdowns.map((dropdown) => (
-            <Box key={dropdown.id} sx={{ width: barWidth, borderLeft: `1px solid ${theme.barBreak}` }}>
+            // a tutorial points at a dropdown (a player aid) as `{ ui: "dropdown:<chit id>" }`
+            <Box key={dropdown.id} data-tutorial-target={`dropdown:${dropdown.id}`} sx={{ width: barWidth, borderLeft: `1px solid ${theme.barBreak}` }}>
               <DropdownChitWrapper chitId={dropdown.id} />
             </Box>
           ))}

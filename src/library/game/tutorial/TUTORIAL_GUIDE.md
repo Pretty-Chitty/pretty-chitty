@@ -172,7 +172,8 @@ Rules of thumb:
   (a tab sliding, a sentence with no ring) so it does not blink.
 - **Point at parts of a chit** with `{ chit, offset: { y: 0.3 } }` (bbox units, half-extent 0.5, +y
   toward the top of the chit) and `scale: { y: 0.3 }` to ring a band of it.
-- **UI targets:** `button:<Label>`, `undo`, `log`, `time`, `players`, `prompt`,
+- **UI targets:** `button:<Label>`, `undo`, `log`, `time`, `players`, `dropdown:<chitId>` (a top-bar dropdown such as
+  a player aid: `(root) => \`dropdown:${root.playerAid.id}\``), `prompt`,
   `spark:<chitId>` (a counter, use `(root, me) => \`spark:${me.coins.id}\``), `panelTab:<chitId>`,
   and the gallery ones below. Any component can expose more with a `data-tutorial-target` attribute.
 - **Last step** has `end: "continue"` (keep playing) or `"back"`.
@@ -367,11 +368,15 @@ step waiting for the player's move, → makes the move for them: the first entry
 same guard as a tap, so the game sees an ordinary move. Pressing → over and over plays the whole
 tutorial. While the sentence recorder is on, Space marks a sentence instead.
 
-In the workbench, clicking a later step **plays through to it**: narration skipped, animations
-rushed, the player's moves made the same way, the bots playing as scripted. It waits for the board
-to settle before each step, and the step it lands on plays as usual. Alt-click jumps without
-playing. Back, Pause or another jump stops a play-through, and one stuck on a step for 20 s gives up
-there. The status line shows the board's clock (for counting `{ advance: n }`) and any hold.
+In the workbench, clicking any step **goes straight to it**, before Start too: the script is played
+headlessly up to that step (the player's moves made from `allow`, the bots playing as scripted,
+steps that wait on a screen control passed over), and the board jumps to the result without
+replaying it. Back works from there as usual. It is `runTutorial(game, spec, { until: stepId })`
+underneath, so a step a headless run cannot reach (stuck, an error) logs why and leaves the board
+as it is. Shift-click instead **plays through** on screen: narration skipped, animations rushed,
+the same moves made one by one (Back, Pause or another jump stops it; stuck for 20 s, it gives
+up). Alt-click jumps without touching the game. The status line shows the board's clock (for
+counting `{ advance: n }`) and any hold.
 
 ## Starting a tutorial from a host
 

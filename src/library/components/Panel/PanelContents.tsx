@@ -12,6 +12,9 @@ import Hammer from "@egjs/hammerjs";
 import { PanelPositioningContext, ViewerPosition } from "../../hooks/usePanelPositioning";
 import { ViewerWrapper } from "./ViewerWrapper";
 import { PanelNavigation, PanelNavigationContext, usePublishPanelNavigation } from "../../hooks/usePanelNavigation";
+import { RootChitRenderInstance } from "../../rendering/RootChitRenderInstance";
+import { useModalState } from "../../hooks/useModalState";
+import { startExternalDrag } from "./ExternalDrag";
 
 // Types for gesture handling
 export interface ViewerGestureHandlers {
@@ -30,6 +33,8 @@ export interface ViewerRegistration {
   id: string;
   getBounds: () => DOMRect | null;
   handlers: ViewerGestureHandlers;
+  /** The viewer's renderer, so a drag from outside (the inline gallery) can draw on it. */
+  renderInstance?: RootChitRenderInstance;
 }
 
 interface GestureContextValue {
@@ -75,6 +80,27 @@ export function PanelContents({
       viewerRegistrationsRef.current.delete(registration.id);
     };
   }, []);
+
+  // A drag from the inline gallery lands on the viewer that renders the chit's drop targets.
+  const modalState = useModalState();
+  useEffect(() => {
+    modalState.externalDragHost = {
+      begin: (chit, item, clientX, clientY) => {
+        if (!chit.onDrag || !chit.dropTargets?.length) return undefined;
+        const root = chit.dropTargets.find((t) => t.renderInstance)?.renderInstance?.rootRenderInstance;
+        if (!root) return undefined;
+        for (const registration of viewerRegistrationsRef.current.values()) {
+          if (registration.renderInstance === root && registration.getBounds()) {
+            return startExternalDrag(chit, item, { getBounds: registration.getBounds, renderInstance: root }, clientX, clientY);
+          }
+        }
+        return undefined;
+      },
+    };
+    return () => {
+      modalState.externalDragHost = undefined;
+    };
+  }, [modalState]);
 
   // Panel positioning system
   const positionsRef = useRef<Map<string, ViewerPosition>>(

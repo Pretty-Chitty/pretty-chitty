@@ -262,7 +262,6 @@ function InnerOverlay() {
                 while (Date.now() < deadline) {
                   const current = clientTime.currentClock.value;
                   const max = clientTime.maxClock.value;
-                  if (ahead) console.info("ZZTIME wait", Date.now() - started, current.clock, max.clock, current.pass === max.pass, [...((timeState as any).currentlyAnimating ?? [])].map((k: string) => k.replace(/\d{6,}/, "")).join(","));
                   if (
                     current.pass !== before &&
                     current.clock === max.clock &&
@@ -285,6 +284,13 @@ function InnerOverlay() {
       // After a rewind or a dev restart: the board is already there and the player already tapped once
       setStarted(true);
       c.start(tutorial.startAt, { paused: tutorial.startPaused });
+    } else if (tutorial.resumeAt) {
+      // A reload comes back to the step the player was on, with the board as it was then
+      const index = c.steps.findIndex((s) => s.id === tutorial.resumeAt);
+      if (index > 0) {
+        setStarted(true);
+        c.skipTo(index);
+      }
     }
   }, [rootChit, controller, clientTime, clientPrompts, timeState, playerId, tutorial, modalState]);
 
@@ -298,6 +304,15 @@ function InnerOverlay() {
   useEffect(() => {
     controller?.setMuted(muted);
   }, [controller, muted]);
+
+  // A move inside an open prompt (a piece dragged within the build prompt) changes the board without any of the
+  // view's channels firing, so a check waiting on it never re-ran and the step hung ("it gets stuck on me dragging
+  // my dealer"). Re-run the check a few times a second as well; the headless runner polls the same way.
+  useEffect(() => {
+    if (!controller) return;
+    const poll = setInterval(() => controller.recheck(), 250);
+    return () => clearInterval(poll);
+  }, [controller]);
 
   // Tapping a control the next "do it" step asks for counts as moving on to that step. Listen in the
   // capture phase so the step is entered (and its check baselined) before the control acts.

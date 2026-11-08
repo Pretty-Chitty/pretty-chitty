@@ -76,6 +76,9 @@ export type DemoWrapperProps = {
   onLoadProgress?: LoadingStatesCallback;
   /** Start the tutorial at this step (the Playground's "restart at step") */
   startAt?: number;
+  /** Go straight to this step (by id) once the board loads, playing the script up to it headlessly: a reload
+   *  that comes back to where the player was */
+  resumeAt?: string;
   /** Rendered alongside the match once it exists (the Playground's dev panel) */
   children?: React.ReactNode;
 };
@@ -94,6 +97,7 @@ export function DemoWrapper({
   onBack,
   onLoadProgress,
   startAt = 0,
+  resumeAt,
   children,
 }: DemoWrapperProps) {
   const [loadingStates] = useState<LoadingStates>(new LoadingStates());
@@ -148,9 +152,7 @@ export function DemoWrapper({
     const current = demoRef.current;
     if (!current) return false;
     if (!current.runtime.hasSnapshot(stepId) && specRef.current) {
-      const T0 = performance.now();
       const run = await runTutorial(game, specRef.current, { until: stepId, stepTimeoutMs: 5000 });
-      console.info("ZZTIME headless", Math.round(performance.now() - T0));
       if (demoRef.current !== current) return false;
       if (!run.runtime.hasSnapshot(stepId)) {
         console.warn(
@@ -194,6 +196,7 @@ export function DemoWrapper({
             startAt={start.at}
             autoStart={start.auto}
             startPaused={start.paused}
+            resumeAt={resumeAt}
             snapshot={snapshot}
             rewind={rewind}
           >

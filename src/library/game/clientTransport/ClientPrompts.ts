@@ -4,6 +4,8 @@ import { Connection } from "../Connection";
 import { ConnectionObject } from "../ConnectionObject";
 import { PlayerChit } from "../PlayerChit";
 import { PickPrompt, Prompt, PromptAction, PromptSerialization } from "../Prompt";
+import type { Chit } from "../Chit";
+import type { FindChit } from "../Pick";
 import { RootChit } from "../RootChit";
 import { ServerPrompts } from "../serverTransport/ServerPrompts";
 import { ClientTime } from "./ClientTime";
@@ -51,9 +53,37 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
     }
   }
 
-  private stageInPrompt(promptSpec: PromptSerialization) {
-    this._currentPromptSpec = promptSpec;
-    const prompt = Prompt.deserialize(promptSpec, this.clientTime.findChit, this.clientTime.game.buttonLibrary);
+  /** The staged prompt was inflated without some of its chits (staged in early): it is staged in again on time */
+  private _provisional = false;
+
+  private stageInPrompt(promptSpec: PromptSerialization, early = false) {
+    // A chit the prompt names that the client has not got. Staged in early (a pick asked for it, so the piece is
+    // still animating in), the board is a clock behind the prompt and a chit made in the prompt's own flush (a
+    // fresh drop target) is not here yet: it is left out, and the prompt is staged in again, whole, once the
+    // board catches up. On time, a missing chit is a bug to report, never an exception: this runs inside the
+    // client's state update (a clock listener), and an exception here left the board half-updated with the
+    // previous prompt still up, which swallowed every later move ("it gets stuck on me dragging my dealer").
+    const missing: string[] = [];
+    const find: FindChit = (id) => {
+      const chit = this.clientTime.findChitUnsafe(id);
+      if (!chit) missing.push(id);
+      return chit as Chit; // every pick drops a falsy chit (`.filter((d) => d)`)
+    };
+    let prompt: Prompt;
+    try {
+      prompt = Prompt.deserialize(promptSpec, find, this.clientTime.game.buttonLibrary);
+    } catch (e) {
+      console.error(`[prompt] could not inflate "${promptSpec.id}" at clock ${JSON.stringify(this.clientTime.currentClock.value)}:`, e);
+      this._currentPromptSpec = undefined;
+      return;
+    }
+    if (missing.length && !early) {
+      console.error(
+        `[prompt] "${promptSpec.id}" names chits the client has not got at clock ${JSON.stringify(this.clientTime.currentClock.value)} (latest ${JSON.stringify(this.clientTime.maxClock.value)}): ${missing.join(", ")}`,
+      );
+    }
+    this._provisional = missing.length > 0;
+    this._currentPromptSpec = this._provisional ? undefined : promptSpec;
     if (prompt instanceof PickPrompt) {
       prompt.guard = (action) => {
         if (!this.guard) {
@@ -109,6 +139,11 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
       !isWaitingOnAnimations &&
       samePasses(this.clientTime.currentClock.value, this.clientTime.maxClock.value)
     ) {
+      // Staged in early and whole: it is the prompt
+      if (this.currentPrompt.value && !this._provisional && this.currentPrompt.value.isSameSerialization(promptSpec)) {
+        this._currentPromptSpec = promptSpec;
+        return;
+      }
       if (this.currentPrompt.value) {
         this.currentPrompt.value.stageOut();
       }
@@ -129,7 +164,7 @@ export class ClientPrompts<P extends PlayerChit, R extends RootChit<P>> extends 
       if (this.currentPrompt.value) {
         this.currentPrompt.value.stageOut();
       }
-      this.stageInPrompt(promptSpec);
+      this.stageInPrompt(promptSpec, true);
     } else {
       this._currentPromptSpec = undefined;
       if (this.currentPrompt.value) {

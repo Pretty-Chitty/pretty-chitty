@@ -22,6 +22,7 @@ import ChitLibraryViewer from "./ChitLibraryViewer";
 import Playground from "./Playground";
 import { DemoWrapper } from "./DemoWrapper";
 import { TutorialDevPanel } from "./Tutorial/TutorialDevPanel";
+import type { TutorialEvent } from "../game/tutorial/TutorialController";
 
 const NONE = "__none__";
 
@@ -39,7 +40,31 @@ function DemoWorkbench({ game }: { game: Game<any, any> }) {
 
   const [id, locale] = selected === NONE ? [undefined, undefined] : selected.split("|");
   const spec = id ? tutorials.find((t) => t.id === id && t.locale === locale) : undefined;
+  // The step the tutorial is on, kept across reloads: a code change reloads the game while the developer
+  // reviews it, and the workbench comes back to that step (played up to headlessly) instead of the start.
+  // Restart, or picking another tutorial, forgets it.
+  const stepKey = `demo_${game.metadata.name}_step_${selected}`;
+  const storedStep = () => {
+    try {
+      return localStorage.getItem(stepKey) ?? undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const keepStep = (e: TutorialEvent) => {
+    try {
+      if (e.type === "step") localStorage.setItem(stepKey, e.stepId);
+      else if (e.type === "completed" || e.type === "skipped") localStorage.removeItem(stepKey);
+    } catch {
+      // storage blocked: reloads start over
+    }
+  };
   const restart = (at = 0) => {
+    try {
+      localStorage.removeItem(stepKey);
+    } catch {
+      // storage blocked
+    }
     setStartAt(at);
     setRestartKey((k) => k + 1);
   };
@@ -55,8 +80,8 @@ function DemoWorkbench({ game }: { game: Game<any, any> }) {
               variant="standard"
               value={spec ? selected : NONE}
               onChange={(e) => {
-                setSelected(e.target.value);
                 restart(0);
+                setSelected(e.target.value);
               }}
             >
               <MenuItem value={NONE}>Demo (no tutorial)</MenuItem>
@@ -91,7 +116,14 @@ function DemoWorkbench({ game }: { game: Game<any, any> }) {
         {/* The workbench sits beside the game, not over it: the tutorial's own layer (the dark start
             screen, the box) stays inside the game and never covers the step list */}
         <Box sx={{ flex: 1, minWidth: 0, position: "relative", display: "flex" }}>
-          <DemoWrapper key={`${selected}-${restartKey}`} game={game} tutorial={spec} startAt={startAt}>
+          <DemoWrapper
+            key={`${selected}-${restartKey}`}
+            game={game}
+            tutorial={spec}
+            startAt={startAt}
+            resumeAt={spec && startAt === 0 ? storedStep() : undefined}
+            onTutorialEvent={spec ? keepStep : undefined}
+          >
             {spec && showDev && (
               <Box
                 sx={{
@@ -124,12 +156,24 @@ export function GameDesigner({ game }: { game: Game<any, any> }) {
     const params = new URLSearchParams(window.location.search);
     const tutorial = params.get("tutorial") ?? undefined;
     const locale = params.get("locale") ?? undefined;
+    // The step in the URL: kept current as the tutorial plays, so a reload (a code change while the
+    // developer reviews it) comes back to the same step instead of the start
+    const resumeAt = params.get("step") ?? undefined;
+    const keepStep = (e: TutorialEvent) => {
+      if (e.type !== "step" && e.type !== "completed" && e.type !== "skipped") return;
+      const url = new URL(window.location.href);
+      if (e.type === "step") url.searchParams.set("step", e.stepId);
+      else url.searchParams.delete("step");
+      window.history.replaceState(window.history.state, "", url);
+    };
     return (
       <Stack sx={{ height: "100vh", maxHeight: "-webkit-fill-available", width: "100vw" }}>
         <DemoWrapper
           game={game}
           tutorial={tutorial}
           locale={locale}
+          resumeAt={tutorial ? resumeAt : undefined}
+          onTutorialEvent={tutorial ? keepStep : undefined}
           onBack={() => {
             window.history.back();
           }}

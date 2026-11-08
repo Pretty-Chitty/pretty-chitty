@@ -14,8 +14,9 @@ import type { TutorialRuntime } from "./TutorialRuntime";
 export type RunTutorialOptions<P extends PlayerChit, R extends RootChit<P>> = {
   /**
    * Plays the human seat: given the step the tutorial is on and the legal options, return the index
-   * to play, or undefined to take the first option the step's `allow` list accepts (a player
-   * following instructions). A step that allows nothing is never answered.
+   * to play, or undefined to take what the step's `allow` list asks for first: its entries in the order
+   * written, each the first option it matches (a player following instructions, as "do it for me" plays).
+   * A step that allows nothing is never answered.
    */
   answer?: (
     step: TutorialStep<P, R> | undefined,
@@ -199,8 +200,14 @@ export async function runTutorial<P extends PlayerChit, R extends RootChit<P>>(
       if (chosen !== undefined) return chosen;
       const root = ctx.view as R;
       const me = ctx.me as P;
-      const index = scored.findIndex((s) => isAllowed(step.allow, shapeOfAiOption(s.option), root, me));
-      return index >= 0 ? index : null;
+      // The first entry of `allow` (in the order written) that an option matches, as "do it for me" (the → key) does:
+      // in prompt order a Done step that also allows moving the piece would drag it forever and never press Done
+      const list = step.allow === undefined ? [] : Array.isArray(step.allow) ? step.allow : [step.allow];
+      for (const entry of list) {
+        const index = scored.findIndex((s) => isAllowed(entry, shapeOfAiOption(s.option), root, me));
+        if (index >= 0) return index;
+      }
+      return null;
     },
   });
   // It plays the person, not a bot: keep it out of the bots' switch, so `pauseAi` and resuming the
@@ -272,12 +279,18 @@ export async function runTutorial<P extends PlayerChit, R extends RootChit<P>>(
 
   const outcome: RunTutorialResult<P, R>["outcome"] = error || match.errorState.value ? "error" : stuckOn ? "stuck" : "completed";
   controller.dispose();
-  // The match first: a run stopped mid-game (`until`) still has bots moving, and the player's
-  // connection must not be gone while the match still reports to it
-  match.dispose();
-  // and its replies already on their way get a moment to land
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  human?.dispose();
+  // A run stopped mid-game (`until`) still has everyone playing: stop them, and let the messages
+  // already on their way land before the connections go. A skip-ahead does not wait for this.
+  match.ai.enabled = false;
+  human?.prompts.setEnabled(false);
+  const teardown = new Promise<void>((resolve) =>
+    setTimeout(() => {
+      match.dispose();
+      human?.dispose();
+      resolve();
+    }, 50),
+  );
+  if (untilIndex < 0) await teardown;
   void run;
   void finishedEnd;
 

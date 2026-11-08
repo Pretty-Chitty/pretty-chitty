@@ -6,6 +6,7 @@ import { ClockDetails, samePasses } from "../ClockDetails";
 import { Connection } from "../Connection";
 import { ConnectionObject } from "../ConnectionObject";
 import { Game } from "../Game";
+import { OrderedOutlet } from "../OrderedOutlet";
 import { RootChit } from "../RootChit";
 import { ServerTime } from "../serverTransport/ServerTime";
 import { ClientPrompts } from "./ClientPrompts";
@@ -70,7 +71,7 @@ export class ClientTime extends ConnectionObject {
   public readonly findChit: (id: string) => Chit = (id: string) => {
     const result = this.chitLookup[id];
     if (!result) {
-      throw new Error("Cannot find chit");
+      throw new Error(`Cannot find chit ${id}`);
     }
     return result;
   };
@@ -227,6 +228,25 @@ export class ClientTime extends ConnectionObject {
           });
 
         chits.forEach((chit) => chit.doneDeserializing());
+
+        // A dragged chit is moved onto its drop target here as the drag ends, before the server answers. Its state
+        // then puts it back under its real parent, but into an ordered outlet only the parent's own state fills: when
+        // the parent did not change (a piece moved within a factory), the chit was its child yet missing from the
+        // list, so anything reading the list lost it ("it gets stuck on me dragging my dealer"). Load such a parent
+        // again from its current state.
+        const owners = new Set<Chit>();
+        chits.forEach((chit) => {
+          const parent = chit.parent;
+          const outlet = parent && chit.parentOutlet ? (parent as any)[chit.parentOutlet] : undefined;
+          if (outlet instanceof OrderedOutlet && !outlet.some((c) => c === chit) && parent!.id && this.lastSerializedState[parent!.id]) {
+            owners.add(parent!);
+          }
+        });
+        owners.forEach((owner) => {
+          owner.beginDeserializing();
+          owner.deserialize(this.lastSerializedState[owner.id!], this.findChit, true);
+          owner.doneDeserializing();
+        });
 
         this.rootChit.value = this.findChit("root") as RootChit<any>;
 

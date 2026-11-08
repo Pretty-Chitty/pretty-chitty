@@ -43,6 +43,10 @@ export function useClientPrompts() {
   }
   return result.clientPrompts;
 }
+/** The client prompts, or undefined where there is no connection (a viewer with no seat). */
+export function useOptionalClientPrompts() {
+  return useContext(TimeControllerContext).clientPrompts;
+}
 export function useClientStatus() {
   const result = useContext(TimeControllerContext);
   if (!result.clientStatus) {

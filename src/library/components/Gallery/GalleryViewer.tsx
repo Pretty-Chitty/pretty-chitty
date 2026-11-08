@@ -13,6 +13,8 @@ import { GalleryItem, SummaryMode } from "./types";
 import { GalleryKind, galleryRegistry } from "./registry";
 import { Chit } from "../../game/Chit";
 import { ChitGalleryItemInstance } from "../../rendering/ChitGalleryItemInstance";
+import { useModalState } from "../../hooks/useModalState";
+import type { ExternalDrag } from "../Panel/ExternalDrag";
 import {
   DEFAULT_TWEEN_DURATION,
   DEFAULT_FOV,
@@ -85,6 +87,7 @@ export function GalleryViewer({
   const refContainer = useRef<HTMLCanvasElement>(null);
   const rendererWrapper = useWebGlRenderer();
   const theme = useGameTheme();
+  const modalState = useModalState();
   const [galleryController] = useState(() => new GalleryController(new SceneWrapper(new Scene()), theme, angle, fov));
 
   galleryController.setTweenDuration(tweenDuration);
@@ -186,7 +189,9 @@ export function GalleryViewer({
     if (!el) return;
 
     const hammer = new Hammer.Manager(el);
-    hammer.add(new Hammer.Pan({ direction: Hammer.DIRECTION_HORIZONTAL }));
+    // The inline strip also takes upward drags: a draggable item pulled up goes onto the board.
+    const dragsOut = kind === "inline";
+    hammer.add(new Hammer.Pan({ direction: dragsOut ? Hammer.DIRECTION_ALL : Hammer.DIRECTION_HORIZONTAL }));
 
     const singleTap = new Hammer.Tap({ event: "singletap" });
     const press = new Hammer.Press({ event: "longtap", time: 600 });
@@ -221,8 +226,45 @@ export function GalleryViewer({
 
     let lastX: number | undefined = undefined;
     let lastVelocityX = 0;
+    // Decided on a gesture's first movement: a pull upward (more than ~30° above horizontal) on
+    // an item with a live DragPick drags it out onto the board; anything else scrolls the strip.
+    // A scroll that leaves the strip through its top edge turns into a drag of the item it started
+    // on, so a long diagonal pull toward the board still lands the piece.
+    let mode: "undecided" | "scroll" | "drag" = "undecided";
+    let drag: ExternalDrag | undefined;
+    let startItem: GalleryItem | null = null;
+
+    const draggableChit = (item: GalleryItem | null) => {
+      const chit = item instanceof ChitGalleryItemInstance ? item.chit : undefined;
+      return chit?.onDrag ? chit : undefined;
+    };
+    const beginDragOut = (ev: HammerInput): boolean => {
+      const chit = draggableChit(startItem);
+      if (!chit || !startItem || !modalState.externalDragHost) return false;
+      drag = modalState.externalDragHost.begin(chit, startItem, ev.center.x, ev.center.y);
+      return !!drag;
+    };
 
     hammer.on("pan", (ev) => {
+      if (mode === "undecided") {
+        const rect = el.getBoundingClientRect();
+        startItem = dragsOut ? galleryController.getItemAtPosition(ev.center.x - ev.deltaX - rect.left, ev.center.y - ev.deltaY - rect.top) : null;
+        const upward = -ev.deltaY > Math.abs(ev.deltaX) * 0.58;
+        mode = upward && beginDragOut(ev) ? "drag" : "scroll";
+      } else if (mode === "scroll" && dragsOut && ev.center.y < el.getBoundingClientRect().top && beginDragOut(ev)) {
+        // Put the strip back where the gesture found it, and carry on as a drag.
+        if (lastX !== undefined) {
+          galleryController.pan(-lastX);
+          galleryController.pan(0, true);
+        }
+        lastX = undefined;
+        mode = "drag";
+      }
+      if (mode === "drag") {
+        drag?.move(ev.center.x, ev.center.y);
+        ev.preventDefault();
+        return;
+      }
       if (lastX === undefined) {
         lastX = 0;
       } else {
@@ -233,7 +275,20 @@ export function GalleryViewer({
       ev.preventDefault();
     });
 
+    hammer.on("pancancel", () => {
+      drag?.cancel();
+      drag = undefined;
+      mode = "undecided";
+    });
+
     hammer.on("panend", () => {
+      if (mode === "drag") {
+        drag?.end();
+        drag = undefined;
+        mode = "undecided";
+        return;
+      }
+      mode = "undecided";
       lastX = undefined;
       galleryController.pan(lastVelocityX * VELOCITY_MULTIPLIER, true);
       lastVelocityX = 0;
@@ -255,7 +310,7 @@ export function GalleryViewer({
       hammer.destroy();
       removeWheelListener(el, wheelListener);
     };
-  }, [galleryController, onClose, onLongPress]);
+  }, [galleryController, onClose, onLongPress, kind, modalState]);
 
   if (!w || !h) {
     return null;

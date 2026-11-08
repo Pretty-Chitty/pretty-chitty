@@ -385,9 +385,7 @@ export class DragPick<C extends Chit> extends Pick {
   stageIn(prompt: PickPrompt) {
     this.chits.forEach((c) => {
       c.dropTargets = this.dropTargets.flatMap((dt) => dt.chits);
-      c.onDrag = (droppedChit: Chit) => {
-        prompt.resolvePick(this, { chitId: c.id!, targetChitId: droppedChit.id! });
-      };
+      c.onDrag = (droppedChit: Chit) => prompt.resolvePick(this, { chitId: c.id!, targetChitId: droppedChit.id! });
     });
     this.processFocus();
   }

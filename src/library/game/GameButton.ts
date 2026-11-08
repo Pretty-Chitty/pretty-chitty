@@ -54,6 +54,15 @@ export class ToggleGalleryButton extends GameButton {
 
   toggleSmallSize?: number = 125;
 
+  /**
+   * Opt-in, off by default. When this gallery's prompt goes away (say, while the answer's
+   * animations play), the inline strip keeps its items and height for up to this many ms. If the
+   * next prompt opens an inline gallery in that time, it swaps in place: items shared by both
+   * stay where they are instead of animating out and back in. Meant for a gallery that reopens
+   * after every pick, like a build menu.
+   */
+  holdOnCloseMs?: number;
+
   /** @internal */
   parentChit?: Chit;
 
@@ -70,15 +79,17 @@ export class ToggleGalleryButton extends GameButton {
     return {
       parentChitId: this.parentChit?.id,
       autoShow: this.autoShow,
+      holdOnCloseMs: this.holdOnCloseMs,
     };
   }
 
   /** @internal */
-  deserialize({ parentChitId, autoShow }: { parentChitId?: string; autoShow: boolean }, findChit: FindChit) {
+  deserialize({ parentChitId, autoShow, holdOnCloseMs }: { parentChitId?: string; autoShow: boolean; holdOnCloseMs?: number }, findChit: FindChit) {
     if (parentChitId) {
       this.parentChit = findChit(parentChitId);
     }
     this.autoShow = autoShow;
+    if (holdOnCloseMs !== undefined) this.holdOnCloseMs = holdOnCloseMs;
   }
 
   /** @internal */
@@ -89,6 +100,7 @@ export class ToggleGalleryButton extends GameButton {
       this.galleryItemSource = new GalleryItemRawSource(chitsToGalleryItems(chitPick.chits));
     }
     this.galleryItemSource.inlineGallerySize = this.toggleSmallSize;
+    this.galleryItemSource.inlineHoldOnCloseMs = this.holdOnCloseMs;
   }
 }
 

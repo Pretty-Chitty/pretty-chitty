@@ -382,6 +382,7 @@ export default function Viewer({
         id,
         getBounds: () => el.getBoundingClientRect(),
         handlers,
+        renderInstance: chitRenderInstance,
       });
 
       return () => {

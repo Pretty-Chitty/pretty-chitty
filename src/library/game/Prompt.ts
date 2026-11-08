@@ -267,15 +267,18 @@ export class PickPrompt extends Prompt {
     this._help = details.help;
   }
 
-  resolvePick(pick: Pick, value: any) {
+  /** Answers with this pick. Returns false when the answer was not taken (already answered, or refused
+   *  by the guard), so a drag can put its chit back instead of leaving it on the target. */
+  resolvePick(pick: Pick, value: any): boolean {
     if (this.resolved) {
-      return;
+      return false;
     }
     if (this.guard && !this.guard({ type: "pick", pick, value })) {
-      return;
+      return false;
     }
     const idx = this.picks.indexOf(pick);
     this.resolve({ idx, value, pickType: pick.type });
+    return true;
   }
 
   resolveDetails(resolution: PickResolution) {
@@ -285,7 +288,15 @@ export class PickPrompt extends Prompt {
 
     this.resolved = true;
     const pick = this.picks[resolution.idx];
-    this.finished = () => pick.resolveDetails(resolution?.value);
+    this.finished = () => {
+      // A recorded answer replayed against a prompt that has changed (picks added or reordered by
+      // a code change) can land on a different pick: the same check a live answer gets
+      // (canResolveResponse), so it is a mismatch rather than a crash inside the pick.
+      if (!pick || (resolution.pickType && resolution.pickType !== pick.type) || !pick.canResolveResponse(resolution.value)) {
+        throw new MismatchError();
+      }
+      return pick.resolveDetails(resolution.value);
+    };
   }
 
   stageIn() {

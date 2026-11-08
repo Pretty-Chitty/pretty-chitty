@@ -4,6 +4,7 @@ export class GalleryItemRawSource implements GalleryItemSource {
   constructor(private galleryItems: GalleryItem[]) {}
 
   public inlineGallerySize?: number | undefined = undefined;
+  public inlineHoldOnCloseMs?: number | undefined = undefined;
 
   get items() {
     return this.galleryItems;

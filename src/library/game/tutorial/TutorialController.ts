@@ -1238,6 +1238,11 @@ export class TutorialController<P extends PlayerChit = PlayerChit, R extends Roo
     if (this.fastForwardTarget.value !== undefined && this.status.value === "waiting") this.doItForMe();
   }
 
+  /** Re-runs the current step's check against the board (a host that cannot see every change polls this) */
+  public recheck() {
+    if (this.began && !this.disposed) this.evaluate();
+  }
+
   private evaluate() {
     const step = this.step;
     if (!step || this.status.value === "done" || this.reviewing.value) return;

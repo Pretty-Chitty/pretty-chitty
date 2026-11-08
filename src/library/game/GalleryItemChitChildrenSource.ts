@@ -6,6 +6,7 @@ export class GalleryItemChitChildrenSource implements GalleryItemSource {
   private unSub: () => void;
 
   public inlineGallerySize?: number | undefined = undefined;
+  public inlineHoldOnCloseMs?: number | undefined = undefined;
 
   constructor(public backingObject: Chit) {
     this.unSub = backingObject.onChange("deserialized", () => {
