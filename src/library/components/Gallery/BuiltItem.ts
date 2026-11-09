@@ -28,7 +28,13 @@ export class BuiltItem {
 
   // to be implemented soon
   private summaryMesh?: Object3D;
+  /** the summary's natural height (all of its text, never shrunk in the full gallery) */
   private summaryHeight: number;
+  /** the height it takes on screen: in the full gallery the window it scrolls in */
+  private summaryVisibleHeight = 0;
+  /** full gallery: how far this item's own summary is scrolled (each summary scrolls on its own) */
+  private summaryScrollOffset = 0;
+  private summaryScrollDirty = true;
 
   private center: Vector3;
   private _baseOffsetX: number;
@@ -225,11 +231,13 @@ export class BuiltItem {
     if (this.enterLeaveTween) {
       this.enterLeaveTween.update();
     }
+    const rewindowed = this.applySummaryScroll();
     if (this.dirty) {
       this.positionGroup();
       this.dirty = false;
       return true;
     }
+    if (rewindowed) return true;
     return false;
   }
 
@@ -245,13 +253,14 @@ export class BuiltItem {
 
   private positionGroup() {
     const { frontStageWidth, itemsPerPage, itemSpacing } = this.layoutManager.getStageDimensions();
-    const { w: itemWidth, summaryMaxHeight } = this.layoutManager.getItemDimensions();
+    const { w: itemWidth } = this.layoutManager.getItemDimensions();
     const { h } = this.layoutManager.getDimensions();
     const initialOffset = -(frontStageWidth / 2 - itemWidth / 2);
     const targetX = initialOffset + this.index * (itemWidth + itemSpacing) + this._baseOffsetX;
+    const summaryViewport = this.layoutManager.getSummaryViewportHeight();
 
     this.group.position.y =
-      (1 - this.enteredAmount) * -h + summaryMaxHeight / 2 + (this.summaryHeight > 0 ? this.theme.spacing / 2 : 0);
+      (1 - this.enteredAmount) * -h + summaryViewport / 2 + (summaryViewport > 0 ? this.theme.spacing / 2 : 0);
 
     this.group.position.x = targetX;
 
@@ -308,11 +317,39 @@ export class BuiltItem {
 
   repositionSummary(overshootX: number) {
     if (this.summaryMesh) {
-      const summaryHeight = this.summaryHeight;
-      const { h } = this.layoutManager.getItemDimensions();
-      this.summaryMesh.position.y = -summaryHeight / 2 - h / 2 - this.theme.spacing;
+      // directly under the item as it draws (an item narrower or shorter than its slot keeps its text close)
+      const drawnHalf = (this._meshSize.y * this.mesh.scale.y) / 2;
+      this.summaryMesh.position.y = -this.summaryVisibleHeight / 2 - drawnHalf - this.theme.spacing;
       this.summaryMesh.position.x = (overshootX * this.zFactor) / 3;
     }
+  }
+
+  /** Full gallery: scroll this item's summary by `delta` (positive reads further down). Returns true when it moved. */
+  scrollSummary(delta: number): boolean {
+    const max = Math.max(0, this.summaryHeight - this.summaryVisibleHeight);
+    const next = Math.max(0, Math.min(max, this.summaryScrollOffset + delta));
+    if (next === this.summaryScrollOffset) return false;
+    this.summaryScrollOffset = next;
+    this.summaryScrollDirty = true;
+    return true;
+  }
+
+  /** Full gallery: show the scrolled window of the summary's texture. Returns true when it moved. */
+  private applySummaryScroll(): boolean {
+    const mesh = this.summaryMesh as Mesh | undefined;
+    if (!mesh || this.summaryVisibleHeight >= this.summaryHeight - 0.5) return false;
+    if (!this.summaryScrollDirty) return false;
+    this.summaryScrollDirty = false;
+    const total = this.summaryHeight, visible = this.summaryVisibleHeight;
+    const offset = Math.max(0, Math.min(total - visible, this.summaryScrollOffset));
+    const top = 1 - offset / total, bottom = 1 - (offset + visible) / total;
+    const uv = mesh.geometry.attributes.uv;
+    // the plane's top row of vertices shows `top`, its bottom row `bottom`
+    const pos = mesh.geometry.attributes.position;
+    for (let i = 0; i < uv.count; i++) uv.setY(i, pos.getY(i) > 0 ? top : bottom);
+    uv.needsUpdate = true;
+    this.sceneWrapper.markDirty();
+    return true;
   }
 
   private getSummaryText() {
@@ -367,6 +404,7 @@ export class BuiltItem {
     const summary = this.getSummaryText();
     if (!summary) {
       this.summaryHeight = 0;
+      this.summaryVisibleHeight = 0;
       return;
     }
 
@@ -391,8 +429,9 @@ export class BuiltItem {
       new PadCanvasOperation({ top: pad, bottom: pad, left: pad, right: pad }, markdown),
     ]);
 
-    // Calculate the maximum available height for the summary
-    const height = itemHeight * 2; // arbitrary large height to allow text to flow
+    const full = this.layoutManager.getSummaryMode() === "full";
+    // A tall area to let all of the text flow (the full gallery shows all of it, scrolling)
+    const height = full ? Math.max(itemHeight * 2, 3000) : itemHeight * 2;
 
     // First pass: render with full height to let text flow and calculate actual size
     const stack1 = new CanvasStack(summaryWidth * window.devicePixelRatio, height * window.devicePixelRatio, ops);
@@ -409,6 +448,17 @@ export class BuiltItem {
 
     const finalHeight = stack2.height / window.devicePixelRatio;
 
+    if (full) {
+      // Never shrunk: shown through a window as tall as the space under the item, scrolled by a vertical swipe
+      const visible = summaryMaxHeight > 0 ? Math.min(finalHeight, summaryMaxHeight) : finalHeight;
+      const mesh = new Mesh(new PlaneGeometry(summaryWidth, visible), material);
+      this.summaryHeight = finalHeight;
+      this.summaryVisibleHeight = visible;
+      this.summaryScrollOffset = Math.min(this.summaryScrollOffset, Math.max(0, finalHeight - visible));
+      this.summaryScrollDirty = true;
+      return mesh;
+    }
+
     const geometry = new PlaneGeometry(summaryWidth, finalHeight);
     const mesh = new Mesh(geometry, material);
 
@@ -420,6 +470,7 @@ export class BuiltItem {
     } else {
       this.summaryHeight = finalHeight;
     }
+    this.summaryVisibleHeight = this.summaryHeight;
     return mesh;
   }
 }

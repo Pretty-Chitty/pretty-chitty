@@ -557,7 +557,10 @@ export class Chit extends ObjectWithProps {
 
       this._parentFallback = inflateValue(j._parentFallback);
 
-      if (this._version === 1 && this._parentFallback) {
+      // a chit appearing for the first time starts in its fallback (its bag), so it is seen coming out of it. A chit
+      // that already has a parent is not new: hopping it through the bag would clear its parent's outlet, which an
+      // undo's reset has already restored and will not restore again
+      if (this._version === 1 && this._parentFallback && !this._parent) {
         this.setParent(this._parentFallback, j._parentOutlet ?? "graveyard");
       }
 

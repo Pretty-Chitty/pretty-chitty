@@ -191,7 +191,8 @@ export function GalleryViewer({
     const hammer = new Hammer.Manager(el);
     // The inline strip also takes upward drags: a draggable item pulled up goes onto the board.
     const dragsOut = kind === "inline";
-    hammer.add(new Hammer.Pan({ direction: dragsOut ? Hammer.DIRECTION_ALL : Hammer.DIRECTION_HORIZONTAL }));
+    // The full gallery takes vertical drags too: they scroll the summaries when those are longer than their space.
+    hammer.add(new Hammer.Pan({ direction: Hammer.DIRECTION_ALL }));
 
     const singleTap = new Hammer.Tap({ event: "singletap" });
     const press = new Hammer.Press({ event: "longtap", time: 600 });
@@ -230,7 +231,9 @@ export function GalleryViewer({
     // an item with a live DragPick drags it out onto the board; anything else scrolls the strip.
     // A scroll that leaves the strip through its top edge turns into a drag of the item it started
     // on, so a long diagonal pull toward the board still lands the piece.
-    let mode: "undecided" | "scroll" | "drag" = "undecided";
+    let mode: "undecided" | "scroll" | "drag" | "summaries" = "undecided";
+    let lastY: number | undefined = undefined;
+    let summaryX = 0;
     let drag: ExternalDrag | undefined;
     let startItem: GalleryItem | null = null;
 
@@ -250,7 +253,10 @@ export function GalleryViewer({
         const rect = el.getBoundingClientRect();
         startItem = dragsOut ? galleryController.getItemAtPosition(ev.center.x - ev.deltaX - rect.left, ev.center.y - ev.deltaY - rect.top) : null;
         const upward = -ev.deltaY > Math.abs(ev.deltaX) * 0.58;
-        mode = upward && beginDragOut(ev) ? "drag" : "scroll";
+        const vertical = Math.abs(ev.deltaY) > Math.abs(ev.deltaX);
+        mode = upward && beginDragOut(ev) ? "drag" : !dragsOut && vertical && galleryController.canScrollSummaries() ? "summaries" : "scroll";
+        // a summary drag scrolls the one it started on
+        summaryX = ev.center.x - ev.deltaX - rect.left;
       } else if (mode === "scroll" && dragsOut && ev.center.y < el.getBoundingClientRect().top && beginDragOut(ev)) {
         // Put the strip back where the gesture found it, and carry on as a drag.
         if (lastX !== undefined) {
@@ -262,6 +268,18 @@ export function GalleryViewer({
       }
       if (mode === "drag") {
         drag?.move(ev.center.x, ev.center.y);
+        ev.preventDefault();
+        return;
+      }
+      if (mode === "summaries") {
+        // the text follows the finger: dragging up reads further down
+        if (lastY !== undefined) galleryController.scrollSummaries(lastY - ev.deltaY, summaryX);
+        lastY = ev.deltaY;
+        ev.preventDefault();
+        return;
+      }
+      if (!dragsOut && Math.abs(ev.deltaX) < 1 && lastX === undefined && Math.abs(ev.deltaY) > 0) {
+        // a vertical drag with nothing to scroll: leave the strip where it is
         ev.preventDefault();
         return;
       }
@@ -279,6 +297,7 @@ export function GalleryViewer({
       drag?.cancel();
       drag = undefined;
       mode = "undecided";
+      lastY = undefined;
     });
 
     hammer.on("panend", () => {
@@ -286,6 +305,11 @@ export function GalleryViewer({
         drag?.end();
         drag = undefined;
         mode = "undecided";
+        return;
+      }
+      if (mode === "summaries") {
+        mode = "undecided";
+        lastY = undefined;
         return;
       }
       mode = "undecided";
@@ -296,6 +320,15 @@ export function GalleryViewer({
 
     let wheelTimeout: NodeJS.Timeout;
     const wheelListener = (ev: WheelEvent) => {
+      // over the summaries (when they are longer than their space) the wheel reads through them
+      if (galleryController.canScrollSummaries()) {
+        const rect = el.getBoundingClientRect();
+        if (ev.clientY - rect.top > galleryController.summariesTop()) {
+          galleryController.scrollSummaries(ev.deltaY, ev.clientX - rect.left);
+          ev.preventDefault();
+          return;
+        }
+      }
       const dy = (ev as any).wheelDeltaY as number;
       galleryController.pan(dy / WHEEL_SENSITIVITY, false);
       ev.preventDefault();

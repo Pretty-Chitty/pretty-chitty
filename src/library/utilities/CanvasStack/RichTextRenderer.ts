@@ -416,6 +416,19 @@ export class RichTextRenderer {
         const avail = maxWidth - cursorW;
         const threshold = maxWidth * HYPH_RATIO;
 
+        // Punctuation never starts a line: a closing mark that does not fit hangs on the end of this one (it is a few
+        // pixels; wrapping it alone strands a full stop or comma at the start of the next line).
+        if (cursorW > 0 && wordWidth > avail && /^[.,;:!?)\]}»”’…]+$/.test(r.text)) {
+          line.segments.push({
+            kind: "text",
+            text: r.text,
+            width: wordWidth,
+            style: { bold: r.bold, italic: r.italic },
+          });
+          cursorW += wordWidth;
+          continue;
+        }
+
         // Fits in remaining space: place and continue.
         if (wordWidth <= avail) {
           line.segments.push({

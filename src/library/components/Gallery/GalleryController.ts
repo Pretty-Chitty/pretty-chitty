@@ -208,6 +208,31 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
     this.animationController.pan(deltaX, animate, this.items, itemsPerPage, itemWidth, itemSpacing, w);
   }
 
+  /** Full gallery: whether some summary is longer than the space under its item */
+  canScrollSummaries() {
+    return this.layoutManager.canScrollSummaries();
+  }
+  /** Full gallery: scroll the summary in the column at `x` (only that one) by `delta` (positive reads further down) */
+  scrollSummaries(delta: number, x: number) {
+    if (this.builtItemInColumn(x)?.scrollSummary(delta)) this.dirty = true;
+  }
+  /** The item whose column (item and summary) contains `x`, whatever the height */
+  private builtItemInColumn(x: number): BuiltItem | undefined {
+    const { w } = this.layoutManager.getDimensions();
+    const { w: itemWidth } = this.layoutManager.getItemDimensions();
+    const { frontStageWidth, itemSpacing } = this.layoutManager.getStageDimensions();
+    const index = (-this.animationController.getOffsetX() + x - (w - frontStageWidth) / 2) / (itemWidth + itemSpacing);
+    return this.items.find((item) => index >= item.getIndex() - itemSpacing / 2 / (itemWidth + itemSpacing) && index < item.getIndex() + 1);
+  }
+  /** The y (from the top of the gallery) where the summaries start: below it a wheel scrolls them */
+  summariesTop() {
+    const { h } = this.layoutManager.getDimensions();
+    const { h: itemH } = this.layoutManager.getItemDimensions();
+    const viewport = this.layoutManager.getSummaryViewportHeight();
+    const groupY = viewport / 2 + (viewport > 0 ? this.theme.spacing / 2 : 0);
+    return h / 2 - (groupY - itemH / 2);
+  }
+
   setItems(items: GalleryItem[]) {
     const prevItemCount = this.items.length;
     if (items.length > 0) {

@@ -1,6 +1,6 @@
 import { GameTheme } from "../../game/GameTheme";
 import { SummaryMode } from "./types";
-import { MIN_ITEM_HEIGHT_FRACTION, SINGLE_ITEM_SUMMARY_MAX_WIDTH } from "./constants";
+import { ITEM_HEIGHT_FRACTION_WITH_SUMMARY, MIN_ITEM_HEIGHT_FRACTION, SINGLE_ITEM_SUMMARY_MAX_WIDTH, SUMMARY_MAX_WIDTH } from "./constants";
 
 export class LayoutManager {
   // Dimensions (all scaled)
@@ -76,6 +76,16 @@ export class LayoutManager {
     return { w: this.summaryWidth, maxHeight: this.summaryHeightLimit };
   }
 
+  /** The height the summaries take on screen: in the full gallery the window they scroll in, otherwise their height */
+  getSummaryViewportHeight() {
+    return this.summaryMode === "full" ? Math.min(this.summaryMaxHeight, this.summaryHeightLimit) : this.summaryMaxHeight;
+  }
+  /** Whether some summary is longer than its window (the full gallery scrolls them) */
+  canScrollSummaries() {
+    return this.summaryMode === "full" && this.summaryMaxHeight > this.summaryHeightLimit + 1;
+  }
+
+
   getStageDimensions() {
     return { frontStageWidth: this.frontStageWidth, itemsPerPage: this.itemsPerPage, itemSpacing: this.itemSpacing };
   }
@@ -145,20 +155,35 @@ export class LayoutManager {
 
     itemWidth = Math.max(this.theme.galleryItemMinimumWidth, itemWidth);
 
-    // The summary takes its height from the item, and the item keeps its shape, so the slot (and the summary laid out
-    // at its width) stays as wide as the item actually draws.  A narrower summary can wrap taller and shrink the item
-    // again, but only down to the height floor, so the layout settles instead of collapsing.
-    const itemHeightFloor = Math.max(
-      this.theme.galleryItemMinimumHeight,
-      Math.min(itemHeight, availableHeight * MIN_ITEM_HEIGHT_FRACTION),
-    );
-    const summaryHeightLimit = Math.max(0, availableHeight - itemHeightFloor);
-    itemHeight = Math.max(itemHeightFloor, Math.min(itemHeight, availableHeight - this.summaryMaxHeight));
-    itemWidth = Math.max(this.theme.galleryItemMinimumWidth, itemHeight * aspectRatio);
-
-    // A lone item has the stage to itself, so its summary can spread out instead of stacking into a tall column.
-    const summaryWidth =
-      this.itemCount === 1 ? Math.max(itemWidth, Math.min(maxItemWidth, SINGLE_ITEM_SUMMARY_MAX_WIDTH)) : itemWidth;
+    let summaryHeightLimit: number;
+    let summaryWidth: number;
+    if (this.summaryMode === "full" && this.summaryMaxHeight > 0) {
+      // The full gallery: the item keeps a fixed, readable share of the height whatever its summary says (it is what
+      // the player is looking at), and the summaries sit under it at their natural size, scrolling in what is left.
+      itemHeight = Math.min(itemHeight, availableHeight * ITEM_HEIGHT_FRACTION_WITH_SUMMARY);
+      itemWidth = Math.max(this.theme.galleryItemMinimumWidth, Math.min(maxItemWidth, itemHeight * aspectRatio));
+      itemHeight = itemWidth / aspectRatio;
+      summaryHeightLimit = Math.max(0, availableHeight - itemHeight - this.theme.spacing);
+      // never wider than a readable measure; side by side, no wider than the item's own slot
+      summaryWidth =
+        this.itemCount === 1
+          ? Math.min(SUMMARY_MAX_WIDTH, maxItemWidth)
+          : Math.min(SUMMARY_MAX_WIDTH, itemWidth + this.itemSpacing * 0.8);
+    } else {
+      // The summary takes its height from the item, and the item keeps its shape, so the slot (and the summary laid
+      // out at its width) stays as wide as the item actually draws.  A narrower summary can wrap taller and shrink the
+      // item again, but only down to the height floor, so the layout settles instead of collapsing.
+      const itemHeightFloor = Math.max(
+        this.theme.galleryItemMinimumHeight,
+        Math.min(itemHeight, availableHeight * MIN_ITEM_HEIGHT_FRACTION),
+      );
+      summaryHeightLimit = Math.max(0, availableHeight - itemHeightFloor);
+      itemHeight = Math.max(itemHeightFloor, Math.min(itemHeight, availableHeight - this.summaryMaxHeight));
+      itemWidth = Math.max(this.theme.galleryItemMinimumWidth, itemHeight * aspectRatio);
+      // A lone item has the stage to itself, so its summary can spread out instead of stacking into a tall column.
+      summaryWidth =
+        this.itemCount === 1 ? Math.max(itemWidth, Math.min(maxItemWidth, SINGLE_ITEM_SUMMARY_MAX_WIDTH)) : itemWidth;
+    }
 
     const itemsPerPage = Math.max(
       1,

@@ -31,6 +31,7 @@ export class DiceFace extends ParameterizedCanvas {
   width = 100;
   height = 100;
   pipPadding = 3;
+  outerPipPadding = -1;
 
   pips() {
     const pips: boolean[][] = [
@@ -88,7 +89,7 @@ export class DiceFace extends ParameterizedCanvas {
       <Layered>
         {this.shadow ? <Shadow start={1} total={this.shadow ? 6 : 1} /> : <Color hex={this.backgroundColor} />}
 
-        <Pad amount={this.pipPadding}>
+        <Pad amount={this.outerPipPadding === -1 ? this.pipPadding : this.outerPipPadding}>
           <Vertical>
             {pips.map((row, i) => (
               <Horizontal key={i}>
@@ -114,6 +115,7 @@ export class DiceChit extends Chit {
   size = 1;
   value: number = 1;
   pipPadding = 3;
+  outerPipPadding = -1;
   dpi = 100;
   backgroundColor: string = "#ffffff";
   foregroundColor: string = "#000000";
@@ -132,6 +134,7 @@ export class DiceChit extends Chit {
             d.foregroundColor = this.foregroundColor;
             d.value = i;
             d.pipPadding = this.pipPadding;
+            d.outerPipPadding = this.outerPipPadding;
           })
           .get().texture;
         const bump = new DiceFace()
@@ -141,6 +144,7 @@ export class DiceChit extends Chit {
             d.shadow = true;
             d.value = i;
             d.pipPadding = this.pipPadding;
+            d.outerPipPadding = this.outerPipPadding;
           })
           .get().texture;
 
