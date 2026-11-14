@@ -65,8 +65,11 @@ export class BuiltItem {
     this._baseOffsetX = this.animationController.getOffsetX();
     this.unsubscribe = item.registerUpdateHandler(() => this.rebuildMesh());
 
-    this.rebuildMesh();
+    // In the scene before the first build: rebuildMesh ends with a texture sweep, which only counts what it can reach
+    // from the scene. A clone not yet attached would leave its textures (shared with a hidden chit on the board, which
+    // the sweep skips) looking unused, and the sweep would dispose them, so the item would draw blank.
     this.sceneWrapper.scene.add(this.group);
+    this.rebuildMesh();
     this.enter();
   }
 
