@@ -711,7 +711,7 @@ export class TutorialController<P extends PlayerChit = PlayerChit, R extends Roo
     this.runtime && (this.runtime.activeStep.value = step.id);
     const firstTime = this.markSeen(step);
     if (step.timeline) this.applyTimeline(step.timeline);
-    if (step.waitFor && this.timelineHold.value !== undefined && !step.timeline) {
+    if (step.waitFor && this.timelineHold.value !== undefined && !step.timeline && !this.timelineUntil) {
       console.warn(
         `[tutorial ${this.spec.id}] step "${step.id}" waits with the board's timeline held at clock ` +
           `${this.timelineHold.value}; if it needs the board to catch up, give it timeline: "play"`,
@@ -1189,27 +1189,35 @@ export class TutorialController<P extends PlayerChit = PlayerChit, R extends Roo
       const ctx = this.context();
       if (ctx) command.until.reset?.(ctx);
       this.timelineUntil = { check: command.until, logFrom: this.recentLog.length };
-      this.holdTimeline(undefined);
       this.checkTimelineUntil();
     }
   }
 
-  /** Stops the board at the first moment that passes a pending `{ until }` command */
+  /**
+   * Stops the board at the first moment that passes a pending `{ until }` command. Until then the
+   * board is held one moment ahead of the one on screen, and the hold moves on as each moment loads,
+   * so every moment is shown and checked. Lifting the hold instead would let the board jump: when a
+   * confirmed turn is folded into a new pass, an idle board skips straight to the furthest clock it may
+   * show, past the moment being waited for.
+   */
   private checkTimelineUntil() {
     const until = this.timelineUntil;
     if (!until || !this.view.timeline) return;
     const ctx = this.context();
-    if (!ctx) return;
     let passed = false;
     try {
-      passed = until.check({ ...ctx, recentLog: this.recentLog.slice(until.logFrom) }) === true;
+      passed = !!ctx && until.check({ ...ctx, recentLog: this.recentLog.slice(until.logFrom) }) === true;
     } catch (e) {
       console.error(`[tutorial ${this.spec.id}] a timeline "until" check in step "${this.step?.id}" threw`, e);
     }
-    if (!passed) return;
+    if (!passed) {
+      const next = this.view.clock() + 1;
+      if (this.timelineHold.value !== next) this.holdTimeline(next);
+      return;
+    }
     this.timelineUntil = undefined;
     // Change events arrive once the moment has loaded and before the board moves on from it
-    this.holdTimeline(this.view.clock());
+    if (this.timelineHold.value !== this.view.clock()) this.holdTimeline(this.view.clock());
   }
 
   private holdTimeline(clock: number | undefined) {

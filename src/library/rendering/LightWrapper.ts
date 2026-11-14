@@ -74,6 +74,9 @@ export class LightWrapper {
         l.shadow.camera.right = 0.1;
         l.shadow.camera.top = 0.1;
         l.shadow.camera.bottom = -0.1;
+        // the camera is fitted to the whole panel, so a board-sized panel needs more than the default 512 texels for
+        // a piece's shadow to read
+        l.shadow.mapSize.set(1024, 1024);
         this.group.add(l);
       }
 
@@ -126,12 +129,16 @@ export class LightWrapper {
     camera.bottom = -1;
     camera.top = 1;
     camera.updateProjectionMatrix();
+    // point the shadow camera along the light now (the renderer would only do it at the next shadow pass), so the
+    // projection below is in the light's view
+    light.updateMatrixWorld(true);
+    light.shadow.updateMatrices(light);
 
     const b = new Box2();
     const adjust = (x: number, y: number, z: number) => {
       const v = new Vector3(x, y, z);
       const cameraPoint = v.project(camera);
-      b.expandByPoint(new Vector2(cameraPoint.x * 2, cameraPoint.y * 2));
+      b.expandByPoint(new Vector2(cameraPoint.x, cameraPoint.y));
     };
 
     [this.bbox.min.x, this.bbox.max.x].forEach((x) =>
@@ -142,6 +149,8 @@ export class LightWrapper {
       ),
     );
 
+    // with -1..1 bounds the projection is the light's own view coordinates: fit them, with a small margin
+    b.expandByScalar(0.5);
     camera.left = Math.min(left, b.min.x);
     camera.right = Math.max(right, b.max.x);
     camera.bottom = Math.min(bottom, b.min.y);

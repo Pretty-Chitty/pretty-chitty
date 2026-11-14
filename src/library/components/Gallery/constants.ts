@@ -11,7 +11,6 @@ export const DEFAULT_ITEM_WIDTH = 200;
 export const DEFAULT_ITEM_SPACING = 50;
 export const DEFAULT_Z_FACTOR = 3;
 export const MIN_ITEM_HEIGHT_FRACTION = 0.4;
-export const SINGLE_ITEM_SUMMARY_MAX_WIDTH = 500;
 /** Full gallery: the items keep this share of the height (never shrunk for their summaries); the summaries scroll in
  *  the rest */
 export const ITEM_HEIGHT_FRACTION_WITH_SUMMARY = 0.6;

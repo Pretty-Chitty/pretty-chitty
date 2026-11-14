@@ -1,6 +1,6 @@
 import { GameTheme } from "../../game/GameTheme";
 import { SummaryMode } from "./types";
-import { ITEM_HEIGHT_FRACTION_WITH_SUMMARY, MIN_ITEM_HEIGHT_FRACTION, SINGLE_ITEM_SUMMARY_MAX_WIDTH, SUMMARY_MAX_WIDTH } from "./constants";
+import { ITEM_HEIGHT_FRACTION_WITH_SUMMARY, MIN_ITEM_HEIGHT_FRACTION, SUMMARY_MAX_WIDTH } from "./constants";
 
 export class LayoutManager {
   // Dimensions (all scaled)
@@ -180,9 +180,9 @@ export class LayoutManager {
       summaryHeightLimit = Math.max(0, availableHeight - itemHeightFloor);
       itemHeight = Math.max(itemHeightFloor, Math.min(itemHeight, availableHeight - this.summaryMaxHeight));
       itemWidth = Math.max(this.theme.galleryItemMinimumWidth, itemHeight * aspectRatio);
-      // A lone item has the stage to itself, so its summary can spread out instead of stacking into a tall column.
-      summaryWidth =
-        this.itemCount === 1 ? Math.max(itemWidth, Math.min(maxItemWidth, SINGLE_ITEM_SUMMARY_MAX_WIDTH)) : itemWidth;
+      // Each caption is as wide as its item, however many items there are: a lone item's caption looks just as it
+      // would beside a second one (a stage-wide caption read as a bar under a short label).
+      summaryWidth = itemWidth;
     }
 
     const itemsPerPage = Math.max(

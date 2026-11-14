@@ -475,13 +475,13 @@ describe("TutorialController flow", () => {
     vi.advanceTimersByTime(1100); // the second sentence: hold where the board is now
     expect(holds).toEqual([12, 11]);
 
-    vi.advanceTimersByTime(1100); // step b plays on until the log says so
+    vi.advanceTimersByTime(1100); // step b plays on until the log says so, one moment at a time
     expect(c.index.value).toBe(1);
-    expect(holds).toEqual([12, 11, undefined]);
+    expect(holds).toEqual([12, 11, 12]);
     show(12, "Sam passes");
-    expect(holds.length).toBe(3);
+    expect(holds).toEqual([12, 11, 12, 13]);
     show(13, "Robin buys a card");
-    expect(holds).toEqual([12, 11, undefined, 13]);
+    expect(holds).toEqual([12, 11, 12, 13]); // already held at the moment it was waiting for
     expect(c.timelineHold.value).toBe(13);
 
     vi.advanceTimersByTime(2200); // step c lets it play

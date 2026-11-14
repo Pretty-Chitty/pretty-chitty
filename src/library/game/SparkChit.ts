@@ -39,6 +39,15 @@ export class SparkChit extends Chit {
     return this.icon;
   }
 
+  /**
+   * Whether a change to this spark, while its panel is out of view, marks the panel as changed (so the layout may
+   * slide to it), as `ChitRenderSpec.worthSlidingToPanelToShowChange` does for a chit on the table. Override to
+   * return false for a number that changes often during other panels' actions (money earned on every sale).
+   */
+  public get worthSlidingToPanelToShowChange(): boolean {
+    return true;
+  }
+
   /** @internal */
   @NonEditable public element: RefObject<HTMLElement> | undefined;
 

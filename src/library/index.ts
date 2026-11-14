@@ -141,6 +141,7 @@ export { HighlightSpec } from "./rendering/HighlightSpec";
 export { LightSpec, Light } from "./rendering/LightSpec";
 /** @group 3D Rendering */
 export { Splay } from "./rendering/Splay";
+export type { SplayFill, SplayOrientation } from "./rendering/Splay";
 
 /** @group Utilities */
 export { extrudeSVGToGeometry } from "./utilities/SvgExtruder";

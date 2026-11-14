@@ -272,7 +272,9 @@ export class BuiltItem {
       this.applyOvershootEffect(-(initialOffset - targetX), largestX, initialOffset);
       this.repositionSummary(-(initialOffset - targetX));
     } else {
+      // back on the front stage: undo any overshoot tilt (an item built at a stale pan offset starts overshot)
       this.group.position.z = 0;
+      this.group.rotation.y = 0;
       this.repositionSummary(0);
     }
   }

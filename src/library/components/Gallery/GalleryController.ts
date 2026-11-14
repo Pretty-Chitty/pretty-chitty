@@ -173,17 +173,20 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
     // that here the same way RootChitRenderInstance does so the canvas repaints.
     let changed = this.dirty || this.sceneWrapper.isDirty();
 
+    // The summaries' height is part of the layout. Items built since the last layout pass (a gallery swapped in place)
+    // bring summaries the layout has not measured yet, so re-measure every frame: setSummaryMaxHeight only marks the
+    // layout dirty when the height actually changed.
+    const syncSummaryHeight = () => {
+      if (this.items.length > 0) {
+        this.layoutManager.setSummaryMaxHeight(Math.max(...this.items.map((item) => item.getSummaryHeight())));
+      }
+    };
+    syncSummaryHeight();
     while (this.layoutManager.dirty) {
       changed = true;
       this.items.forEach((item) => item.layoutDirty());
       this.layoutManager.dirty = false;
-
-      const newMaxHeight =
-        this.items.length === 0
-          ? this.layoutManager.getSummaryMaxHeight()
-          : Math.max(...this.items.map((item) => item.getSummaryHeight()));
-
-      this.layoutManager.setSummaryMaxHeight(newMaxHeight);
+      syncSummaryHeight();
     }
 
     changed = this.animationController.update() || changed;
@@ -288,8 +291,10 @@ export class GalleryController implements TextureReferenceCounterRootGroup {
     // TODO: this is wrong-ish
     this.cameraManager.updateCameraPosition(0);
 
-    const currentItemCount = this.items.length;
-    if (currentItemCount !== prevItemCount && !this.animationController.isAnimating()) {
+    // A changed set of items re-settles the pan (pan stops any running tween), even mid-animation: otherwise a
+    // gallery swapped in while the last one was still easing keeps that one's scroll offset, and its items sit off
+    // the front stage.
+    if (newItems.length > 0 || itemsToDelete.length > 0 || this.items.length !== prevItemCount) {
       this.pan(0, true);
     }
   }

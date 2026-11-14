@@ -1,5 +1,14 @@
 type SplayResults = { x: number; y: number; z: number };
 export type SplayOrientation = "center" | "decreasing" | "increasing";
+/**
+ * The order a splay hands out its slots, measured from the anchor (the slot the orientations put at 0,0).
+ * - `"nearest"`: closest to the anchor first (Manhattan distance), so a grid fills in rings: a 4×2 fills diagonally.
+ * - `"rows"`: the anchor's row first, working away from the anchor column, then the next row away from the anchor.
+ *   With `columnOrientation = "increasing"` and `rowOrientation = "decreasing"` that is reading order from the top
+ *   left: a window of identical markers filled the way a person fills it.
+ * - `"columns"`: the same, column by column.
+ */
+export type SplayFill = "nearest" | "rows" | "columns";
 
 function midFromOrientation(max: number, orientation: SplayOrientation) {
   switch (orientation) {
@@ -20,6 +29,7 @@ function getSplayOrder(
   columns: number,
   rowOrientation: SplayOrientation,
   columnOrientation: SplayOrientation,
+  fill: SplayFill,
 ): SplayResults[] {
   if (splayOrder[key]) {
     return splayOrder[key];
@@ -30,17 +40,25 @@ function getSplayOrder(
   const order: SplayResults[] = [];
   for (let row = 0; row < rows; row++) {
     for (let column = 0; column < columns; column++) {
-      order.push({ x: column - midX, y: row - midY, z: row * rows + column });
+      order.push({ x: column - midX, y: row - midY, z: row * columns + column });
     }
   }
 
-  order.sort((a, b) => {
-    const d1 = Math.abs(a.x) + Math.abs(a.y);
-    const d2 = Math.abs(b.x) + Math.abs(b.y);
-    if (d1 == d2) {
-      return a.z - b.z;
+  // the primary and secondary distance from the anchor for each fill; ties keep row-major order
+  const keys = (o: SplayResults): [number, number] => {
+    switch (fill) {
+      case "rows":
+        return [Math.abs(o.y), Math.abs(o.x)];
+      case "columns":
+        return [Math.abs(o.x), Math.abs(o.y)];
+      default:
+        return [Math.abs(o.x) + Math.abs(o.y), 0];
     }
-    return d1 - d2;
+  };
+  order.sort((a, b) => {
+    const [a1, a2] = keys(a);
+    const [b1, b2] = keys(b);
+    return a1 - b1 || a2 - b2 || a.z - b.z;
   });
   splayOrder[key] = order;
   return order;
@@ -51,6 +69,8 @@ export class Splay {
   public columns: number = 1;
   public rowOrientation: SplayOrientation = "center";
   public columnOrientation: SplayOrientation = "center";
+  /** the order slots fill in (see {@link SplayFill}); `"nearest"` by default */
+  public fill: SplayFill = "nearest";
 
   public enabled: boolean = false;
   public zSpacingMultiplier: number = 1;
@@ -60,16 +80,17 @@ export class Splay {
   public itemHeight?: number = undefined;
 
   toString() {
-    return `${this.rows} ${this.columns} ${this.rowOrientation} ${this.columnOrientation} ${this.enabled} ${this.zSpacingMultiplier} ${this.spacingMultiplier} ${this.itemWidth} ${this.itemHeight}`;
+    return `${this.rows} ${this.columns} ${this.rowOrientation} ${this.columnOrientation} ${this.fill} ${this.enabled} ${this.zSpacingMultiplier} ${this.spacingMultiplier} ${this.itemWidth} ${this.itemHeight}`;
   }
 
   private get splayOrder() {
     return getSplayOrder(
-      `${this.rows}_${this.columns}_${this.rowOrientation}_${this.columnOrientation}`,
+      `${this.rows}_${this.columns}_${this.rowOrientation}_${this.columnOrientation}_${this.fill}`,
       this.rows,
       this.columns,
       this.rowOrientation,
       this.columnOrientation,
+      this.fill,
     );
   }
 
