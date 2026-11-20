@@ -157,6 +157,12 @@ Rules of thumb:
 - **Every "do it" step needs `allow`.** It is matched like a forced bot move: `key`, `chit`,
   `target`, `button`, or `"any"`; `allow: []` says the step waits for the bots, not the player. The
   dev panel flags a waiting step without one, and `runTutorial` warns and then gets stuck on it.
+- **Test the chit played rather than finding it, when that's simpler.** `chit` and `target` are
+  selectors: they list every acceptable chit up front, and the move's id must be among them.
+  `chitIs` and `targetIs` instead get the chit the player actually played or dropped on:
+  `allow: { key: "place.drag", targetIs: (t: Square) => t.x === 12 && t.y === 0 }`. Prefer them
+  for "this spot" or "a red one": nothing has to be found in the tree first, and the client's copy
+  of a pooled list can be missing chits that are really there.
 - **Check state, not events.** `checks.state((root) => root.market.cards.length === 4)` passes
   whether the player confirmed just now or a second before the step started.
   `checks.logged(...)` only sees log lines written *during* the step.

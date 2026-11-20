@@ -217,6 +217,17 @@ export type AllowedAction<P extends PlayerChit, R extends RootChit<P>> =
       chit?: ChitSelector<P, R>;
       /** For drags: where it may be dropped */
       target?: ChitSelector<P, R>;
+      /**
+       * For taps and drags: a test of the chit the player actually played. Use it when the chit is easier
+       * to recognise than to find (`(c: Worker) => c.color === "red"`). With `chit` as well, both must pass.
+       */
+      chitIs?(chit: Chit, root: R, me: P): boolean;
+      /**
+       * For drags: a test of the target the player actually dropped on (`(t: Square) => t.x === 3 && t.y === 0`).
+       * Nothing has to be found in the tree first, so it also works where a list on the client is incomplete.
+       * With `target` as well, both must pass.
+       */
+      targetIs?(target: Chit, root: R, me: P): boolean;
       /** For buttons (the engine's Confirm included): the label */
       button?: string;
       /**

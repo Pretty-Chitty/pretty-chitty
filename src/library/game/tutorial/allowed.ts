@@ -13,19 +13,34 @@ export type MoveShape = {
   chitId?: string;
   targetId?: string;
   buttonLabel?: string;
+  /** The played chit and the drop target themselves, when known: what `chitIs` and `targetIs` test */
+  chit?: Chit;
+  target?: Chit;
 };
 
-/** @internal */
-export function shapeOfPromptAction(action: PromptAction): MoveShape | undefined {
+/** `find` looks the played chits up by id (the view's own copies), for `chitIs` and `targetIs`. @internal */
+export function shapeOfPromptAction(
+  action: PromptAction,
+  find?: (id: string) => Chit | undefined,
+): MoveShape | undefined {
   if (action.type !== "pick") return undefined;
   const pick: Pick = action.pick;
   const key = pick.aiTag?.k;
+  const lookUp = (id: string | undefined) => (id && find ? find(id) : undefined);
   if (pick instanceof ChitPick) {
-    return { kind: "chit", key, chitId: action.value as string };
+    const chitId = action.value as string;
+    return { kind: "chit", key, chitId, chit: lookUp(chitId) };
   }
   if (pick instanceof DragPick) {
     const v = action.value as { chitId: string; targetChitId: string };
-    return { kind: "drag", key, chitId: v?.chitId, targetId: v?.targetChitId };
+    return {
+      kind: "drag",
+      key,
+      chitId: v?.chitId,
+      targetId: v?.targetChitId,
+      chit: lookUp(v?.chitId),
+      target: lookUp(v?.targetChitId),
+    };
   }
   if (pick instanceof ButtonPick) {
     return { kind: "button", key, buttonLabel: pick.button?.label };
@@ -37,9 +52,9 @@ export function shapeOfPromptAction(action: PromptAction): MoveShape | undefined
 export function shapeOfAiOption(o: AiOption): MoveShape {
   switch (o.kind) {
     case "chit":
-      return { kind: "chit", key: o.key, chitId: o.chit.id };
+      return { kind: "chit", key: o.key, chitId: o.chit.id, chit: o.chit };
     case "drag":
-      return { kind: "drag", key: o.key, chitId: o.chit.id, targetId: o.target.id };
+      return { kind: "drag", key: o.key, chitId: o.chit.id, targetId: o.target.id, chit: o.chit, target: o.target };
     case "button":
       return { kind: "button", key: o.key, buttonLabel: o.button.label };
   }
@@ -55,12 +70,23 @@ export function isAllowed<P extends PlayerChit, R extends RootChit<P>>(
   if (!allow) return false;
   const list = Array.isArray(allow) ? allow : [allow];
   const ids = (sel: ChitSelector<P, R>) => new Set(selectChits<P, R>(sel, root, me).map((c: Chit) => c.id));
+  // A test of the chit actually played: false when there is none, or when the test throws
+  const passes = (test: (chit: Chit, root: R, me: P) => boolean, chit: Chit | undefined) => {
+    if (!chit || !root || !me) return false;
+    try {
+      return !!test(chit, root, me);
+    } catch {
+      return false;
+    }
+  };
   return list.some((a) => {
     if (a === "any") return true;
     if (a.ui !== undefined) return false; // a UI control, never a game move
     if (a.key !== undefined && move.key !== a.key) return false;
     if (a.chit && (move.kind === "button" || !ids(a.chit).has(move.chitId))) return false;
     if (a.target && (move.kind !== "drag" || !ids(a.target).has(move.targetId))) return false;
+    if (a.chitIs && (move.kind === "button" || !passes(a.chitIs, move.chit))) return false;
+    if (a.targetIs && (move.kind !== "drag" || !passes(a.targetIs, move.target))) return false;
     if (
       a.button !== undefined &&
       (move.kind !== "button" || (move.buttonLabel ?? "").toLowerCase() !== a.button.toLowerCase())
@@ -102,7 +128,7 @@ export function promptMoves(prompt: PickPrompt): PromptMove[] {
     const key = pick.aiTag?.k;
     if (pick instanceof ChitPick) {
       for (const chit of pick.chits as Chit[]) {
-        if (chit.id) moves.push({ pick, value: chit.id, shape: { kind: "chit", key, chitId: chit.id } });
+        if (chit.id) moves.push({ pick, value: chit.id, shape: { kind: "chit", key, chitId: chit.id, chit } });
       }
     } else if (pick instanceof DragPick) {
       const targets = pick.dropTargets.flatMap((t) => t.chits as Chit[]);
@@ -112,7 +138,7 @@ export function promptMoves(prompt: PickPrompt): PromptMove[] {
           moves.push({
             pick,
             value: { chitId: chit.id, targetChitId: target.id },
-            shape: { kind: "drag", key, chitId: chit.id, targetId: target.id },
+            shape: { kind: "drag", key, chitId: chit.id, targetId: target.id, chit, target },
           });
         }
       }

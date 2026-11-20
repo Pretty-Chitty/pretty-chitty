@@ -84,6 +84,7 @@ export class CanvasStack implements IUpdatingCanvas {
     }
 
     this._outlets = {};
+    this._fontsUsed.clear();
     this.context.clearRect(0, 0, this.width, this.height);
     this.operation.render(
       this.context,
@@ -93,6 +94,7 @@ export class CanvasStack implements IUpdatingCanvas {
         this._outlets[id] = coords;
       },
     );
+    this._noteUnloadedFonts();
     this._renderMipCanvases();
     this.cbs.forEach((cb) => cb());
   }
@@ -132,6 +134,7 @@ export class CanvasStack implements IUpdatingCanvas {
       throw "Invalid Context";
     }
     this.context = context;
+    this._trackFonts(context);
 
     CanvasStack._liveStacks.add(this);
     CanvasStack.ensureContextRestoreSubscription();
@@ -143,6 +146,81 @@ export class CanvasStack implements IUpdatingCanvas {
   get mipMaps(): number {
     if (this._mipLevelsOverride !== undefined) return this._mipLevelsOverride;
     return this.operation.benefitsFromMipMap() ? 2 : 0;
+  }
+
+  // Webfonts load lazily, so a face drawn before its font arrives is rasterised in the fallback font, and nothing
+  // redrew it. Its custom mips, built a second or more later, came out in the real font, and trilinear filtering
+  // blended the two layouts into doubled, ghosted text. So each stack records the fonts it measured or drew with;
+  // any not loaded yet get loaded, and when one arrives every stack that used it redraws (base and custom mips) and
+  // re-uploads its texture, a few per frame.
+  private _fontsUsed = new Set<string>();
+  private _unloadedFonts = new Set<string>();
+  private static _fontLoads = new Set<string>();
+  private static _pendingFontRedraws = new Set<CanvasStack>();
+  private static _fontRedrawScheduled = false;
+
+  private _trackFonts(ctx: CanvasRenderingContext2D) {
+    for (const name of ["fillText", "strokeText", "measureText"] as const) {
+      const original = ctx[name] as (...args: unknown[]) => unknown;
+      (ctx as any)[name] = (...args: unknown[]) => {
+        this._fontsUsed.add(ctx.font);
+        return original.apply(ctx, args);
+      };
+    }
+  }
+
+  private _noteUnloadedFonts() {
+    this._unloadedFonts.clear();
+    const fonts = typeof document !== "undefined" ? document.fonts : undefined;
+    if (!fonts) return;
+    for (const font of this._fontsUsed) {
+      if (fonts.check(font)) continue;
+      this._unloadedFonts.add(font);
+      CanvasStack.whenFontLoads(font);
+    }
+  }
+
+  /** A font this stack drew with before it loaded has loaded since: its pixels are stale. */
+  private _fontsArrived(): boolean {
+    for (const font of this._unloadedFonts) if (document.fonts.check(font)) return true;
+    return false;
+  }
+
+  private static whenFontLoads(font: string) {
+    if (CanvasStack._fontLoads.has(font)) return; // once per font: a font that never loads doesn't loop
+    CanvasStack._fontLoads.add(font);
+    document.fonts.load(font).then(
+      () => {
+        for (const stack of CanvasStack._liveStacks) {
+          if (stack._unloadedFonts.has(font)) CanvasStack._pendingFontRedraws.add(stack);
+        }
+        if (CanvasStack._pendingFontRedraws.size > 0 && !CanvasStack._fontRedrawScheduled) {
+          CanvasStack._fontRedrawScheduled = true;
+          requestAnimationFrame(CanvasStack.redrawPendingFonts);
+        }
+      },
+      () => {},
+    );
+  }
+
+  private static redrawPendingFonts = () => {
+    const start = performance.now();
+    for (const stack of CanvasStack._pendingFontRedraws) {
+      CanvasStack._pendingFontRedraws.delete(stack);
+      stack._redrawForFonts();
+      if (performance.now() - start > CanvasStack.MIP_FRAME_BUDGET_MS) break;
+    }
+    if (CanvasStack._pendingFontRedraws.size > 0) requestAnimationFrame(CanvasStack.redrawPendingFonts);
+    else CanvasStack._fontRedrawScheduled = false;
+  };
+
+  private _redrawForFonts() {
+    if (!this.context) return;
+    this.render(); // redraws the custom mips too, when they're built
+    if (this._texture) {
+      this._texture.needsUpdate = true;
+      CanvasStack.disposer.notifyChange(this._texture.uuid);
+    }
   }
 
   // Faces with text get hand-drawn mip levels: text rasterised at the small size is sharper than GPU box-filtering.
@@ -182,6 +260,9 @@ export class CanvasStack implements IUpdatingCanvas {
 
   private _buildMips() {
     this._initMipCanvases();
+    // the base was drawn in a fallback font that has loaded since: redraw it (and these mips) in the real one,
+    // or the chain would hold two different layouts
+    if (this._fontsArrived()) this.render();
     if (this._texture) {
       this._applyMipmaps(this._texture);
       this._texture.needsUpdate = true;
@@ -290,6 +371,10 @@ export class CanvasStack implements IUpdatingCanvas {
     }
 
     if (!this._texture) {
+      // Rebuilt after the disposer reclaimed it: the disposer also dropped the stack from the live set, so a font
+      // that arrived meanwhile never redrew it. Redraw now, and rejoin the live set for later fonts and context loss.
+      if (this._fontsArrived()) this.render();
+      CanvasStack._liveStacks.add(this);
       const wrapper = getWebGlRendererInstance();
       this._texture = new Texture(
         this.canvas,

@@ -599,7 +599,7 @@ export class TutorialController<P extends PlayerChit = PlayerChit, R extends Roo
     const step = this.step;
     if (!step || this.reviewing.value || this.status.value !== "waiting") return false;
     if (action.type === "undo") return false; // handled as Back before this is asked
-    const move = shapeOfPromptAction(action);
+    const move = shapeOfPromptAction(action, (id) => this.view.find(id));
     if (!move) return false;
     return isAllowed(step.allow, move, this.view.root(), this.view.me());
   }
@@ -622,7 +622,7 @@ export class TutorialController<P extends PlayerChit = PlayerChit, R extends Roo
     if (action.type === "undo") return undefined;
     const ahead = this.aheadStep();
     if (ahead === undefined) return undefined;
-    const move = shapeOfPromptAction(action);
+    const move = shapeOfPromptAction(action, (id) => this.view.find(id));
     if (!move) return undefined;
     return isAllowed(this.spec.steps[ahead].allow, move, this.view.root(), this.view.me()) ? ahead : undefined;
   }

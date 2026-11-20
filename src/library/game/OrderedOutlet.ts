@@ -200,7 +200,9 @@ export class OrderedOutlet<C extends Chit> {
   }
 
   public pop() {
-    const result = this.chits.pop();
+    // remove() takes it out of `chits` and clears its parent; popping first left remove() nothing to find, so the
+    // chit kept its parent and went on rendering there, out of the list
+    const result = this.chits[this.chits.length - 1];
     if (result) {
       this.remove(result);
     }
