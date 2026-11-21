@@ -233,8 +233,20 @@ export class Turn<T, P extends PlayerChit, R extends RootChit<P>> {
       return p.id;
     });
 
-    // now serialize all chits in their "locked" state. createTurn flushes the parent right before
-    // building us, so a clean chit's state there is already current and interned.
+    this.captureLockedStates();
+  }
+
+  /**
+   * Serializes every locked chit in its "locked" state. createTurn flushes the parent right before
+   * building us, so a clean chit's state there is already current and interned.
+   *
+   * This must stay out of the constructor. A local captured by a callback there lives in the
+   * constructor's closure context, which every closure made in the constructor shares, including
+   * the `findChit` field. `findChit` outlives the turn's absorption, so the parent's full chit-state
+   * map (a fresh copy per absorbed sub-turn) would stay pinned by every finished turn: tens of MB
+   * in a long game, out of reach of releasePostAbsorptionRefs.
+   */
+  private captureLockedStates() {
     const parentStates = this.parent?.lastChitStates;
     Object.values(this.chitLookup).forEach((c) => {
       if (!c.id) {

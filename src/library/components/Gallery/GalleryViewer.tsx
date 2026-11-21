@@ -42,6 +42,11 @@ export interface GalleryViewerProps {
   galleryItemHeight?: number;
   onClose?: () => void;
   onLongPress?: () => void;
+  /**
+   * Full-screen galleries: tapping near any edge of the gallery, or swiping down on an item (anywhere but summaries
+   * that scroll), calls `onClose`.
+   */
+  dismissGestures?: boolean;
   showSummary?: SummaryMode;
   zFactor?: number;
   /** Lets tutorials find and point at this gallery's items (see `galleryRegistry`) */
@@ -60,6 +65,25 @@ function itemShows(item: GalleryItem, chit: Chit) {
   return shown instanceof Chit && shown !== chit && shown.functionallyIdentical(chit);
 }
 
+/** Full-screen galleries: how far (px) a swipe down must travel to dismiss, or how fast (px/ms) a shorter flick must be */
+const DISMISS_DISTANCE = 120;
+const DISMISS_FLING_MIN_DISTANCE = 30;
+const DISMISS_FLING_VELOCITY = 0.4;
+
+/** Whether a tap at (x, y) is within the edge band of a w×h gallery (tapping there dismisses a full-screen one) */
+function nearEdge(x: number, y: number, w: number, h: number) {
+  const band = Math.max(32, Math.min(w, h) * 0.06);
+  return x < band || y < band || x > w - band || y > h - band;
+}
+
+/** Puts the canvas back after a dismissing swipe, sliding back when `animate` */
+function resetDismissOffset(el: HTMLElement | null, animate: boolean) {
+  if (!el) return;
+  el.style.transition = animate ? "transform 150ms ease-out, opacity 150ms ease-out" : "none";
+  el.style.transform = "";
+  el.style.opacity = "";
+}
+
 export function GalleryViewer({
   items,
   paused = false,
@@ -68,6 +92,7 @@ export function GalleryViewer({
   angle = DEFAULT_ANGLE,
   onClose,
   onLongPress,
+  dismissGestures = false,
   itemSpacing = DEFAULT_ITEM_SPACING,
   tweenDuration = DEFAULT_TWEEN_DURATION,
   w = 0,
@@ -147,6 +172,8 @@ export function GalleryViewer({
 
   useEffect(() => {
     galleryController.setItems(items);
+    // a gallery opened again (or reused) starts where it belongs, not where a dismissing swipe left it
+    if (items.length > 0) resetDismissOffset(refContainer.current, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [galleryController, items.map((i) => i.id).join("--")]);
 
@@ -208,16 +235,18 @@ export function GalleryViewer({
 
     hammer.on("singletap", (ev) => {
       const pos = fixPosition(ev);
-      // TODO: fix this
-      if (galleryController.isAnimating()) {
+      if (dismissGestures && nearEdge(pos.x, pos.y, el.clientWidth, el.clientHeight)) {
+        onClose?.();
+        return;
+      }
+      const tappedItem = galleryController.getItemAtPosition(pos.x, pos.y);
+      if (galleryController.isAnimating() && tappedItem) {
+        // a tap on a moving item stops the scroll rather than picking whatever happened to be under the finger
         galleryController.pan(0, true);
-      } else {
-        const tappedItem = galleryController.getItemAtPosition(pos.x, pos.y);
-        if (tappedItem?.onClick) {
-          tappedItem.onClick();
-        } else if (!tappedItem && onClose) {
-          onClose();
-        }
+      } else if (tappedItem?.onClick) {
+        tappedItem.onClick();
+      } else if (!tappedItem && onClose) {
+        onClose();
       }
     });
 
@@ -231,7 +260,7 @@ export function GalleryViewer({
     // an item with a live DragPick drags it out onto the board; anything else scrolls the strip.
     // A scroll that leaves the strip through its top edge turns into a drag of the item it started
     // on, so a long diagonal pull toward the board still lands the piece.
-    let mode: "undecided" | "scroll" | "drag" | "summaries" = "undecided";
+    let mode: "undecided" | "scroll" | "drag" | "summaries" | "dismiss" = "undecided";
     let lastY: number | undefined = undefined;
     let summaryX = 0;
     let drag: ExternalDrag | undefined;
@@ -254,7 +283,17 @@ export function GalleryViewer({
         startItem = dragsOut ? galleryController.getItemAtPosition(ev.center.x - ev.deltaX - rect.left, ev.center.y - ev.deltaY - rect.top) : null;
         const upward = -ev.deltaY > Math.abs(ev.deltaX) * 0.58;
         const vertical = Math.abs(ev.deltaY) > Math.abs(ev.deltaX);
-        mode = upward && beginDragOut(ev) ? "drag" : !dragsOut && vertical && galleryController.canScrollSummaries() ? "summaries" : "scroll";
+        const startY = ev.center.y - ev.deltaY - rect.top;
+        const summariesScroll = galleryController.canScrollSummaries();
+        const onScrollingSummary = summariesScroll && startY > galleryController.summariesTop();
+        mode =
+          upward && beginDragOut(ev)
+            ? "drag"
+            : dismissGestures && vertical && ev.deltaY > 0 && !onScrollingSummary
+              ? "dismiss"
+              : !dragsOut && vertical && summariesScroll
+                ? "summaries"
+                : "scroll";
         // a summary drag scrolls the one it started on
         summaryX = ev.center.x - ev.deltaX - rect.left;
       } else if (mode === "scroll" && dragsOut && ev.center.y < el.getBoundingClientRect().top && beginDragOut(ev)) {
@@ -268,6 +307,15 @@ export function GalleryViewer({
       }
       if (mode === "drag") {
         drag?.move(ev.center.x, ev.center.y);
+        ev.preventDefault();
+        return;
+      }
+      if (mode === "dismiss") {
+        // the gallery follows the finger down, fading as it goes
+        const dy = Math.max(0, ev.deltaY);
+        el.style.transition = "none";
+        el.style.transform = `translateY(${dy}px)`;
+        el.style.opacity = `${Math.max(0.3, 1 - dy / Math.max(1, el.clientHeight))}`;
         ev.preventDefault();
         return;
       }
@@ -294,13 +342,25 @@ export function GalleryViewer({
     });
 
     hammer.on("pancancel", () => {
+      if (mode === "dismiss") resetDismissOffset(el, true);
       drag?.cancel();
       drag = undefined;
       mode = "undecided";
       lastY = undefined;
     });
 
-    hammer.on("panend", () => {
+    hammer.on("panend", (ev) => {
+      if (mode === "dismiss") {
+        mode = "undecided";
+        const far = ev.deltaY > Math.min(DISMISS_DISTANCE, el.clientHeight * 0.2);
+        const flung = ev.deltaY > DISMISS_FLING_MIN_DISTANCE && ev.velocityY > DISMISS_FLING_VELOCITY;
+        if ((far || flung) && onClose) {
+          onClose();
+        } else {
+          resetDismissOffset(el, true);
+        }
+        return;
+      }
       if (mode === "drag") {
         drag?.end();
         drag = undefined;
@@ -343,7 +403,7 @@ export function GalleryViewer({
       hammer.destroy();
       removeWheelListener(el, wheelListener);
     };
-  }, [galleryController, onClose, onLongPress, kind, modalState]);
+  }, [galleryController, onClose, onLongPress, kind, modalState, dismissGestures]);
 
   if (!w || !h) {
     return null;

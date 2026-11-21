@@ -1,3 +1,5 @@
+import v8 from "node:v8";
+import vm from "node:vm";
 import { describe, expect, test } from "vitest";
 
 import { Chit } from "./Chit";
@@ -100,6 +102,7 @@ type AnyTurn = {
   clockSteps: { turns?: AnyTurn[]; absorbed?: AnyTurn[] }[];
   _checkpoints: { nextIndex: number }[];
   lockedChitStates: Record<string, string>;
+  lastChitStates: Record<string, string>;
   absorbed: boolean;
   serialize: (playerId: string, clock: number) => { chits: Record<string, string> };
   chitsHistory: (playerId: string, ids: string[]) => unknown;
@@ -272,4 +275,40 @@ describe("Turn.serialize", () => {
     expect(finished.filter((t) => t._checkpoints.length > 0)).toEqual([]);
     expect(Object.keys(root.lockedChitStates).length).toBeGreaterThan(0);
   });
+
+  test("finished turns do not keep old chit-state maps alive", async () => {
+    // A turn absorbing a sub-turn replaces its lastChitStates with a fresh full copy, so a long game
+    // makes hundreds of them. Once replaced, nothing should hold one: in particular not a closure
+    // made in the Turn constructor (findChit), which every finished turn keeps for the whole game.
+    const gc = exposeGc();
+    const seen = new WeakSet<object>();
+    const maps: WeakRef<object>[] = [];
+    const root = await play((root) => {
+      for (const t of allTurns(root)) {
+        if (!seen.has(t.lastChitStates)) {
+          seen.add(t.lastChitStates);
+          maps.push(new WeakRef(t.lastChitStates));
+        }
+      }
+    });
+    expect(maps.length).toBeGreaterThan(10);
+
+    // WeakRef targets stay alive until the current job ends, and the finished match may still have
+    // a notify or two queued: let those run, then collect, a few times over
+    for (let i = 0; i < 5; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      gc();
+    }
+
+    // The root (and through it every finished turn) is still alive, as in a running match
+    const current = new Set<object>(allTurns(root).map((t) => t.lastChitStates));
+    const leaked = maps.map((r) => r.deref()).filter((m) => m !== undefined && !current.has(m));
+    expect(`${leaked.length} of ${maps.length} replaced maps still alive`).toBe(`0 of ${maps.length} replaced maps still alive`);
+  });
 });
+
+/** V8's gc(), without needing --expose-gc on the command line. */
+function exposeGc(): () => void {
+  v8.setFlagsFromString("--expose-gc");
+  return vm.runInNewContext("gc") as () => void;
+}

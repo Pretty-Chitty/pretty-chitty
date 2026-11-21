@@ -1,3 +1,5 @@
+import v8 from "node:v8";
+import vm from "node:vm";
 import { expect, test } from "vitest";
 
 import { ChildOutlet, NonEditable } from "../utilities/Annotations";
@@ -155,3 +157,51 @@ test("dirty tracking: array mutation via proxy marks dirty", () => {
   const serialized = c.serialize();
   expect(JSON.parse(serialized).items).toEqual([1, 2, 3, 4]);
 });
+
+test("dirty tracking: an object two chits share marks the chit it was written through", () => {
+  const shared = { a: 1 };
+  class ChitWithShared extends Chit {
+    public data = shared;
+  }
+
+  const c1 = new ChitWithShared();
+  const c2 = new ChitWithShared();
+  c1.serialize();
+  c2.serialize();
+  expect(c1.data.a).toBe(1); // c1 wraps the shared object first
+
+  c2.data.a = 2;
+  expect(c2._dirty).toBe(true);
+  expect(c1._dirty).toBe(false);
+});
+
+test("dirty tracking: a chit that read long-lived data can still be collected", async () => {
+  // Game data in module scope lives as long as the bundle. Reading it through a chit must not tie
+  // the chit (and through its parents, a whole disposed match) to that data.
+  const gc = exposeGc();
+  const staticData = { nested: { value: 1 } };
+  class ChitWithStatic extends Chit {
+    public data = staticData;
+  }
+
+  let ref: WeakRef<Chit> | undefined;
+  (() => {
+    const c = new ChitWithStatic();
+    c.serialize();
+    expect(c.data.nested.value).toBe(1);
+    ref = new WeakRef(c);
+  })();
+
+  // WeakRef targets stay alive until the current job ends
+  for (let i = 0; i < 5; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    gc();
+  }
+  expect(ref?.deref()).toBeUndefined();
+});
+
+/** V8's gc(), without needing --expose-gc on the command line. */
+function exposeGc(): () => void {
+  v8.setFlagsFromString("--expose-gc");
+  return vm.runInNewContext("gc") as () => void;
+}

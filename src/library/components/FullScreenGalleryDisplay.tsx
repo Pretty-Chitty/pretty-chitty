@@ -67,6 +67,7 @@ export function FullScreenGalleryDisplay() {
         <GalleryViewer
           kind="fullscreen"
           tutorialTarget="gallery:fullscreen"
+          dismissGestures
           onClose={() => {
             setSource(undefined);
           }}

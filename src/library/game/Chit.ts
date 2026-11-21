@@ -18,14 +18,24 @@ const EXTRA_SERIALIZATION_PROPS_ARRAY = ["id", "_parent", "_parentOutlet", "_par
 const EXTRA_SERIALIZATION_PROPS_SET = new Set(EXTRA_SERIALIZATION_PROPS_ARRAY);
 const DELETED_SERIALIZED = JSON.stringify({ ____deleted: true });
 
-const dirtyProxyCache = new WeakMap<object, object>();
+// Per chit: value -> the proxy that marks that chit dirty. A proxy is bound to one chit, so the cache
+// must be too. Keyed by value alone, an object several chits share (often static game data, which
+// lives as long as the bundle) got the first chit's proxy for good: writes through it marked the
+// wrong chit dirty, and the entry, whose key never dies, kept that chit and its whole match alive
+// after the match was disposed. Keyed by chit, a chit's proxies go when the chit does.
+const dirtyProxyCache = new WeakMap<Chit, WeakMap<object, object>>();
 
 function wrapWithDirtyProxy(value: any, chit: Chit): any {
   if (value === null || value === undefined) return value;
   if (typeof value !== "object") return value;
   if (value instanceof Chit || value instanceof OrderedOutlet) return value;
 
-  const existing = dirtyProxyCache.get(value);
+  let chitProxies = dirtyProxyCache.get(chit);
+  if (!chitProxies) {
+    chitProxies = new WeakMap();
+    dirtyProxyCache.set(chit, chitProxies);
+  }
+  const existing = chitProxies.get(value);
   if (existing) return existing;
 
   const proxy = new Proxy(value, {
@@ -53,7 +63,7 @@ function wrapWithDirtyProxy(value: any, chit: Chit): any {
     },
   });
 
-  dirtyProxyCache.set(value, proxy);
+  chitProxies.set(value, proxy);
   return proxy;
 }
 
