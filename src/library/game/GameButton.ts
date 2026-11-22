@@ -7,6 +7,7 @@ import { GalleryItemSource } from "../components/GalleryViewer";
 import { GalleryItemChitChildrenSource } from "./GalleryItemChitChildrenSource";
 import { GalleryItemRawSource } from "./GalleryItemRawSource";
 import { chitsToGalleryItems } from "../utilities/GalleryItemConversion";
+import { setTypeName } from "./typeName";
 
 export type ButtonCallback = () => void | Promise<void>;
 
@@ -140,3 +141,4 @@ export class Confirm extends GameButton {
   /** @internal */
   canAutoResolve = false;
 }
+setTypeName(Confirm, "Confirm");

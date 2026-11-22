@@ -8,6 +8,7 @@ import { Vector2 } from "three";
 import { OrderedOutlet } from "./OrderedOutlet";
 import { SparkChit } from "./SparkChit";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
+import { typeNameOfInstance } from "./typeName";
 import type { Game } from "./Game";
 import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 import { ImageSpec } from "../utilities/CanvasStack/CanvasOperations";
@@ -183,7 +184,7 @@ export class Chit extends ObjectWithProps {
 
   /** @internal */
   chitTypeName() {
-    const result = Object.getPrototypeOf(this).constructor.name;
+    const result = typeNameOfInstance(this);
     if (this.parentFallback) {
       return `${result}-${this.parentFallback.id}-`;
     }
@@ -634,7 +635,7 @@ export class Chit extends ObjectWithProps {
           return acc;
         },
         {
-          __chitType: Object.getPrototypeOf(this).constructor.name,
+          __chitType: typeNameOfInstance(this),
           __hiddenProps: playerIds ? this.hiddenPropertiesForSerialization(playerIds) : undefined,
         } as { [key: string]: any },
       ),

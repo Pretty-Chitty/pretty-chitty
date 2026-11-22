@@ -3,6 +3,7 @@ import { GalleryItemChitChildrenSource } from "./GalleryItemChitChildrenSource";
 import { IButtonLibrary } from "./Game";
 import { Confirm, GameButton, ToggleGalleryButton } from "./GameButton";
 import { OrderedOutlet } from "./OrderedOutlet";
+import { typeNameOfInstance } from "./typeName";
 import { PickPrompt } from "./Prompt";
 import { MismatchError, Turn } from "./Turn";
 
@@ -187,7 +188,7 @@ export class ChitPick<T extends Chit> extends Pick {
 
     if (this.button) {
       result.b = this.button.serialize();
-      result.b.__buttonType = Object.getPrototypeOf(this.button).constructor.name;
+      result.b.__buttonType = typeNameOfInstance(this.button);
     }
 
     return result;
@@ -436,7 +437,7 @@ export class ButtonPick extends Pick {
     }
 
     const details = this.button.serialize();
-    details.__buttonType = Object.getPrototypeOf(this.button).constructor.name;
+    details.__buttonType = typeNameOfInstance(this.button);
     details.__f = this.focusChits.map((chit) => chit.id);
     return details;
   }

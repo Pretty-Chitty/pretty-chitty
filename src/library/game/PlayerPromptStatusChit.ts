@@ -3,6 +3,7 @@ import { EventChannel } from "../utilities/EventChannel";
 import { Chit } from "./Chit";
 import { Prompt } from "./Prompt";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
+import { setTypeName } from "./typeName";
 
 export class PlayerPromptStatusChit extends Chit {
   /** Plain text of the prompt the player is currently being asked to answer (`:token:` markup resolved). @internal */
@@ -21,4 +22,5 @@ export class PlayerPromptStatusChit extends Chit {
   }
 }
 
+setTypeName(PlayerPromptStatusChit, "PlayerPromptStatusChit");
 StaticChitTypeRegistry["PlayerPromptStatusChit"] = PlayerPromptStatusChit;

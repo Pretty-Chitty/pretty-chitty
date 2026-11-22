@@ -159,13 +159,50 @@ export class CanvasStack implements IUpdatingCanvas {
   private static _pendingFontRedraws = new Set<CanvasStack>();
   private static _fontRedrawScheduled = false;
 
+  // Records the font as it was *set*, not as ctx.font reads back: WebKit's getter drops the weight ("700 27px X"
+  // reads "27px X"), so tracking the read-back only ever checked the regular face. Once that had loaded, bold text
+  // drawn in the fallback while its own face was still downloading looked loaded and never redrew (the ghosted
+  // titles and re-wrapped bodies on iPhone). save/restore carry the set value the way the context carries its font.
   private _trackFonts(ctx: CanvasRenderingContext2D) {
+    const fontProp = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "font");
+    let current = ctx.font;
+    if (fontProp?.get && fontProp.set) {
+      const { get, set } = fontProp;
+      const saved: string[] = [];
+      Object.defineProperty(ctx, "font", {
+        configurable: true,
+        get: () => get.call(ctx),
+        set: (value: string) => {
+          set.call(ctx, value);
+          current = value;
+        },
+      });
+      const save = ctx.save;
+      const restore = ctx.restore;
+      ctx.save = () => {
+        saved.push(current);
+        save.call(ctx);
+      };
+      ctx.restore = () => {
+        if (saved.length > 0) current = saved.pop()!;
+        restore.call(ctx);
+      };
+    }
     for (const name of ["fillText", "strokeText", "measureText"] as const) {
       const original = ctx[name] as (...args: unknown[]) => unknown;
       (ctx as any)[name] = (...args: unknown[]) => {
-        this._fontsUsed.add(ctx.font);
+        this._fontsUsed.add(current);
         return original.apply(ctx, args);
       };
+    }
+  }
+
+  /** check() throws on a string that isn't a valid font (the context ignored that assignment); treat it as loaded. */
+  private static fontLoaded(font: string): boolean {
+    try {
+      return document.fonts.check(font);
+    } catch {
+      return true;
     }
   }
 
@@ -174,7 +211,7 @@ export class CanvasStack implements IUpdatingCanvas {
     const fonts = typeof document !== "undefined" ? document.fonts : undefined;
     if (!fonts) return;
     for (const font of this._fontsUsed) {
-      if (fonts.check(font)) continue;
+      if (CanvasStack.fontLoaded(font)) continue;
       this._unloadedFonts.add(font);
       CanvasStack.whenFontLoads(font);
     }
@@ -182,7 +219,7 @@ export class CanvasStack implements IUpdatingCanvas {
 
   /** A font this stack drew with before it loaded has loaded since: its pixels are stale. */
   private _fontsArrived(): boolean {
-    for (const font of this._unloadedFonts) if (document.fonts.check(font)) return true;
+    for (const font of this._unloadedFonts) if (CanvasStack.fontLoaded(font)) return true;
     return false;
   }
 

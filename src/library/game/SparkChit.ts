@@ -4,6 +4,7 @@ import { Vector2 } from "three";
 import { NonEditable } from "../utilities/Annotations";
 import { PlayerChit } from "./PlayerChit";
 import StaticChitTypeRegistry from "./StaticChitTypeRegistry";
+import { setTypeName } from "./typeName";
 import { IUpdatingCanvas } from "../utilities/IUpdatingCanvas";
 
 export class SparkChit extends Chit {
@@ -82,6 +83,7 @@ export class SparkChit extends Chit {
   }
 }
 
+setTypeName(SparkChit, "SparkChit");
 StaticChitTypeRegistry["SparkChit"] = SparkChit;
 
 export abstract class BagSparkChit<T extends Chit> extends SparkChit {

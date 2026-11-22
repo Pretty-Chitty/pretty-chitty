@@ -6,6 +6,7 @@ export type { GameMetaData } from "./game/GameMetaData";
 // NOTE: must be before Turn! or circular dependency!
 /** @group Chits */
 export { Chit } from "./game/Chit";
+export { setTypeName, typeNameOf } from "./game/typeName";
 
 /** @group Core Game Elements */
 export { Turn } from "./game/Turn";
