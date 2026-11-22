@@ -24,7 +24,7 @@ export const DISPLAY_SECTIONS: { key: DisplaySection; label: string; smallerHint
  * runs downwards as the panels get bigger.
  */
 const MULTIPLIERS: Record<DisplaySection, number[]> = {
-  panelLayout: [1.8, 1.35, 1, 0.8, 0.65],
+  panelLayout: [4, 2, 1, 0.7, 0.4],
   panelPadding: [0.25, 0.5, 1, 1.75, 2.5],
   topBar: [0.75, 0.875, 1, 1.2, 1.4],
   actionLog: [0.8, 0.9, 1, 1.2, 1.4],

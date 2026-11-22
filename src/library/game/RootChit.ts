@@ -40,7 +40,8 @@ export class RootChit<P extends PlayerChit> extends Chit {
       return [];
     }
     const layoutTree = this.getLayout(width * scaleX, height * scaleY, playerId);
-    return createLayoutFromTree(layoutTree, width * scaleX, height * scaleY).map((item) => {
+    // A screen pixel is scaleX layout units across, which is what the fixed-size panel tabs need
+    return createLayoutFromTree(layoutTree, width * scaleX, height * scaleY, { unitsPerPixel: scaleX }).map((item) => {
       item.h = item.h / scaleY;
       item.w = item.w / scaleX;
       item.x = item.x / scaleX;

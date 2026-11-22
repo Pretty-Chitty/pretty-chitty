@@ -9,10 +9,11 @@ import { ZINDEX_PANEL_CUTOUTS } from "../../utilities/zIndex";
 import { IconCanvas } from "../../utilities/CanvasStack/IconCanvas";
 import { IUpdatingCanvas } from "../../utilities/IUpdatingCanvas";
 import { ImageSpec } from "../../utilities/CanvasStack/CanvasOperations";
+import { PANEL_TAB_HEIGHT, PANEL_TAB_WIDTH } from "../../utilities/LayoutHelper";
 
-const TAB_HEIGHT = 20;
+const TAB_HEIGHT = PANEL_TAB_HEIGHT;
 const ANIMATION_DURATION = 0.125;
-const TAB_WIDTH = TAB_HEIGHT * 2;
+const TAB_WIDTH = PANEL_TAB_WIDTH;
 
 function PanelTab({ chit, onClick, selected }: { selected?: boolean; chit: Chit; onClick: () => void }) {
   // eslint-disable-next-line prefer-const
@@ -36,7 +37,8 @@ function PanelTab({ chit, onClick, selected }: { selected?: boolean; chit: Chit;
     <Box
       onMouseDown={onClick}
       data-tutorial-target={`panelTab:${chit.id}`}
-      sx={{ pt: 1, pb: 1, mt: -1, mb: -1, position: "relative", zIndex: ZINDEX_PANEL_CUTOUTS }}
+      // shares the strip's width equally, so a stack with too little room squeezes its tabs rather than overflowing
+      sx={{ pt: 1, pb: 1, mt: -1, mb: -1, position: "relative", zIndex: ZINDEX_PANEL_CUTOUTS, flex: 1, minWidth: 0 }}
     >
       <Box
         sx={{
@@ -49,7 +51,7 @@ function PanelTab({ chit, onClick, selected }: { selected?: boolean; chit: Chit;
           cursor: "pointer",
           height: TAB_HEIGHT,
           textAlign: "center",
-          width: TAB_WIDTH,
+          width: "100%",
           borderBottomLeftRadius: TAB_HEIGHT / 4,
           borderBottomRightRadius: TAB_HEIGHT / 4,
         }}
@@ -75,7 +77,7 @@ export function PanelTabStack({
   return (
     <Stack direction="row" sx={{ height: TAB_HEIGHT }}>
       <Box flex={1} />
-      <Stack direction="row" sx={{ position: "relative", width: TAB_WIDTH * chits.length }}>
+      <Stack direction="row" sx={{ position: "relative", width: TAB_WIDTH * chits.length, maxWidth: "100%" }}>
         {chits.map((chit, index) => (
           <PanelTab
             key={chit.id}
@@ -87,12 +89,12 @@ export function PanelTabStack({
         <Box
           sx={{
             height: "2px",
-            width: TAB_WIDTH * 0.75,
+            width: `${(0.75 / chits.length) * 100}%`,
             transition: `left ease-in-out ${ANIMATION_DURATION * timeMultiplier}s`,
             background: theme.panelSelectionCutoutSelected,
             position: "absolute",
             bottom: -2,
-            left: selectedIndex * TAB_WIDTH + TAB_WIDTH * 0.125,
+            left: `${((selectedIndex + 0.125) / chits.length) * 100}%`,
           }}
         />
       </Stack>
