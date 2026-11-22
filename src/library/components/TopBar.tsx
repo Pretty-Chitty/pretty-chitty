@@ -20,6 +20,8 @@ function BaseTopBar({ children }: { children: ReactNode | ReactNode[] }) {
         position: "relative",
         background: theme.barColor,
         height: theme.topBarHeight,
+        // A fixed-height bar in the viewer's flex column: never squeezed when the table needs the room
+        flexShrink: 0,
       }}
     >
       {children}

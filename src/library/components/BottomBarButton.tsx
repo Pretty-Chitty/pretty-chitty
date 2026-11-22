@@ -179,9 +179,9 @@ export default function BottomBarButton({
         <Box
           sx={{
             color: iconColor,
-            fontSize: 30,
-            lineHeight: "30px",
-            height: "30px",
+            fontSize: theme.bottomBarIconSize,
+            lineHeight: `${theme.bottomBarIconSize}px`,
+            height: `${theme.bottomBarIconSize}px`,
             textAlign: "center",
           }}
         >

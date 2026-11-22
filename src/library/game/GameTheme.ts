@@ -32,7 +32,11 @@ export class GameTheme {
   public backgroundColor = "#0f0119";
 
   public spacing = 8;
+  /** The gap around each panel; defaults to `spacing` */
+  public panelSpacing?: number;
   public bottomBarHeight = 80;
+  /** The size of the icons on the bottom bar's buttons */
+  public bottomBarIconSize = 30;
   public topBarHeight = 40;
   public barColor = "#1c092c";
   public barGradientPercent = 0.05;
@@ -100,6 +104,8 @@ export class GameTheme {
   public actionLogTextColor = "#ffffff";
   public actionBarWidth = 600;
   public actionBarLinesToShow = 2;
+  /** The width of the action log shown beside the game on large screens */
+  public actionLogSidebarWidth = 350;
   public inlineGalleryBackgroundColor = "rgba(255,255,255,0.1)";
   public inlineGalleryButtonBackgroundColor = "#000000";
   public inlineGalleryButtonForegroundColor = "rgba(255,255,255,0.5)";
@@ -140,6 +146,10 @@ export class GameTheme {
     result.actionLogDialogBackgroundColor = result.backgroundColor;
 
     return result;
+  }
+
+  getPanelSpacing(): number {
+    return this.panelSpacing ?? this.spacing;
   }
 
   layoutSize(width: number): "large" | "medium" | "mobile" {

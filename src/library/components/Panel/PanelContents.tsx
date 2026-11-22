@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import useSize from "@react-hook/size";
 import { useGameTheme } from "../../hooks/useGameTheme";
 import { RootChit } from "../../game/RootChit";
-import { usePanelScale } from "../../hooks/usePanelScale";
+import { usePanelScale } from "../../hooks/useDisplaySettings";
 import { usePlayerId } from "../../hooks/usePlayer";
 import { SinglePanel } from "./SinglePanel";
 import { MultiPanel } from "./MultiPanel";
@@ -353,7 +353,9 @@ export function PanelContents({
           sx={{
             position: "relative",
             flex: 1,
-            p: `${theme.spacing * 0.75}px`,
+            // Each panel insets itself by panelSpacing / 4 (SinglePanel, MultiPanel), so two neighbours sit
+            // panelSpacing / 2 apart; a quarter here gives the screen edge that same gap
+            p: `${theme.getPanelSpacing() * 0.25}px`,
           }}
         >
           <Box

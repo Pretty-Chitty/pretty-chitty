@@ -7,7 +7,7 @@ import { GameThemeProvider, useGameTheme } from "../hooks/useGameTheme";
 import TopBar from "./TopBar";
 import { useEventChannelState } from "../hooks/useEventChannelState";
 import { MatchEndDisplay } from "./MatchEndDisplay";
-import { PanelScaleProvider } from "../hooks/usePanelScale";
+import { DisplaySectionTheme, DisplaySettingsProvider } from "../hooks/useDisplaySettings";
 import { ModalProvider } from "../hooks/useModalState";
 import { FullScreenGalleryDisplay } from "./FullScreenGalleryDisplay";
 import { ActionLogDisplay } from "./ActionLogDisplay";
@@ -75,7 +75,9 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
       }}
     >
       <Stack flex={1} sx={{ maxWidth: "100%" }}>
-        <TopBar onBack={onBack} />
+        <DisplaySectionTheme section="topBar">
+          <TopBar onBack={onBack} />
+        </DisplaySectionTheme>
         <Stack
           direction={"column"}
           flex={1}
@@ -88,11 +90,15 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
             <MatchEndDisplay />
             <FullScreenGalleryDisplay />
             <SettingsDisplay />
-            <ActionLogHistoryDisplay />
+            <DisplaySectionTheme section="actionLog">
+              <ActionLogHistoryDisplay />
+            </DisplaySectionTheme>
 
             <Stack direction={"column"} flex={1}>
               {!errorMessage && rootChit && (
-                <PanelContents rootChit={rootChit} scaleWidth={width} scaleHeight={height} />
+                <DisplaySectionTheme section="panelPadding">
+                  <PanelContents rootChit={rootChit} scaleWidth={width} scaleHeight={height} />
+                </DisplaySectionTheme>
               )}
 
               <InlineGalleryDisplay />
@@ -100,12 +106,20 @@ function InnerMatchViewer({ onBack }: { onBack?: () => void }) {
             {errorMessage}
           </Box>
 
-          <ActionLogDisplay toggleSidebarLog={largeEnoughToShowLogSidebar} />
+          <DisplaySectionTheme section="actionLog">
+            <ActionLogDisplay toggleSidebarLog={largeEnoughToShowLogSidebar} />
+          </DisplaySectionTheme>
         </Stack>
-        <BottomBar />
+        <DisplaySectionTheme section="bottomBar">
+          <BottomBar />
+        </DisplaySectionTheme>
       </Stack>
 
-      {largeEnoughToShowLogSidebar && showLog && <ActionLogSidebar />}
+      {largeEnoughToShowLogSidebar && showLog && (
+        <DisplaySectionTheme section="actionLog">
+          <ActionLogSidebar />
+        </DisplaySectionTheme>
+      )}
 
       <TutorialOverlay />
     </Stack>
@@ -122,7 +136,7 @@ export function MatchViewer({ onBack, skipReplay = false }: { onBack?: () => voi
   const muiTheme = useMemo(() => createMuiTheme(game.theme), [game.theme]);
   return (
     <TimeControllerProvider skipReplay={skipReplay}>
-      <PanelScaleProvider>
+      <DisplaySettingsProvider>
         <ModalProvider modalState={modalState}>
           <GameThemeProvider theme={game.theme}>
             <ThemeProvider theme={muiTheme}>
@@ -134,7 +148,7 @@ export function MatchViewer({ onBack, skipReplay = false }: { onBack?: () => voi
             </ThemeProvider>
           </GameThemeProvider>
         </ModalProvider>
-      </PanelScaleProvider>
+      </DisplaySettingsProvider>
     </TimeControllerProvider>
   );
 }

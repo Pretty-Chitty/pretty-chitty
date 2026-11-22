@@ -44,6 +44,7 @@ export function MultiPanel({
   setFocusedPanel: (chit: Chit | undefined) => void;
 }) {
   const theme = useGameTheme();
+  const panelSpacing = theme.getPanelSpacing();
   const refContainer = useRef(null);
   const timeState = useTimeState();
   const { registerPosition } = usePanelPositioning();
@@ -207,10 +208,10 @@ export function MultiPanel({
 
       registerPosition(chitId, {
         chitId,
-        x: x + theme.spacing / 4,
-        y: y + theme.spacing / 4,
-        w: w - theme.spacing / 2,
-        h: h - effectiveTabHeight - theme.spacing / 2,
+        x: x + panelSpacing / 4,
+        y: y + panelSpacing / 4,
+        w: w - panelSpacing / 2,
+        h: h - effectiveTabHeight - panelSpacing / 2,
         paused: isPaused,
         panCallback,
         visible: true,
@@ -232,7 +233,7 @@ export function MultiPanel({
     isSliding,
     focusedPanel,
     registerPosition,
-    theme.spacing,
+    panelSpacing,
     refContainer,
     panCallback,
     timeMultiplier,
@@ -270,7 +271,7 @@ export function MultiPanel({
         top: `${y}px`,
         position: "absolute",
         zIndex: enabled ? "auto" : -1,
-        p: `${theme.spacing / 4}px`,
+        p: `${panelSpacing / 4}px`,
         transition: panelTransition(theme, timeMultiplier),
       }}
     >

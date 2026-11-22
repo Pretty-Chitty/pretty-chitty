@@ -166,7 +166,7 @@ export function ActionLogDisplay({ toggleSidebarLog }: { toggleSidebarLog: boole
           p: 1,
           lineHeight: 1,
           textAlign: "center",
-          minHeight: 14 * theme.actionBarLinesToShow * 1.1 + PADDING_SIZE * 2, // 8px for padding?
+          minHeight: 14 * theme.fontScalar * theme.actionBarLinesToShow * 1.1 + PADDING_SIZE * 2, // 8px for padding?
           color: theme.actionLogTextColor,
           maxWidth: layoutSize !== "mobile" ? `${theme.actionBarWidth - 40}px` : undefined,
           display: "flex",

@@ -14,6 +14,8 @@ function BaseBottomBar({ children }: { children: ReactNode | ReactNode[] }) {
         position: "relative",
         background: `${theme.barColor} linear-gradient(${theme.barGradientAngle}deg, rgba(255,255,255,${theme.barGradientPercent}) 0%, rgba(0,0,0,${theme.barGradientPercent}) 100%)`,
         height: theme.bottomBarHeight,
+        // A fixed-height bar in the viewer's flex column: never squeezed when the table needs the room
+        flexShrink: 0,
       }}
     >
       {children}

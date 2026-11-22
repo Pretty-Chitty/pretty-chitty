@@ -28,6 +28,7 @@ export function SinglePanel({
   setFocusedPanel: (chit: Chit | undefined) => void;
 }) {
   const theme = useGameTheme();
+  const panelSpacing = theme.getPanelSpacing();
   const animationSpeedMultiplier = useAnimationSpeedMultiplier();
   const { registerPosition } = usePanelPositioning();
 
@@ -45,16 +46,16 @@ export function SinglePanel({
     const chitId = chit.id ?? "";
     registerPosition(chitId, {
       chitId,
-      x: x + theme.spacing / 4,
-      y: y + theme.spacing / 4,
-      w: w - theme.spacing / 2,
-      h: h - theme.spacing / 2,
+      x: x + panelSpacing / 4,
+      y: y + panelSpacing / 4,
+      w: w - panelSpacing / 2,
+      h: h - panelSpacing / 2,
       paused: effectivePaused,
       front: true,
       visible: true,
       transition,
     });
-  }, [chit, x, y, w, h, transition, effectivePaused, enabled, focusedPanel, registerPosition, theme.spacing]);
+  }, [chit, x, y, w, h, transition, effectivePaused, enabled, focusedPanel, registerPosition, panelSpacing]);
 
   return (
     <Box
@@ -65,7 +66,7 @@ export function SinglePanel({
         left: `${x}px`,
         top: `${y}px`,
         position: "absolute",
-        p: `${theme.spacing / 4}px`,
+        p: `${panelSpacing / 4}px`,
         transition,
         zIndex: enabled ? "auto" : -1,
       }}

@@ -132,7 +132,8 @@ export default function TopBarPlayers() {
   return (
     <TopBarDropdown
       label={
-        <Stack direction={"row"} sx={{ pt: 1, pb: 1, maxWidth: "100%" }}>
+        // padded by the theme's spacing, which the avatar size allows for, so the strip is exactly the bar's height
+        <Stack direction={"row"} sx={{ py: `${theme.spacing}px`, maxWidth: "100%" }}>
           {/* The avatar cluster is what a tutorial points at with { ui: "players" }, not the whole strip */}
           <Stack direction={"row"} data-tutorial-target="players" sx={{ pl: 1 }}>
             {playerChits.map((player) => (
@@ -148,7 +149,8 @@ export default function TopBarPlayers() {
           <Typography
             flex={1}
             sx={{
-              p: 1,
+              px: 1,
+              py: `${theme.spacing}px`,
               lineHeight: `${theme.topBarHeight - theme.spacing * 4}px`,
               fontSize: 14 * theme.fontScalar,
               whiteSpace: "nowrap",
