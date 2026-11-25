@@ -1041,6 +1041,24 @@ export class ChitRenderInstance {
           .easing(Easing.Quadratic.In),
       );
       this.offsetTween = new Tween({ x: 0, y: 0 }); // make sure this is not cancellable
+
+      // Lift as it leaves, like any other move (distance × zLiftRatio), and stay up there: it is going away, so
+      // there is nothing to come back down to. Without this a piece slid off at its own height, under anything
+      // taller beside it (a card beside a board went under the board).
+      const distanceOut = Math.sqrt(Math.pow(target.x - position.x, 2) + Math.pow(target.y - position.y, 2));
+      const lift = distanceOut * (this.renderSpec?.zLiftRatio ?? 0);
+      if (lift > 0) {
+        this.zOffsetTween.stop();
+        this.createTween({ z: position.z }, (tween) =>
+          tween
+            .to({ z: position.z + lift }, duration)
+            .onUpdate((obj) => {
+              position.z = obj.z;
+            })
+            .easing(Easing.Quadratic.Out),
+        );
+        this.zOffsetTween = new Tween({ z: 0 }); // as above: not cancellable
+      }
     }
     return this.isDestroying;
   }

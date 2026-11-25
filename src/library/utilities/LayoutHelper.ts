@@ -1,22 +1,11 @@
 import { Chit } from "../game/Chit";
 
-/** A panel tab's size on screen, in pixels; tabs stay this size whatever scale the layout is worked out at */
+/**
+ * A panel tab's size on screen, in pixels. Tabs never affect the layout: a stack too narrow for its
+ * row of tabs shrinks them to fit.
+ */
 export const PANEL_TAB_WIDTH = 40;
 export const PANEL_TAB_HEIGHT = 20;
-/** Room left beside a stack's row of tabs */
-const TAB_STRIP_MARGIN = PANEL_TAB_WIDTH / 2;
-
-export interface LayoutOptions {
-  /**
-   * Layout units per screen pixel across. The layout may be worked out larger or smaller than the
-   * screen (the player's panel layout setting), but tabs are drawn at a fixed pixel size, so this
-   * converts their width into layout units. Defaults to 1.
-   */
-  unitsPerPixel?: number;
-}
-
-/** The width (in layout units) a stack of `count` panels needs for its tabs */
-type TabStripWidth = (count: number) => number;
 
 export type PanelLayoutResult = {
   w: number;
@@ -96,12 +85,7 @@ function isContainerNode(node: LayoutNode | ConcreteLayoutNode): node is Contain
 /**
  * Recursively fixes nodes where minWidth/minHeight exceed available dimensions
  */
-function fixInvalidNodeDimensions(
-  tree: LayoutNode,
-  availableWidth: number,
-  availableHeight: number,
-  tabStripWidth: TabStripWidth,
-): LayoutNode {
+function fixInvalidNodeDimensions(tree: LayoutNode, availableWidth: number, availableHeight: number): LayoutNode {
   if (isPanelNode(tree)) {
     // Fix panel node dimensions if they exceed available space
     return {
@@ -112,10 +96,10 @@ function fixInvalidNodeDimensions(
   }
 
   if (isCollapsedNode(tree)) {
-    // A stack needs room for its tabs; neither can exceed the space there is
+    // Fix collapsed node dimensions if they exceed available space
     return {
       ...tree,
-      minWidth: Math.min(Math.max(tree.minWidth, tabStripWidth(tree.panels.length)), availableWidth),
+      minWidth: Math.min(tree.minWidth, availableWidth),
       minHeight: Math.min(tree.minHeight, availableHeight),
     };
   }
@@ -123,9 +107,7 @@ function fixInvalidNodeDimensions(
   const container = tree as ContainerNode;
   return {
     ...container,
-    splits: container.splits.map((split) =>
-      fixInvalidNodeDimensions(split, availableWidth, availableHeight, tabStripWidth),
-    ),
+    splits: container.splits.map((split) => fixInvalidNodeDimensions(split, availableWidth, availableHeight)),
   };
 }
 
@@ -136,17 +118,12 @@ export function createLayoutFromTree(
   tree: LayoutNode,
   availableWidth: number,
   availableHeight: number,
-  options: LayoutOptions = {},
 ): PanelLayoutResult[] {
-  const unitsPerPixel = options.unitsPerPixel ?? 1;
-  const tabStripWidth: TabStripWidth = (count) =>
-    count > 1 ? (count * PANEL_TAB_WIDTH + TAB_STRIP_MARGIN) * unitsPerPixel : 0;
-
   // Step 0: Fix invalid nodes in tree
-  const fixedTree = fixInvalidNodeDimensions(tree, availableWidth, availableHeight, tabStripWidth);
+  const fixedTree = fixInvalidNodeDimensions(tree, availableWidth, availableHeight);
 
   // Step 1: Build valid LayoutNode tree (with collapses applied)
-  const validTree = buildValidTree(fixedTree, availableWidth, availableHeight, tabStripWidth);
+  const validTree = buildValidTree(fixedTree, availableWidth, availableHeight);
 
   const rebalancedTree = rebalanceTree(validTree);
 
@@ -171,12 +148,7 @@ function rebalanceTree(tree: ConcreteLayoutNode): ConcreteLayoutNode {
  * Builds a valid LayoutNode tree by applying collapses until everything fits
  * Returns a NEW tree - does not modify the input
  */
-function buildValidTree(
-  tree: LayoutNode,
-  width: number,
-  height: number,
-  tabStripWidth: TabStripWidth,
-): ConcreteLayoutNode {
+function buildValidTree(tree: LayoutNode, width: number, height: number): ConcreteLayoutNode {
   if (width === 0) {
     width = 1;
   }
@@ -206,10 +178,10 @@ function buildValidTree(
   }
 
   // Step 4: Collapse that container to create NEW tree
-  const newTree = collapseContainer(tree, toCollapse.collapseOrder!, width, tabStripWidth);
+  const newTree = collapseContainer(tree, toCollapse.collapseOrder!);
 
   // Step 5: Recursively build valid tree from the new tree
-  return buildValidTree(newTree, width, height, tabStripWidth);
+  return buildValidTree(newTree, width, height);
 }
 
 function createHorizontalLayout(node: ContainerNode, width: number, height: number): ConcreteLayoutNode {
@@ -544,12 +516,7 @@ function findBestGridConfig(splits: LayoutNode[], width: number, height: number)
 /**
  * Collapse a container - replaces it with a CollapsedNode (tabs) and removes collapseOrder
  */
-function collapseContainer(
-  tree: LayoutNode,
-  targetCollapseOrder: number,
-  availableWidth: number,
-  tabStripWidth: TabStripWidth,
-): LayoutNode {
+function collapseContainer(tree: LayoutNode, targetCollapseOrder: number): LayoutNode {
   if (isContainerNode(tree) && tree.collapseOrder === targetCollapseOrder) {
     // This is the container to collapse
     const panels: PanelNode[] = [];
@@ -565,14 +532,11 @@ function collapseContainer(
 
     const maxWidth = Math.max(...sortedPanels.map((s) => s.minWidth));
     const maxHeight = Math.max(...sortedPanels.map((s) => s.minHeight));
-    // The stack also needs room for a tab per panel, though never more than the whole width: past
-    // that no layout can help, and the tabs shrink to fit instead
-    const minWidth = Math.max(maxWidth, Math.min(tabStripWidth(sortedPanels.length), availableWidth));
 
     // Return CollapsedNode with array of single chits (each panel becomes a single chit)
     return {
       panels: sortedPanels,
-      minWidth,
+      minWidth: maxWidth,
       minHeight: maxHeight,
     };
   }
@@ -585,9 +549,7 @@ function collapseContainer(
   const container = tree as ContainerNode;
   return {
     ...container,
-    splits: container.splits.map((split) =>
-      collapseContainer(split, targetCollapseOrder, availableWidth, tabStripWidth),
-    ),
+    splits: container.splits.map((split) => collapseContainer(split, targetCollapseOrder)),
   };
 }
 

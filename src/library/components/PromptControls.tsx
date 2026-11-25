@@ -146,8 +146,9 @@ export default function PromptControls({ collapsible }: { collapsible?: boolean 
           : "",
         opacity: !collapsible ? (expandedBecauseOfPrompt ? 1 : 0.4) : 1,
         transition: `transform ease-in-out ${theme.actionBarAnimationDuration * speed}s, opacity linear ${theme.actionBarAnimationDuration * speed}s`,
-        pr: 1,
-        pl: collapsible ? 0 : 1,
+        // the theme's spacing (not a fixed 8px), which the context gallery's hidden position allows for
+        pr: `${theme.spacing}px`,
+        pl: collapsible ? 0 : `${theme.spacing}px`,
         right: 0,
         boxShadow: "-2px -2px 10px 0px rgba(0,0,0,0.2)",
       }}

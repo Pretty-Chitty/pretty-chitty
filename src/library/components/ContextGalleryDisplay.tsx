@@ -45,7 +45,8 @@ export function ContextGalleryDisplay({ size }: { size: number }) {
           top: theme.spacing,
           position: hasItems ? "relative" : "absolute",
           ml: `${theme.spacing}px`,
-          right: hasItems ? 0 : `${-size - theme.spacing}px`,
+          // hidden: past the bar's right padding (spacing) and its own margin (spacing), so no sliver shows
+          right: hasItems ? 0 : `${-size - theme.spacing * 2}px`,
           zIndex: ZINDEX_CONTEXT_GALLERY_DISPLAY,
           borderRadius: "10px",
           background: theme.actionBarContextColor,
